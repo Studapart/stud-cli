@@ -113,12 +113,29 @@ function _get_jira_service(): JiraService
  */
 function _run_process(string $command, bool $mustRun = true): Process
 {
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Running command: {$command}</>");
+    }
+
     $process = Process::fromShellCommandline($command);
     if ($mustRun) {
         $process->mustRun();
     } else {
         $process->run();
     }
+
+    if (io()->isVeryVerbose()) {
+        $process->isSuccessful()
+            ? io()->writeln("  <fg=gray>Command successful.</>")
+            : io()->writeln("  <fg=red>Command failed.</>");
+        if (!empty($process->getOutput())) {
+            io()->writeln("  <fg=gray>Output:</>\n" . $process->getOutput());
+        }
+        if (!empty($process->getErrorOutput())) {
+            io()->writeln("  <fg=red>Error Output:</>\n" . $process->getErrorOutput());
+        }
+    }
+
     return $process;
 }
 
@@ -265,6 +282,10 @@ function items_list(
 
     $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
 
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>JQL Query: {$jql}</>");
+    }
+
     $jira = _get_jira_service();
     try {
         $issues = $jira->searchIssues($jql);
@@ -287,6 +308,9 @@ function issues_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
 ): void {
     io()->section('Searching Jira issues with JQL');
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>JQL Query: {$jql}</>");
+    }
     $jira = _get_jira_service();
     try {
         $issues = $jira->searchIssues($jql);
@@ -311,6 +335,9 @@ function items_show(
 ): void {
     $key = strtoupper($key);
     io()->section("Details for issue {$key}");
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Fetching details for issue: {$key}</>");
+    }
     $jira = _get_jira_service();
     try {
         $issue = $jira->getIssue($key);
@@ -345,6 +372,9 @@ function items_start(
     $key = strtoupper($key);
     io()->section("Starting work on {$key}");
 
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Fetching details for issue: {$key}</>");
+    }
     $jira = _get_jira_service();
     try {
         $issue = $jira->getIssue($key);
@@ -356,6 +386,10 @@ function items_start(
     $prefix = _get_branch_prefix_from_issue_type($issue->issueType);
     $slug = _slugify($issue->title);
     $branchName = "{$prefix}/{$key}-{$slug}";
+
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Generated branch name: {$branchName}</>");
+    }
 
     io()->text("Fetching latest changes from origin...");
     _run_process('git fetch origin');
@@ -376,12 +410,18 @@ function commit(
     // 1. Auto-Fixup Strategy: Find the latest logical commit
     $latestLogicalSha = null;
     if (!$isNew) {
+        if (io()->isVerbose()) {
+            io()->writeln('  <fg=gray>Checking for previous logical commit...</>');
+        }
         $process = _run_process(
             'git log ' . DEFAULT_BASE_BRANCH . '..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1',
             mustRun: false // Don't fail if no commits are found
         );
-        if ($process->isSuccessful()) {
+        if ($process->isSuccessful() && !empty(trim($process->getOutput()))) {
             $latestLogicalSha = trim($process->getOutput());
+            if (io()->isVerbose()) {
+                io()->writeln("  <fg=gray>Found logical commit SHA: {$latestLogicalSha}</>");
+            }
         }
     }
 
@@ -411,6 +451,9 @@ function commit(
 
     $jira = _get_jira_service();
     try {
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Fetching Jira issue: {$key}</>");
+        }
         // The getIssue method now fetches components as well
         $issue = $jira->getIssue($key);
     } catch (\Exception $e) {
@@ -420,6 +463,13 @@ function commit(
 
     $detectedType = _get_commit_type_from_issue_type($issue->issueType);
     $detectedSummary = $issue->title;
+
+    if (io()->isVeryVerbose()) {
+        io()->writeln("  <fg=gray>Jira Issue Details:</>");
+        io()->writeln("    <fg=gray>Title: {$issue->title}</>");
+        io()->writeln("    <fg=gray>Type: {$issue->issueType} -> {$detectedType}</>");
+        io()->writeln("    <fg=gray>Components: " . implode(', ', $issue->components) . "</>");
+    }
 
     // 4. Upgraded Interactive Prompter with Scope Inference
     $scopePrompt = 'Scope (optional)';
@@ -435,6 +485,10 @@ function commit(
 
     // 5. Assemble commit message according to the new template
     $commitMessage = "{$type}" . ($scope ? "({$scope})" : "") . ": {$summary} [{$key}]";
+
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Generated commit message:</>\n{$commitMessage}");
+    }
 
     io()->text('Staging all changes...');
     _run_process('git add -A');
@@ -516,6 +570,10 @@ function submit(): void
     $gitConfig = _get_git_config();
     $provider = $gitConfig['GIT_PROVIDER'];
 
+    if (io()->isVerbose()) {
+        io()->writeln("  <fg=gray>Using Git provider: {$provider}</>");
+    }
+
     try {
         if ($provider === 'github') {
             $client = HttpClient::createForBaseUri('https://api.github.com', [
@@ -526,17 +584,30 @@ function submit(): void
                 ],
             ]);
 
-            $response = $client->request('POST', "/repos/{$gitConfig['GIT_REPO_OWNER']}/{$gitConfig['GIT_REPO_NAME']}/pulls", [
-                'json' => [
-                    'title' => $prTitle,
-                    'head' => $branch,
-                    'base' => 'develop', // Assuming 'develop' is the target
-                    'body' => $prBody,
-                ],
-            ]);
+            $apiUrl = "/repos/{$gitConfig['GIT_REPO_OWNER']}/{$gitConfig['GIT_REPO_NAME']}/pulls";
+            $payload = [
+                'title' => $prTitle,
+                'head' => $branch,
+                'base' => 'develop', // Assuming 'develop' is the target
+                'body' => $prBody,
+            ];
 
-            if ($response->getStatusCode() >= 300) {
-                throw new \RuntimeException('GitHub API Error: ' . $response->getContent(false));
+            if (io()->isVeryVerbose()) {
+                io()->writeln("  <fg=gray>API Endpoint: POST https://api.github.com{$apiUrl}</>");
+                io()->writeln("  <fg=gray>Payload:</>\n" . json_encode($payload, JSON_PRETTY_PRINT));
+            }
+
+            $response = $client->request('POST', $apiUrl, ['json' => $payload]);
+
+            // GitHub returns 201 Created on success.
+            if ($response->getStatusCode() !== 201) {
+                $errorMessage = sprintf(
+                    "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
+                    $response->getStatusCode(),
+                    $apiUrl,
+                    $response->getContent(false)
+                );
+                throw new \RuntimeException($errorMessage);
             }
 
             $prData = $response->toArray();
@@ -568,6 +639,9 @@ function status(): void
 
     // Jira Status
     if ($key) {
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Fetching status for Jira issue: {$key}</>");
+        }
         $jira = _get_jira_service();
         try {
             $issue = $jira->getIssue($key);
