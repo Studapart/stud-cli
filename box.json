@@ -1,0 +1,16 @@
+{
+    "main": "bin/stud",
+    "output": "stud.phar",
+    "compression": "GZ",
+    "stub": true,
+    "chmod": "0755",
+    "dump-autoload": false,
+    "files": [
+        "castor.php",
+        "bin/stud"
+    ],
+    "directories": [
+        "vendor",
+        "src"
+    ]
+}
