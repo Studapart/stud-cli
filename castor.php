@@ -37,10 +37,10 @@ function _get_config_path(): string
 }
 
 /**
- * Reads Jira configuration from the YAML file.
- * Throws an exception if the config is not found or incomplete.
+ * Reads configuration from the YAML file.
+ * Throws an exception if the config is not found.
  */
-function _get_jira_config(): array
+function _get_config(): array
 {
     $configPath = _get_config_path();
     if (!file_exists($configPath)) {
@@ -51,12 +51,39 @@ function _get_jira_config(): array
         exit(1);
     }
 
-    $config = Yaml::parseFile($configPath);
+    return Yaml::parseFile($configPath);
+}
+
+/**
+ * Gets and validates the Jira configuration.
+ */
+function _get_jira_config(): array
+{
+    $config = _get_config();
     $missingKeys = array_diff(['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'], array_keys($config));
 
     if (!empty($missingKeys)) {
         io()->error([
-            'Your configuration file is missing required keys: ' . implode(', ', $missingKeys),
+            'Your configuration file is missing required Jira keys: ' . implode(', ', $missingKeys),
+            'Please run "stud config:init" again.',
+        ]);
+        exit(1);
+    }
+
+    return $config;
+}
+
+/**
+ * Gets and validates the Git provider configuration.
+ */
+function _get_git_config(): array
+{
+    $config = _get_config();
+    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN', 'GIT_REPO_OWNER', 'GIT_REPO_NAME'], array_keys($config));
+
+    if (!empty($missingKeys)) {
+        io()->error([
+            'Your configuration file is missing required Git provider keys: ' . implode(', ', $missingKeys),
             'Please run "stud config:init" again.',
         ]);
         exit(1);
@@ -149,27 +176,41 @@ function _get_commit_type_from_issue_type(string $issueType): string
 // Configuration Command
 // =================================================================================
 
-#[AsTask(name: 'config:init', description: 'Interactive wizard to set up Jira connection details')]
+#[AsTask(name: 'config:init', description: 'Interactive wizard to set up Jira & Git connection details')]
 function config_init(): void
 {
     $configPath = _get_config_path();
-    io()->title('Jira Configuration Wizard');
-    io()->text([
-        'This will create a configuration file at: ' . $configPath,
-        'You can generate an API token here: https://id.atlassian.com/manage-profile/security/api-tokens',
-    ]);
+    $existingConfig = file_exists($configPath) ? Yaml::parseFile($configPath) : [];
 
-    $jiraUrl = io()->ask('Enter your Jira URL (e.g., https://your-company.atlassian.net)');
-    $jiraEmail = io()->ask('Enter your Jira email address');
-    $jiraToken = null;
-    while (!$jiraToken) {
-        $jiraToken = io()->askHidden('Enter your Jira API token (cannot be empty)');
-    }
+    io()->title('Stud CLI Configuration Wizard');
+    io()->text('This will create or update your configuration file at: ' . $configPath);
+
+    // Jira Configuration
+    io()->section('Jira Configuration');
+    io()->text('You can generate an API token here: https://id.atlassian.com/manage-profile/security/api-tokens');
+    $jiraUrl = io()->ask('Enter your Jira URL', $existingConfig['JIRA_URL'] ?? null);
+    $jiraEmail = io()->ask('Enter your Jira email address', $existingConfig['JIRA_EMAIL'] ?? null);
+    $jiraToken = io()->askHidden('Enter your Jira API token (leave blank to keep existing)');
+
+    // Git Provider Configuration
+    io()->section('Git Provider Configuration');
+    io()->text([
+        'This is required for the `stud submit` command to create Pull Requests.',
+        'You can generate a token here: https://github.com/settings/tokens', // Assuming GitHub
+    ]);
+    $gitProvider = io()->choice('Select your Git provider', ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
+    $gitRepoOwner = io()->ask('Enter the repository owner/organization', $existingConfig['GIT_REPO_OWNER'] ?? null);
+    $gitRepoName = io()->ask('Enter the repository name', $existingConfig['GIT_REPO_NAME'] ?? null);
+    $gitToken = io()->askHidden('Enter your Git provider PAT (leave blank to keep existing)');
 
     $config = [
         'JIRA_URL' => rtrim($jiraUrl, '/'),
         'JIRA_EMAIL' => $jiraEmail,
-        'JIRA_API_TOKEN' => $jiraToken,
+        'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
+        'GIT_PROVIDER' => $gitProvider,
+        'GIT_REPO_OWNER' => $gitRepoOwner,
+        'GIT_REPO_NAME' => $gitRepoName,
+        'GIT_TOKEN' => $gitToken ?: ($existingConfig['GIT_TOKEN'] ?? null),
     ];
 
     $configDir = dirname($configPath);
@@ -177,7 +218,7 @@ function config_init(): void
         mkdir($configDir, 0700, true);
     }
 
-    file_put_contents($configPath, Yaml::dump($config));
+    file_put_contents($configPath, Yaml::dump(array_filter($config)));
     io()->success('Configuration saved successfully!');
 }
 
@@ -410,6 +451,112 @@ function please(): void
     io()->warning('⚠️  Forcing with lease...');
     // Use run() from castor for direct output streaming
     run('git push --force-with-lease');
+}
+
+#[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
+function submit(): void
+{
+    io()->section('Submitting Pull Request');
+
+    // 1. Check for clean working directory
+    $gitStatus = _run_process('git status --porcelain')->getOutput();
+    if (!empty($gitStatus)) {
+        io()->error('Your working directory is not clean. Please commit your changes with \'stud commit\' before submitting.');
+        exit(1);
+    }
+
+    // 2. Get current branch name and check if it is a base branch
+    $branch = trim(_run_process('git rev-parse --abbrev-ref HEAD')->getOutput());
+    if (in_array($branch, ['develop', 'main', 'master'])) {
+        io()->error('Cannot create a Pull Request from the base branch.');
+        exit(1);
+    }
+
+    // 3. Push the branch
+    io()->text("Pushing branch <info>{$branch}</info>...");
+    $pushProcess = _run_process("git push --set-upstream origin HEAD", mustRun: false);
+    if (!$pushProcess->isSuccessful()) {
+        io()->error([
+            'Push failed. Your branch may have rewritten history.',
+            "Try running 'stud please' to force-push.",
+        ]);
+        exit(1);
+    }
+
+    // 4. Find the first logical commit
+    io()->text('Finding first logical commit to use for PR details...');
+    $ancestorSha = trim(_run_process('git merge-base ' . DEFAULT_BASE_BRANCH . ' HEAD')->getOutput());
+    $firstCommitShaProcess = _run_process(
+        "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^(fixup|squash)!' | head -n 1",
+        mustRun: false
+    );
+
+    if (!$firstCommitShaProcess->isSuccessful() || empty(trim($firstCommitShaProcess->getOutput()))) {
+        io()->error('Could not find a logical commit on this branch. Cannot create PR.');
+        exit(1);
+    }
+    $firstCommitSha = trim($firstCommitShaProcess->getOutput());
+    $firstLogicalMessage = trim(_run_process("git log -1 --pretty=%B {$firstCommitSha}")->getOutput());
+
+    // 5. Parse PR details from commit message
+    $prTitle = $firstLogicalMessage;
+    preg_match('/(?i)\[([a-z]+-\d+)]/', $prTitle, $matches);
+    $jiraKey = $matches[1] ?? null;
+
+    if (!$jiraKey) {
+        io()->error('Could not parse Jira key from commit message. Cannot create PR.');
+        exit(1);
+    }
+
+    $jiraConfig = _get_jira_config();
+    $prBody = "Resolves: {$jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
+
+    // 6. Call the Git Provider API
+    io()->text('Creating Pull Request...');
+    $gitConfig = _get_git_config();
+    $provider = $gitConfig['GIT_PROVIDER'];
+
+    try {
+        if ($provider === 'github') {
+            $client = HttpClient::createForBaseUri('https://api.github.com', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $gitConfig['GIT_TOKEN'],
+                    'Accept' => 'application/vnd.github.v3+json',
+                    'Content-Type' => 'application/json',
+                ],
+            ]);
+
+            $response = $client->request('POST', "/repos/{$gitConfig['GIT_REPO_OWNER']}/{$gitConfig['GIT_REPO_NAME']}/pulls", [
+                'json' => [
+                    'title' => $prTitle,
+                    'head' => $branch,
+                    'base' => 'develop', // Assuming 'develop' is the target
+                    'body' => $prBody,
+                ],
+            ]);
+
+            if ($response->getStatusCode() >= 300) {
+                throw new \RuntimeException('GitHub API Error: ' . $response->getContent(false));
+            }
+
+            $prData = $response->toArray();
+            io()->success("✅ Pull Request created: {$prData['html_url']}");
+
+        } elseif ($provider === 'gitlab') {
+            io()->warning('GitLab support is not yet implemented.');
+            // Stub for GitLab API call
+            exit(1);
+        } else {
+            io()->error("Unsupported Git provider: {$provider}");
+            exit(1);
+        }
+    } catch (\Exception $e) {
+        io()->error([
+            'Failed to create Pull Request.',
+            'Error: ' . $e->getMessage(),
+        ]);
+        exit(1);
+    }
 }
 
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
