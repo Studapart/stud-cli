@@ -562,10 +562,28 @@ function submit(): void
         exit(1);
     }
 
-    $jiraConfig = _get_jira_config();
-    $prBody = "Resolves: {$jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
+    // 6. Fetch Jira issue for PR body
+    $prBody = null;
+    try {
+        $jira = _get_jira_service();
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Fetching Jira issue for PR body: {$jiraKey}</>");
+        }
+        $issue = $jira->getIssue($jiraKey);
+        $prBody = $issue->description;
+    } catch (\Exception $e) {
+        io()->warning([
+            'Could not fetch Jira issue details for PR body: ' . $e->getMessage(),
+            'Falling back to a simple link.',
+        ]);
+    }
+    // Fallback if API fails or if description is empty/default
+    if (empty($prBody) || $prBody === 'No description provided.') {
+        $jiraConfig = _get_jira_config();
+        $prBody = "Resolves: {$jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
+    }
 
-    // 6. Call the Git Provider API
+    // 7. Call the Git Provider API
     io()->text('Creating Pull Request...');
     $gitConfig = _get_git_config();
     $provider = $gitConfig['GIT_PROVIDER'];
