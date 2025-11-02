@@ -601,10 +601,11 @@ function submit(): void
 
             // GitHub returns 201 Created on success.
             if ($response->getStatusCode() !== 201) {
+                $fullUrl = "https://api.github.com{$apiUrl}";
                 $errorMessage = sprintf(
                     "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
                     $response->getStatusCode(),
-                    $apiUrl,
+                    $fullUrl,
                     $response->getContent(false)
                 );
                 throw new \RuntimeException($errorMessage);
