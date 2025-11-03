@@ -95,13 +95,17 @@ class JiraService
             }
         }
 
-        $components = array_map(fn ($component) => $component['name'], $fields['components'] ?? []);
+        $components = [];
+        if (!empty($fields['components'])) {
+            $components = array_map(fn ($component) => $component['name'], $fields['components']);
+        }
 
         return new WorkItem(
+            id: $data['id'],
             key: $data['key'],
             title: $fields['summary'],
             status: $fields['status']['name'],
-            assignee: $fields['assignee']['displayName'] ?? 'Unassigned',
+            assignee: ($fields['assignee'] ?? [])['displayName'] ?? 'Unassigned',
             description: $description,
             labels: $fields['labels'] ?? [],
             issueType: $fields['issuetype']['name'],
