@@ -18,7 +18,7 @@ class JiraService
     {
         $response = $this->client->request('GET', "/rest/api/3/issue/{$key}", [
             'query' => [
-                'fields' => '*all',
+                'fields' => ['id', 'key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components'],
             ],
         ]);
 
