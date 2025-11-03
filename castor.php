@@ -99,6 +99,7 @@ function _get_jira_service(): JiraService
 
     $client = HttpClient::createForBaseUri($config['JIRA_URL'], [
         'headers' => [
+            'User-Agent' => 'stud-cli',
             'Authorization' => 'Basic ' . $auth,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
@@ -271,16 +272,8 @@ function items_list(
 ): void {
     io()->section('Fetching Jira Items');
 
-    $jqlParts = [];
-    if (!$all) {
-        $jqlParts[] = 'assignee = currentUser()';
-    }
-    $jqlParts[] = "status in ('To Do', 'In Progress')";
-    if ($project) {
-        $jqlParts[] = 'project = ' . strtoupper($project);
-    }
-
-    $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
+    // Temporarily simplified JQL for debugging API connection
+    $jql = 'assignee = currentUser()';
 
     if (io()->isVerbose()) {
         io()->writeln("  <fg=gray>JQL Query: {$jql}</>");

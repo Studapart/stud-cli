@@ -15,10 +15,6 @@
             "App\\": "src/"
         }
     },
-
-    "require-dev": {
-        "humbug/box": "^4.0"
-    },
     "config": {
         "minimum-stability": "dev",
         "prefer-stable": true,

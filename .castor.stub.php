@@ -176,8 +176,8 @@ namespace Castor\Console\Command {
         }
         /**
         * @template T of object 
-        
-        Returns an array of function attributes.
+        *
+        * Returns an array of function attributes.
         *
         * @param class-string<T>|null $name Name of an attribute class
         * @param int $flags сriteria by which the attribute is searched
