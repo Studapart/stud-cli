@@ -349,16 +349,16 @@ function items_show(
     $config = _get_jira_config();
 
     io()->definitionList(
-        ['Key', $issue->key],
-        ['Title', $issue->title],
-        ['Status', $issue->status],
-        ['Assignee', $issue->assignee],
-        ['Type', $issue->issueType],
-        ['Labels', !empty($issue->labels) ? implode(', ', $issue->labels) : 'None'],
+        ['Key' => $issue->key],
+        ['Title' => $issue->title],
+        ['Status' => $issue->status],
+        ['Assignee' => $issue->assignee],
+        ['Type' => $issue->issueType],
+        ['Labels' => !empty($issue->labels) ? implode(', ', $issue->labels) : 'None'],
         new TableSeparator(), // separator
-        ['Description', $issue->description],
+        ['Description' => $issue->description],
         new TableSeparator(), // separator
-        ['Link', $config['JIRA_URL'] . '/browse/' . $issue->key]
+        ['Link' => $config['JIRA_URL'] . '/browse/' . $issue->key]
     );
 }
 
