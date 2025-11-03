@@ -570,8 +570,8 @@ function submit(): void
         if (io()->isVerbose()) {
             io()->writeln("  <fg=gray>Fetching Jira issue for PR body: {$jiraKey}</>");
         }
-        $issue = $jira->getIssue($jiraKey);
-        $prBody = $issue->description;
+        $issue = $jira->getIssue($jiraKey, true); // Request rendered fields
+        $prBody = $issue->renderedDescription;
     } catch (\Exception $e) {
         io()->warning([
             'Could not fetch Jira issue details for PR body: ' . $e->getMessage(),
@@ -579,7 +579,7 @@ function submit(): void
         ]);
     }
     // Fallback if API fails or if description is empty/default
-    if (empty($prBody) || $prBody === 'No description provided.') {
+    if (empty($prBody)) {
         $jiraConfig = _get_jira_config();
         $prBody = "Resolves: {$jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
     }
