@@ -272,8 +272,16 @@ function items_list(
 ): void {
     io()->section('Fetching Jira Items');
 
-    // Temporarily simplified JQL for debugging API connection
-    $jql = 'assignee = currentUser()';
+    $jqlParts = [];
+    if (!$all) {
+        $jqlParts[] = 'assignee = currentUser()';
+    }
+    $jqlParts[] = "status in ('To Do', 'In Progress')";
+    if ($project) {
+        $jqlParts[] = 'project = ' . strtoupper($project);
+    }
+
+    $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
 
     if (io()->isVerbose()) {
         io()->writeln("  <fg=gray>JQL Query: {$jql}</>");

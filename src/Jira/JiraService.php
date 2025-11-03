@@ -16,7 +16,11 @@ class JiraService
 
     public function getIssue(string $key): WorkItem
     {
-        $response = $this->client->request('GET', "/rest/api/3/issue/{$key}");
+        $response = $this->client->request('GET', "/rest/api/3/issue/{$key}", [
+            'query' => [
+                'fields' => '*all',
+            ],
+        ]);
 
         if ($response->getStatusCode() !== 200) {
             throw new \RuntimeException("Could not find Jira issue with key \"{$key}\".");
@@ -98,10 +102,11 @@ class JiraService
         $components = array_map(fn ($component) => $component['name'], $fields['components'] ?? []);
 
         return new WorkItem(
+            id: $data['id'],
             key: $data['key'],
             title: $fields['summary'],
             status: $fields['status']['name'],
-            assignee: $fields['assignee']['displayName'] ?? 'Unassigned',
+            assignee: ($fields['assignee'] ?? [])['displayName'] ?? 'Unassigned',
             description: $description,
             labels: $fields['labels'] ?? [],
             issueType: $fields['issuetype']['name'],

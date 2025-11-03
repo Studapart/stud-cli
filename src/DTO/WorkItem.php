@@ -7,6 +7,7 @@ namespace App\DTO;
 class WorkItem
 {
     public function __construct(
+        public readonly string $id,
         public string $key,
         public string $title,
         public string $status,
