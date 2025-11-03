@@ -570,8 +570,8 @@ function submit(): void
         if (io()->isVerbose()) {
             io()->writeln("  <fg=gray>Fetching Jira issue for PR body: {$jiraKey}</>");
         }
-        $issue = $jira->getIssue($jiraKey);
-        $prBody = $issue->description;
+        $issue = $jira->getIssue($jiraKey, true); // Request rendered fields
+        $prBody = $issue->renderedDescription;
     } catch (\Exception $e) {
         io()->warning([
             'Could not fetch Jira issue details for PR body: ' . $e->getMessage(),
@@ -579,7 +579,7 @@ function submit(): void
         ]);
     }
     // Fallback if API fails or if description is empty/default
-    if (empty($prBody) || $prBody === 'No description provided.') {
+    if (empty($prBody)) {
         $jiraConfig = _get_jira_config();
         $prBody = "Resolves: {$jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
     }
@@ -649,6 +649,111 @@ function submit(): void
         exit(1);
     }
 }
+
+#[AsTask(name: 'help', description: 'Displays a list of available commands')]
+function help(): void
+{
+    io()->title('stud - Jira & Git Workflow Streamliner');
+
+    io()->section('NAME');
+    io()->writeln('    stud - A CLI tool to streamline your Jira and Git workflow.');
+
+    io()->section('SYNOPSIS');
+    io()->writeln('    <info>stud</info> [command] [arguments] [options]');
+
+    io()->section('DESCRIPTION');
+    io()->writeln('    `stud-cli` is a command-line interface tool designed to streamline a developer\'s daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the "golden path" of starting a task, making conventional commits, and preparing your work for submission, all from the command line.');
+
+    io()->section('COMMANDS');
+    $commands = [
+        'Configuration' => [
+            [
+                'name' => 'config:init',
+                'description' => 'Interactive wizard to set up Jira & Git connection details.',
+            ],
+        ],
+        'Jira Information' => [
+            [
+                'name' => 'projects:list',
+                'alias' => 'pj',
+                'description' => 'Lists all visible Jira projects.',
+            ],
+            [
+                'name' => 'items:list',
+                'alias' => 'ls',
+                'description' => 'Lists active work items (your dashboard).',
+                'example' => 'stud ls -p PROJ',
+            ],
+            [
+                'name' => 'items:show',
+                'alias' => 'sh',
+                'args' => '<key>',
+                'description' => 'Shows detailed info for one work item.',
+                'example' => 'stud sh PROJ-123',
+            ],
+            [
+                'name' => 'issues:search',
+                'alias' => 'search',
+                'args' => '<jql>',
+                'description' => 'Search for issues using JQL.',
+                'example' => 'stud search "project = PROJ and status = Done"',
+            ],
+        ],
+        'Git Workflow' => [
+            [
+                'name' => 'items:start',
+                'alias' => 'start',
+                'args' => '<key>',
+                'description' => 'Creates a new git branch from a Jira item.',
+                'example' => 'stud start PROJ-123',
+            ],
+            [
+                'name' => 'commit',
+                'alias' => 'co',
+                'description' => 'Guides you through making a conventional commit.',
+            ],
+            [
+                'name' => 'please',
+                'alias' => 'pl',
+                'description' => 'A power-user, safe force-push (force-with-lease).',
+            ],
+            [
+                'name' => 'submit',
+                'alias' => 'su',
+                'description' => 'Pushes the current branch and creates a Pull Request.',
+            ],
+            [
+                'name' => 'status',
+                'alias' => 'ss',
+                'description' => 'A quick "where am I?" dashboard.',
+            ],
+        ],
+    ];
+
+    foreach ($commands as $category => $commandList) {
+        io()->writeln("\n  <fg=yellow>{$category}</>");
+        $tableRows = [];
+        foreach ($commandList as $command) {
+            $name = $command['name'];
+            if (isset($command['args'])) {
+                $name .= ' ' . $command['args'];
+            }
+
+            $description = $command['description'];
+            if (isset($command['example'])) {
+                $description .= "\n<fg=gray>Example: {$command['example']}</>";
+            }
+
+            $tableRows[] = [
+                $name,
+                $command['alias'] ?? '',
+                $description,
+            ];
+        }
+        io()->table(['Command', 'Alias', 'Description'], $tableRows);
+    }
+}
+
 
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
 function status(): void
