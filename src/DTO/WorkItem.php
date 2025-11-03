@@ -15,6 +15,6 @@ class WorkItem
         public string $description,
         public array $labels,
         public string $issueType,
-        public array $components,
+        public array $components = [],
     ) {}
 }

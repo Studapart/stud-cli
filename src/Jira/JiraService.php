@@ -16,11 +16,7 @@ class JiraService
 
     public function getIssue(string $key): WorkItem
     {
-        $response = $this->client->request('GET', "/rest/api/3/issue/{$key}", [
-            'query' => [
-                'fields' => ['id', 'key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components'],
-            ],
-        ]);
+        $response = $this->client->request('GET', "/rest/api/3/issue/{$key}");
 
         if ($response->getStatusCode() !== 200) {
             throw new \RuntimeException("Could not find Jira issue with key \"{$key}\".");
@@ -99,7 +95,10 @@ class JiraService
             }
         }
 
-        $components = array_map(fn ($component) => $component['name'], $fields['components'] ?? []);
+        $components = [];
+        if (!empty($fields['components'])) {
+            $components = array_map(fn ($component) => $component['name'], $fields['components']);
+        }
 
         return new WorkItem(
             id: $data['id'],
