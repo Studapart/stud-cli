@@ -30,3 +30,9 @@ Your objective is to automate the maintenance and feature development of the `st
 -   **Build**: `humbug/box` is used for PHAR compilation.
 -   **Dependencies**: See `composer.json` for a full list of dependencies.
 -   **Debugging**: When implementing new features, add contextual debug logs accessible via the `-v`, `-vv`, and `-vvv` verbosity flags.
+
+### Commit Best Practices for Gemini
+
+*   **Meaningful Changes Only:** When instructed to commit changes (e.g., via `stud commit`), ensure that the codebase has undergone actual, meaningful modifications relevant to the task.
+*   **Avoid Artificial Commits:** Never introduce artificial or 'placeholder' changes (such as empty comments, whitespace adjustments, or non-functional code) solely to create a commit for testing purposes.
+*   **Handle No Changes Gracefully:** If a `stud commit` operation is requested but no relevant changes have been made to the working directory, inform the user of this state and ask for clarification on how to proceed, rather than attempting to force a commit with irrelevant modifications.

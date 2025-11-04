@@ -410,7 +410,8 @@ function items_start(
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 function commit(
-    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false
+    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false,
+    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message directly, bypassing the interactive prompter')] ?string $message = null
 ): void
 {
     io()->section('Conventional Commit Helper');
@@ -445,54 +446,72 @@ function commit(
         return;
     }
 
-    // 3. If no logical commit is found OR --new is used, run the interactive prompter
-    io()->note('No previous logical commit found or --new flag used. Starting interactive prompter...');
+    // 2. If a logical commit is found and --new is not used, create a fixup commit
+    if ($latestLogicalSha && !$isNew) {
+        io()->text('Staging all changes...');
+        _run_process('git add -A');
 
-    $key = _get_key_from_branch();
-    if (!$key) {
-        io()->error([
-            'Could not find a Jira key in your current branch name.',
-            'Please use "stud start <key>" to create a branch.',
-        ]);
-        exit(1);
-    }
+        io()->text("Creating fixup commit for <info>{$latestLogicalSha}</info>...");
+        _run_process("git commit --fixup {$latestLogicalSha}");
 
-    $jira = _get_jira_service();
-    try {
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Fetching Jira issue: {$key}</>");
-        }
-        // The getIssue method now fetches components as well
-        $issue = $jira->getIssue($key);
-    } catch (\Exception $e) {
-        io()->error("Could not find Jira issue with key \"{$key}\".");
+        io()->success("✅ Changes saved as a fixup for commit {$latestLogicalSha}.");
         return;
     }
 
-    $detectedType = _get_commit_type_from_issue_type($issue->issueType);
-    $detectedSummary = $issue->title;
+    // 3. Handle message option or fall back to interactive prompter
+    $commitMessage = null;
+    if ($message) {
+        $commitMessage = $message;
+        io()->note('Using provided message, bypassing interactive prompter.');
+    } else {
+        io()->note('No previous logical commit found or --new flag used. Starting interactive prompter...');
 
-    if (io()->isVeryVerbose()) {
-        io()->writeln("  <fg=gray>Jira Issue Details:</>");
-        io()->writeln("    <fg=gray>Title: {$issue->title}</>");
-        io()->writeln("    <fg=gray>Type: {$issue->issueType} -> {$detectedType}</>");
-        io()->writeln("    <fg=gray>Components: " . implode(', ', $issue->components) . "</>");
+        $key = _get_key_from_branch();
+        if (!$key) {
+            io()->error([
+                'Could not find a Jira key in your current branch name.',
+                'Please use "stud start <key>" to create a branch.',
+            ]);
+            exit(1);
+        }
+
+        $jira = _get_jira_service();
+        try {
+            if (io()->isVerbose()) {
+                io()->writeln("  <fg=gray>Fetching Jira issue: {$key}</>");
+            }
+            // The getIssue method now fetches components as well
+            $issue = $jira->getIssue($key);
+        } catch (\Exception $e) {
+            io()->error("Could not find Jira issue with key \"{$key}\".");
+            return;
+        }
+
+        $detectedType = _get_commit_type_from_issue_type($issue->issueType);
+        $detectedSummary = $issue->title;
+
+        if (io()->isVeryVerbose()) {
+            io()->writeln("  <fg=gray>Jira Issue Details:</>");
+            io()->writeln("    <fg=gray>Title: {$issue->title}</>");
+            io()->writeln("    <fg=gray>Type: {$issue->issueType} -> {$detectedType}</>");
+            io()->writeln("    <fg=gray>Components: " . implode(', ', $issue->components) . "</>");
+        }
+
+        // 4. Upgraded Interactive Prompter with Scope Inference
+        $scopePrompt = 'Scope (optional)';
+        $defaultScope = null;
+        if (!empty($issue->components)) {
+            $defaultScope = $issue->components[0]; // Use the first component name
+            $scopePrompt = "Scope (auto-detected '{$defaultScope}')";
+        }
+
+        $type = io()->ask("Commit Type (auto-detected '{$detectedType}')", $detectedType);
+        $scope = io()->ask($scopePrompt, $defaultScope);
+        $summary = io()->ask("Short Message (auto-filled from Jira)", $detectedSummary);
+
+        // 5. Assemble commit message according to the new template
+        $commitMessage = "{$type}" . ($scope ? "({$scope})" : "") . ": {$summary} [{$key}]";
     }
-
-    // 4. Upgraded Interactive Prompter with Scope Inference
-    $scopePrompt = 'Scope (optional)';
-    $defaultScope = null;
-    if (!empty($issue->components)) {
-        $defaultScope = $issue->components[0]; // Use the first component name
-        $scopePrompt = "Scope (auto-detected '{$defaultScope}')";
-    }
-
-    $type = io()->ask("Commit Type (auto-detected '{$detectedType}')", $detectedType);
-    $scope = io()->ask($scopePrompt, $defaultScope);
-    $summary = io()->ask("Short Message (auto-filled from Jira)", $detectedSummary);
-
-    // 5. Assemble commit message according to the new template
-    $commitMessage = "{$type}" . ($scope ? "({$scope})" : "") . ": {$summary} [{$key}]";
 
     if (io()->isVerbose()) {
         io()->writeln("  <fg=gray>Generated commit message:</>\n{$commitMessage}");
