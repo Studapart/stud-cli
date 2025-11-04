@@ -510,6 +510,18 @@ function commit(
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 function please(): void
 {
+    // Check if upstream is configured
+    $process = _run_process('git rev-parse --abbrev-ref --symbolic-full-name @{u}', mustRun: false);
+    $upstream = trim($process->getOutput());
+
+    if (!$process->isSuccessful() || empty($upstream)) {
+        io()->error([
+            'Your current branch does not have an upstream remote configured.',
+            'For the initial push and to create a Pull Request, please use "stud submit".',
+        ]);
+        exit(1);
+    }
+
     io()->warning('⚠️  Forcing with lease...');
     // Use run() from castor for direct output streaming
     run('git push --force-with-lease');
