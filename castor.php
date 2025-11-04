@@ -511,10 +511,13 @@ function commit(
 function please(): void
 {
     // Check if upstream is configured
-    $process = _run_process('git rev-parse --abbrev-ref --symbolic-full-name @{u}', mustRun: false);
+    // Redirect stderr to /dev/null to prevent git error messages from polluting output
+    // and rely solely on stdout for upstream branch name.
+    $process = _run_process('git rev-parse --abbrev-ref @{u} 2>/dev/null', mustRun: false);
     $upstream = trim($process->getOutput());
 
-    if (!$process->isSuccessful() || empty($upstream)) {
+    // If upstream is empty, it means no upstream is configured
+    if (empty($upstream)) {
         io()->error([
             'Your current branch does not have an upstream remote configured.',
             'For the initial push and to create a Pull Request, please use "stud submit".',
