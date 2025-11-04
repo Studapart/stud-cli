@@ -510,6 +510,21 @@ function commit(
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 function please(): void
 {
+    // Check if upstream is configured
+    // Redirect stderr to /dev/null to prevent git error messages from polluting output
+    // and rely solely on stdout for upstream branch name.
+    $process = _run_process('git rev-parse --abbrev-ref @{u} 2>/dev/null', mustRun: false);
+    $upstream = trim($process->getOutput());
+
+    // If upstream is empty, it means no upstream is configured
+    if (empty($upstream)) {
+        io()->error([
+            'Your current branch does not have an upstream remote configured.',
+            'For the initial push and to create a Pull Request, please use "stud submit".',
+        ]);
+        exit(1);
+    }
+
     io()->warning('⚠️  Forcing with lease...');
     // Use run() from castor for direct output streaming
     run('git push --force-with-lease');
