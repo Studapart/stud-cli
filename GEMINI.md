@@ -11,15 +11,17 @@ Your objective is to automate the maintenance and feature development of the `st
 -   **Standards Compliance**: All code produced MUST adhere to PSR-12, SOLID principles, and strict typing.
 -   **Idempotency**: Prefer default values when prompted by the `stud-cli` tool during the commit process, unless the Jira ticket explicitly requires a different value.
 
-## 3. Procedure
+## 3. Procedure you MUST follow
+For your task, you MUST follow these steps:
 
-1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error.
+1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error. You must carefully read the ticket's description.
 2.  **Branch**: Use `stud start <JiraWorkItemKey>` to create the feature branch.
 3.  **Develop**: Implement the required feature. This includes writing new code and updating existing code as necessary.
-4.  **Test**: Create or update unit tests to ensure the new functionality is covered and that all tests pass.
+4.  **Test**: Create or update PHPUnit tests to ensure the new functionality is covered and that all tests pass.
 5.  **Document**:
     -   Update the `README.md` if the feature introduces a new command or changes existing command behavior.
-    -   Add a new entry to the `CHANGELOG.md` following the Keep a Changelog format.
+    - IF there is no `CHANGELOG.md` file, create one following the Keep a Changelog format.
+    - IF there is a `CHANGELOG.md` file, update it with the new entry following the Keep a Changelog format.
 6.  **Commit**: Use `stud commit` to generate the commit message.
 7.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
 
