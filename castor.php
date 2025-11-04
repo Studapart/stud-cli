@@ -13,7 +13,14 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 use function Castor\io;
+use function Castor\repack_path;
 use function Castor\run;
+
+#[AsTask(default: true)]
+function main(): void
+{
+    help();
+}
 
 // =================================================================================
 // Constants & Configuration
@@ -194,7 +201,7 @@ function _get_commit_type_from_issue_type(string $issueType): string
 // Configuration Command
 // =================================================================================
 
-#[AsTask(name: 'config:init', description: 'Interactive wizard to set up Jira & Git connection details')]
+#[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
 function config_init(): void
 {
     $configPath = _get_config_path();
@@ -653,22 +660,30 @@ function submit(): void
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(): void
 {
-    io()->title('stud - Jira & Git Workflow Streamliner');
-
-    io()->section('NAME');
-    io()->writeln('    stud - A CLI tool to streamline your Jira and Git workflow.');
-
-    io()->section('SYNOPSIS');
-    io()->writeln('    <info>stud</info> [command] [arguments] [options]');
+    $logo = require './repack/logo.php';
+    $appName = 'Stud Cli DX - Jira & Git Workflow Streamliner';
+    $appVersion = '1.0.0';
+    io()->writeln($logo($appName, $appVersion));
+    io()->title('Manual');
 
     io()->section('DESCRIPTION');
     io()->writeln('    `stud-cli` is a command-line interface tool designed to streamline a developer\'s daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the "golden path" of starting a task, making conventional commits, and preparing your work for submission, all from the command line.');
 
+    io()->section('GLOBAL OPTIONS');
+    io()->definitionList(
+        ['-h, --help' => 'Display help for the given command. When no command is given, display help for the list command.'],
+        ['-s, --silent' => 'Do not output any message.'],
+        ['-q, --quiet' => 'Only errors are displayed. All other output is suppressed.'],
+        ['-v|vv|vvv, --verbose' => 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug.'],
+    );
+
     io()->section('COMMANDS');
+    io()->writeln('  <info>stud</info> [command|alias] [-options] [arguments]');
     $commands = [
         'Configuration' => [
             [
                 'name' => 'config:init',
+                'alias' => 'init',
                 'description' => 'Interactive wizard to set up Jira & Git connection details.',
             ],
         ],
