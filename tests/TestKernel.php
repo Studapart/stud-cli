@@ -2,9 +2,9 @@
 
 namespace App\Tests;
 
-use App\Git\GitRepository;
-use App\Jira\JiraService;
-use App\Process\ProcessFactory;
+use App\Service\GitRepository;
+use App\Service\JiraService;
+use App\Service\ProcessFactory;
 
 class TestKernel
 {
