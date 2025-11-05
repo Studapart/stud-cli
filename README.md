@@ -168,10 +168,14 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.
+    -   **Options:**
+        -   `--new`: Create a new logical commit instead of a fixup.
+        -   `--message <message>` or `-m <message>`: Bypass the interactive prompter and use the provided message for the commit.
     -   **Usage:**
         ```bash
         stud commit
-        stud co
+        stud co --new
+        stud commit -m "feat: My custom message"
         ```
 
 -   **`stud please`** (Alias: `stud pl`)

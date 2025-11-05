@@ -410,10 +410,22 @@ function items_start(
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 function commit(
-    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false
-): void
-{
+    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false,
+    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null
+): void {
     io()->section('Conventional Commit Helper');
+
+    // If a message is provided via the -m flag, use it directly.
+    if (!empty($message)) {
+        io()->text('Staging all changes...');
+        _run_process('git add -A');
+
+        io()->text('Committing with provided message...');
+        _run_process('git commit -m ' . escapeshellarg($message));
+
+        io()->success('Commit created successfully!');
+        return;
+    }
 
     // 1. Auto-Fixup Strategy: Find the latest logical commit
     $latestLogicalSha = null;
