@@ -15,7 +15,7 @@ Your objective is to automate the maintenance and feature development of the `st
 For your task, you MUST follow these steps:
 
 1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error. You must carefully read the ticket's description.
-2.  **Branch**: Use `stud start <JiraWorkItemKey>` to create the feature branch.
+2.  **Branch**: Check which branch you are currently on and determine if you need to create a new one, in which case, use `stud start <JiraWorkItemKey>` to create the feature branch. If you already are on the right branch, proceed to next step. 
 3.  **Develop**: Implement the required feature. This includes writing new code and updating existing code as necessary.
 4.  **Test**: Create or update PHPUnit tests to ensure the new functionality is covered and that all tests pass.
 5.  **Document**:

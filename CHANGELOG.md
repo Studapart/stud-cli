@@ -8,4 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Create PHPUnit test suite for the application.
+- Refactor commands to be more testable.
 - Add `--message` (`-m`) flag to `commit` command to bypass the interactive prompter.
