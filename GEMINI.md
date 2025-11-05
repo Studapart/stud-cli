@@ -2,7 +2,7 @@
 
 ## 1. Objective
 
-Your objective is to automate the maintenance and feature development of the `stud-cli` application. You will be provided with a Jira issue key, and you are expected to deliver a complete, tested, and documented feature, submitted as a pull request on GitHub.
+Your objective is to automate the maintenance and feature development of the `stud-cli` application. You will be provided with a Jira work item (issue) key, and you are expected to deliver a complete, tested, and documented feature, submitted as a pull request on GitHub.
 
 ## 2. Core Directives & Constraints
 
