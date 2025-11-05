@@ -20,16 +20,16 @@ For your task, you MUST follow these steps:
 4.  **Test**: Create or update PHPUnit tests to ensure the new functionality is covered and that all tests pass.
 5.  **Document**:
     -   Update the `README.md` if the feature introduces a new command or changes existing command behavior.
-    - IF there is no `CHANGELOG.md` file, create one following the Keep a Changelog format.
-    - IF there is a `CHANGELOG.md` file, update it with the new entry following the Keep a Changelog format.
+    -   IF there is no `CHANGELOG.md` file, create one following the Keep a Changelog format.
+    -   IF there is a `CHANGELOG.md` file, update it with the new entry following the Keep a Changelog format.
 6.  **Commit**: Use `stud commit` to generate the commit message.
 7.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
 
 ## 4. Technical Context
 
--   **Language**: PHP
+-   **Language**: PHP (use `php -v` to determine which version is installed)
 -   **Framework**: `jolicode/castor` is used for task running.
--   **Build**: `humbug/box` is used for PHAR compilation.
+-   **Build**: `repack` is used for PHAR compilation (the command to build the application is `PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file repack/logo.php stud.phar`).
 -   **Dependencies**: See `composer.json` for a full list of dependencies.
 -   **Debugging**: When implementing new features, add contextual debug logs accessible via the `-v`, `-vv`, and `-vvv` verbosity flags.
 
