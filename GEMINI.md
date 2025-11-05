@@ -22,8 +22,11 @@ For your task, you MUST follow these steps:
     -   Update the `README.md` if the feature introduces a new command or changes existing command behavior.
     -   IF there is no `CHANGELOG.md` file, create one following the Keep a Changelog format.
     -   IF there is a `CHANGELOG.md` file, update it with the new entry following the Keep a Changelog format.
-6.  **Commit**: Use `stud commit` to generate the commit message.
-7.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
+6.  **Review**: Review your changes and compare them with the ticket's description to make sure your changes cover the needs.
+7.  **Commit**: Use `stud commit` to generate the commit message.
+8.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
+9.  **Report**: Report back to the user explaining the changes you've made and how they align with the ticket's description. Use a TODO list approach with OK / KO status for each item. And when you had to make assumptions or changes that were not requested, list them and explain why you did them.
+10.  **Iterate**: Ask the user if he wants more work to be done on the ticket OR if you should work on another task.
 
 ## 4. Technical Context
 
