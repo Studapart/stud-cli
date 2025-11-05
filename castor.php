@@ -2,32 +2,27 @@
 
 declare(strict_types=1);
 
-use App\DTO\Project;
-use App\DTO\WorkItem;
+use App\Service\FileSystem;
+use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\ProcessFactory;
 use App\Handler\CommitHandler;
-use App\Service\GithubProvider;
+use App\Handler\InitHandler;
+use App\Handler\ItemListHandler;
+use App\Handler\ItemShowHandler;
+use App\Handler\ItemStartHandler;
+use App\Handler\PleaseHandler;
+use App\Handler\ProjectListHandler;
+use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
-use App\Handler\ItemListHandler;
-use App\Handler\ItemStartHandler;
-use App\Handler\ItemShowHandler;
-use App\Handler\PleaseHandler;
-use App\Handler\ProjectListHandler as ProjectsListHandler;
-use App\Handler\SearchHandler;
-use App\Handler\InitHandler;
-use App\Service\FileSystem;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
-use Symfony\Component\Console\Helper\TableSeparator;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Yaml\Yaml;
 use function Castor\io;
-use function Castor\repack_path;
-use function Castor\run;
 
 #[AsTask(default: true)]
 function main(): void
@@ -130,7 +125,7 @@ function _get_jira_service(): JiraService
         ],
     ]);
 
-    return new App\Service\JiraService($client);
+    return new JiraService($client);
 }
 
 /**
@@ -148,7 +143,7 @@ function _get_process_factory(): ProcessFactory
         return \App\Tests\TestKernel::$processFactory;
     }
 
-    return new App\Service\ProcessFactory();
+    return new ProcessFactory();
 }
 
 function _get_git_repository(): GitRepository
@@ -157,7 +152,7 @@ function _get_git_repository(): GitRepository
         return \App\Tests\TestKernel::$gitRepository;
     }
 
-    return new App\Service\GitRepository(_get_process_factory());
+    return new GitRepository(_get_process_factory());
 }
 
 
@@ -171,7 +166,7 @@ function _get_git_repository(): GitRepository
 #[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
 function config_init(): void
 {
-    $handler = new App\Handler\InitHandler(new App\Service\FileSystem(), _get_config_path());
+    $handler = new InitHandler(new FileSystem(), _get_config_path());
     $handler->handle(io());
 }
 
@@ -182,7 +177,7 @@ function config_init(): void
 #[AsTask(name: 'projects:list', aliases: ['pj'], description: 'Lists all visible Jira projects')]
 function projects_list(): void
 {
-    $handler = new App\Handler\ProjectListHandler(_get_jira_service());
+    $handler = new ProjectListHandler(_get_jira_service());
     $handler->handle(io());
 }
 
@@ -191,7 +186,7 @@ function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')] bool $all = false,
     #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')] ?string $project = null
 ): void {
-    $handler = new App\Handler\ItemListHandler(_get_jira_service());
+    $handler = new ItemListHandler(_get_jira_service());
     $handler->handle(io(), $all, $project);
 }
 
@@ -199,7 +194,7 @@ function items_list(
 function issues_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
 ): void {
-    $handler = new App\Handler\SearchHandler(_get_jira_service());
+    $handler = new SearchHandler(_get_jira_service());
     $handler->handle(io(), $jql);
 }
 
@@ -208,7 +203,7 @@ function issues_search(
 function items_show(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
-    $handler = new App\Handler\ItemShowHandler(_get_jira_service(), _get_jira_config());
+    $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config());
     $handler->handle(io(), $key);
 }
 
@@ -220,7 +215,7 @@ function items_show(
 function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
-    $handler = new App\Handler\ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
     $handler->handle(io(), $key);
 }
 
@@ -229,14 +224,14 @@ function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false,
     #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null
 ): void {
-    $handler = new App\Handler\CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
     $handler->handle(io(), $isNew, $message);
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 function please(): void
 {
-    $handler = new App\Handler\PleaseHandler(_get_git_repository());
+    $handler = new PleaseHandler(_get_git_repository());
     $handler->handle(io());
 }
 
@@ -249,14 +244,14 @@ function submit(): void
     $gitConfig = _get_git_config();
     $githubProvider = null;
     if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        $githubProvider = new App\Service\GithubProvider(
+        $githubProvider = new GithubProvider(
             $gitConfig['GIT_TOKEN'],
             $gitConfig['GIT_REPO_OWNER'],
             $gitConfig['GIT_REPO_NAME']
         );
     }
 
-    $handler = new App\Handler\SubmitHandler(
+    $handler = new SubmitHandler(
         _get_git_repository(),
         _get_jira_service(),
         $githubProvider,
@@ -382,6 +377,6 @@ function help(): void
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
 function status(): void
 {
-    $handler = new App\Handler\StatusHandler(_get_git_repository(), _get_jira_service());
+    $handler = new StatusHandler(_get_git_repository(), _get_jira_service());
     $handler->handle(io());
 }
