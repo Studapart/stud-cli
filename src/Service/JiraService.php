@@ -7,12 +7,16 @@ namespace App\Service;
 use App\DTO\Project;
 use App\DTO\WorkItem;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Stevebauman\Hypertext\Transformer;
 
 class JiraService
 {
     public function __construct(
         private HttpClientInterface $client,
-    ) {}
+        private ?Transformer $transformer = null,
+    ) {
+        $this->transformer = $transformer ?? new Transformer();
+    }
 
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
@@ -81,8 +85,13 @@ class JiraService
         $fields = $data['fields'];
 
         $description = 'No description provided.';
-        if (!empty($fields['description'])) {
-            $description = $this->_render_doc_node($fields['description']);
+        if (isset($data['renderedFields']['description'])) {
+            $description = $this->_convertHtmlToPlainText($data['renderedFields']['description']);
+        } elseif (!empty($fields['description'])) {
+            // Fallback to raw ADF if renderedFields is not available, but we won't parse it.
+            // For now, we'll just use a placeholder or the raw content if it's not ADF.
+            // Given the new strategy, this path should ideally not be taken if renderFields=true was used.
+            $description = 'ADF content not rendered: ' . json_encode($fields['description']);
         }
 
         $renderedDescription = null;
@@ -110,61 +119,11 @@ class JiraService
     }
     
     /**
-     * Recursively renders an Atlassian Document Format node to a string.
+     * Converts HTML content to plain text suitable for terminal display.
+     * Uses Stevebauman\Hypertext library for robust conversion.
      */
-    private function _render_doc_node(array $node, int $listLevel = 0): string
+    private function _convertHtmlToPlainText(string $html): string
     {
-        $text = '';
-        $type = $node['type'] ?? 'text';
-
-        // Handle block-level nodes
-        switch ($type) {
-            case 'doc':
-                break; // Just process content
-            case 'paragraph':
-                $text .= "\n";
-                break;
-            case 'heading':
-                $level = $node['attrs']['level'] ?? 1;
-                $text .= "\n" . str_repeat('#', $level) . ' ';
-                break;
-            case 'text':
-                $text .= $node['text'];
-                break;
-            case 'bulletList':
-            case 'orderedList':
-                $text .= "\n";
-                break;
-            case 'listItem':
-                $indent = str_repeat('  ', $listLevel);
-                $prefix = ($node['parentType'] ?? 'bulletList') === 'bulletList' ? '* ' : '1. ';
-                $text .= "{$indent}{$prefix}";
-                break;
-            case 'codeBlock':
-                $text .= "\n```\n";
-                break;
-            default:
-                // For unknown types, just try to render their content
-                break;
-        }
-
-        // Recursively render content if it exists
-        if (isset($node['content'])) {
-            foreach ($node['content'] as $i => $childNode) {
-                // Pass parent type to children for context (e.g., for list items)
-                $childNode['parentType'] = $type;
-                if ($type === 'orderedList') {
-                    $childNode['orderedListIndex'] = $i + 1;
-                }
-                $text .= $this->_render_doc_node($childNode, ($type === 'bulletList' || $type === 'orderedList') ? $listLevel + 1 : $listLevel);
-            }
-        }
-
-        // Add closing tags for block-level nodes
-        if ($type === 'codeBlock') {
-            $text .= "\n```\n";
-        }
-
-        return $text;
+        return $this->transformer->toText($html);
     }
 }

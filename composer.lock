@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0f966d3f0c24078d7c345edf0d5584ab",
+    "content-hash": "439f9ac0aaa6e40624bca37592b4fe4d",
     "packages": [
         {
             "name": "composer/ca-bundle",
@@ -627,6 +627,67 @@
                 }
             ],
             "time": "2024-05-06T16:37:16+00:00"
+        },
+        {
+            "name": "ezyang/htmlpurifier",
+            "version": "v4.19.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ezyang/htmlpurifier.git",
+                "reference": "b287d2a16aceffbf6e0295559b39662612b77fcf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ezyang/htmlpurifier/zipball/b287d2a16aceffbf6e0295559b39662612b77fcf",
+                "reference": "b287d2a16aceffbf6e0295559b39662612b77fcf",
+                "shasum": ""
+            },
+            "require": {
+                "php": "~5.6.0 || ~7.0.0 || ~7.1.0 || ~7.2.0 || ~7.3.0 || ~7.4.0 || ~8.0.0 || ~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0"
+            },
+            "require-dev": {
+                "cerdic/css-tidy": "^1.7 || ^2.0",
+                "simpletest/simpletest": "dev-master"
+            },
+            "suggest": {
+                "cerdic/css-tidy": "If you want to use the filter 'Filter.ExtractStyleBlocks'.",
+                "ext-bcmath": "Used for unit conversion and imagecrash protection",
+                "ext-iconv": "Converts text to and from non-UTF-8 encodings",
+                "ext-tidy": "Used for pretty-printing HTML"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "library/HTMLPurifier.composer.php"
+                ],
+                "psr-0": {
+                    "HTMLPurifier": "library/"
+                },
+                "exclude-from-classmap": [
+                    "/library/HTMLPurifier/Language/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Edward Z. Yang",
+                    "email": "admin@htmlpurifier.org",
+                    "homepage": "http://ezyang.com"
+                }
+            ],
+            "description": "Standards compliant HTML filter written in PHP",
+            "homepage": "http://htmlpurifier.org/",
+            "keywords": [
+                "html"
+            ],
+            "support": {
+                "issues": "https://github.com/ezyang/htmlpurifier/issues",
+                "source": "https://github.com/ezyang/htmlpurifier/tree/v4.19.0"
+            },
+            "time": "2025-10-17T16:34:55+00:00"
         },
         {
             "name": "jolicode/castor",
@@ -1698,6 +1759,54 @@
                 }
             ],
             "time": "2024-12-23T10:27:18+00:00"
+        },
+        {
+            "name": "stevebauman/hypertext",
+            "version": "v1.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/stevebauman/hypertext.git",
+                "reference": "3960f5315c7499aeba6df0c679159b1efc202d77"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/stevebauman/hypertext/zipball/3960f5315c7499aeba6df0c679159b1efc202d77",
+                "reference": "3960f5315c7499aeba6df0c679159b1efc202d77",
+                "shasum": ""
+            },
+            "require": {
+                "ezyang/htmlpurifier": "^4.16"
+            },
+            "require-dev": {
+                "pestphp/pest": "^2.24",
+                "spatie/ray": "^1.39"
+            },
+            "suggest": {
+                "ext-dom": "Required for filtering HTML.",
+                "ext-libxml": "Required for filtering HTML."
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Stevebauman\\Hypertext\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Steve Bauman",
+                    "email": "steven_bauman@outlook.com"
+                }
+            ],
+            "description": "The best HTML to text transformer",
+            "support": {
+                "issues": "https://github.com/stevebauman/hypertext/issues",
+                "source": "https://github.com/stevebauman/hypertext/tree/v1.1.2"
+            },
+            "time": "2024-10-12T16:28:03+00:00"
         },
         {
             "name": "symfony/cache",

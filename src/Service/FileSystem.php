@@ -19,7 +19,7 @@ class FileSystem
 
     public function dumpFile(string $path, array $data): void
     {
-        \Symfony\Component\Yaml\Yaml::dump($data);
+        file_put_contents($path, \Symfony\Component\Yaml\Yaml::dump($data));
     }
 
     public function isDir(string $path): bool

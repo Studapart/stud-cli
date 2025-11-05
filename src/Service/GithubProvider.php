@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GithubProvider
 {
@@ -10,19 +11,19 @@ class GithubProvider
         private readonly string $token,
         private readonly string $owner,
         private readonly string $repo,
+        private ?HttpClientInterface $client = null,
     ) {
-    }
-
-    public function createPullRequest(string $title, string $head, string $base, string $body): array
-    {
-        $client = HttpClient::createForBaseUri('https://api.github.com', [
+        $this->client = $client ?? HttpClient::createForBaseUri('https://api.github.com', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->token,
                 'Accept' => 'application/vnd.github.v3+json',
                 'Content-Type' => 'application/json',
             ],
         ]);
+    }
 
+    public function createPullRequest(string $title, string $head, string $base, string $body): array
+    {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
         $payload = [
             'title' => $title,
@@ -31,7 +32,7 @@ class GithubProvider
             'body' => $body,
         ];
 
-        $response = $client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $fullUrl = "https://api.github.com{$apiUrl}";

@@ -9,16 +9,19 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
+use Stevebauman\Hypertext\Transformer as RealTransformer;
 
 class JiraServiceTest extends TestCase
 {
     private JiraService $jiraService;
     private HttpClientInterface&MockObject $httpClientMock;
+    private RealTransformer&MockObject $transformerMock;
 
     protected function setUp(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->jiraService = new JiraService($this->httpClientMock);
+        $this->transformerMock = $this->createMock(RealTransformer::class);
+        $this->jiraService = new JiraService($this->httpClientMock, $this->transformerMock);
     }
 
     public function testGetIssueSuccess(): void
@@ -63,6 +66,9 @@ class JiraServiceTest extends TestCase
     public function testGetIssueWithRenderedFields(): void
     {
         $key = 'TEST-123';
+        $mockHtmlDescription = '<p>Rendered Description</p>';
+        $expectedPlainText = 'Rendered Description';
+
         $mockResponseData = [
             'id' => '10001',
             'key' => $key,
@@ -76,7 +82,7 @@ class JiraServiceTest extends TestCase
                 'components' => [],
             ],
             'renderedFields' => [
-                'description' => '<p>Rendered Description</p>',
+                'description' => $mockHtmlDescription,
             ],
         ];
 
@@ -89,10 +95,16 @@ class JiraServiceTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}?expand=renderedFields")
             ->willReturn($responseMock);
 
+        $this->transformerMock->expects($this->once())
+            ->method('toText')
+            ->with($mockHtmlDescription)
+            ->willReturn($expectedPlainText);
+
         $workItem = $this->jiraService->getIssue($key, true);
 
         $this->assertInstanceOf(WorkItem::class, $workItem);
-        $this->assertSame('<p>Rendered Description</p>', $workItem->renderedDescription);
+        $this->assertSame($expectedPlainText, $workItem->description); // Assert against description, not renderedDescription
+        $this->assertSame($mockHtmlDescription, $workItem->renderedDescription); // renderedDescription still holds raw HTML
     }
 
     public function testGetIssueNotFound(): void
@@ -270,7 +282,7 @@ class JiraServiceTest extends TestCase
         $this->jiraService->getProjects();
     }
 
-    public function testMapToWorkItemWithDescription(): void
+    public function testMapToWorkItemWithHtmlDescription(): void
     {
         $data = [
             'id' => '10001',
@@ -279,22 +291,34 @@ class JiraServiceTest extends TestCase
                 'summary' => 'Issue with Description',
                 'status' => ['name' => 'Done'],
                 'assignee' => ['displayName' => 'John Doe'],
-                'description' => [
-                    'version' => 1,
-                    'type' => 'doc',
-                    'content' => [
-                        ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'This is a description.']]],
-                    ],
-                ],
+                'description' => null, // ADF description is null as we expect renderedFields
                 'labels' => [],
                 'issuetype' => ['name' => 'Task'],
                 'components' => [],
             ],
+            'renderedFields' => [
+                'description' => '<p>This is a <strong>description</strong> with a <a href="#">link</a>.</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>echo \'hello\';</code></pre>',
+            ],
         ];
+
+        $expectedHtml = '<p>This is a <strong>description</strong> with a <a href="#">link</a>.</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>echo \'hello\';</code></pre>';
+        $expectedPlainText = "This is a description with a link.
+
+* Item 1
+* Item 2
+
+```
+echo 'hello';
+```";
+
+        $this->transformerMock->expects($this->once())
+            ->method('toText')
+            ->with($expectedHtml)
+            ->willReturn($expectedPlainText);
 
         $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
 
-        $this->assertSame("\nThis is a description.", $workItem->description);
+        $this->assertSame($expectedPlainText, $workItem->description);
     }
 
     public function testMapToWorkItemWithAssigneeNull(): void
@@ -318,85 +342,75 @@ class JiraServiceTest extends TestCase
         $this->assertSame('Unassigned', $workItem->assignee);
     }
 
-    public function testRenderDocNodeParagraph(): void
+    public function testConvertHtmlToPlainText(): void
     {
-        $node = [
-            'type' => 'paragraph',
-            'content' => [
-                ['type' => 'text', 'text' => 'Hello, world!'],
-            ],
-        ];
-        $expected = "\nHello, world!";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
+        $html1 = '<p>Hello, <strong>world</strong>!</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>function test() { return true; }</code></pre>';
+        $expected1 = "Hello, world!
+
+* Item 1
+* Item 2
+
+```
+function test() { return true; }
+```";
+
+        $html2 = '<p>This &amp; that &gt; 10 &euro;</p>';
+        $expected2 = "This & that > 10 €";
+
+        $html3 = "<p>Line 1</p>\n\n<p>Line 2</p>";
+        $expected3 = "Line 1
+
+Line 2";
+
+        $html4 = "Line 1<br>Line 2<br/>Line 3";
+        $expected4 = "Line 1
+Line 2
+Line 3";
+
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('toText')
+            ->willReturnCallback(function ($html) use ($html1, $expected1, $html2, $expected2, $html3, $expected3, $html4, $expected4) {
+                switch ($html) {
+                    case $html1:
+                        return $expected1;
+                    case $html2:
+                        return $expected2;
+                    case $html3:
+                        return $expected3;
+                    case $html4:
+                        return $expected4;
+                    default:
+                        return 'Unexpected HTML input: ' . $html;
+                }
+            });
+
+        $this->assertSame($expected1, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html1]));
+        $this->assertSame($expected2, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html2]));
+        $this->assertSame($expected3, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html3]));
+        $this->assertSame($expected4, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html4]));
     }
 
-    public function testRenderDocNodeHeading(): void
+    public function testMapToWorkItemWithAdfDescriptionFallback(): void
     {
-        $node = [
-            'type' => 'heading',
-            'attrs' => ['level' => 1],
-            'content' => [
-                ['type' => 'text', 'text' => 'Main Title'],
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with ADF Description',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => ['type' => 'doc', 'version' => 1, 'content' => []], // Mock ADF content
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
             ],
+            // No renderedFields
         ];
-        $expected = "\n# Main Title";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
-    }
 
-    public function testRenderDocNodeBulletList(): void
-    {
-        $node = [
-            'type' => 'bulletList',
-            'content' => [
-                ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Item 1']]]]],
-                ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Item 2']]]]],
-            ],
-        ];
-        $expected = "\n* Item 1\n* Item 2";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
-    }
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
 
-    public function testRenderDocNodeOrderedList(): void
-    {
-        $node = [
-            'type' => 'orderedList',
-            'content' => [
-                ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'First item']]]]],
-                ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Second item']]]]],
-            ],
-        ];
-        $expected = "\n1. First item\n2. Second item";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
-    }
-
-    public function testRenderDocNodeCodeBlock(): void
-    {
-        $node = [
-            'type' => 'codeBlock',
-            'content' => [
-                ['type' => 'text', 'text' => 'echo \'hello\';'],
-            ],
-        ];
-        $expected = "\n```\necho 'hello';\n```\n";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
-    }
-
-    public function testRenderDocNodeNestedList(): void
-    {
-        $node = [
-            'type' => 'bulletList',
-            'content' => [
-                ['type' => 'listItem', 'content' => [
-                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Parent item']]],
-                    ['type' => 'bulletList', 'content' => [
-                        ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Child item 1']]]]],
-                        ['type' => 'listItem', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Child item 2']]]]],
-                    ]],
-                ]],
-            ],
-        ];
-        $expected = "\n* Parent item\n  * Child item 1\n  * Child item 2";
-        $this->assertSame($expected, $this->callPrivateMethod($this->jiraService, '_render_doc_node', [$node]));
+        $expectedDescription = 'ADF content not rendered: {"type":"doc","version":1,"content":[]}';
+        $this->assertSame($expectedDescription, $workItem->description);
     }
 
     // Helper to call private methods for testing
