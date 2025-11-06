@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "require": {
         "symfony/http-client": "^6.4|^7.0",
         "symfony/process": "^6.4|^7.0",
