@@ -62,7 +62,7 @@ To get `stud-cli` running from source, the process is simple as all dependencies
 
 ### Compiling to PHAR (using Box)
 
-This project is configured to be compiled into a single, executable PHAR file using [Box](https://box-project.github.io/). Since `humbug/box` is included as a dev dependency, you can compile the application easily.
+This project is configured to be compiled into a single, executable PHAR file using [Box](https://box-project.github.io/). Installing `humbug/box` globally using `composer global require humbug/box`, then you can compile the application easily.
 
 1.  **Ensure dependencies are installed:**
     If you haven't already, run `composer install`.
