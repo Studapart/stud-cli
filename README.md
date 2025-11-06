@@ -202,6 +202,27 @@ These commands integrate directly with your local Git repository to streamline y
         stud ss
         ```
 
+#### Release Commands
+
+These commands help you manage the release process.
+
+-   **`stud release <version>`** (Alias: `stud rl <version>`)
+    -   **Description:** Creates a new release branch and bumps the version in `composer.json`.
+    -   **Argument:** `<version>` (e.g., `1.2.0`)
+    -   **Usage:**
+        ```bash
+        stud release 1.2.0
+        stud rl 1.2.0
+        ```
+
+-   **`stud deploy`** (Alias: `stud mep`)
+    -   **Description:** Deploys the current release branch. This merges the release into `main`, tags it, and updates `develop`.
+    -   **Usage:**
+        ```bash
+        stud deploy
+        stud mep
+        ```
+
 ### User Troubleshooting
 
 -   **`Configuration file not found`:** Run `stud config:init` to set up your Jira credentials.
