@@ -96,6 +96,12 @@ class JiraServiceTest extends TestCase
             ->willReturn($responseMock);
 
         $this->transformerMock->expects($this->once())
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('keepNewLines')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
             ->method('toText')
             ->with($mockHtmlDescription)
             ->willReturn($expectedPlainText);
@@ -302,7 +308,7 @@ class JiraServiceTest extends TestCase
         ];
 
         $expectedHtml = '<p>This is a <strong>description</strong> with a <a href="#">link</a>.</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>echo \'hello\';</code></pre>';
-        $expectedPlainText = "This is a description with a link.
+        $expectedPlainText = "This is a description with a <a href=\"#\">link</a>.
 
 * Item 1
 * Item 2
@@ -311,6 +317,12 @@ class JiraServiceTest extends TestCase
 echo 'hello';
 ```";
 
+        $this->transformerMock->expects($this->once())
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('keepNewLines')
+            ->willReturnSelf();
         $this->transformerMock->expects($this->once())
             ->method('toText')
             ->with($expectedHtml)
@@ -367,6 +379,12 @@ Line 2";
 Line 2
 Line 3";
 
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('keepNewLines')
+            ->willReturnSelf();
         $this->transformerMock->expects($this->exactly(4))
             ->method('toText')
             ->willReturnCallback(function ($html) use ($html1, $expected1, $html2, $expected2, $html3, $expected3, $html4, $expected4) {

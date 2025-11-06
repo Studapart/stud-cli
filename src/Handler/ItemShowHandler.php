@@ -22,7 +22,7 @@ class ItemShowHandler
             $io->writeln("  <fg=gray>Fetching details for issue: {$key}</>");
         }
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->jiraService->getIssue($key, true);
         } catch (\Exception $e) {
             $io->error("Could not find Jira issue with key \"{$key}\".");
             return;

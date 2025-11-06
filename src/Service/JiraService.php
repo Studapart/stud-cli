@@ -124,6 +124,16 @@ class JiraService
      */
     private function _convertHtmlToPlainText(string $html): string
     {
-        return $this->transformer->toText($html);
+        $text = $this->transformer
+            ->keepLinks()
+            ->keepNewLines()
+            ->toText($html);
+
+        // Replace any occurrence of 4 or more hyphens with a newline, ---, newline
+        $text = preg_replace('/\-{4,}/', "\n---\n", $text);
+
+
+
+        return $text;
     }
 }

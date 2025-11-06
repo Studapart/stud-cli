@@ -7,10 +7,9 @@ use App\Handler\ItemShowHandler;
 use App\Service\JiraService;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Helper\TableSeparator;
+use RuntimeException;
 
 class ItemShowHandlerTest extends CommandTestCase
 {
@@ -28,20 +27,23 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandle(): void
     {
+        $expectedDescription = "This is a test description.";
         $issue = new WorkItem(
             '1000',
             'TPW-35',
             'Create PHPUnit Test Suite for stud-cli Command Logic',
             'To Do',
             'Pierre-Emmanuel MANTEAU',
-            'description',
-            ['tests'],
-            'Task'
+            $expectedDescription, // 6th argument: description (string)
+            ['tests'], // 7th argument: labels (array)
+            'Task', // 8th argument: issueType (string)
+            [], // 9th argument: components (array)
+            '<p>This is a test description.</p>' // 10th argument: renderedDescription (?string)
         );
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
-            ->with('TPW-35')
+            ->with('TPW-35', true) // Expect true for renderFields
             ->willReturn($issue);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -55,7 +57,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'tests'],
                 new TableSeparator(),
-                ['Description' => 'description'],
+                ['Description' => $expectedDescription],
                 new TableSeparator(),
                 ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
             );
@@ -67,8 +69,8 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $this->jiraService->expects($this->once())
             ->method('getIssue')
-            ->with('TPW-35')
-            ->willThrowException(new \Exception('Issue not found'));
+            ->with('TPW-35', true) // Expect true for renderFields
+            ->willThrowException(new RuntimeException('Issue not found'));
 
         $io = $this->createMock(SymfonyStyle::class);
         $io->expects($this->once())
@@ -80,20 +82,23 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutput(): void
     {
+        $expectedDescription = "My awesome feature description.";
         $issue = new WorkItem(
             '1000',
             'TPW-35',
             'My awesome feature',
             'In Progress',
             'John Doe',
-            'description',
-            ['tests'],
-            'Task'
+            $expectedDescription, // 6th argument: description (string)
+            ['tests'], // 7th argument: labels (array)
+            'Task', // 8th argument: issueType (string)
+            [], // 9th argument: components (array)
+            '<p>My awesome feature description.</p>' // 10th argument: renderedDescription (?string)
         );
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
-            ->with('TPW-35')
+            ->with('TPW-35', true) // Expect true for renderFields
             ->willReturn($issue);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -111,20 +116,23 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandleWithNoLabels(): void
     {
+        $expectedDescription = "Description for no labels.";
         $issue = new WorkItem(
             '1000',
             'TPW-35',
             'My awesome feature',
             'In Progress',
             'John Doe',
-            'description',
-            [], // No labels
-            'Task'
+            $expectedDescription, // 6th argument: description (string)
+            [], // 7th argument: labels (array)
+            'Task', // 8th argument: issueType (string)
+            [], // 9th argument: components (array)
+            '<p>Description for no labels.</p>' // 10th argument: renderedDescription (?string)
         );
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
-            ->with('TPW-35')
+            ->with('TPW-35', true) // Expect true for renderFields
             ->willReturn($issue);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -138,7 +146,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'None'],
                 new TableSeparator(),
-                ['Description' => 'description'],
+                ['Description' => $expectedDescription],
                 new TableSeparator(),
                 ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
             );
@@ -148,20 +156,23 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandleWithMultipleLabels(): void
     {
+        $expectedDescription = "Description for multiple labels.";
         $issue = new WorkItem(
             '1000',
             'TPW-35',
             'My awesome feature',
             'In Progress',
             'John Doe',
-            'description',
-            ['label1', 'label2', 'label3'], // Multiple labels
-            'Task'
+            $expectedDescription, // 6th argument: description (string)
+            ['label1', 'label2', 'label3'], // 7th argument: labels (array)
+            'Task', // 8th argument: issueType (string)
+            [], // 9th argument: components (array)
+            '<p>Description for multiple labels.</p>' // 10th argument: renderedDescription (?string)
         );
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
-            ->with('TPW-35')
+            ->with('TPW-35', true) // Expect true for renderFields
             ->willReturn($issue);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -175,7 +186,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'label1, label2, label3'],
                 new TableSeparator(),
-                ['Description' => 'description'],
+                ['Description' => $expectedDescription],
                 new TableSeparator(),
                 ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
             );
