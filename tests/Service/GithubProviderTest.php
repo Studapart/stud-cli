@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Tests\Service;
+
+use App\Service\GithubProvider;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
+
+class GithubProviderTest extends TestCase
+{
+    private const GITHUB_TOKEN = 'test_token';
+    private const GITHUB_OWNER = 'test_owner';
+    private const GITHUB_REPO = 'test_repo';
+
+    private GithubProvider $githubProvider;
+    private HttpClientInterface&MockObject $httpClientMock;
+
+    protected function setUp(): void
+    {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->githubProvider = new GithubProvider(
+            self::GITHUB_TOKEN,
+            self::GITHUB_OWNER,
+            self::GITHUB_REPO,
+            $this->httpClientMock // Inject the mock client
+        );
+    }
+
+    public function testCreatePullRequestSuccess(): void
+    {
+        $title = 'Test PR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'This is a test pull request.';
+        $expectedResponse = ['html_url' => 'https://github.com/test_owner/test_repo/pull/1'];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls",
+                [
+                    'json' => [
+                        'title' => $title,
+                        'head' => $head,
+                        'base' => $base,
+                        'body' => $body,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->createPullRequest($title, $head, $base, $body);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testCreatePullRequestFailure(): void
+    {
+        $title = 'Test PR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'This is a test pull request.';
+        $errorMessage = 'Validation Failed';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(422);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+
+        $this->githubProvider->createPullRequest($title, $head, $base, $body);
+    }
+}

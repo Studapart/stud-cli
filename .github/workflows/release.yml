@@ -1,0 +1,71 @@
+name: Release stud.phar
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to build (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          ini-values: phar.readonly=0
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Get app name and version
+        id: get_version
+        run: |
+          echo "APP_NAME=$(jq -r .description composer.json)" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "APP_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "APP_VERSION=$(jq -r .version composer.json)" >> $GITHUB_ENV
+          fi
+
+      - name: Verify tag and version
+        if: github.event_name == 'push'
+        run: |
+          if [ "v${APP_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Error: Tag (${GITHUB_REF_NAME}) does not match composer.json version (v${APP_VERSION})"
+            exit 1
+          fi
+
+      - name: Build and rename phar
+        run: |
+          vendor/bin/castor repack \
+            --logo-file src/repack/logo.php \
+            --app-name "${APP_NAME}" \
+            --app-version "${APP_VERSION}"
+          PHAR_FILENAME="${APP_NAME}-${APP_VERSION}.phar"
+          mv "${APP_NAME}.linux.phar" "${PHAR_FILENAME}"
+          echo "PHAR_FILENAME=${PHAR_FILENAME}" >> $GITHUB_ENV
+
+      - name: Create Release and Upload Phar
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.PHAR_FILENAME }}
+
+      - name: Upload artifact (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PHAR_FILENAME }}
+          path: ${{ env.PHAR_FILENAME }}
+          retention-days: 1

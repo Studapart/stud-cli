@@ -1,0 +1,443 @@
+<?php
+
+namespace App\Tests\Service;
+
+use App\DTO\Project;
+use App\DTO\WorkItem;
+use App\Service\JiraService;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
+use Stevebauman\Hypertext\Transformer as RealTransformer;
+
+class JiraServiceTest extends TestCase
+{
+    private JiraService $jiraService;
+    private HttpClientInterface&MockObject $httpClientMock;
+    private RealTransformer&MockObject $transformerMock;
+
+    protected function setUp(): void
+    {
+        $this->httpClientMock = $this->createMock(HttpClientInterface::class);
+        $this->transformerMock = $this->createMock(RealTransformer::class);
+        $this->jiraService = new JiraService($this->httpClientMock, $this->transformerMock);
+    }
+
+    public function testGetIssueSuccess(): void
+    {
+        $key = 'TEST-123';
+        $mockResponseData = [
+            'id' => '10001',
+            'key' => $key,
+            'fields' => [
+                'summary' => 'Test Issue Summary',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null,
+                'labels' => ['bug', 'frontend'],
+                'issuetype' => ['name' => 'Bug'],
+                'components' => [['name' => 'Component A']],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/{$key}")
+            ->willReturn($responseMock);
+
+        $workItem = $this->jiraService->getIssue($key);
+
+        $this->assertInstanceOf(WorkItem::class, $workItem);
+        $this->assertSame($key, $workItem->key);
+        $this->assertSame('Test Issue Summary', $workItem->title);
+        $this->assertSame('To Do', $workItem->status);
+        $this->assertSame('John Doe', $workItem->assignee);
+        $this->assertSame(['bug', 'frontend'], $workItem->labels);
+        $this->assertSame('Bug', $workItem->issueType);
+        $this->assertSame(['Component A'], $workItem->components);
+        $this->assertSame('No description provided.', $workItem->description);
+    }
+
+    public function testGetIssueWithRenderedFields(): void
+    {
+        $key = 'TEST-123';
+        $mockHtmlDescription = '<p>Rendered Description</p>';
+        $expectedPlainText = 'Rendered Description';
+
+        $mockResponseData = [
+            'id' => '10001',
+            'key' => $key,
+            'fields' => [
+                'summary' => 'Test Issue Summary',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null,
+                'labels' => [],
+                'issuetype' => ['name' => 'Bug'],
+                'components' => [],
+            ],
+            'renderedFields' => [
+                'description' => $mockHtmlDescription,
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/{$key}?expand=renderedFields")
+            ->willReturn($responseMock);
+
+        $this->transformerMock->expects($this->once())
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('keepNewLines')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('toText')
+            ->with($mockHtmlDescription)
+            ->willReturn($expectedPlainText);
+
+        $workItem = $this->jiraService->getIssue($key, true);
+
+        $this->assertInstanceOf(WorkItem::class, $workItem);
+        $this->assertSame($expectedPlainText, $workItem->description); // Assert against description, not renderedDescription
+        $this->assertSame($mockHtmlDescription, $workItem->renderedDescription); // renderedDescription still holds raw HTML
+    }
+
+    public function testGetIssueNotFound(): void
+    {
+        $key = 'NONEXISTENT-404';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/{$key}")
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
+
+        $this->jiraService->getIssue($key);
+    }
+
+    public function testSearchIssuesSuccess(): void
+    {
+        $jql = 'project = TEST';
+        $mockResponseData = [
+            'issues' => [
+                [
+                    'id' => '10001',
+                    'key' => 'TEST-1',
+                    'fields' => [
+                        'summary' => 'Issue 1',
+                        'status' => ['name' => 'To Do'],
+                        'assignee' => ['displayName' => 'John Doe'],
+                        'description' => null,
+                        'labels' => [],
+                        'issuetype' => ['name' => 'Task'],
+                        'components' => [],
+                    ],
+                ],
+                [
+                    'id' => '10002',
+                    'key' => 'TEST-2',
+                    'fields' => [
+                        'summary' => 'Issue 2',
+                        'status' => ['name' => 'In Progress'],
+                        'assignee' => ['displayName' => 'Jane Doe'],
+                        'description' => null,
+                        'labels' => [],
+                        'issuetype' => ['name' => 'Bug'],
+                        'components' => [],
+                    ],
+                ],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/rest/api/3/search/jql', [
+                'json' => [
+                    'jql' => $jql,
+                    'fields' => ['key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components'],
+                ],
+            ])
+            ->willReturn($responseMock);
+
+        $workItems = $this->jiraService->searchIssues($jql);
+
+        $this->assertIsArray($workItems);
+        $this->assertCount(2, $workItems);
+        $this->assertInstanceOf(WorkItem::class, $workItems[0]);
+        $this->assertSame('TEST-1', $workItems[0]->key);
+        $this->assertSame('Issue 2', $workItems[1]->title);
+    }
+
+    public function testSearchIssuesEmptyResult(): void
+    {
+        $jql = 'project = NONEXISTENT';
+        $mockResponseData = [
+            'issues' => [],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $workItems = $this->jiraService->searchIssues($jql);
+
+        $this->assertIsArray($workItems);
+        $this->assertEmpty($workItems);
+    }
+
+    public function testSearchIssuesFailure(): void
+    {
+        $jql = 'invalid jql';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Failed to search for issues.');
+
+        $this->jiraService->searchIssues($jql);
+    }
+
+    public function testGetProjectsSuccess(): void
+    {
+        $mockResponseData = [
+            'values' => [
+                ['key' => 'PROJ1', 'name' => 'Project One'],
+                ['key' => 'PROJ2', 'name' => 'Project Two'],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/project/search')
+            ->willReturn($responseMock);
+
+        $projects = $this->jiraService->getProjects();
+
+        $this->assertIsArray($projects);
+        $this->assertCount(2, $projects);
+        $this->assertInstanceOf(Project::class, $projects[0]);
+        $this->assertSame('PROJ1', $projects[0]->key);
+        $this->assertSame('Project Two', $projects[1]->name);
+    }
+
+    public function testGetProjectsEmptyResult(): void
+    {
+        $mockResponseData = [
+            'values' => [],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $projects = $this->jiraService->getProjects();
+
+        $this->assertIsArray($projects);
+        $this->assertEmpty($projects);
+    }
+
+    public function testGetProjectsFailure(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(500);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Failed to fetch projects.');
+
+        $this->jiraService->getProjects();
+    }
+
+    public function testMapToWorkItemWithHtmlDescription(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with Description',
+                'status' => ['name' => 'Done'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null, // ADF description is null as we expect renderedFields
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+            ],
+            'renderedFields' => [
+                'description' => '<p>This is a <strong>description</strong> with a <a href="#">link</a>.</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>echo \'hello\';</code></pre>',
+            ],
+        ];
+
+        $expectedHtml = '<p>This is a <strong>description</strong> with a <a href="#">link</a>.</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>echo \'hello\';</code></pre>';
+        $expectedPlainText = "This is a description with a <a href=\"#\">link</a>.
+
+* Item 1
+* Item 2
+
+```
+echo 'hello';
+```";
+
+        $this->transformerMock->expects($this->once())
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('keepNewLines')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->once())
+            ->method('toText')
+            ->with($expectedHtml)
+            ->willReturn($expectedPlainText);
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $this->assertSame($expectedPlainText, $workItem->description);
+    }
+
+    public function testMapToWorkItemWithAssigneeNull(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with no assignee',
+                'status' => ['name' => 'Done'],
+                'assignee' => null,
+                'description' => null,
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+            ],
+        ];
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $this->assertSame('Unassigned', $workItem->assignee);
+    }
+
+    public function testConvertHtmlToPlainText(): void
+    {
+        $html1 = '<p>Hello, <strong>world</strong>!</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>function test() { return true; }</code></pre>';
+        $expected1 = "Hello, world!
+
+* Item 1
+* Item 2
+
+```
+function test() { return true; }
+```";
+
+        $html2 = '<p>This &amp; that &gt; 10 &euro;</p>';
+        $expected2 = "This & that > 10 €";
+
+        $html3 = "<p>Line 1</p>\n\n<p>Line 2</p>";
+        $expected3 = "Line 1
+
+Line 2";
+
+        $html4 = "Line 1<br>Line 2<br/>Line 3";
+        $expected4 = "Line 1
+Line 2
+Line 3";
+
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('keepLinks')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('keepNewLines')
+            ->willReturnSelf();
+        $this->transformerMock->expects($this->exactly(4))
+            ->method('toText')
+            ->willReturnCallback(function ($html) use ($html1, $expected1, $html2, $expected2, $html3, $expected3, $html4, $expected4) {
+                switch ($html) {
+                    case $html1:
+                        return $expected1;
+                    case $html2:
+                        return $expected2;
+                    case $html3:
+                        return $expected3;
+                    case $html4:
+                        return $expected4;
+                    default:
+                        return 'Unexpected HTML input: ' . $html;
+                }
+            });
+
+        $this->assertSame($expected1, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html1]));
+        $this->assertSame($expected2, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html2]));
+        $this->assertSame($expected3, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html3]));
+        $this->assertSame($expected4, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html4]));
+    }
+
+    public function testMapToWorkItemWithAdfDescriptionFallback(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with ADF Description',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => ['type' => 'doc', 'version' => 1, 'content' => []], // Mock ADF content
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+            ],
+            // No renderedFields
+        ];
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $expectedDescription = 'ADF content not rendered: {"type":"doc","version":1,"content":[]}';
+        $this->assertSame($expectedDescription, $workItem->description);
+    }
+
+    // Helper to call private methods for testing
+    private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
+    {
+        $reflection = new \ReflectionClass($object);
+        $method = $reflection->getMethod($methodName);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs($object, $parameters);
+    }
+}
