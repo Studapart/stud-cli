@@ -33,7 +33,9 @@ class ReleaseHandler
         $this->gitRepository->run('composer dump-config');
         $io->comment('Dumped config to config/app.php');
 
-        $this->gitRepository->add(['composer.json', 'composer.lock', 'config/app.php']);
+        $this->gitRepository->stageAllChanges();
+        $io->comment('Staged changes.');
+
         $this->gitRepository->commit('chore(Version): Bump version to ' . $version);
         $io->comment('Committed version bump.');
 
