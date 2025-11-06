@@ -78,6 +78,14 @@ This project is configured to be compiled into a single, executable PHAR file us
 -   **`Configuration file not found`:** When running from source, ensure you've run `./stud config:init`.
 -   **Command not found:** Ensure you are running the tool from the project root using `./stud`.
 
+### Testing
+
+This project uses PHPUnit for unit tests. To run the test suite, use the following command:
+
+```bash
+vendor/bin/phpunit
+```
+
 ---
 
 ## For Users
