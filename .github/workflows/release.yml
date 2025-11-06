@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
   release:
@@ -29,6 +30,7 @@ jobs:
           echo "APP_VERSION=$(jq -r .version composer.json)" >> $GITHUB_ENV
 
       - name: Verify tag and version
+        if: github.event_name == 'push'
         run: |
           if [ "v${APP_VERSION}" != "${GITHUB_REF_NAME}" ]; then
             echo "Error: Tag (${GITHUB_REF_NAME}) does not match composer.json version (v${APP_VERSION})"
@@ -44,6 +46,15 @@ jobs:
             --output stud.phar
 
       - name: Create Release and Upload Phar
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           files: stud.phar
+
+      - name: Upload stud.phar artifact (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stud.phar
+          path: stud.phar
+          retention-days: 1
