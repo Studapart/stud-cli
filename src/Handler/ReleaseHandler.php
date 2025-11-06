@@ -13,7 +13,7 @@ class ReleaseHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, string $version): void
+    public function handle(SymfonyStyle $io, string $version, bool $publish = false): void
     {
         $io->title('Starting release process for version ' . $version);
 
@@ -38,6 +38,16 @@ class ReleaseHandler
 
         $this->gitRepository->commit('chore(Version): Bump version to ' . $version);
         $io->comment('Committed version bump.');
+
+        if ($publish) {
+            $this->gitRepository->pushToOrigin($releaseBranch);
+            $io->comment('Release branch published to remote.');
+        } else {
+            if ($io->confirm('Would you like to publish the release branch to remote?', false)) {
+                $this->gitRepository->pushToOrigin($releaseBranch);
+                $io->comment('Release branch published to remote.');
+            }
+        }
 
         $io->success('Release ' . $version . ' is ready to be deployed.');
     }
