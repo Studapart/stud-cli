@@ -447,6 +447,82 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame('feat: my commit message', $message);
     }
 
+    public function testLocalBranchExists(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --verify --quiet my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+
+        $exists = $this->gitRepository->localBranchExists('my-branch');
+
+        $this->assertTrue($exists);
+    }
+
+    public function testLocalBranchDoesNotExist(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --verify --quiet my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $exists = $this->gitRepository->localBranchExists('my-branch');
+
+        $this->assertFalse($exists);
+    }
+
+    public function testRemoteBranchExists(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('abcdef refs/heads/my-branch');
+
+        $exists = $this->gitRepository->remoteBranchExists('origin', 'my-branch');
+
+        $this->assertTrue($exists);
+    }
+
+    public function testRemoteBranchDoesNotExist(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('');
+
+        $exists = $this->gitRepository->remoteBranchExists('origin', 'my-branch');
+
+        $this->assertFalse($exists);
+    }
+
     public function testRun(): void
     {
         $process = $this->createMock(Process::class);

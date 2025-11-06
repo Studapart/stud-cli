@@ -419,11 +419,12 @@ function status(): void
 
 #[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
 function release(
-    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')] string $version
+    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')] string $version,
+    #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')] bool $publish = false
 ): void {
     _load_constants();
     $handler = new ReleaseHandler(_get_git_repository());
-    $handler->handle(io(), $version);
+    $handler->handle(io(), $version, $publish);
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]

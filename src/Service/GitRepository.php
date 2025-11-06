@@ -195,6 +195,20 @@ class GitRepository
     {
         return trim($this->run("git log -1 --pretty=%B {$sha}")->getOutput());
     }
+
+    public function localBranchExists(string $branchName): bool
+    {
+        $process = $this->runQuietly("git rev-parse --verify --quiet {$branchName}");
+
+        return $process->isSuccessful();
+    }
+
+    public function remoteBranchExists(string $remote, string $branchName): bool
+    {
+        $process = $this->runQuietly("git ls-remote --heads {$remote} {$branchName}");
+
+        return !empty(trim($process->getOutput()));
+    }
     
     public function run(string $command): Process
     {

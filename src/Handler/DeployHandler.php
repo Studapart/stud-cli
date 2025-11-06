@@ -40,8 +40,12 @@ class DeployHandler
         $io->comment('Updated develop branch.');
 
         // Cleanup
-        $this->gitRepository->deleteBranch($currentBranch);
-        $this->gitRepository->deleteRemoteBranch('origin', $currentBranch);
+        if ($this->gitRepository->localBranchExists($currentBranch)) {
+            $this->gitRepository->deleteBranch($currentBranch);
+        }
+        if ($this->gitRepository->remoteBranchExists('origin', $currentBranch)) {
+            $this->gitRepository->deleteRemoteBranch('origin', $currentBranch);
+        }
         $io->comment('Cleaned up release branch.');
 
         $io->success('Release v' . $version . ' successfully deployed to main. develop has been rebased and force-pushed. Branches cleaned up.');
