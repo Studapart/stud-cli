@@ -24,7 +24,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $gitRepository->add(['composer.json', 'composer.lock', 'config/app.php'])->shouldBeCalled();
+        $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
 
         // Create a dummy composer.json
