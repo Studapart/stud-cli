@@ -12,5 +12,10 @@
         <include>
             <directory suffix=".php">./src</directory>
         </include>
+        <exclude>
+            <file>./src/config/app.php</file>
+            <file>./src/config/constants.php</file>
+            <file>./src/repack/logo.php</file>
+        </exclude>
     </source>    
 </phpunit>
