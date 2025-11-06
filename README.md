@@ -56,7 +56,7 @@ To get `stud-cli` running from source, the process is simple as all dependencies
 3.  **Run the Tool:**
     You can now run `stud-cli` directly using the `stud` executable provided in the project root. This is a wrapper that invokes Castor.
     ```bash
-    ./stud --help
+    ./stud help
     ./stud config:init
     ```
 
@@ -69,9 +69,14 @@ This project is configured to be compiled into a single, executable PHAR file us
 
 2.  **Compile:**
     ```bash
-    vendor/bin/box compile
+    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
     ```
     This will generate an executable `stud.phar` file in the project's root directory. You can rename it to `stud` for easier use.
+
+3.  **Compile:**
+    ```bash
+    sudo mv stud.phar /usr/local/bin/stud && sudo chmod +x /usr/local/bin/stud
+    ```
 
 ### Developer Troubleshooting
 
