@@ -9,6 +9,7 @@ class ReleaseHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly string $composerJsonPath = 'composer.json',
     ) {
     }
 
@@ -41,8 +42,8 @@ class ReleaseHandler
 
     private function updateComposerVersion(string $version): void
     {
-        $composerJson = json_decode(file_get_contents('composer.json'), true);
+        $composerJson = json_decode(file_get_contents($this->composerJsonPath), true);
         $composerJson['version'] = $version;
-        file_put_contents('composer.json', json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        file_put_contents($this->composerJsonPath, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 }

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/config/constants.php';
-
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
@@ -31,7 +29,13 @@ use function Castor\io;
 #[AsTask(default: true)]
 function main(): void
 {
+    _load_constants();
     help();
+}
+
+function _load_constants(): void
+{
+    require_once __DIR__ . '/config/constants.php';
 }
 
 // =================================================================================
@@ -170,6 +174,7 @@ function _get_git_repository(): GitRepository
 #[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
 function config_init(): void
 {
+    _load_constants();
     $handler = new InitHandler(new FileSystem(), _get_config_path());
     $handler->handle(io());
 }
@@ -181,6 +186,7 @@ function config_init(): void
 #[AsTask(name: 'projects:list', aliases: ['pj'], description: 'Lists all visible Jira projects')]
 function projects_list(): void
 {
+    _load_constants();
     $handler = new ProjectListHandler(_get_jira_service());
     $handler->handle(io());
 }
@@ -190,6 +196,7 @@ function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')] bool $all = false,
     #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')] ?string $project = null
 ): void {
+    _load_constants();
     $handler = new ItemListHandler(_get_jira_service());
     $handler->handle(io(), $all, $project);
 }
@@ -198,6 +205,7 @@ function items_list(
 function issues_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
 ): void {
+    _load_constants();
     $handler = new SearchHandler(_get_jira_service());
     $handler->handle(io(), $jql);
 }
@@ -207,6 +215,7 @@ function issues_search(
 function items_show(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
+    _load_constants();
     $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config());
     $handler->handle(io(), $key);
 }
@@ -219,6 +228,7 @@ function items_show(
 function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
+    _load_constants();
     $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
     $handler->handle(io(), $key);
 }
@@ -228,6 +238,7 @@ function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false,
     #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null
 ): void {
+    _load_constants();
     $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
     $handler->handle(io(), $isNew, $message);
 }
@@ -235,6 +246,7 @@ function commit(
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 function please(): void
 {
+    _load_constants();
     $handler = new PleaseHandler(_get_git_repository());
     $handler->handle(io());
 }
@@ -245,6 +257,7 @@ function please(): void
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 function submit(): void
 {
+    _load_constants();
     $gitConfig = _get_git_config();
     $githubProvider = null;
     if ($gitConfig['GIT_PROVIDER'] === 'github') {
@@ -268,6 +281,7 @@ function submit(): void
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(): void
 {
+    _load_constants();
     $logo = require APP_LOGO_PATH;
     io()->writeln($logo(APP_NAME, APP_VERSION));
     io()->title('Manual');
@@ -394,6 +408,7 @@ function help(): void
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
 function status(): void
 {
+    _load_constants();
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service());
     $handler->handle(io());
 }
@@ -406,6 +421,7 @@ function status(): void
 function release(
     #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')] string $version
 ): void {
+    _load_constants();
     $handler = new ReleaseHandler(_get_git_repository());
     $handler->handle(io(), $version);
 }
@@ -413,6 +429,7 @@ function release(
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
 function deploy(): void
 {
+    _load_constants();
     $handler = new DeployHandler(_get_git_repository());
     $handler->handle(io());
 }

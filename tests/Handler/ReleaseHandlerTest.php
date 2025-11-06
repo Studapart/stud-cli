@@ -28,15 +28,16 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
 
         // Create a dummy composer.json
-        file_put_contents('composer.json', json_encode(['version' => '1.0.0']));
+        $composerJsonPath = __DIR__ . '/composer.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal());
+        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath);
         $handler->handle($io->reveal(), $version);
 
-        $composerJson = json_decode(file_get_contents('composer.json'), true);
+        $composerJson = json_decode(file_get_contents($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
 
         // Clean up
-        unlink('composer.json');
+        unlink($composerJsonPath);
     }
 }
