@@ -1,8 +1,9 @@
 {
     "name": "studapart/stud-cli",
-    "description": "A CLI tool to integrate Jira and Git workflows.",
+    "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
+    "version": "1.0.0",
     "require": {
         "symfony/http-client": "^6.4|^7.0",
         "symfony/process": "^6.4|^7.0",
