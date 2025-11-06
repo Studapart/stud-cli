@@ -46,24 +46,26 @@ jobs:
             exit 1
           fi
 
-      - name: Build phar
+      - name: Build and rename phar
         run: |
           vendor/bin/castor repack \
             --logo-file src/repack/logo.php \
             --app-name "${APP_NAME}" \
-            --app-version "${APP_VERSION}" \
-            --output stud.phar
+            --app-version "${APP_VERSION}"
+          PHAR_FILENAME="${APP_NAME}-${APP_VERSION}.phar"
+          mv "${APP_NAME}.linux.phar" "${PHAR_FILENAME}"
+          echo "PHAR_FILENAME=${PHAR_FILENAME}" >> $GITHUB_ENV
 
       - name: Create Release and Upload Phar
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          files: stud.phar
+          files: ${{ env.PHAR_FILENAME }}
 
-      - name: Upload stud.phar artifact (dry-run)
+      - name: Upload artifact (dry-run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: stud.phar
-          path: stud.phar
+          name: ${{ env.PHAR_FILENAME }}
+          path: ${{ env.PHAR_FILENAME }}
           retention-days: 1
