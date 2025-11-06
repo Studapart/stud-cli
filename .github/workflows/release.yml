@@ -1,0 +1,49 @@
+name: Release stud.phar
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          ini-values: phar.readonly=0
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Get app name and version
+        id: get_version
+        run: |
+          echo "APP_NAME=$(jq -r .description composer.json)" >> $GITHUB_ENV
+          echo "APP_VERSION=$(jq -r .version composer.json)" >> $GITHUB_ENV
+
+      - name: Verify tag and version
+        run: |
+          if [ "v${APP_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Error: Tag (${GITHUB_REF_NAME}) does not match composer.json version (v${APP_VERSION})"
+            exit 1
+          fi
+
+      - name: Build phar
+        run: |
+          vendor/bin/castor repack \
+            --logo-file src/repack/logo.php \
+            --app-name "${APP_NAME}" \
+            --app-version "${APP_VERSION}" \
+            --output stud.phar
+
+      - name: Create Release and Upload Phar
+        uses: softprops/action-gh-release@v2
+        with:
+          files: stud.phar
