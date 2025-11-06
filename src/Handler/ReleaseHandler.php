@@ -3,7 +3,7 @@
 namespace App\Handler;
 
 use App\Service\GitRepository;
-use Castor\Io;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandler
 {
@@ -12,7 +12,7 @@ class ReleaseHandler
     ) {
     }
 
-    public function handle(Io $io, string $version): void
+    public function handle(SymfonyStyle $io, string $version): void
     {
         $io->title('Starting release process for version ' . $version);
 

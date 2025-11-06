@@ -349,6 +349,21 @@ function help(): void
                 'description' => 'A quick "where am I?" dashboard.',
             ],
         ],
+        'Release Commands' => [
+            [
+                'name' => 'release',
+                'alias' => 'rl',
+                'args' => '<version>',
+                'description' => 'Creates a new release branch and bumps the version.',
+                'example' => 'stud release 1.2.0',
+            ],
+            [
+                'name' => 'deploy',
+                'alias' => 'mep',
+                'description' => 'Deploys the current release branch.',
+                'example' => 'stud deploy',
+            ],
+        ],
     ];
 
     foreach ($commands as $category => $commandList) {

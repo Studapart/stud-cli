@@ -3,7 +3,7 @@
 namespace App\Handler;
 
 use App\Service\GitRepository;
-use Castor\Io;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 class DeployHandler
 {
@@ -12,7 +12,7 @@ class DeployHandler
     ) {
     }
 
-    public function handle(Io $io): void
+    public function handle(SymfonyStyle $io): void
     {
         $io->title('Starting deployment process');
 
