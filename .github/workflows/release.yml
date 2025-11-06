@@ -26,29 +26,11 @@ jobs:
           tools: composer
 
       - name: Install dependencies
-        run: composer install --no-dev --optimize-autoloader
-
-      - name: Get app name and version
-        id: get_version
-        run: |
-          echo "APP_NAME=$(jq -r .description composer.json)" >> $GITHUB_ENV
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "APP_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-          else
-            echo "APP_VERSION=$(jq -r .version composer.json)" >> $GITHUB_ENV
-          fi
-
-      - name: Verify tag and version
-        if: github.event_name == 'push'
-        run: |
-          if [ "v${APP_VERSION}" != "${GITHUB_REF_NAME}" ]; then
-            echo "Error: Tag (${GITHUB_REF_NAME}) does not match composer.json version (v${APP_VERSION})"
-            exit 1
-          fi
+        run: composer install --optimize-autoloader
 
       - name: Build and rename phar
         run: |
-          vendor/bin/castor repack \
+          PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack \
             --logo-file src/repack/logo.php \
             --app-name "${APP_NAME}" \
             --app-version "${APP_VERSION}"
