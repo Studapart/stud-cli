@@ -56,7 +56,7 @@ To get `stud-cli` running from source, the process is simple as all dependencies
 3.  **Run the Tool:**
     You can now run `stud-cli` directly using the `stud` executable provided in the project root. This is a wrapper that invokes Castor.
     ```bash
-    ./stud --help
+    ./stud help
     ./stud config:init
     ```
 
@@ -69,9 +69,14 @@ This project is configured to be compiled into a single, executable PHAR file us
 
 2.  **Compile:**
     ```bash
-    vendor/bin/box compile
+    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
     ```
     This will generate an executable `stud.phar` file in the project's root directory. You can rename it to `stud` for easier use.
+
+3.  **Compile:**
+    ```bash
+    sudo mv stud.phar /usr/local/bin/stud && sudo chmod +x /usr/local/bin/stud
+    ```
 
 ### Developer Troubleshooting
 
@@ -200,6 +205,27 @@ These commands integrate directly with your local Git repository to streamline y
         ```bash
         stud status
         stud ss
+        ```
+
+#### Release Commands
+
+These commands help you manage the release process.
+
+-   **`stud release <version>`** (Alias: `stud rl <version>`)
+    -   **Description:** Creates a new release branch and bumps the version in `composer.json`.
+    -   **Argument:** `<version>` (e.g., `1.2.0`)
+    -   **Usage:**
+        ```bash
+        stud release 1.2.0
+        stud rl 1.2.0
+        ```
+
+-   **`stud deploy`** (Alias: `stud mep`)
+    -   **Description:** Deploys the current release branch. This merges the release into `main`, tags it, and updates `develop`.
+    -   **Usage:**
+        ```bash
+        stud deploy
+        stud mep
         ```
 
 ### User Troubleshooting

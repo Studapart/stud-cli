@@ -266,7 +266,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->commit('my message');
     }
 
-    public function testFetchOrigin(): void
+    public function testFetch(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -277,10 +277,10 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('mustRun');
 
-        $this->gitRepository->fetchOrigin();
+        $this->gitRepository->fetch();
     }
 
-    public function testSwitch(): void
+    public function testCreateBranch(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -291,7 +291,7 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('mustRun');
 
-        $this->gitRepository->switch('feature/PROJ-123-my-feature', 'origin/develop');
+        $this->gitRepository->createBranch('feature/PROJ-123-my-feature', 'origin/develop');
     }
 
     public function testGetPorcelainStatus(): void
@@ -473,5 +473,145 @@ class GitRepositoryTest extends CommandTestCase
             ->method('run');
 
         $this->gitRepository->runQuietly('my command');
+    }
+
+    public function testAdd(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git add file1.txt file2.txt')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->add(['file1.txt', 'file2.txt']);
+    }
+
+    public function testCheckout(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git checkout my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->checkout('my-branch');
+    }
+
+    public function testPull(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git pull origin main')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->pull('origin', 'main');
+    }
+
+    public function testMerge(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git merge --no-ff my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->merge('my-branch');
+    }
+
+    public function testTag(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with("git tag -a v1.2.3 -m 'Release v1.2.3'")
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->tag('v1.2.3', 'Release v1.2.3');
+    }
+
+    public function testPushTags(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git push --tags origin main')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->pushTags('origin');
+    }
+
+    public function testRebase(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rebase main')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->rebase('main');
+    }
+
+    public function testDeleteBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch -d my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->deleteBranch('my-branch');
+    }
+
+    public function testDeleteRemoteBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git push origin --delete my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->deleteRemoteBranch('origin', 'my-branch');
+    }
+
+    public function testForcePushWithLeaseRemote(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git push --force-with-lease origin main')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->forcePushWithLeaseRemote('origin', 'main');
     }
 }

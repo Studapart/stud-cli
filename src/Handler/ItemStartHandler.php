@@ -40,10 +40,10 @@ class ItemStartHandler
         }
 
         $io->text("Fetching latest changes from origin...");
-        $this->gitRepository->fetchOrigin();
+        $this->gitRepository->fetch();
 
         $io->text("Creating new branch: <info>{$branchName}</info>");
-        $this->gitRepository->switch($branchName, $this->baseBranch);
+        $this->gitRepository->createBranch($branchName, $this->baseBranch);
 
         $io->success("Branch '{$branchName}' created from '" . $this->baseBranch . "'.");
 

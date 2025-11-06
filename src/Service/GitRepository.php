@@ -44,6 +44,51 @@ class GitRepository
         return $this->run('git push --force-with-lease');
     }
 
+    public function forcePushWithLeaseRemote(string $remote, string $branch): Process
+    {
+        return $this->run("git push --force-with-lease {$remote} {$branch}");
+    }
+
+    public function checkout(string $branch): void
+    {
+        $this->run("git checkout {$branch}");
+    }
+
+    public function pull(string $remote, string $branch): void
+    {
+        $this->run("git pull {$remote} {$branch}");
+    }
+
+    public function merge(string $branch): void
+    {
+        $this->run("git merge --no-ff {$branch}");
+    }
+
+    public function tag(string $tagName, string $message): void
+    {
+        $this->run("git tag -a {$tagName} -m '{$message}'");
+    }
+
+    public function pushTags(string $remote): void
+    {
+        $this->run("git push --tags {$remote} main");
+    }
+
+    public function rebase(string $branch): void
+    {
+        $this->run("git rebase {$branch}");
+    }
+
+    public function deleteBranch(string $branch): void
+    {
+        $this->run("git branch -d {$branch}");
+    }
+
+    public function deleteRemoteBranch(string $remote, string $branch): void
+    {
+        $this->run("git push {$remote} --delete {$branch}");
+    }
+
     public function findLatestLogicalSha(string $baseBranch): ?string
     {
         $process = $this->runQuietly(
@@ -77,14 +122,19 @@ class GitRepository
         $this->run('git commit -m ' . escapeshellarg($message));
     }
 
-    public function fetchOrigin(): void
+    public function fetch(): void
     {
         $this->run('git fetch origin');
     }
 
-    public function switch(string $branchName, string $baseBranch): void
+    public function createBranch(string $branchName, string $baseBranch): void
     {
         $this->run("git switch -c {$branchName} " . $baseBranch);
+    }
+
+    public function add(array $files): void
+    {
+        $this->run('git add ' . implode(' ', $files));
     }
 
     public function getPorcelainStatus(): string

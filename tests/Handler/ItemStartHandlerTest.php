@@ -45,10 +45,10 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('fetchOrigin');
+            ->method('fetch');
 
         $this->gitRepository->expects($this->once())
-            ->method('switch')
+            ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
         $output = new BufferedOutput();
@@ -96,10 +96,10 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('fetchOrigin');
+            ->method('fetch');
 
         $this->gitRepository->expects($this->once())
-            ->method('switch')
+            ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
         $output = new BufferedOutput();
