@@ -266,7 +266,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->commit('my message');
     }
 
-    public function testFetchOrigin(): void
+    public function testFetch(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -277,10 +277,10 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('mustRun');
 
-        $this->gitRepository->fetchOrigin();
+        $this->gitRepository->fetch();
     }
 
-    public function testSwitch(): void
+    public function testCreateBranch(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -291,7 +291,7 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('mustRun');
 
-        $this->gitRepository->switch('feature/PROJ-123-my-feature', 'origin/develop');
+        $this->gitRepository->createBranch('feature/PROJ-123-my-feature', 'origin/develop');
     }
 
     public function testGetPorcelainStatus(): void

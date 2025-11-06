@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/config/constants.php';
+
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
@@ -17,6 +19,8 @@ use App\Handler\ProjectListHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
+use App\Handler\ReleaseHandler;
+use App\Handler\DeployHandler;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -264,10 +268,8 @@ function submit(): void
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(): void
 {
-    $logo = require './repack/logo.php';
-    $appName = 'Stud Cli DX - Jira & Git Workflow Streamliner';
-    $appVersion = '1.0.0';
-    io()->writeln($logo($appName, $appVersion));
+    $logo = require APP_LOGO_PATH;
+    io()->writeln($logo(APP_NAME, APP_VERSION));
     io()->title('Manual');
 
     io()->section('DESCRIPTION');
@@ -380,3 +382,23 @@ function status(): void
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service());
     $handler->handle(io());
 }
+
+// =================================================================================
+// Release Commands
+// =================================================================================
+
+#[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
+function release(
+    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')] string $version
+): void {
+    $handler = new ReleaseHandler(_get_git_repository());
+    $handler->handle(io(), $version);
+}
+
+#[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
+function deploy(): void
+{
+    $handler = new DeployHandler(_get_git_repository());
+    $handler->handle(io());
+}
+
