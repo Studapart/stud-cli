@@ -19,7 +19,7 @@ class ItemListHandler
         if (!$all) {
             $jqlParts[] = 'assignee = currentUser()';
         }
-        $jqlParts[] = "status in ('To Do', 'In Progress')";
+        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
         if ($project) {
             $jqlParts[] = 'project = ' . strtoupper($project);
         }

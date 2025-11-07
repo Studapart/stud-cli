@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "require": {
         "symfony/http-client": "^7.3",
         "symfony/process": "^7.3",
@@ -27,10 +27,13 @@
         "prefer-stable": true,
         "allow-plugins": {
             "symfony/flex": true
+        },
+        "platform": {
+            "php": "8.2"
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "^12.4",
+        "phpunit/phpunit": "^11.0",
         "phpspec/prophecy-phpunit": "^2.4"
     },
     "scripts": {

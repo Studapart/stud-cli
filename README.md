@@ -145,7 +145,7 @@ These commands help you browse and view your Jira work items.
         ```
 
 -   **`stud items:list`** (Alias: `stud ls`)
-    -   **Description:** Lists active work items. This is your main "dashboard" command.
+    -   **Description:** Lists active work items, using Jira's status categories for more flexible filtering. This is your main "dashboard" command.
     -   **Options:**
         -   `--all` or `-a`: List items for all users (overrides default assignee filter).
         -   `--project <key>` or `-p <key>`: Filter items by a specific project key (e.g., `PROJ`).

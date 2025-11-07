@@ -37,7 +37,7 @@ class ItemListHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('assignee = currentUser() AND status in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
             ->willReturn([$issue]);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -66,7 +66,7 @@ class ItemListHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('status in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->with('statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
             ->willReturn([$issue]);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -95,7 +95,7 @@ class ItemListHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('assignee = currentUser() AND status in (\'To Do\', \'In Progress\') AND project = MYPROJ ORDER BY updated DESC')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') AND project = MYPROJ ORDER BY updated DESC')
             ->willReturn([$issue]);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -124,7 +124,7 @@ class ItemListHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('status in (\'To Do\', \'In Progress\') AND project = MYPROJ ORDER BY updated DESC')
+            ->with('statusCategory in (\'To Do\', \'In Progress\') AND project = MYPROJ ORDER BY updated DESC')
             ->willReturn([$issue]);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -174,7 +174,7 @@ class ItemListHandlerTest extends CommandTestCase
     {
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('assignee = currentUser() AND status in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
             ->willReturn([]);
 
         $io = $this->createMock(SymfonyStyle::class);
@@ -183,7 +183,7 @@ class ItemListHandlerTest extends CommandTestCase
             ->willReturn(true);
         $io->expects($this->once())
             ->method('writeln')
-            ->with('  <fg=gray>JQL Query: assignee = currentUser() AND status in (\'To Do\', \'In Progress\') ORDER BY updated DESC</>');
+            ->with('  <fg=gray>JQL Query: assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC</>');
         $io->expects($this->once())
             ->method('note')
             ->with('No items found matching your criteria.');

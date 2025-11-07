@@ -1,0 +1,44 @@
+name: PHPUnit Tests and Coverage
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pcov
+          coverage: pcov
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run tests and extract coverage summary
+        id: coverage
+        run: |
+          COVERAGE=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text | awk '/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/')
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$COVERAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const output = `${{ steps.coverage.outputs.summary }}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Code Coverage Summary\n\n\`\`\`\n${output}\n\`\`\``
+            });
