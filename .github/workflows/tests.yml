@@ -26,7 +26,10 @@ jobs:
       - name: Run tests and extract coverage summary
         id: coverage
         run: |
-          COVERAGE=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text | awk "/^Summary:/,/^Lines:/")
+          FULL_OUTPUT=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text)
+          echo "Full PHPUnit Output:"
+          echo "$FULL_OUTPUT"
+          COVERAGE=$(echo "$FULL_OUTPUT" | awk "/^Summary:/,/^Lines:/")
           echo "COVERAGE variable:"
           echo "$COVERAGE"
           echo "summary<<EOF" >> $GITHUB_OUTPUT
