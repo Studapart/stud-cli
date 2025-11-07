@@ -29,7 +29,7 @@ jobs:
       - name: Extract coverage summary
         id: coverage-summary
         run: |
-          SUMMARY=$(awk \'/^Summary:/,/^Lines:/\' coverage-summary.txt)
+          SUMMARY=$(awk "/^Summary:/,/^Lines:/" coverage-summary.txt)
           SUMMARY="${SUMMARY//\'%\'/\'%25\'}"
           SUMMARY="${SUMMARY//$\'\\n\'/\'%0A\'}"
           SUMMARY="${SUMMARY//$\'\\r\'/\'%0D\'}"
