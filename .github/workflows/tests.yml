@@ -16,7 +16,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: \'8.2\'
           extensions: pcov
           coverage: pcov
 
@@ -26,12 +26,7 @@ jobs:
       - name: Run tests and extract coverage summary
         id: coverage
         run: |
-          FULL_OUTPUT=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text)
-          echo "Full PHPUnit Output:"
-          echo "$FULL_OUTPUT"
-                    COVERAGE=$(echo "$FULL_OUTPUT" | awk "/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/" )
-          echo "COVERAGE variable:"
-          echo "$COVERAGE"
+          COVERAGE=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text | awk \'/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/\')
           echo "summary<<EOF" >> $GITHUB_OUTPUT
           echo "$COVERAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -41,17 +36,9 @@ jobs:
         with:
           script: |
             const output = `${{ steps.coverage.outputs.summary }}`;
-            const debug_info = `
-            ### Debug Information
-            **Output from previous step:**
-            \`\`\`
-            ${output}
-            \`\`\`
-            `;
-
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Code Coverage Summary\n\n\`\`\`\n${output}\n\`\`\`\n\n${debug_info}`
+              body: `## Code Coverage Summary\n\n\`\`\`\n${output}\n\`\`\``
             });
