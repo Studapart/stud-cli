@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - GitHub Action to automatically build and release `stud.phar` on new version tags.
+- CI: Implement automatic PHPUnit tests and coverage reporting on Pull Requests.
 
 ### Changed
 
