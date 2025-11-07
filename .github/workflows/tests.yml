@@ -29,7 +29,7 @@ jobs:
           FULL_OUTPUT=$(php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text)
           echo "Full PHPUnit Output:"
           echo "$FULL_OUTPUT"
-          COVERAGE=$(echo "$FULL_OUTPUT" | awk "/^Summary:/,/^Lines:/")
+                    COVERAGE=$(echo "$FULL_OUTPUT" | awk "/^[[:space:]]*Summary:/,/^[[:space:]]*Lines:/" )
           echo "COVERAGE variable:"
           echo "$COVERAGE"
           echo "summary<<EOF" >> $GITHUB_OUTPUT
