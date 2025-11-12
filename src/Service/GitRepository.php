@@ -254,7 +254,9 @@ class GitRepository
             return null;
         }
 
+        // Trim whitespace and any trailing dots/periods that might be present
         $remoteUrl = trim($process->getOutput());
+        $remoteUrl = rtrim($remoteUrl, '.');
 
         return empty($remoteUrl) ? null : $remoteUrl;
     }

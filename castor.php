@@ -268,8 +268,8 @@ function submit(): void
         $repoName = $gitRepository->getRepositoryName();
         
         if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: " . ($repoOwner ?: 'null') . "</>");
-            io()->writeln("  <fg=gray>Detected repository name: " . ($repoName ?: 'null') . "</>");
+            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
+            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
         }
         
         if (!$repoOwner || !$repoName) {
@@ -279,6 +279,10 @@ function submit(): void
                 'You can check with: git remote -v',
             ]);
             exit(1);
+        }
+        
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
         }
         
         $githubProvider = new GithubProvider(
