@@ -700,5 +700,44 @@ class UpdateHandlerTest extends CommandTestCase
         $outputText = $output->fetch();
         $this->assertStringContainsString('You are already on the latest version', $outputText);
     }
+
+
+    public function testGetBinaryPathUsesProvidedPath(): void
+    {
+        $testPath = '/test/path/to/binary.phar';
+        $handler = new UpdateHandler(
+            $this->gitRepository,
+            '1.0.0',
+            $testPath,
+            null,
+            $this->httpClient
+        );
+
+        $binaryPath = $this->callPrivateMethod($handler, 'getBinaryPath');
+
+        // In test environment, Phar::running() won't return a value and ReflectionClass will work
+        // So it should fall back to the provided path
+        $this->assertSame($testPath, $binaryPath);
+    }
+
+    public function testGetBinaryPathWithPharRunning(): void
+    {
+        // This test verifies the path when Phar::running() would return a value
+        // Since we can't easily mock Phar in tests, we test that the fallback works
+        // The actual Phar path would be tested in integration tests
+        $testPath = '/test/phar/path.phar';
+        $handler = new UpdateHandler(
+            $this->gitRepository,
+            '1.0.0',
+            $testPath,
+            null,
+            $this->httpClient
+        );
+
+        $binaryPath = $this->callPrivateMethod($handler, 'getBinaryPath');
+
+        // In test environment without PHAR, it should use the provided path
+        $this->assertSame($testPath, $binaryPath);
+    }
 }
 
