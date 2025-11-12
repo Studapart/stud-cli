@@ -23,14 +23,52 @@ class UpdateHandler
     {
         $io->section('Checking for updates');
 
-        // Get the actual binary path
         $binaryPath = $this->getBinaryPath();
-        
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Binary path: {$binaryPath}</>");
+        $this->logVerbose($io, 'Binary path', $binaryPath);
+
+        $repositoryInfo = $this->getRepositoryInfo($io);
+        if (!$repositoryInfo) {
+            return 1;
         }
 
-        // Get repository owner and name from git remote
+        [$repoOwner, $repoName] = $repositoryInfo;
+        $this->logVerbose($io, 'Detected repository', "{$repoOwner}/{$repoName}");
+        $this->logVerbose($io, 'Current version', $this->currentVersion);
+
+        $githubProvider = $this->createGithubProvider($repoOwner, $repoName);
+        $releaseResult = $this->fetchLatestRelease($io, $githubProvider);
+        
+        if ($releaseResult['is404']) {
+            // 404 means no releases found - this is a success case (already warned)
+            return 0;
+        }
+        
+        if ($releaseResult['release'] === null) {
+            // Actual error occurred
+            return 1;
+        }
+        
+        $release = $releaseResult['release'];
+
+        if ($this->isAlreadyLatestVersion($io, $release)) {
+            return 0;
+        }
+
+        $pharAsset = $this->findPharAsset($io, $release);
+        if (!$pharAsset) {
+            return 1;
+        }
+
+        $tempFile = $this->downloadPhar($io, $pharAsset);
+        if ($tempFile === null) {
+            return 1;
+        }
+
+        return $this->replaceBinary($io, $tempFile, $binaryPath, $release['tag_name']);
+    }
+
+    private function getRepositoryInfo(SymfonyStyle $io): ?array
+    {
         $repoOwner = $this->gitRepository->getRepositoryOwner();
         $repoName = $this->gitRepository->getRepositoryName();
 
@@ -39,15 +77,14 @@ class UpdateHandler
                 'Could not determine repository owner or name from git remote.',
                 'Please ensure your repository has a remote named "origin" configured.',
             ]);
-            return 1;
+            return null;
         }
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Detected repository: {$repoOwner}/{$repoName}</>");
-            $io->writeln("  <fg=gray>Current version: {$this->currentVersion}</>");
-        }
+        return [$repoOwner, $repoName];
+    }
 
-        // Create GitHub client (use token if available for private repositories)
+    private function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
+    {
         $headers = [
             'Accept' => 'application/vnd.github.v3+json',
             'User-Agent' => 'stud-cli',
@@ -61,81 +98,88 @@ class UpdateHandler
             'headers' => $headers,
         ]);
 
-        $githubProvider = new GithubProvider($this->gitToken ?? '', $repoOwner, $repoName, $client);
+        return new GithubProvider($this->gitToken ?? '', $repoOwner, $repoName, $client);
+    }
 
+    /**
+     * @return array{release: array|null, is404: bool}
+     */
+    private function fetchLatestRelease(SymfonyStyle $io, GithubProvider $githubProvider): array
+    {
         try {
-            $release = $githubProvider->getLatestRelease();
+            return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
         } catch (\Exception $e) {
-            // Check if it's a 404 (no releases found)
             if (str_contains($e->getMessage(), 'Status: 404')) {
                 $io->warning([
                     'No releases found for this repository.',
                     'The repository may not have any published releases yet.',
                 ]);
-                return 0;
+                return ['release' => null, 'is404' => true];
             }
             
             $io->error([
                 'Failed to fetch latest release information.',
                 'Error: ' . $e->getMessage(),
             ]);
-            return 1;
+            return ['release' => null, 'is404' => false];
         }
+    }
 
-        $latestVersion = ltrim($release['tag_name'], 'v'); // Remove 'v' prefix if present
+    private function isAlreadyLatestVersion(SymfonyStyle $io, array $release): bool
+    {
+        $latestVersion = ltrim($release['tag_name'], 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Latest version: {$latestVersion}</>");
-        }
+        $this->logVerbose($io, 'Latest version', $latestVersion);
 
-        // Compare versions
         if (version_compare($latestVersion, $currentVersion, '<=')) {
             $io->success("You are already on the latest version ({$this->currentVersion}).");
-            return 0;
+            return true;
         }
 
+        return false;
+    }
+
+    private function findPharAsset(SymfonyStyle $io, array $release): ?array
+    {
         $io->text("A new version ({$release['tag_name']}) is available. Updating...");
 
-        // Find the stud.phar asset (could be stud.phar or stud-VERSION.phar)
-        $pharAsset = null;
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'];
-            // Match stud.phar or stud-VERSION.phar pattern
             if ($assetName === 'stud.phar' || 
                 (str_starts_with($assetName, 'stud-') && str_ends_with($assetName, '.phar'))) {
-                $pharAsset = $asset;
-                break;
+                return $asset;
             }
         }
 
-        if (!$pharAsset) {
-            $io->error([
-                'Could not find stud.phar asset in the latest release.',
-                'Release assets: ' . implode(', ', array_column($release['assets'] ?? [], 'name')),
-            ]);
-            return 1;
-        }
+        $io->error([
+            'Could not find stud.phar asset in the latest release.',
+            'Release assets: ' . implode(', ', array_column($release['assets'] ?? [], 'name')),
+        ]);
+        return null;
+    }
 
-        // Download to temporary file
+    private function downloadPhar(SymfonyStyle $io, array $pharAsset): ?string
+    {
         $tempFile = sys_get_temp_dir() . '/stud.phar.new';
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Downloading from: {$pharAsset['browser_download_url']}</>");
-        }
+        $this->logVerbose($io, 'Downloading from', $pharAsset['browser_download_url']);
 
         try {
             $downloadClient = $this->httpClient ?? HttpClient::create();
             $response = $downloadClient->request('GET', $pharAsset['browser_download_url']);
             file_put_contents($tempFile, $response->getContent());
+            return $tempFile;
         } catch (\Exception $e) {
             $io->error([
                 'Failed to download the new version.',
                 'Error: ' . $e->getMessage(),
             ]);
-            return 1;
+            return null;
         }
+    }
 
-        // Check if current binary is writable
+    private function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $tagName): int
+    {
         if (!is_writable($binaryPath)) {
             $io->error([
                 'Update failed: The file is not writable.',
@@ -145,31 +189,36 @@ class UpdateHandler
             return 1;
         }
 
-        // Replace the binary
         try {
             rename($tempFile, $binaryPath);
             chmod($binaryPath, 0755);
         } catch (\Exception $e) {
-            // @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases
+            /** @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases */
             $io->error([
                 'Failed to replace the binary.',
                 'Error: ' . $e->getMessage(),
             ]);
             @unlink($tempFile);
             return 1;
-            // @codeCoverageIgnoreEnd
+            /** @codeCoverageIgnoreEnd */
         }
 
-        $io->success("✅ Update complete! You are now on {$release['tag_name']}.");
-
+        $io->success("✅ Update complete! You are now on {$tagName}.");
         return 0;
+    }
+
+    private function logVerbose(SymfonyStyle $io, string $label, string $value): void
+    {
+        if ($io->isVerbose()) {
+            $io->writeln("  <fg=gray>{$label}: {$value}</>");
+        }
     }
 
     private function getBinaryPath(): string
     {
         // If running as PHAR, use Phar::running()
         if (class_exists('Phar') && \Phar::running(false)) {
-            // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
+            /** @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment */
             return \Phar::running(false);
         }
 
@@ -180,11 +229,11 @@ class UpdateHandler
             
             // If we're in a PHAR, the filename will be phar://...
             if (str_starts_with($filename, 'phar://')) {
-                // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
+                /** @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment */
                 return $filename;
             }
         } catch (\ReflectionException $e) {
-            // @codeCoverageIgnore - ReflectionException is hard to trigger in tests
+            /** @codeCoverageIgnore - ReflectionException is hard to trigger in tests */
             // Fall through to next method
         }
 
