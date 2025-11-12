@@ -19,6 +19,7 @@ use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\DeployHandler;
+use App\Handler\UpdateHandler;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -457,5 +458,28 @@ function deploy(): void
     _load_constants();
     $handler = new DeployHandler(_get_git_repository());
     $handler->handle(io());
+}
+
+#[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
+function update(): void
+{
+    _load_constants();
+    
+    // Get binary path - try Phar first, then fallback
+    $binaryPath = '';
+    if (class_exists('Phar') && \Phar::running(false)) {
+        $binaryPath = \Phar::running(false);
+    } else {
+        // Fallback for development/testing
+        $binaryPath = __FILE__;
+    }
+    
+    $handler = new UpdateHandler(
+        _get_git_repository(),
+        APP_VERSION,
+        $binaryPath
+    );
+    $result = $handler->handle(io());
+    exit($result);
 }
 

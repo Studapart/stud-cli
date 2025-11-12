@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
+- Add `getLatestRelease()` method to `GithubProvider` service for fetching the latest GitHub release.
+
 ## [1.0.4] - 2025-11-12
 
 ### Added

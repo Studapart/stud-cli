@@ -82,4 +82,47 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->createPullRequest($title, $head, $base, $body);
     }
+
+    public function testGetLatestReleaseSuccess(): void
+    {
+        $expectedResponse = [
+            'tag_name' => 'v1.2.3',
+            'name' => 'Release 1.2.3',
+            'assets' => [],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/releases/latest"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getLatestRelease();
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testGetLatestReleaseFailure(): void
+    {
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->getLatestRelease();
+    }
 }
