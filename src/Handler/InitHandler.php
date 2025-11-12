@@ -33,10 +33,9 @@ class InitHandler
         $io->text([
             'This is required for the `stud submit` command to create Pull Requests.',
             'You can generate a token here: https://github.com/settings/tokens', // Assuming GitHub
+            'Note: Repository owner and name will be automatically detected from your git remote.',
         ]);
         $gitProvider = $io->choice('Select your Git provider', ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
-        $gitRepoOwner = $io->ask('Enter the repository owner/organization', $existingConfig['GIT_REPO_OWNER'] ?? null);
-        $gitRepoName = $io->ask('Enter the repository name', $existingConfig['GIT_REPO_NAME'] ?? null);
         $gitToken = $io->askHidden('Enter your Git provider PAT (leave blank to keep existing)');
 
         $config = [
@@ -44,8 +43,6 @@ class InitHandler
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
             'GIT_PROVIDER' => $gitProvider,
-            'GIT_REPO_OWNER' => $gitRepoOwner,
-            'GIT_REPO_NAME' => $gitRepoName,
             'GIT_TOKEN' => $gitToken ?: ($existingConfig['GIT_TOKEN'] ?? null),
         ];
 
