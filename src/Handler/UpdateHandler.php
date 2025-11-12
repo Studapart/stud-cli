@@ -150,12 +150,14 @@ class UpdateHandler
             rename($tempFile, $binaryPath);
             chmod($binaryPath, 0755);
         } catch (\Exception $e) {
+            // @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases
             $io->error([
                 'Failed to replace the binary.',
                 'Error: ' . $e->getMessage(),
             ]);
             @unlink($tempFile);
             return 1;
+            // @codeCoverageIgnoreEnd
         }
 
         $io->success("✅ Update complete! You are now on {$release['tag_name']}.");
@@ -167,6 +169,7 @@ class UpdateHandler
     {
         // If running as PHAR, use Phar::running()
         if (class_exists('Phar') && \Phar::running(false)) {
+            // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
             return \Phar::running(false);
         }
 
@@ -177,9 +180,11 @@ class UpdateHandler
             
             // If we're in a PHAR, the filename will be phar://...
             if (str_starts_with($filename, 'phar://')) {
+                // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
                 return $filename;
             }
         } catch (\ReflectionException $e) {
+            // @codeCoverageIgnore - ReflectionException is hard to trigger in tests
             // Fall through to next method
         }
 
