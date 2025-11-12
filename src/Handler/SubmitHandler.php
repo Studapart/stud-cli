@@ -87,12 +87,21 @@ class SubmitHandler
             $prBody = "Resolves: {$this->jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
         }
 
-        // 7. Call the Git Provider API
+        // 7. Format the head parameter for GitHub API
+        // GitHub requires "owner:branch" format when creating PR from a fork
+        $remoteOwner = $this->gitRepository->getRemoteOwner('origin');
+        $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
+
+        if ($io->isVerbose()) {
+            $io->writeln("  <fg=gray>Using head branch: {$headBranch}</>");
+        }
+
+        // 8. Call the Git Provider API
         $io->text('Creating Pull Request...');
 
         try {
             if ($this->githubProvider) {
-                $prData = $this->githubProvider->createPullRequest($prTitle, $branch, 'develop', $prBody);
+                $prData = $this->githubProvider->createPullRequest($prTitle, $headBranch, 'develop', $prBody);
                 $io->success("✅ Pull Request created: {$prData['html_url']}");
             } else {
                 $io->warning('No Git provider configured for this project.');

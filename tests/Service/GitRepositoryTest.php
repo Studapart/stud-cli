@@ -690,4 +690,111 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->gitRepository->forcePushWithLeaseRemote('origin', 'main');
     }
+
+    public function testGetRemoteOwnerWithSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@github.com:studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRemoteOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRemoteOwnerWithHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://github.com/studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRemoteOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRemoteOwnerWithHttpsUrlWithoutGitExtension(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://github.com/studapart/stud-cli');
+
+        $owner = $this->gitRepository->getRemoteOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRemoteOwnerReturnsNullIfNotSuccessful(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $owner = $this->gitRepository->getRemoteOwner('origin');
+
+        $this->assertNull($owner);
+    }
+
+    public function testGetRemoteOwnerReturnsNullIfUrlDoesNotMatchPattern(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@gitlab.com:studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRemoteOwner('origin');
+
+        $this->assertNull($owner);
+    }
 }

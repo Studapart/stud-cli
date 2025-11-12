@@ -42,6 +42,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRemoteOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -63,7 +64,16 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        $this->githubProvider->method('createPullRequest')->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                'studapart:feat/TPW-35-my-feature',
+                'develop',
+                'My rendered description'
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -307,6 +317,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRemoteOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -339,6 +350,53 @@ class SubmitHandlerTest extends CommandTestCase
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
         $this->assertStringContainsString('Fetching Jira issue for PR body: TPW-35', $outputText);
+        $this->assertStringContainsString('Using head branch: studapart:feat/TPW-35-my-feature', $outputText);
         $this->assertStringContainsString('✅ Pull Request created: https://github.com/my-owner/my-repo/pull/1', $outputText);
+    }
+
+    public function testHandleWithNullRemoteOwnerFallsBackToBranchName(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRemoteOwner')->willReturn(null);
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                'feat/TPW-35-my-feature',
+                'develop',
+                'My rendered description'
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString('✅ Pull Request created: https://github.com/my-owner/my-repo/pull/1', $output->fetch());
     }
 }

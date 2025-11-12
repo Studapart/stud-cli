@@ -207,6 +207,14 @@ These commands integrate directly with your local Git repository to streamline y
         stud ss
         ```
 
+-   **`stud submit`** (Alias: `stud sub`)
+    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub.
+    -   **Usage:**
+        ```bash
+        stud submit
+        stud sub
+        ```
+
 #### Release Commands
 
 These commands help you manage the release process.
