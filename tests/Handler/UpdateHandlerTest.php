@@ -211,5 +211,29 @@ class UpdateHandlerTest extends CommandTestCase
         $outputText = $output->fetch();
         $this->assertStringContainsString('Could not find stud.phar asset', $outputText);
     }
+
+    public function testHandleWithNoReleasesFound(): void
+    {
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryName')->willReturn('stud-cli');
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(404);
+        $response->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($response);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('No releases found for this repository', $outputText);
+    }
 }
 

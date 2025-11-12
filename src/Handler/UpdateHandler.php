@@ -59,6 +59,15 @@ class UpdateHandler
         try {
             $release = $githubProvider->getLatestRelease();
         } catch (\Exception $e) {
+            // Check if it's a 404 (no releases found)
+            if (str_contains($e->getMessage(), 'Status: 404')) {
+                $io->warning([
+                    'No releases found for this repository.',
+                    'The repository may not have any published releases yet.',
+                ]);
+                return 0;
+            }
+            
             $io->error([
                 'Failed to fetch latest release information.',
                 'Error: ' . $e->getMessage(),
