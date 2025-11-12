@@ -696,7 +696,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -718,7 +718,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -740,7 +740,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -762,7 +762,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -781,7 +781,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -803,7 +803,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -825,7 +825,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -847,7 +847,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -869,7 +869,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -888,7 +888,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git remote get-url origin')
+            ->with('git config --get remote.origin.url')
             ->willReturn($process);
 
         $process->expects($this->once())

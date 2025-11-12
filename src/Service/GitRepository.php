@@ -212,13 +212,11 @@ class GitRepository
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
-        $process = $this->runQuietly("git remote get-url {$remote}");
+        $remoteUrl = $this->getRemoteUrl($remote);
 
-        if (!$process->isSuccessful()) {
+        if (!$remoteUrl) {
             return null;
         }
-
-        $remoteUrl = trim($process->getOutput());
 
         // Parse owner from different Git URL formats
         // SSH format: git@github.com:owner/repo.git
@@ -232,13 +230,11 @@ class GitRepository
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
-        $process = $this->runQuietly("git remote get-url {$remote}");
+        $remoteUrl = $this->getRemoteUrl($remote);
 
-        if (!$process->isSuccessful()) {
+        if (!$remoteUrl) {
             return null;
         }
-
-        $remoteUrl = trim($process->getOutput());
 
         // Parse repository name from different Git URL formats
         // SSH format: git@github.com:owner/repo.git
@@ -248,6 +244,19 @@ class GitRepository
         }
 
         return null;
+    }
+
+    protected function getRemoteUrl(string $remote = 'origin'): ?string
+    {
+        $process = $this->runQuietly("git config --get remote.{$remote}.url");
+
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+
+        $remoteUrl = trim($process->getOutput());
+
+        return empty($remoteUrl) ? null : $remoteUrl;
     }
     
     public function run(string $command): Process
