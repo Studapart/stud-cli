@@ -111,12 +111,11 @@ class SubmitHandler
             $errorMessage = $e->getMessage();
             $lowerMessage = strtolower($errorMessage);
             
-            // Temporary debug - save to file
-            file_put_contents('/tmp/stud-error-debug.txt', "Error message:\n" . $errorMessage . "\n\nLower:\n" . $lowerMessage . "\n\nContains 422: " . (str_contains($errorMessage, 'Status: 422') ? 'YES' : 'NO') . "\nContains exists: " . (str_contains($lowerMessage, 'pull request already exists') ? 'YES' : 'NO'));
-            
             // GitHub returns 422 with "A pull request already exists" message
             $is422 = str_contains($errorMessage, 'Status: 422');
             $isPRExists = str_contains($lowerMessage, 'pull request already exists');
+            
+            $io->writeln("DEBUG: is422={$is422}, isPRExists={$isPRExists}");
             
             if ($is422 && $isPRExists) {
                 $io->warning([
