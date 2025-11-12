@@ -267,6 +267,11 @@ function submit(): void
         $repoOwner = $gitRepository->getRepositoryOwner();
         $repoName = $gitRepository->getRepositoryName();
         
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Detected repository owner: " . ($repoOwner ?: 'null') . "</>");
+            io()->writeln("  <fg=gray>Detected repository name: " . ($repoName ?: 'null') . "</>");
+        }
+        
         if (!$repoOwner || !$repoName) {
             io()->error([
                 'Could not determine repository owner or name from git remote.',
