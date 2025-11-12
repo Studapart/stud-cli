@@ -108,7 +108,10 @@ class SubmitHandler
             }
         } catch (\Exception $e) {
             // Check if PR already exists (GitHub returns 422 status)
-            if (str_contains($e->getMessage(), 'Status: 422') && str_contains($e->getMessage(), 'pull request already exists')) {
+            $errorMessage = $e->getMessage();
+            if (str_contains($errorMessage, 'Status: 422') && 
+                (str_contains(strtolower($errorMessage), 'pull request already exists') || 
+                 str_contains(strtolower($errorMessage), 'a pull request already exists'))) {
                 $io->warning([
                     'A Pull Request already exists for this branch.',
                     'Your changes have been pushed successfully.',
@@ -118,7 +121,7 @@ class SubmitHandler
             
             $io->error([
                 'Failed to create Pull Request.',
-                'Error: ' . $e->getMessage(),
+                'Error: ' . $errorMessage,
             ]);
             return 1;
         }
