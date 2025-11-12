@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2025-11-12
+
 ### Added
 
 - GitHub Action to automatically build and release `stud.phar` on new version tags.
