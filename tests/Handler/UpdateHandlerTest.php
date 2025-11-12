@@ -33,6 +33,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->gitRepository,
             '1.0.0',
             $this->tempBinaryPath,
+            null, // gitToken
             $this->httpClient
         );
     }

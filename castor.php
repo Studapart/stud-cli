@@ -474,10 +474,20 @@ function update(): void
         $binaryPath = __FILE__;
     }
     
+    // Get Git token from config if available (needed for private repositories)
+    $gitToken = null;
+    try {
+        $gitConfig = _get_git_config();
+        $gitToken = $gitConfig['GIT_TOKEN'] ?? null;
+    } catch (\Exception $e) {
+        // Config might not exist, that's okay - we'll try without token
+    }
+    
     $handler = new UpdateHandler(
         _get_git_repository(),
         APP_VERSION,
-        $binaryPath
+        $binaryPath,
+        $gitToken
     );
     $result = $handler->handle(io());
     exit($result);

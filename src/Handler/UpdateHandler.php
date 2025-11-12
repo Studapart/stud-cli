@@ -14,6 +14,7 @@ class UpdateHandler
         private readonly GitRepository $gitRepository,
         private readonly string $currentVersion,
         private readonly string $binaryPath,
+        private ?string $gitToken = null,
         private ?HttpClientInterface $httpClient = null
     ) {
     }
@@ -46,15 +47,21 @@ class UpdateHandler
             $io->writeln("  <fg=gray>Current version: {$this->currentVersion}</>");
         }
 
-        // Create GitHub client (no token needed for public releases)
+        // Create GitHub client (use token if available for private repositories)
+        $headers = [
+            'Accept' => 'application/vnd.github.v3+json',
+            'User-Agent' => 'stud-cli',
+        ];
+        
+        if ($this->gitToken) {
+            $headers['Authorization'] = 'Bearer ' . $this->gitToken;
+        }
+        
         $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', [
-            'headers' => [
-                'Accept' => 'application/vnd.github.v3+json',
-                'User-Agent' => 'stud-cli',
-            ],
+            'headers' => $headers,
         ]);
 
-        $githubProvider = new GithubProvider('', $repoOwner, $repoName, $client);
+        $githubProvider = new GithubProvider($this->gitToken ?? '', $repoOwner, $repoName, $client);
 
         try {
             $release = $githubProvider->getLatestRelease();
@@ -90,10 +97,13 @@ class UpdateHandler
 
         $io->text("A new version ({$release['tag_name']}) is available. Updating...");
 
-        // Find the stud.phar asset
+        // Find the stud.phar asset (could be stud.phar or stud-VERSION.phar)
         $pharAsset = null;
         foreach ($release['assets'] ?? [] as $asset) {
-            if ($asset['name'] === 'stud.phar' || str_ends_with($asset['name'], '.phar')) {
+            $assetName = $asset['name'];
+            // Match stud.phar or stud-VERSION.phar pattern
+            if ($assetName === 'stud.phar' || 
+                (str_starts_with($assetName, 'stud-') && str_ends_with($assetName, '.phar'))) {
                 $pharAsset = $asset;
                 break;
             }
