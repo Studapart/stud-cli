@@ -353,7 +353,7 @@ class SubmitHandlerTest extends CommandTestCase
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
         $this->assertStringContainsString('A Pull Request already exists for this branch.', $outputText);
-        $this->assertStringContainsString('Your changes have been pushed successfully.', $outputText);
+        $this->assertStringContainsString('Changes have been pushed to GitHub', $outputText);
     }
 
     public function testHandleWithVerboseOutput(): void

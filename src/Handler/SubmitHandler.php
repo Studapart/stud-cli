@@ -114,10 +114,8 @@ class SubmitHandler
             // GitHub returns 422 with "A pull request already exists" message
             if (str_contains($errorMessage, 'Status: 422') && 
                 str_contains($lowerMessage, 'pull request already exists')) {
-                $io->warning([
-                    'A Pull Request already exists for this branch.',
-                    'Your changes have been pushed successfully.',
-                ]);
+                $io->note('A Pull Request already exists for this branch.');
+                $io->success('✅ Changes have been pushed to GitHub');
                 return 0;
             }
             
