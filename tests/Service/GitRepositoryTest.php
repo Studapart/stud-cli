@@ -691,7 +691,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->forcePushWithLeaseRemote('origin', 'main');
     }
 
-    public function testGetRemoteOwnerWithSshUrl(): void
+    public function testGetRepositoryOwnerWithSshUrl(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -708,12 +708,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('git@github.com:studapart/stud-cli.git');
 
-        $owner = $this->gitRepository->getRemoteOwner('origin');
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
 
         $this->assertSame('studapart', $owner);
     }
 
-    public function testGetRemoteOwnerWithHttpsUrl(): void
+    public function testGetRepositoryOwnerWithHttpsUrl(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -730,12 +730,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('https://github.com/studapart/stud-cli.git');
 
-        $owner = $this->gitRepository->getRemoteOwner('origin');
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
 
         $this->assertSame('studapart', $owner);
     }
 
-    public function testGetRemoteOwnerWithHttpsUrlWithoutGitExtension(): void
+    public function testGetRepositoryOwnerWithHttpsUrlWithoutGitExtension(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -752,12 +752,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('https://github.com/studapart/stud-cli');
 
-        $owner = $this->gitRepository->getRemoteOwner('origin');
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
 
         $this->assertSame('studapart', $owner);
     }
 
-    public function testGetRemoteOwnerReturnsNullIfNotSuccessful(): void
+    public function testGetRepositoryOwnerReturnsNullIfNotSuccessful(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -771,12 +771,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('isSuccessful')
             ->willReturn(false);
 
-        $owner = $this->gitRepository->getRemoteOwner('origin');
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
 
         $this->assertNull($owner);
     }
 
-    public function testGetRemoteOwnerReturnsNullIfUrlDoesNotMatchPattern(): void
+    public function testGetRepositoryOwnerReturnsNullIfUrlDoesNotMatchPattern(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -793,8 +793,115 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('git@gitlab.com:studapart/stud-cli.git');
 
-        $owner = $this->gitRepository->getRemoteOwner('origin');
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
 
         $this->assertNull($owner);
+    }
+
+    public function testGetRepositoryNameWithSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@github.com:studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
+    public function testGetRepositoryNameWithHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://github.com/studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
+    public function testGetRepositoryNameWithHttpsUrlWithoutGitExtension(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://github.com/studapart/stud-cli');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
+    public function testGetRepositoryNameReturnsNullIfNotSuccessful(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertNull($name);
+    }
+
+    public function testGetRepositoryNameReturnsNullIfUrlDoesNotMatchPattern(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git remote get-url origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@gitlab.com:studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertNull($name);
     }
 }

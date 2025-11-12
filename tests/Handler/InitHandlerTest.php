@@ -50,8 +50,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "github\n");
-        fwrite($inputStream, "repo_owner\n");
-        fwrite($inputStream, "repo_name\n");
         fwrite($inputStream, "git_token\n");
         rewind($inputStream);
 
@@ -70,8 +68,6 @@ class InitHandlerTest extends CommandTestCase
             'JIRA_EMAIL' => 'existing@example.com',
             'JIRA_API_TOKEN' => 'existing_jira_token',
             'GIT_PROVIDER' => 'github',
-            'GIT_REPO_OWNER' => 'existing_owner',
-            'GIT_REPO_NAME' => 'existing_repo',
             'GIT_TOKEN' => 'existing_git_token',
         ];
 
@@ -89,8 +85,6 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_EMAIL' => 'new@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token', // Should remain unchanged
                     'GIT_PROVIDER' => 'gitlab',
-                    'GIT_REPO_OWNER' => 'new_owner',
-                    'GIT_REPO_NAME' => 'new_repo',
                     'GIT_TOKEN' => 'existing_git_token', // Should remain unchanged
                 ])
             );
@@ -118,8 +112,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "new@example.com\n"); // New Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
         fwrite($inputStream, "gitlab\n"); // Change Git provider
-        fwrite($inputStream, "new_owner\n"); // New Repo Owner
-        fwrite($inputStream, "new_repo\n"); // New Repo Name
         fwrite($inputStream, "\n"); // Keep existing Git token
         rewind($inputStream);
 
@@ -162,8 +154,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "github\n");
-        fwrite($inputStream, "repo_owner\n");
-        fwrite($inputStream, "repo_name\n");
         fwrite($inputStream, "git_token\n");
         rewind($inputStream);
 
@@ -182,8 +172,6 @@ class InitHandlerTest extends CommandTestCase
             'JIRA_EMAIL' => 'existing@example.com',
             'JIRA_API_TOKEN' => 'existing_jira_token',
             'GIT_PROVIDER' => 'github',
-            'GIT_REPO_OWNER' => 'existing_owner',
-            'GIT_REPO_NAME' => 'existing_repo',
             'GIT_TOKEN' => 'existing_git_token',
         ];
 
@@ -201,8 +189,6 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_EMAIL' => 'existing@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token',
                     'GIT_PROVIDER' => 'github',
-                    'GIT_REPO_OWNER' => 'existing_owner',
-                    'GIT_REPO_NAME' => 'existing_repo',
                     'GIT_TOKEN' => 'existing_git_token',
                 ])
             );
@@ -230,8 +216,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "\n"); // Keep existing Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
         fwrite($inputStream, "\n"); // Keep existing Git provider
-        fwrite($inputStream, "\n"); // Keep existing Repo Owner
-        fwrite($inputStream, "\n"); // Keep existing Repo Name
         fwrite($inputStream, "\n"); // Keep existing Git token
         rewind($inputStream);
 
@@ -259,8 +243,6 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
                     'GIT_PROVIDER' => 'github',
-                    'GIT_REPO_OWNER' => 'repo_owner',
-                    'GIT_REPO_NAME' => 'repo_name',
                     'GIT_TOKEN' => 'git_token',
                 ])
             );
@@ -282,8 +264,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "github\n");
-        fwrite($inputStream, "repo_owner\n");
-        fwrite($inputStream, "repo_name\n");
         fwrite($inputStream, "git_token\n");
         rewind($inputStream);
 
@@ -311,8 +291,6 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
                     'GIT_PROVIDER' => 'gitlab',
-                    'GIT_REPO_OWNER' => 'repo_owner',
-                    'GIT_REPO_NAME' => 'repo_name',
                     'GIT_TOKEN' => 'git_token',
                 ])
             );
@@ -334,8 +312,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "gitlab\n"); // Select Gitlab
-        fwrite($inputStream, "repo_owner\n");
-        fwrite($inputStream, "repo_name\n");
         fwrite($inputStream, "git_token\n");
         rewind($inputStream);
 
@@ -363,8 +339,6 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
                     'GIT_PROVIDER' => 'github',
-                    'GIT_REPO_OWNER' => 'repo_owner',
-                    'GIT_REPO_NAME' => 'repo_name',
                     'GIT_TOKEN' => 'git_token',
                 ])
             );
@@ -386,8 +360,6 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "github\n");
-        fwrite($inputStream, "repo_owner\n");
-        fwrite($inputStream, "repo_name\n");
         fwrite($inputStream, "git_token\n");
         rewind($inputStream);
 

@@ -42,7 +42,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRemoteOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -317,7 +317,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRemoteOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -358,7 +358,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRemoteOwner')->willReturn(null);
+        $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);

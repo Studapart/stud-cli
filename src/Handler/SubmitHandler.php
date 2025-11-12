@@ -89,7 +89,7 @@ class SubmitHandler
 
         // 7. Format the head parameter for GitHub API
         // GitHub requires "owner:branch" format when creating PR from a fork
-        $remoteOwner = $this->gitRepository->getRemoteOwner('origin');
+        $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
         if ($io->isVerbose()) {

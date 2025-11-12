@@ -210,7 +210,7 @@ class GitRepository
         return !empty(trim($process->getOutput()));
     }
 
-    public function getRemoteOwner(string $remote = 'origin'): ?string
+    public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
         $process = $this->runQuietly("git remote get-url {$remote}");
 
@@ -225,6 +225,26 @@ class GitRepository
         // HTTPS format: https://github.com/owner/repo.git
         if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return $matches[1];
+        }
+
+        return null;
+    }
+
+    public function getRepositoryName(string $remote = 'origin'): ?string
+    {
+        $process = $this->runQuietly("git remote get-url {$remote}");
+
+        if (!$process->isSuccessful()) {
+            return null;
+        }
+
+        $remoteUrl = trim($process->getOutput());
+
+        // Parse repository name from different Git URL formats
+        // SSH format: git@github.com:owner/repo.git
+        // HTTPS format: https://github.com/owner/repo.git
+        if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            return $matches[2];
         }
 
         return null;

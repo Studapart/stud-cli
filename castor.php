@@ -102,7 +102,7 @@ function _get_jira_config(): array
 function _get_git_config(): array
 {
     $config = _get_config();
-    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN', 'GIT_REPO_OWNER', 'GIT_REPO_NAME'], array_keys($config));
+    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN'], array_keys($config));
 
     if (!empty($missingKeys)) {
         io()->error([
@@ -259,17 +259,32 @@ function submit(): void
 {
     _load_constants();
     $gitConfig = _get_git_config();
+    $gitRepository = _get_git_repository();
+    
     $githubProvider = null;
     if ($gitConfig['GIT_PROVIDER'] === 'github') {
+        // Get repository owner and name from git remote at runtime
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+        
+        if (!$repoOwner || !$repoName) {
+            io()->error([
+                'Could not determine repository owner or name from git remote.',
+                'Please ensure your repository has a remote named "origin" configured.',
+                'You can check with: git remote -v',
+            ]);
+            exit(1);
+        }
+        
         $githubProvider = new GithubProvider(
             $gitConfig['GIT_TOKEN'],
-            $gitConfig['GIT_REPO_OWNER'],
-            $gitConfig['GIT_REPO_NAME']
+            $repoOwner,
+            $repoName
         );
     }
 
     $handler = new SubmitHandler(
-        _get_git_repository(),
+        $gitRepository,
         _get_jira_service(),
         $githubProvider,
         _get_jira_config(),

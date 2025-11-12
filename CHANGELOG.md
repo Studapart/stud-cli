@@ -11,10 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - GitHub Action to automatically build and release `stud.phar` on new version tags.
 - CI: Implement automatic PHPUnit tests and coverage reporting on Pull Requests.
+- Add `getRepositoryOwner()` and `getRepositoryName()` methods to `GitRepository` service for dynamic repository detection.
 
 ### Changed
 
 - Update `items:list` command to use `statusCategory` for JQL queries, providing more flexible filtering.
+- **[BREAKING]** Remove `GIT_REPO_OWNER` and `GIT_REPO_NAME` from global configuration - repository details are now automatically detected from git remote.
+- Refactor `config:init` command to no longer prompt for repository owner and name.
+- Update `submit` command to dynamically detect repository owner and name from git remote at runtime.
 
 ### Fixed
 
