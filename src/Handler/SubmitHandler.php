@@ -112,12 +112,8 @@ class SubmitHandler
             $lowerMessage = strtolower($errorMessage);
             
             // GitHub returns 422 with "A pull request already exists" message
-            $is422 = str_contains($errorMessage, 'Status: 422');
-            $isPRExists = str_contains($lowerMessage, 'pull request already exists');
-            
-            $io->writeln("DEBUG: is422={$is422}, isPRExists={$isPRExists}");
-            
-            if ($is422 && $isPRExists) {
+            if (str_contains($errorMessage, 'Status: 422') && 
+                str_contains($lowerMessage, 'pull request already exists')) {
                 $io->warning([
                     'A Pull Request already exists for this branch.',
                     'Your changes have been pushed successfully.',
