@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update `items:list` command to use `statusCategory` for JQL queries, providing more flexible filtering.
 
+### Fixed
+
+- Fix `submit` command GitHub API error by properly formatting the `head` parameter with repository owner prefix (e.g., `owner:branch`) when creating pull requests.
+
 ## [1.0.0] - 2025-11-06
 
 ### Added

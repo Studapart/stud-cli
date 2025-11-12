@@ -4,5 +4,5 @@
 
 return array (
   'name' => 'Stud Cli DX - Jira & Git Workflow Streamliner',
-  'version' => '1.0.3',
+  'version' => '1.0.4',
 );
