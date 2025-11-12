@@ -192,16 +192,14 @@ class UpdateHandler
         try {
             rename($tempFile, $binaryPath);
             chmod($binaryPath, 0755);
-        } catch (\Exception $e) {
-            /** @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases */
+        } catch (\Exception $e) { // @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases
             $io->error([
                 'Failed to replace the binary.',
                 'Error: ' . $e->getMessage(),
             ]);
             @unlink($tempFile);
             return 1;
-            /** @codeCoverageIgnoreEnd */
-        }
+        } // @codeCoverageIgnoreEnd
 
         $io->success("✅ Update complete! You are now on {$tagName}.");
         return 0;
@@ -218,8 +216,7 @@ class UpdateHandler
     {
         // If running as PHAR, use Phar::running()
         if (class_exists('Phar') && \Phar::running(false)) {
-            /** @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment */
-            return \Phar::running(false);
+            return \Phar::running(false); // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
         }
 
         // Otherwise, try to get path from ReflectionClass as suggested in ticket
@@ -229,11 +226,9 @@ class UpdateHandler
             
             // If we're in a PHAR, the filename will be phar://...
             if (str_starts_with($filename, 'phar://')) {
-                /** @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment */
-                return $filename;
+                return $filename; // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
             }
-        } catch (\ReflectionException $e) {
-            /** @codeCoverageIgnore - ReflectionException is hard to trigger in tests */
+        } catch (\ReflectionException $e) { // @codeCoverageIgnore - ReflectionException is hard to trigger in tests
             // Fall through to next method
         }
 
