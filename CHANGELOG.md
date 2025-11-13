@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
 - Add `getLatestRelease()` method to `GithubProvider` service for fetching the latest GitHub release.
+- Add "Updating" section to README.md with instructions for using `stud update`.
+
+### Changed
+
+- Update README.md installation guide to recommend user-owned installation path (`~/.local/bin/`) for seamless updates without `sudo`.
+- Move global installation method (`/usr/local/bin/`) to "Alternative Installation" section with note about requiring `sudo` for updates.
 
 ## [1.0.4] - 2025-11-12
 
