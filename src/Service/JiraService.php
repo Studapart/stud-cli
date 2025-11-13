@@ -80,7 +80,7 @@ class JiraService
         );
     }
 
-    private function mapToWorkItem(array $data): WorkItem
+    protected function mapToWorkItem(array $data): WorkItem
     {
         $fields = $data['fields'];
 
@@ -122,7 +122,7 @@ class JiraService
      * Converts HTML content to plain text suitable for terminal display.
      * Uses Stevebauman\Hypertext library for robust conversion.
      */
-    private function _convertHtmlToPlainText(string $html): string
+    protected function _convertHtmlToPlainText(string $html): string
     {
         $text = $this->transformer
             ->keepLinks()
