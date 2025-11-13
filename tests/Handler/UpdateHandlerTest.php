@@ -98,6 +98,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],
@@ -117,6 +118,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -146,6 +149,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],
@@ -165,6 +169,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -188,6 +194,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 11111111,
                     'name' => 'readme.md',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/readme.md',
                 ],
@@ -246,6 +253,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
                 ],
@@ -265,6 +273,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -292,6 +302,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
                 ],
@@ -311,6 +322,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -334,14 +347,17 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 11111111,
                     'name' => 'readme.md',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/readme.md',
                 ],
                 [
+                    'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
                 ],
                 [
+                    'id' => 22222222,
                     'name' => 'other-tool.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/other-tool.phar',
                 ],
@@ -361,8 +377,9 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
-                // Verify it downloads the correct asset
-                $this->assertStringContainsString('stud-1.0.1.phar', $url);
+                // Verify it's using the API asset endpoint with the correct asset ID
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
+                $this->assertStringContainsString('12345678', $url);
                 return $downloadResponse;
             });
 
@@ -452,6 +469,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => '1.0.1', // No 'v' prefix
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/1.0.1/stud.phar',
                 ],
@@ -471,6 +489,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -521,6 +541,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],
@@ -575,6 +596,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],
@@ -594,6 +616,8 @@ class UpdateHandlerTest extends CommandTestCase
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
+                // Verify it's using the API asset endpoint, not browser_download_url
+                $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
                 return $downloadResponse;
             });
 
@@ -757,6 +781,7 @@ class UpdateHandlerTest extends CommandTestCase
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
+                    'id' => 12345678,
                     'name' => 'stud.phar',
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
                 ],

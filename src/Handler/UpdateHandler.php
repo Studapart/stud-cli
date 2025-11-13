@@ -59,7 +59,7 @@ class UpdateHandler
             return 1;
         }
 
-        $tempFile = $this->downloadPhar($io, $pharAsset);
+        $tempFile = $this->downloadPhar($io, $pharAsset, $repoOwner, $repoName);
         if ($tempFile === null) {
             return 1;
         }
@@ -159,14 +159,28 @@ class UpdateHandler
         return null;
     }
 
-    protected function downloadPhar(SymfonyStyle $io, array $pharAsset): ?string
+    protected function downloadPhar(SymfonyStyle $io, array $pharAsset, string $repoOwner, string $repoName): ?string
     {
         $tempFile = sys_get_temp_dir() . '/stud.phar.new';
-        $this->logVerbose($io, 'Downloading from', $pharAsset['browser_download_url']);
+        
+        // Extract asset ID from the asset object
+        $assetId = $pharAsset['id'] ?? null;
+        if (!$assetId) {
+            $io->error([
+                'Failed to download the new version.',
+                'Error: Asset ID not found in release asset.',
+            ]);
+            return null;
+        }
+        
+        // Construct the GitHub API asset endpoint URL
+        $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
+        $this->logVerbose($io, 'Downloading from', $apiUrl);
 
         try {
             $headers = [
                 'User-Agent' => 'stud-cli',
+                'Accept' => 'application/octet-stream',
             ];
             
             if ($this->gitToken) {
@@ -180,7 +194,7 @@ class UpdateHandler
                 'headers' => $headers,
             ]);
             
-            $response = $downloadClient->request('GET', $pharAsset['browser_download_url']);
+            $response = $downloadClient->request('GET', $apiUrl);
             file_put_contents($tempFile, $response->getContent());
             return $tempFile;
         } catch (\Exception $e) {
