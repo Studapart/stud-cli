@@ -29,12 +29,14 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider = $this->createMock(GithubProvider::class);
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$translationService = $this->translationService;
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
             $this->githubProvider,
             $this->jiraConfig,
-            'origin/develop'
+            'origin/develop',
+            $this->translationService
         );
     }
 
@@ -228,7 +230,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraService,
             null, // No GithubProvider
             $this->jiraConfig,
-            'origin/develop'
+            'origin/develop',
+            $this->translationService
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');

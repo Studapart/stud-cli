@@ -22,7 +22,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop');
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
     }
 
     public function testHandle(): void

@@ -3,6 +3,7 @@
 namespace App\Handler;
 
 use App\Service\FileSystem;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
 
@@ -10,7 +11,8 @@ class InitHandler
 {
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly string $configPath
+        private readonly string $configPath,
+        private readonly TranslationService $translator
     ) {
     }
 
@@ -18,27 +20,54 @@ class InitHandler
     {
         $existingConfig = $this->fileSystem->fileExists($this->configPath) ? $this->fileSystem->parseFile($this->configPath) : [];
 
-        $io->section('Stud CLI Configuration Wizard');
-        $io->text('This will create or update your configuration file at: ' . $this->configPath);
+        $io->section($this->translator->trans('config.init.wizard.title'));
+        $io->text($this->translator->trans('config.init.wizard.description', ['path' => $this->configPath]));
+
+        // Language Configuration
+        $io->section($this->translator->trans('config.init.language.title'));
+        $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
+        $defaultLanguage = $existingConfig['LANGUAGE'] ?? 'en';
+        
+        // Create display options with format "English (en)"
+        $languageOptions = [];
+        $languageMap = []; // Maps display string to code
+        foreach ($availableLanguages as $code => $name) {
+            $display = "{$name} ({$code})";
+            $languageOptions[] = $display;
+            $languageMap[$display] = $code;
+        }
+        
+        // Find the default display option
+        $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
+        
+        $languageChoiceDisplay = $io->choice(
+            $this->translator->trans('config.init.language.prompt'),
+            $languageOptions,
+            $defaultDisplay
+        );
+        
+        // Map back to the short code
+        $languageChoice = $languageMap[$languageChoiceDisplay];
 
         // Jira Configuration
-        $io->section('Jira Configuration');
-        $io->text('You can generate an API token here: https://id.atlassian.com/manage-profile/security/api-tokens');
-        $jiraUrl = $io->ask('Enter your Jira URL', $existingConfig['JIRA_URL'] ?? null);
-        $jiraEmail = $io->ask('Enter your Jira email address', $existingConfig['JIRA_EMAIL'] ?? null);
-        $jiraToken = $io->askHidden('Enter your Jira API token (leave blank to keep existing)');
+        $io->section($this->translator->trans('config.init.jira.title'));
+        $io->text($this->translator->trans('config.init.jira.token_help'));
+        $jiraUrl = $io->ask($this->translator->trans('config.init.jira.url_prompt'), $existingConfig['JIRA_URL'] ?? null);
+        $jiraEmail = $io->ask($this->translator->trans('config.init.jira.email_prompt'), $existingConfig['JIRA_EMAIL'] ?? null);
+        $jiraToken = $io->askHidden($this->translator->trans('config.init.jira.token_prompt'));
 
         // Git Provider Configuration
-        $io->section('Git Provider Configuration');
+        $io->section($this->translator->trans('config.init.git.title'));
         $io->text([
-            'This is required for the `stud submit` command to create Pull Requests.',
-            'You can generate a token here: https://github.com/settings/tokens', // Assuming GitHub
-            'Note: Repository owner and name will be automatically detected from your git remote.',
+            $this->translator->trans('config.init.git.description'),
+            $this->translator->trans('config.init.git.token_help'),
+            $this->translator->trans('config.init.git.auto_detect_note'),
         ]);
-        $gitProvider = $io->choice('Select your Git provider', ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
-        $gitToken = $io->askHidden('Enter your Git provider PAT (leave blank to keep existing)');
+        $gitProvider = $io->choice($this->translator->trans('config.init.git.provider_prompt'), ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
+        $gitToken = $io->askHidden($this->translator->trans('config.init.git.token_prompt'));
 
         $config = [
+            'LANGUAGE' => $languageChoice,
             'JIRA_URL' => rtrim($jiraUrl, '/'),
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
@@ -52,6 +81,6 @@ class InitHandler
         }
 
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump(array_filter($config)));
-        $io->success('Configuration saved successfully!');
+        $io->success($this->translator->trans('config.init.success'));
     }
 }

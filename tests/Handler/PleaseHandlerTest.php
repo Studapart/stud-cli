@@ -19,7 +19,8 @@ class PleaseHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$gitRepository = $this->gitRepository;
-        $this->handler = new PleaseHandler($this->gitRepository);
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
     }
 
     public function testHandleWithUpstream(): void

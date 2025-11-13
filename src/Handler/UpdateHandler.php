@@ -3,6 +3,7 @@
 namespace App\Handler;
 
 use App\Service\GithubProvider;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -14,6 +15,7 @@ class UpdateHandler
         protected readonly string $repoName,
         protected readonly string $currentVersion,
         protected readonly string $binaryPath,
+        protected readonly TranslationService $translator,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null
     ) {
@@ -21,12 +23,12 @@ class UpdateHandler
 
     public function handle(SymfonyStyle $io): int
     {
-        $io->section('Checking for updates');
+        $io->section($this->translator->trans('update.section'));
 
         $binaryPath = $this->getBinaryPath();
-        $this->logVerbose($io, 'Binary path', $binaryPath);
-        $this->logVerbose($io, 'Repository', "{$this->repoOwner}/{$this->repoName}");
-        $this->logVerbose($io, 'Current version', $this->currentVersion);
+        $this->logVerbose($io, $this->translator->trans('update.binary_path'), $binaryPath);
+        $this->logVerbose($io, $this->translator->trans('update.repository'), "{$this->repoOwner}/{$this->repoName}");
+        $this->logVerbose($io, $this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
         $releaseResult = $this->fetchLatestRelease($io, $githubProvider);
@@ -88,17 +90,11 @@ class UpdateHandler
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Status: 404')) {
-                $io->warning([
-                    'No releases found for this repository.',
-                    'The repository may not have any published releases yet.',
-                ]);
+                $io->warning(explode("\n", $this->translator->trans('update.warning_no_releases')));
                 return ['release' => null, 'is404' => true];
             }
             
-            $io->error([
-                'Failed to fetch latest release information.',
-                'Error: ' . $e->getMessage(),
-            ]);
+            $io->error(explode("\n", $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()])));
             return ['release' => null, 'is404' => false];
         }
     }
@@ -108,10 +104,10 @@ class UpdateHandler
         $latestVersion = ltrim($release['tag_name'], 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
 
-        $this->logVerbose($io, 'Latest version', $latestVersion);
+        $this->logVerbose($io, $this->translator->trans('update.latest_version'), $latestVersion);
 
         if (version_compare($latestVersion, $currentVersion, '<=')) {
-            $io->success("You are already on the latest version ({$this->currentVersion}).");
+            $io->success($this->translator->trans('update.success_latest', ['version' => $this->currentVersion]));
             return true;
         }
 
@@ -120,7 +116,7 @@ class UpdateHandler
 
     protected function findPharAsset(SymfonyStyle $io, array $release): ?array
     {
-        $io->text("A new version ({$release['tag_name']}) is available. Updating...");
+        $io->text($this->translator->trans('update.new_version', ['version' => $release['tag_name']]));
 
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'];
@@ -130,10 +126,7 @@ class UpdateHandler
             }
         }
 
-        $io->error([
-            'Could not find stud.phar asset in the latest release.',
-            'Release assets: ' . implode(', ', array_column($release['assets'] ?? [], 'name')),
-        ]);
+        $io->error(explode("\n", $this->translator->trans('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))])));
         return null;
     }
 
@@ -144,16 +137,13 @@ class UpdateHandler
         // Extract asset ID from the asset object
         $assetId = $pharAsset['id'] ?? null;
         if (!$assetId) {
-            $io->error([
-                'Failed to download the new version.',
-                'Error: Asset ID not found in release asset.',
-            ]);
+            $io->error(explode("\n", $this->translator->trans('update.error_asset_id')));
             return null;
         }
         
         // Construct the GitHub API asset endpoint URL
         $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
-        $this->logVerbose($io, 'Downloading from', $apiUrl);
+        $this->logVerbose($io, $this->translator->trans('update.downloading_from'), $apiUrl);
 
         try {
             $headers = [
@@ -176,10 +166,7 @@ class UpdateHandler
             file_put_contents($tempFile, $response->getContent());
             return $tempFile;
         } catch (\Exception $e) {
-            $io->error([
-                'Failed to download the new version.',
-                'Error: ' . $e->getMessage(),
-            ]);
+            $io->error(explode("\n", $this->translator->trans('update.error_download', ['error' => $e->getMessage()])));
             return null;
         }
     }
@@ -187,10 +174,7 @@ class UpdateHandler
     protected function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $tagName): int
     {
         if (!is_writable($binaryPath)) {
-            $io->error([
-                'Update failed: The file is not writable.',
-                'Please re-run with elevated privileges: sudo stud update',
-            ]);
+            $io->error(explode("\n", $this->translator->trans('update.error_not_writable')));
             @unlink($tempFile);
             return 1;
         }
@@ -204,10 +188,7 @@ class UpdateHandler
         try {
             rename($binaryPath, $backupPath);
         } catch (\Exception $e) {
-            $io->error([
-                'Failed to create backup of current version.',
-                'Error: ' . $e->getMessage(),
-            ]);
+            $io->error(explode("\n", $this->translator->trans('update.error_backup', ['error' => $e->getMessage()])));
             @unlink($tempFile);
             return 1;
         }
@@ -227,18 +208,14 @@ class UpdateHandler
         } catch (\Exception $e) {
             try {
                 rename($backupPath, $binaryPath);
-                $io->error([
-                    'Update failed and was rolled back.',
-                    'Error: ' . $e->getMessage(),
-                ]);
+                $io->error(explode("\n", $this->translator->trans('update.error_rollback', ['error' => $e->getMessage()])));
             } catch (\Exception $rollbackException) {
                 // Rollback also failed - this is a critical state
-                $io->error([
-                    'Update failed and rollback also failed!',
-                    'Original error: ' . $e->getMessage(),
-                    'Rollback error: ' . $rollbackException->getMessage(),
-                    'Please manually restore from: ' . $backupPath,
-                ]);
+                $io->error(explode("\n", $this->translator->trans('update.error_rollback_failed', [
+                    'original_error' => $e->getMessage(),
+                    'rollback_error' => $rollbackException->getMessage(),
+                    'backup_path' => $backupPath
+                ])));
             }
             // @codeCoverageIgnoreEnd
             @unlink($tempFile);

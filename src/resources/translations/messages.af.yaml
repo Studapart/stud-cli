@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Stud CLI Konfigurasie Wizard"
+      description: "Dit sal jou konfigurasielêer skep of bywerk by: %path%"
+    language:
+      title: "Taal Konfigurasie"
+      prompt: "Kies jou taal"
+    jira:
+      title: "Jira Konfigurasie"
+      token_help: "Jy kan 'n API token hier genereer: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Voer jou Jira URL in"
+      email_prompt: "Voer jou Jira e-pos adres in"
+      token_prompt: "Voer jou Jira API token in (laat leeg om bestaande te behou)"
+    git:
+      title: "Git Verskaffer Konfigurasie"
+      description: "Dit is nodig vir die `stud submit` opdrag om Pull Requests te skep."
+      token_help: "Jy kan 'n token hier genereer: https://github.com/settings/tokens"
+      auto_detect_note: "Nota: Repository eienaar en naam sal outomaties vanaf jou git remote gedetecteer word."
+      provider_prompt: "Kies jou Git verskaffer"
+      token_prompt: "Voer jou Git verskaffer PAT in (laat leeg om bestaande te behou)"
+    success: "Konfigurasie suksesvol gestoor!"
+  error:
+    not_found: "Konfigurasielêer nie gevind by: %path%\nVoer asseblief \"stud config:init\" uit om een te skep."
+    missing_jira_keys: "Jou konfigurasielêer ontbreek vereiste Jira sleutels: %keys%\nVoer asseblief \"stud config:init\" weer uit."
+    missing_git_keys: "Jou konfigurasielêer ontbreek vereiste Git verskaffer sleutels: %keys%\nVoer asseblief \"stud config:init\" weer uit."
+
+# Item Start Handler
+item:
+  start:
+    section: "Begin werk aan %key%"
+    fetching: "Kry besonderhede vir item: %key%"
+    error_not_found: "Kon nie Jira item met sleutel \"%key%\" vind nie."
+    generated_branch: "Gegenereerde tak naam: %branch%"
+    fetching_changes: "Kry nuutste veranderinge van origin..."
+    creating_branch: "Skep nuwe tak: %branch%"
+    success: "Tak '%branch%' geskep vanaf '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Besonderhede vir item %key%"
+    fetching: "Kry besonderhede vir item: %key%"
+    error_not_found: "Kon nie Jira item met sleutel \"%key%\" vind nie."
+    label_key: "Sleutel"
+    label_title: "Titel"
+    label_status: "Status"
+    label_assignee: "Toegewys"
+    label_type: "Tipe"
+    label_labels: "Etikette"
+    label_description: "Beskrywing"
+    label_link: "Skakel"
+    label_none: "Geen"
+
+# Item List Handler
+  list:
+    section: "Kry Jira Items"
+    error_fetch: "Kon nie items kry nie: %error%"
+    no_items: "Geen items gevind wat by jou kriteria pas nie."
+
+# Project List Handler
+project:
+  list:
+    section: "Kry Jira Projekte"
+    error_fetch: "Kon nie projekte kry nie: %error%"
+    no_projects: "Geen projekte gevind nie."
+
+# Search Handler
+search:
+  section: "Soek Jira items met JQL"
+  jql_query: "JQL Navraag: %jql%"
+  error_search: "Kon nie items soek nie: %error%"
+  no_results: "Geen items gevind wat by jou JQL navraag pas nie."
+
+# Status Handler
+status:
+  section: "Huidige Status"
+  fetching: "Kry status vir Jira item: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Kon nie Jira item besonderhede kry nie: %error%"
+  jira_no_key: "Geen Jira sleutel gevind in tak naam nie."
+  git_branch: "Op tak '%branch%'"
+  local_changes: "Jy het %count% ongecommit veranderinge."
+  local_clean: "Werk gids is skoon."
+
+# Please Handler
+please:
+  error_no_upstream: "Jou huidige tak het nie 'n upstream remote gekonfigureer nie.\nVir die aanvanklike push en om 'n Pull Request te skep, gebruik asseblief \"stud submit\"."
+  warning_force: "⚠️  Dwing met lease..."
+
+# Submit Handler
+submit:
+  section: "Dien Pull Request in"
+  error_dirty_working: "Jou werk gids is nie skoon nie. Commit asseblief jou veranderinge met 'stud commit' voor indiening."
+  error_base_branch: "Kan nie 'n Pull Request van die basis tak skep nie."
+  pushing: "Push tak %branch%..."
+  error_push: "Push het misluk. Jou tak het moontlik geskiedenis herskryf.\nProbeer 'stud please' uitvoer om te force-push."
+  finding_commit: "Soek eerste logiese commit om te gebruik vir PR besonderhede..."
+  fetching_jira: "Kry Jira item vir PR liggaam: %key%"
+  error_no_logical: "Kon nie 'n logiese commit op hierdie tak vind nie. Kan nie PR skep nie."
+  error_no_jira_key: "Kon nie Jira sleutel parseer vanaf commit boodskap nie. Kan nie PR skep nie."
+  warning_jira_fetch: "Kon nie Jira item besonderhede kry vir PR liggaam nie: %error%\nTerugval na 'n eenvoudige skakel."
+  creating: "Skep Pull Request..."
+  success_created: "✅ Pull Request geskep: %url%"
+  warning_no_provider: "Geen Git verskaffer gekonfigureer vir hierdie projek nie."
+  note_pr_exists: "'n Pull Request bestaan reeds vir hierdie tak."
+  success_pushed: "✅ Veranderinge is na GitHub gepush"
+  error_create_pr: "Kon nie Pull Request skep nie.\nFout: %error%"
+  using_head: "Gebruik head tak: %head%"
+
+# Commit Handler
+commit:
+  section: "Konvensionele Commit Helper"
+  staging: "Staging alle veranderinge..."
+  committing: "Commit met verskafde boodskap..."
+  committing_simple: "Commit..."
+  success: "Commit suksesvol geskep!"
+  checking_logical: "Gaan vorige logiese commit na..."
+  found_logical: "Logiese commit SHA gevind: %sha%"
+  creating_fixup: "Skep fixup commit vir %sha%..."
+  fixup_success: "✅ Veranderinge gestoor as fixup vir commit %sha%."
+  note_no_logical: "Geen vorige logiese commit gevind of --new vlag gebruik. Begin interaktiewe prompter..."
+  error_no_key: "Kon nie 'n Jira sleutel in jou huidige tak naam vind nie.\nGebruik asseblief \"stud start <key>\" om 'n tak te skep."
+  fetching_jira: "Kry Jira item: %key%"
+  error_not_found: "Kon nie Jira item met sleutel \"%key%\" vind nie."
+  jira_details: "Jira Item Besonderhede:"
+  jira_title: "Titel: %title%"
+  jira_type: "Tipe: %type% -> %commit_type%"
+  jira_components: "Komponente: %components%"
+  scope_prompt: "Omvang (opsioneel)"
+  scope_auto: "Omvang (outo-gedetecteer '%scope%')"
+  type_prompt: "Commit Tipe (outo-gedetecteer '%type%')"
+  summary_prompt: "Kort Boodskap (outo-ingevul vanaf Jira)"
+  generated_message: "Gegenereerde commit boodskap:\n%message%"
+
+# Update Handler
+update:
+  section: "Gaan na opdaterings"
+  binary_path: "Binêre pad"
+  repository: "Repository"
+  current_version: "Huidige weergawe"
+  latest_version: "Nuutste weergawe"
+  downloading_from: "Laai af vanaf"
+  warning_no_releases: "Geen releases gevind vir hierdie repository nie.\nDie repository het moontlik nog geen gepubliseerde releases nie."
+  error_fetch: "Kon nie nuutste release inligting kry nie.\nFout: %error%"
+  success_latest: "Jy is reeds op die nuutste weergawe (%version%)."
+  new_version: "'n Nuwe weergawe (%version%) is beskikbaar. Opdatering..."
+  error_no_phar: "Kon nie stud.phar asset in die nuutste release vind nie.\nRelease assets: %assets%"
+  error_download: "Kon nie nuwe weergawe aflaai nie.\nFout: %error%"
+  error_asset_id: "Kon nie nuwe weergawe aflaai nie.\nFout: Asset ID nie gevind in release asset nie."
+  error_not_writable: "Opdatering het misluk: Die lêer is nie skryfbaar nie.\nVoer asseblief weer uit met verhoogde voorregte: sudo stud update"
+  error_backup: "Kon nie backup van huidige weergawe skep nie.\nFout: %error%"
+  error_rollback: "Opdatering het misluk en is teruggedraai.\nFout: %error%"
+  error_rollback_failed: "Opdatering het misluk en terugdraai het ook misluk!\nOorspronklike fout: %original_error%\nTerugdraai fout: %rollback_error%\nHerstel asseblief handmatig vanaf: %backup_path%"
+
+# Release Handler
+release:
+  section: "Begin release proses vir weergawe %version%"
+  fetched: "Nuutste veranderinge van origin gekry."
+  created_branch: "Release tak geskep: %branch%"
+  updated_composer: "Weergawe bygewerk in composer.json na %version%"
+  updated_lock: "composer.lock bygewerk"
+  dumped_config: "Konfig gekies na config/app.php"
+  updated_changelog: "CHANGELOG.md bygewerk met weergawe %version%"
+  staged: "Veranderinge gestage."
+  committed: "Weergawe bump gecommit."
+  published: "Release tak gepubliseer na remote."
+  confirm_publish: "Wil jy die release tak na remote publiseer?"
+  success: "Release %version% is gereed om gedeploy te word."
+
+# Deploy Handler
+deploy:
+  section: "Begin deployment proses"
+  error_not_release: "Jy moet op 'n release tak wees om te deploy."
+  deployed: "Gedeploy na main en getag."
+  updated_develop: "Develop tak bygewerk."
+  cleaned: "Release tak skoongemaak."
+  success: "Release v%version% suksesvol gedeploy na main. develop is gerebase en force-push. Takke skoongemaak."
+
+# Table Headers
+table:
+  key: "Sleutel"
+  status: "Status"
+  summary: "Opsomming"
+  name: "Naam"
+  command: "Opdrag"
+  alias: "Alias"
+  description: "Beskrywing"
+
+# Help Command
+help:
+  title: "Handleiding"
+  description_section: "BESKRYWING"
+  description_text: "`stud-cli` is 'n opdragreël koppelvlak instrument ontwerp om 'n ontwikkelaar se daaglikse werkvloei te stroomlyn deur Jira werkitems nou te integreer met plaaslike Git repository bedrywighede. Dit lei jou deur die \"goue pad\" van die begin van 'n taak, die maak van konvensionele commits en die voorbereiding van jou werk vir indiening, alles vanaf die opdragreël."
+  global_options_section: "GLOBALE OPSIES"
+  commands_section: "OPDRAGTE"
+  global_option_help: "Vertoon hulp vir die gegewe opdrag. Wanneer geen opdrag gegee word nie, vertoon hulp vir die lys opdrag."
+  global_option_silent: "Moenie enige boodskap uitskryf nie."
+  global_option_quiet: "Slegs foute word vertoon. Alle ander uitset word onderdruk."
+  global_option_verbose: "Verhoog die uitgebreidheid van boodskappe: 1 vir normale uitset, 2 vir meer uitgebreide uitset en 3 vir debug."
+  category_configuration: "Konfigurasie"
+  category_jira_information: "Jira Inligting"
+  category_git_workflow: "Git Werkvloei"
+  category_release_commands: "Vrystelling Opdragte"
+  example_prefix: "Voorbeeld: %example%"
+  command_config_init: "Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel."
+  command_projects_list: "Lys alle sigbare Jira projekte."
+  command_items_list: "Lys aktiewe werkitems (jou dashboard)."
+  command_items_show: "Toon gedetailleerde inligting vir een werkitem."
+  command_issues_search: "Soek issues met JQL."
+  command_items_start: "Skep 'n nuwe git tak van 'n Jira item."
+  command_commit: "Lei jou deur die maak van 'n konvensionele commit."
+  command_please: "'n Veilige force-push vir gevorderde gebruikers (force-with-lease)."
+  command_submit: "Stuur die huidige tak en skep 'n Pull Request."
+  command_status: "'n Vinnige \"waar is ek?\" dashboard."
+  command_release: "Skep 'n nuwe vrystelling tak en verhoog die weergawe."
+  command_deploy: "Deploy die huidige vrystelling tak."
+

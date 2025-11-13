@@ -4,6 +4,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class CommitHandler
@@ -11,23 +12,24 @@ class CommitHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly string $baseBranch
+        private readonly string $baseBranch,
+        private readonly TranslationService $translator
     ) {
     }
 
     public function handle(SymfonyStyle $io, bool $isNew, ?string $message): int
     {
-        $io->section('Conventional Commit Helper');
+        $io->section($this->translator->trans('commit.section'));
 
         // If a message is provided via the -m flag, use it directly.
         if (!empty($message)) {
-            $io->text('Staging all changes...');
+            $io->text($this->translator->trans('commit.staging'));
             $this->gitRepository->stageAllChanges();
 
-            $io->text('Committing with provided message...');
+            $io->text($this->translator->trans('commit.committing'));
             $this->gitRepository->commit($message);
 
-            $io->success('Commit created successfully!');
+            $io->success($this->translator->trans('commit.success'));
             return 0;
         }
 
@@ -35,46 +37,43 @@ class CommitHandler
         $latestLogicalSha = null;
         if (!$isNew) {
             if ($io->isVerbose()) {
-                $io->writeln('  <fg=gray>Checking for previous logical commit...</>');
+                $io->writeln('  <fg=gray>' . $this->translator->trans('commit.checking_logical') . '</>');
             }
             $latestLogicalSha = $this->gitRepository->findLatestLogicalSha($this->baseBranch);
             if ($latestLogicalSha && $io->isVerbose()) {
-                $io->writeln("  <fg=gray>Found logical commit SHA: {$latestLogicalSha}</>");
+                $io->writeln("  <fg=gray>{$this->translator->trans('commit.found_logical', ['sha' => $latestLogicalSha])}</>");
             }
         }
 
         // 2. If a logical commit is found and --new is not used, create a fixup commit
         if ($latestLogicalSha) {
-            $io->text('Staging all changes...');
+            $io->text($this->translator->trans('commit.staging'));
             $this->gitRepository->stageAllChanges();
 
-            $io->text("Creating fixup commit for <info>{$latestLogicalSha}</info>...");
+            $io->text($this->translator->trans('commit.creating_fixup', ['sha' => $latestLogicalSha]));
             $this->gitRepository->commitFixup($latestLogicalSha);
 
-            $io->success("✅ Changes saved as a fixup for commit {$latestLogicalSha}.");
+            $io->success($this->translator->trans('commit.fixup_success', ['sha' => $latestLogicalSha]));
             return 0;
         }
 
         // 3. If no logical commit is found OR --new is used, run the interactive prompter
-        $io->note('No previous logical commit found or --new flag used. Starting interactive prompter...');
+        $io->note($this->translator->trans('commit.note_no_logical'));
 
         $key = $this->gitRepository->getJiraKeyFromBranchName();
         if (!$key) {
-            $io->error([
-                'Could not find a Jira key in your current branch name.',
-                'Please use "stud start <key>" to create a branch.',
-            ]);
+            $io->error(explode("\n", $this->translator->trans('commit.error_no_key')));
             return 1;
         }
 
         try {
             if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>Fetching Jira issue: {$key}</>");
+                $io->writeln("  <fg=gray>{$this->translator->trans('commit.fetching_jira', ['key' => $key])}</>");
             }
             // The getIssue method now fetches components as well
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
-            $io->error("Could not find Jira issue with key \"{$key}\".");
+            $io->error($this->translator->trans('commit.error_not_found', ['key' => $key]));
             return 1;
         }
 
@@ -82,38 +81,40 @@ class CommitHandler
         $detectedSummary = $issue->title;
 
         if ($io->isVeryVerbose()) {
-            $io->writeln("  <fg=gray>Jira Issue Details:</>");
-            $io->writeln("    <fg=gray>Title: {$issue->title}</>");
-            $io->writeln("    <fg=gray>Type: {$issue->issueType} -> {$detectedType}</>");
-            $io->writeln("    <fg=gray>Components: " . implode(', ', $issue->components) . "</>");
+            $io->writeln("  <fg=gray>{$this->translator->trans('commit.jira_details')}</>");
+            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_title', ['title' => $issue->title])}</>");
+            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_type', ['type' => $issue->issueType, 'commit_type' => $detectedType])}</>");
+            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_components', ['components' => implode(', ', $issue->components)])}</>");
         }
 
         // 4. Upgraded Interactive Prompter with Scope Inference
-        $scopePrompt = 'Scope (optional)';
+        // IMPORTANT: Prompts are translated, but commit message itself stays in English
+        $scopePrompt = $this->translator->trans('commit.scope_prompt');
         $defaultScope = null;
         if (!empty($issue->components)) {
             $defaultScope = $issue->components[0]; // Use the first component name
-            $scopePrompt = "Scope (auto-detected '{$defaultScope}')";
+            $scopePrompt = $this->translator->trans('commit.scope_auto', ['scope' => $defaultScope]);
         }
 
-        $type = $io->ask("Commit Type (auto-detected '{$detectedType}')", $detectedType);
+        $type = $io->ask($this->translator->trans('commit.type_prompt', ['type' => $detectedType]), $detectedType);
         $scope = $io->ask($scopePrompt, $defaultScope);
-        $summary = $io->ask("Short Message (auto-filled from Jira)", $detectedSummary);
+        $summary = $io->ask($this->translator->trans('commit.summary_prompt'), $detectedSummary);
 
         // 5. Assemble commit message according to the new template
+        // CRITICAL: Commit message MUST remain in English regardless of user's language
         $commitMessage = "{$type}" . ($scope ? "({$scope})" : "") . ": {$summary} [{$key}]";
 
         if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Generated commit message:</>\n{$commitMessage}");
+            $io->writeln("  <fg=gray>{$this->translator->trans('commit.generated_message', ['message' => $commitMessage])}</>");
         }
 
-        $io->text('Staging all changes...');
+        $io->text($this->translator->trans('commit.staging'));
         $this->gitRepository->stageAllChanges();
 
-        $io->text('Committing...');
+        $io->text($this->translator->trans('commit.committing_simple'));
         $this->gitRepository->commit($commitMessage);
 
-        $io->success('Commit created successfully!');
+        $io->success($this->translator->trans('commit.success'));
         
         return 0;
     }

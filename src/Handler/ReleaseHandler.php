@@ -3,12 +3,14 @@
 namespace App\Handler;
 
 use App\Service\GitRepository;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly TranslationService $translator,
         private readonly string $composerJsonPath = 'composer.json',
         private readonly string $changelogPath = 'CHANGELOG.md',
     ) {
@@ -16,44 +18,44 @@ class ReleaseHandler
 
     public function handle(SymfonyStyle $io, string $version, bool $publish = false): void
     {
-        $io->section('Starting release process for version ' . $version);
+        $io->section($this->translator->trans('release.section', ['version' => $version]));
 
         $this->gitRepository->fetch();
-        $io->text('Fetched latest changes from origin.');
+        $io->text($this->translator->trans('release.fetched'));
 
         $releaseBranch = 'release/v' . $version;
         $this->gitRepository->createBranch($releaseBranch, 'origin/develop');
-        $io->text('Created release branch: ' . $releaseBranch);
+        $io->text($this->translator->trans('release.created_branch', ['branch' => $releaseBranch]));
 
         $this->updateComposerVersion($version);
-        $io->text('Updated version in composer.json to ' . $version);
+        $io->text($this->translator->trans('release.updated_composer', ['version' => $version]));
 
         $this->gitRepository->run('composer update --lock');
-        $io->text('Updated composer.lock');
+        $io->text($this->translator->trans('release.updated_lock'));
 
         $this->gitRepository->run('composer dump-config');
-        $io->text('Dumped config to config/app.php');
+        $io->text($this->translator->trans('release.dumped_config'));
 
         $this->updateChangelog($version);
-        $io->text('Updated CHANGELOG.md with version ' . $version);
+        $io->text($this->translator->trans('release.updated_changelog', ['version' => $version]));
 
         $this->gitRepository->stageAllChanges();
-        $io->text('Staged changes.');
+        $io->text($this->translator->trans('release.staged'));
 
         $this->gitRepository->commit('chore(Version): Bump version to ' . $version);
-        $io->text('Committed version bump.');
+        $io->text($this->translator->trans('release.committed'));
 
         if ($publish) {
             $this->gitRepository->pushToOrigin($releaseBranch);
-            $io->text('Release branch published to remote.');
+            $io->text($this->translator->trans('release.published'));
         } else {
-            if ($io->confirm('Would you like to publish the release branch to remote?', false)) {
+            if ($io->confirm($this->translator->trans('release.confirm_publish'), false)) {
                 $this->gitRepository->pushToOrigin($releaseBranch);
-                $io->text('Release branch published to remote.');
+                $io->text($this->translator->trans('release.published'));
             }
         }
 
-        $io->success('Release ' . $version . ' is ready to be deployed.');
+        $io->success($this->translator->trans('release.success', ['version' => $version]));
     }
 
     protected function updateComposerVersion(string $version): void
