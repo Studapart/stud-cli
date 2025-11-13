@@ -342,10 +342,19 @@ class VersionCheckServiceTest extends TestCase
         $_SERVER['HOME'] = $tempDir;
 
         try {
-            // Remove directory if it exists
-            @rmdir($tempDir . '/.cache/stud');
-            @rmdir($tempDir . '/.cache');
-            @rmdir($tempDir);
+            // Remove directory if it exists - ensure it's completely removed
+            if (is_dir($tempDir . '/.cache/stud')) {
+                @rmdir($tempDir . '/.cache/stud');
+            }
+            if (is_dir($tempDir . '/.cache')) {
+                @rmdir($tempDir . '/.cache');
+            }
+            if (is_dir($tempDir)) {
+                @rmdir($tempDir);
+            }
+
+            // Verify directory doesn't exist before calling getCachePath
+            $this->assertDirectoryDoesNotExist($tempDir . '/.cache/stud');
 
             $path = $method->invoke($this->service);
             $this->assertStringContainsString('.cache/stud/last_update_check.json', $path);
@@ -356,6 +365,82 @@ class VersionCheckServiceTest extends TestCase
             } else {
                 unset($_SERVER['HOME']);
             }
+            @rmdir($tempDir . '/.cache/stud');
+            @rmdir($tempDir . '/.cache');
+            @rmdir($tempDir);
+        }
+    }
+
+    public function testGetCachePathWhenDirectoryAlreadyExists(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('getCachePath');
+        $method->setAccessible(true);
+
+        $tempDir = sys_get_temp_dir() . '/stud-test-cache-exists-' . uniqid();
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $tempDir;
+
+        try {
+            // Create directory structure first
+            @mkdir($tempDir . '/.cache/stud', 0755, true);
+
+            // Verify directory exists
+            $this->assertDirectoryExists($tempDir . '/.cache/stud');
+
+            // Call getCachePath - should skip mkdir since directory exists
+            $path = $method->invoke($this->service);
+            $this->assertStringContainsString('.cache/stud/last_update_check.json', $path);
+            $this->assertDirectoryExists(dirname($path));
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+            @rmdir($tempDir . '/.cache/stud');
+            @rmdir($tempDir . '/.cache');
+            @rmdir($tempDir);
+        }
+    }
+
+    public function testCheckForUpdateCreatesCacheDirectoryIfNotExists(): void
+    {
+        // Create a service with a fresh temp directory that doesn't have cache dir
+        $tempDir = sys_get_temp_dir() . '/stud-test-no-cache-dir-' . uniqid();
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $tempDir;
+
+        try {
+            // Ensure cache directory doesn't exist
+            $this->assertDirectoryDoesNotExist($tempDir . '/.cache/stud');
+
+            // Mock GitHub API response
+            $releaseData = [
+                'tag_name' => 'v1.2.0',
+            ];
+
+            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock->method('getStatusCode')->willReturn(200);
+            $responseMock->method('toArray')->willReturn($releaseData);
+
+            $this->httpClientMock->expects($this->once())
+                ->method('request')
+                ->willReturn($responseMock);
+
+            // This should create the directory
+            $result = $this->service->checkForUpdate();
+
+            // Verify directory was created
+            $this->assertDirectoryExists($tempDir . '/.cache/stud');
+            $this->assertSame('1.2.0', $result['latest_version']);
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+            @unlink($tempDir . '/.cache/stud/last_update_check.json');
             @rmdir($tempDir . '/.cache/stud');
             @rmdir($tempDir . '/.cache');
             @rmdir($tempDir);
@@ -378,16 +463,20 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('readCache');
         $method->setAccessible(true);
 
-        // Create a directory path (not a file) to simulate read failure
-        $nonReadablePath = sys_get_temp_dir() . '/stud-test-' . uniqid();
-        @mkdir($nonReadablePath, 0000);
+        // Create a file first, then remove read permissions to force file_get_contents to return false
+        $testFile = sys_get_temp_dir() . '/stud-test-no-read-' . uniqid() . '.json';
+        file_put_contents($testFile, 'test content');
+        
+        // Remove read permissions from the file itself
+        @chmod($testFile, 0000);
 
         try {
-            $result = $method->invoke($this->service, $nonReadablePath . '/file.json');
+            // file_get_contents should return false when file exists but can't be read
+            $result = $method->invoke($this->service, $testFile);
             $this->assertNull($result);
         } finally {
-            @chmod($nonReadablePath, 0755);
-            @rmdir($nonReadablePath);
+            @chmod($testFile, 0644);
+            @unlink($testFile);
         }
     }
 
