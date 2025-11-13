@@ -21,6 +21,16 @@ config:
       provider_prompt: "Seleccione su proveedor Git"
       token_prompt: "Ingrese su PAT del proveedor Git (deje en blanco para mantener el existente)"
     success: "¡Configuración guardada exitosamente!"
+    completion:
+      title: "Configuración de auto-completado del shell"
+      prompt: "Hemos detectado que está usando '%shell%'. ¿Le gustaría configurar el auto-completado del shell?"
+      yes: "Sí"
+      no: "No"
+      success_message: "✅ ¡Excelente! Para completar la instalación, ejecute este comando:"
+      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
+      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
+      reload_instruction: "Luego, reinicie su shell o ejecute 'source ~/.%shellrc%'"
+      skipped: "Configuración de auto-completado del shell omitida."
   error:
     not_found: "Archivo de configuración no encontrado en: %path%\nPor favor ejecute \"stud config:init\" para crear uno."
     missing_jira_keys: "Su archivo de configuración falta las claves de Jira requeridas: %keys%\nPor favor ejecute \"stud config:init\" nuevamente."

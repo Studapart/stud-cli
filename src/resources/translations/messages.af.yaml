@@ -21,6 +21,16 @@ config:
       provider_prompt: "Kies jou Git verskaffer"
       token_prompt: "Voer jou Git verskaffer PAT in (laat leeg om bestaande te behou)"
     success: "Konfigurasie suksesvol gestoor!"
+    completion:
+      title: "Shell Outo-voltooiing Opstelling"
+      prompt: "Ons het gedetecteer dat jy '%shell%' gebruik. Wil jy shell outo-voltooiing opstel?"
+      yes: "Ja"
+      no: "Nee"
+      success_message: "✅ Uitstekend! Om die installasie te voltooi, voer hierdie opdrag uit:"
+      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
+      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
+      reload_instruction: "Herlaai dan jou shell of voer 'source ~/.%shellrc%' uit"
+      skipped: "Shell outo-voltooiing opstelling oorgeslaan."
   error:
     not_found: "Konfigurasielêer nie gevind by: %path%\nVoer asseblief \"stud config:init\" uit om een te skep."
     missing_jira_keys: "Jou konfigurasielêer ontbreek vereiste Jira sleutels: %keys%\nVoer asseblief \"stud config:init\" weer uit."

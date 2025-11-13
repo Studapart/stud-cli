@@ -21,6 +21,16 @@ config:
       provider_prompt: "Επιλέξτε τον παροχέα Git σας"
       token_prompt: "Εισάγετε το PAT του παροχέα Git σας (αφήστε κενό για να διατηρήσετε το υπάρχον)"
     success: "Η ρύθμιση αποθηκεύτηκε με επιτυχία!"
+    completion:
+      title: "Ρύθμιση Αυτόματης Συμπλήρωσης Shell"
+      prompt: "Εντοπίσαμε ότι χρησιμοποιείτε '%shell%'. Θα θέλατε να ρυθμίσετε την αυτόματη συμπλήρωση shell;"
+      yes: "Ναι"
+      no: "Όχι"
+      success_message: "✅ Τέλεια! Για να ολοκληρώσετε την εγκατάσταση, εκτελέστε αυτή την εντολή:"
+      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
+      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
+      reload_instruction: "Στη συνέχεια, κάντε επανεκκίνηση του shell σας ή εκτελέστε 'source ~/.%shellrc%'"
+      skipped: "Η ρύθμιση αυτόματης συμπλήρωσης shell παραλείφθηκε."
   error:
     not_found: "Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%\nΠαρακαλώ εκτελέστε \"stud config:init\" για να δημιουργήσετε ένα."
     missing_jira_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά Jira: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."

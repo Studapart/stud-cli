@@ -21,6 +21,16 @@ config:
       provider_prompt: "Выберите ваш провайдер Git"
       token_prompt: "Введите ваш PAT провайдера Git (оставьте пустым, чтобы сохранить существующий)"
     success: "Конфигурация успешно сохранена!"
+    completion:
+      title: "Настройка автодополнения оболочки"
+      prompt: "Мы обнаружили, что вы используете '%shell%'. Хотите ли вы настроить автодополнение оболочки?"
+      yes: "Да"
+      no: "Нет"
+      success_message: "✅ Отлично! Чтобы завершить установку, выполните эту команду:"
+      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
+      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
+      reload_instruction: "Затем перезапустите оболочку или выполните 'source ~/.%shellrc%'"
+      skipped: "Настройка автодополнения оболочки пропущена."
   error:
     not_found: "Файл конфигурации не найден по адресу: %path%\nПожалуйста, выполните \"stud config:init\" для создания."
     missing_jira_keys: "В вашем файле конфигурации отсутствуют необходимые ключи Jira: %keys%\nПожалуйста, выполните \"stud config:init\" снова."

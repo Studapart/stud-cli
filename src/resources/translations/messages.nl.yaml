@@ -21,6 +21,16 @@ config:
       provider_prompt: "Selecteer uw Git provider"
       token_prompt: "Voer uw Git provider PAT in (laat leeg om bestaande te behouden)"
     success: "Configuratie succesvol opgeslagen!"
+    completion:
+      title: "Shell Auto-aanvulling Instellen"
+      prompt: "We hebben gedetecteerd dat u '%shell%' gebruikt. Wilt u shell auto-aanvulling instellen?"
+      yes: "Ja"
+      no: "Nee"
+      success_message: "✅ Geweldig! Om de installatie te voltooien, voer dit commando uit:"
+      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
+      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
+      reload_instruction: "Start vervolgens uw shell opnieuw of voer 'source ~/.%shellrc%' uit"
+      skipped: "Shell auto-aanvulling instellen overgeslagen."
   error:
     not_found: "Configuratiebestand niet gevonden op: %path%\nVoer alstublieft \"stud config:init\" uit om er een te maken."
     missing_jira_keys: "Uw configuratiebestand mist vereiste Jira-sleutels: %keys%\nVoer alstublieft \"stud config:init\" opnieuw uit."
