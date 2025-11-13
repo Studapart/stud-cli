@@ -501,8 +501,49 @@ function update(): void
         // Config might not exist, that's okay - we'll try without token
     }
     
+    // Read repository owner and name from composer.json
+    // This is a meta-command, so it should use composer.json, not the current git remote
+    $composerJsonPath = __DIR__ . '/composer.json';
+    if (!file_exists($composerJsonPath)) {
+        // Try reading from PHAR if running as PHAR
+        if (class_exists('Phar') && \Phar::running(false)) {
+            $pharPath = \Phar::running(false);
+            $composerJsonPath = 'phar://' . $pharPath . '/composer.json';
+        }
+    }
+    
+    if (!file_exists($composerJsonPath)) {
+        io()->error([
+            'Could not find composer.json.',
+            'Please ensure the application is properly installed.',
+        ]);
+        exit(1);
+    }
+    
+    $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+    if (!isset($composerJson['name'])) {
+        io()->error([
+            'composer.json does not contain a "name" property.',
+            'Please ensure composer.json is properly configured.',
+        ]);
+        exit(1);
+    }
+    
+    // Parse "owner/repo" format from composer.json name
+    $nameParts = explode('/', $composerJson['name'], 2);
+    if (count($nameParts) !== 2) {
+        io()->error([
+            'composer.json "name" must be in "owner/repo" format.',
+            'Current value: ' . $composerJson['name'],
+        ]);
+        exit(1);
+    }
+    
+    [$repoOwner, $repoName] = $nameParts;
+    
     $handler = new UpdateHandler(
-        _get_git_repository(),
+        $repoOwner,
+        $repoName,
         APP_VERSION,
         $binaryPath,
         $gitToken
