@@ -501,40 +501,22 @@ function update(): void
         // Config might not exist, that's okay - we'll try without token
     }
     
-    // Read repository owner and name from composer.json
-    // This is a meta-command, so it should use composer.json, not the current git remote
-    $composerJsonPath = __DIR__ . '/composer.json';
-    if (!file_exists($composerJsonPath)) {
-        // Try reading from PHAR if running as PHAR
-        if (class_exists('Phar') && \Phar::running(false)) {
-            $pharPath = \Phar::running(false);
-            $composerJsonPath = 'phar://' . $pharPath . '/composer.json';
-        }
-    }
-    
-    if (!file_exists($composerJsonPath)) {
+    // Get repository owner and name from APP_REPO_SLUG constant
+    // This constant is baked into the PHAR during build via dump-config
+    if (!defined('APP_REPO_SLUG')) {
         io()->error([
-            'Could not find composer.json.',
-            'Please ensure the application is properly installed.',
+            'APP_REPO_SLUG constant is not defined.',
+            'Please ensure the application was built correctly.',
         ]);
         exit(1);
     }
     
-    $composerJson = json_decode(file_get_contents($composerJsonPath), true);
-    if (!isset($composerJson['name'])) {
-        io()->error([
-            'composer.json does not contain a "name" property.',
-            'Please ensure composer.json is properly configured.',
-        ]);
-        exit(1);
-    }
-    
-    // Parse "owner/repo" format from composer.json name
-    $nameParts = explode('/', $composerJson['name'], 2);
+    // Parse "owner/repo" format from APP_REPO_SLUG constant
+    $nameParts = explode('/', APP_REPO_SLUG, 2);
     if (count($nameParts) !== 2) {
         io()->error([
-            'composer.json "name" must be in "owner/repo" format.',
-            'Current value: ' . $composerJson['name'],
+            'APP_REPO_SLUG must be in "owner/repo" format.',
+            'Current value: ' . APP_REPO_SLUG,
         ]);
         exit(1);
     }
