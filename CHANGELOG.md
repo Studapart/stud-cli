@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-11-13
+
 ### Fixed
 - Fixed `stud update` command failing with "Could not find composer.json" when run from PHAR. The command now uses the `APP_REPO_SLUG` constant (baked into the PHAR during build) instead of reading composer.json at runtime.
 
