@@ -217,23 +217,55 @@ class UpdateHandler
             return 1;
         }
 
+        // Create versioned backup path (e.g., /home/pem/.local/bin/stud-1.1.1.bak)
+        $backupPath = $binaryPath . '-' . $this->currentVersion . '.bak';
+
+        // Step 1: Backup the current executable
+        // Note: rename() doesn't throw exceptions in PHP (returns false), but catch block handles edge cases
+        // @codeCoverageIgnoreStart
         try {
-            rename($tempFile, $binaryPath);
-            chmod($binaryPath, 0755);
-            // @codeCoverageIgnoreStart
+            rename($binaryPath, $backupPath);
         } catch (\Exception $e) {
-            // rename() doesn't throw in PHP, but chmod() might in edge cases
             $io->error([
-                'Failed to replace the binary.',
+                'Failed to create backup of current version.',
                 'Error: ' . $e->getMessage(),
             ]);
             @unlink($tempFile);
             return 1;
-            // @codeCoverageIgnoreEnd
         }
+        // @codeCoverageIgnoreEnd
 
-        $io->success("✅ Update complete! You are now on {$tagName}.");
-        return 0;
+        // Step 2: Try to activate new version (atomic transaction)
+        try {
+            rename($tempFile, $binaryPath);
+            chmod($binaryPath, 0755);
+            
+            $io->success("✅ Update complete! You are now on {$tagName}.");
+            // Backup file is left behind for cleanup on next run
+            return 0;
+            // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
+            // Rollback on failure
+            // @codeCoverageIgnoreStart
+        } catch (\Exception $e) {
+            try {
+                rename($backupPath, $binaryPath);
+                $io->error([
+                    'Update failed and was rolled back.',
+                    'Error: ' . $e->getMessage(),
+                ]);
+            } catch (\Exception $rollbackException) {
+                // Rollback also failed - this is a critical state
+                $io->error([
+                    'Update failed and rollback also failed!',
+                    'Original error: ' . $e->getMessage(),
+                    'Rollback error: ' . $rollbackException->getMessage(),
+                    'Please manually restore from: ' . $backupPath,
+                ]);
+            }
+            // @codeCoverageIgnoreEnd
+            @unlink($tempFile);
+            return 1;
+        }
     }
 
     protected function logVerbose(SymfonyStyle $io, string $label, string $value): void
