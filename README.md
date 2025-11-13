@@ -164,13 +164,16 @@ The tool will automatically check for new releases, download the latest version,
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
 
-#### `stud config:init`
+#### `stud config:init` (Alias: `stud init`)
 
 **Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
+
+At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
 
 **Usage:**
 ```bash
 stud config:init
+stud init
 ```
 
 ### Usage

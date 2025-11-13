@@ -82,5 +82,59 @@ class InitHandler
 
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump(array_filter($config)));
         $io->success($this->translator->trans('config.init.success'));
+
+        // Shell completion setup
+        $this->promptForCompletion($io);
+    }
+
+    protected function promptForCompletion(SymfonyStyle $io): void
+    {
+        $shell = $this->detectShell();
+        if ($shell === null) {
+            return;
+        }
+
+        $io->section($this->translator->trans('config.init.completion.title'));
+        
+        $choice = $io->choice(
+            $this->translator->trans('config.init.completion.prompt', ['shell' => $shell]),
+            [
+                $this->translator->trans('config.init.completion.yes'),
+                $this->translator->trans('config.init.completion.no'),
+            ],
+            $this->translator->trans('config.init.completion.no')
+        );
+
+        if ($choice === $this->translator->trans('config.init.completion.yes')) {
+            $command = $shell === 'bash' 
+                ? $this->translator->trans('config.init.completion.bash_command')
+                : $this->translator->trans('config.init.completion.zsh_command');
+            
+            $shellrc = $shell === 'bash' ? 'bashrc' : 'zshrc';
+            
+            $io->success($this->translator->trans('config.init.completion.success_message'));
+            $io->writeln('  <info>' . $command . '</info>');
+            $io->text($this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
+        } else {
+            if ($io->isVerbose()) {
+                $io->text($this->translator->trans('config.init.completion.skipped'));
+            }
+        }
+    }
+
+    protected function detectShell(): ?string
+    {
+        $shellEnv = getenv('SHELL');
+        if ($shellEnv === false) {
+            return null;
+        }
+
+        $shellName = basename($shellEnv);
+        
+        return match (strtolower($shellName)) {
+            'bash' => 'bash',
+            'zsh' => 'zsh',
+            default => null,
+        };
     }
 }
