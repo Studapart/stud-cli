@@ -69,7 +69,18 @@ if (class_exists('Phar') && \Phar::running(false)) {
 
 // Version check at bootstrap
 // This runs silently in the background to check for updates without blocking the user's command
-_version_check_bootstrap();
+// Skip during PHAR compilation to avoid segfaults
+// Only run if we're already running as a PHAR (not during compilation/repack)
+// During castor repack, we're not running as a PHAR yet, so this check will be skipped
+if (class_exists('Phar') && \Phar::running(false) !== '') {
+    // We're running as a PHAR, safe to perform version check
+    // Wrap in try-catch to prevent any unexpected errors
+    try {
+        _version_check_bootstrap();
+    } catch (\Throwable $e) {
+        // Silently fail - don't block execution
+    }
+}
 
 #[AsTask(default: true)]
 function main(): void
@@ -249,9 +260,11 @@ function _version_check_bootstrap(): void
         return;
     }
     
-    // Check 3: Ensure required classes are available (autoloader might not be ready during compilation)
-    if (!class_exists(\App\Service\VersionCheckService::class)) {
-        // Class not available yet (likely during compilation)
+    // Check 3: Don't use class_exists() as it can trigger autoloading which causes segfault during compilation
+    // Instead, check if we can safely proceed by verifying the file exists
+    $serviceFile = __DIR__ . '/src/Service/VersionCheckService.php';
+    if (!file_exists($serviceFile)) {
+        // Service file doesn't exist (likely during build or incomplete installation)
         return;
     }
 
