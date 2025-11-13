@@ -165,7 +165,21 @@ class UpdateHandler
         $this->logVerbose($io, 'Downloading from', $pharAsset['browser_download_url']);
 
         try {
-            $downloadClient = $this->httpClient ?? HttpClient::create();
+            $headers = [
+                'User-Agent' => 'stud-cli',
+            ];
+            
+            if ($this->gitToken) {
+                $headers['Authorization'] = 'Bearer ' . $this->gitToken;
+            }
+            
+            // If httpClient is provided (e.g., in tests), use it
+            // Otherwise, create a new client with auth headers for downloads
+            // This ensures private repositories can be accessed with authentication
+            $downloadClient = $this->httpClient ?? HttpClient::create([
+                'headers' => $headers,
+            ]);
+            
             $response = $downloadClient->request('GET', $pharAsset['browser_download_url']);
             file_put_contents($tempFile, $response->getContent());
             return $tempFile;
