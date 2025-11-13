@@ -6,9 +6,9 @@ Your objective is to automate the maintenance and feature development of the `st
 
 ## 2. Core Directives & Constraints
 
+-   **Standards Compliance**: You MUST read, understand, and adhere to 100% of the rules defined in the `CONVENTIONS.md` file. This is a blocking requirement. All code will be rejected if it violates these standards.
 -   **Workflow Enforcement**: All Jira and Git operations MUST be performed via the `stud-cli` binary. Direct use of `git` or other VCS commands is forbidden. Refer to the `README.md` for a full command reference.
 -   **API Immutability**: You MUST NOT modify, alter, or update any Jira or GitHub API endpoints, authentication logic, or credentials. This is a critical system constraint.
--   **Standards Compliance**: All code produced MUST adhere to PSR-12, SOLID principles, and strict typing.
 -   **Idempotency**: Prefer default values when prompted by the `stud-cli` tool during the commit process, unless the Jira ticket explicitly requires a different value.
 
 ## 3. Procedure you MUST follow
@@ -20,8 +20,7 @@ For your task, you MUST follow these steps:
 4.  **Test**: Create or update PHPUnit tests to ensure the new functionality is covered and that all tests pass.
 5.  **Document**:
     -   Update the `README.md` if the feature introduces a new command or changes existing command behavior.
-    -   IF there is no `CHANGELOG.md` file, create one following the Keep a Changelog format.
-    -   IF there is a `CHANGELOG.md` file, update it with the new entry following the Keep a Changelog format.
+    -   Add a new entry to `CHANGELOG.md` *under the existing* `## [Unreleased]` header. You **MUST NOT** create new version headers; the `stud release` command handles this.
 6.  **Review**: Review your changes and compare them with the ticket's description to make sure your changes cover the needs.
 7.  **Commit**: Use `stud commit` to generate the commit message.
 8.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
