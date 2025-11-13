@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-11-13
+
 ### Added
 - Implement internationalization (i18n) support with translation files for 8 languages: English (en), French (fr), Spanish (es), Dutch (nl), Russian (ru), Greek (el), Afrikaans (af), and Vietnamese (vi) [TPW-53]
 - Add language selection prompt to `stud config:init` command (defaults to English)
