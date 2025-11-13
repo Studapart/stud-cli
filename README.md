@@ -71,12 +71,21 @@ This project is configured to be compiled into a single, executable PHAR file us
     ```bash
     PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
     ```
-    This will generate an executable `stud.phar` file in the project's root directory. You can rename it to `stud` for easier use.
+    This will generate an executable `stud.phar` file in the project's root directory.
 
-3.  **Compile:**
+3.  **Install (Recommended):**
+    Move the compiled `stud.phar` to a user-owned directory in your PATH (e.g., `~/.local/bin/`):
+    ```bash
+    mv stud.phar ~/.local/bin/stud && chmod +x ~/.local/bin/stud
+    ```
+    Make sure `~/.local/bin/` is in your `$PATH`. This allows you to use `stud update` without needing `sudo`.
+
+    **Alternative (Global installation):**
+    If you prefer to install globally for all users:
     ```bash
     sudo mv stud.phar /usr/local/bin/stud && sudo chmod +x /usr/local/bin/stud
     ```
+    Note: If you use this method, you will need to run `sudo stud update` to update the tool.
 
 ### Developer Troubleshooting
 
