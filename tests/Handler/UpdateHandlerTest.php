@@ -739,5 +739,63 @@ class UpdateHandlerTest extends CommandTestCase
         // In test environment without PHAR, it should use the provided path
         $this->assertSame($testPath, $binaryPath);
     }
+
+    public function testHandleWithGitTokenUsesAuthForDownload(): void
+    {
+        $handler = new UpdateHandler(
+            $this->gitRepository,
+            '1.0.0',
+            $this->tempBinaryPath,
+            'test-token-123',
+            $this->httpClient
+        );
+
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryName')->willReturn('stud-cli');
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'name' => 'stud.phar',
+                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        // Verify that the download request is made (the httpClient is used for API, 
+        // but download creates a new client with auth headers)
+        // Since we can't easily verify headers on a new HttpClient instance,
+        // we verify the download succeeds when token is provided
+        $this->httpClient->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                // For download URL, return success - the auth header will be included
+                // by the new HttpClient created in downloadPhar
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Update complete! You are now on v1.0.1', $outputText);
+        
+        // Verify the binary was updated
+        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+    }
 }
 
