@@ -2,6 +2,24 @@
 
 declare(strict_types=1);
 
+// Cleanup old backup files from previous updates
+// This runs on every command execution to clean up versioned backup files (e.g., stud-1.1.1.bak)
+if (class_exists('Phar') && \Phar::running(false)) {
+    $executablePath = \Phar::running(false);
+    $executableDir = dirname($executablePath);
+    $executableName = basename($executablePath);
+    
+    // Glob for backup files matching the pattern: {executable-name}-*.bak
+    $backupPattern = $executableDir . '/' . $executableName . '-*.bak';
+    $backupFiles = glob($backupPattern);
+    
+    if ($backupFiles !== false) {
+        foreach ($backupFiles as $backupFile) {
+            @unlink($backupFile);
+        }
+    }
+}
+
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
