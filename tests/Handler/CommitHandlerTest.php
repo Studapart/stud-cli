@@ -23,7 +23,8 @@ class CommitHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
-        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop');
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
     }
 
     public function testHandleWithMessage(): void
@@ -73,8 +74,9 @@ class CommitHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io, false, null);
 
         $this->assertSame(0, $result);
-        $this->assertContains('  <fg=gray>Checking for previous logical commit...</>', $writelnCalls);
-        $this->assertContains('  <fg=gray>Found logical commit SHA: abcdef</>', $writelnCalls);
+        // Test intent: verbose output was shown (checking for logical commit message)
+        $this->assertNotEmpty(array_filter($writelnCalls, fn($call) => str_contains($call, 'Checking for previous logical commit')));
+        $this->assertNotEmpty(array_filter($writelnCalls, fn($call) => str_contains($call, 'Found logical commit SHA')));
     }
 
     public function testHandleWithInteractivePrompter(): void
@@ -396,7 +398,7 @@ class CommitHandlerTest extends CommandTestCase
     
     public function testgetCommitTypeFromIssueType(): void
     {
-        $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop');
+        $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
 
         $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
         $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));

@@ -20,7 +20,8 @@ class SearchHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$jiraService = $this->jiraService;
-        $this->handler = new SearchHandler($this->jiraService);
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new SearchHandler($this->jiraService, $this->translationService);
     }
 
     public function testHandle(): void

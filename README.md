@@ -166,7 +166,7 @@ Before using `stud-cli` for the first time, you need to configure your Jira conn
 
 #### `stud config:init`
 
-**Description:** A first-time setup wizard that interactively prompts for your Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`.
+**Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
 
 **Usage:**
 ```bash

@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Stud CLI Configuration Wizard"
+      description: "This will create or update your configuration file at: %path%"
+    language:
+      title: "Language Configuration"
+      prompt: "Select your language"
+    jira:
+      title: "Jira Configuration"
+      token_help: "You can generate an API token here: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Enter your Jira URL"
+      email_prompt: "Enter your Jira email address"
+      token_prompt: "Enter your Jira API token (leave blank to keep existing)"
+    git:
+      title: "Git Provider Configuration"
+      description: "This is required for the `stud submit` command to create Pull Requests."
+      token_help: "You can generate a token here: https://github.com/settings/tokens"
+      auto_detect_note: "Note: Repository owner and name will be automatically detected from your git remote."
+      provider_prompt: "Select your Git provider"
+      token_prompt: "Enter your Git provider PAT (leave blank to keep existing)"
+    success: "Configuration saved successfully!"
+  error:
+    not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
+    missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
+    missing_git_keys: "Your configuration file is missing required Git provider keys: %keys%\nPlease run \"stud config:init\" again."
+
+# Item Start Handler
+item:
+  start:
+    section: "Starting work on %key%"
+    fetching: "Fetching details for issue: %key%"
+    error_not_found: "Could not find Jira issue with key \"%key%\"."
+    generated_branch: "Generated branch name: %branch%"
+    fetching_changes: "Fetching latest changes from origin..."
+    creating_branch: "Creating new branch: %branch%"
+    success: "Branch '%branch%' created from '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Details for issue %key%"
+    fetching: "Fetching details for issue: %key%"
+    error_not_found: "Could not find Jira issue with key \"%key%\"."
+    label_key: "Key"
+    label_title: "Title"
+    label_status: "Status"
+    label_assignee: "Assignee"
+    label_type: "Type"
+    label_labels: "Labels"
+    label_description: "Description"
+    label_link: "Link"
+    label_none: "None"
+
+# Item List Handler
+  list:
+    section: "Fetching Jira Items"
+    error_fetch: "Failed to fetch items: %error%"
+    no_items: "No items found matching your criteria."
+
+# Project List Handler
+project:
+  list:
+    section: "Fetching Jira Projects"
+    error_fetch: "Failed to fetch projects: %error%"
+    no_projects: "No projects found."
+
+# Search Handler
+search:
+  section: "Searching Jira issues with JQL"
+  jql_query: "JQL Query: %jql%"
+  error_search: "Failed to search for issues: %error%"
+  no_results: "No issues found matching your JQL query."
+
+# Status Handler
+status:
+  section: "Current Status"
+  fetching: "Fetching status for Jira issue: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Could not fetch Jira issue details: %error%"
+  jira_no_key: "No Jira key found in branch name."
+  git_branch: "On branch '%branch%'"
+  local_changes: "You have %count% uncommitted changes."
+  local_clean: "Working directory is clean."
+
+# Please Handler
+please:
+  error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
+  warning_force: "⚠️  Forcing with lease..."
+
+# Submit Handler
+submit:
+  section: "Submitting Pull Request"
+  error_dirty_working: "Your working directory is not clean. Please commit your changes with 'stud commit' before submitting."
+  error_base_branch: "Cannot create a Pull Request from the base branch."
+  pushing: "Pushing branch %branch%..."
+  error_push: "Push failed. Your branch may have rewritten history.\nTry running 'stud please' to force-push."
+  finding_commit: "Finding first logical commit to use for PR details..."
+  fetching_jira: "Fetching Jira issue for PR body: %key%"
+  error_no_logical: "Could not find a logical commit on this branch. Cannot create PR."
+  error_no_jira_key: "Could not parse Jira key from commit message. Cannot create PR."
+  warning_jira_fetch: "Could not fetch Jira issue details for PR body: %error%\nFalling back to a simple link."
+  creating: "Creating Pull Request..."
+  success_created: "✅ Pull Request created: %url%"
+  warning_no_provider: "No Git provider configured for this project."
+  note_pr_exists: "A Pull Request already exists for this branch."
+  success_pushed: "✅ Changes have been pushed to GitHub"
+  error_create_pr: "Failed to create Pull Request.\nError: %error%"
+  using_head: "Using head branch: %head%"
+
+# Commit Handler
+commit:
+  section: "Conventional Commit Helper"
+  staging: "Staging all changes..."
+  committing: "Committing with provided message..."
+  committing_simple: "Committing..."
+  success: "Commit created successfully!"
+  checking_logical: "Checking for previous logical commit..."
+  found_logical: "Found logical commit SHA: %sha%"
+  creating_fixup: "Creating fixup commit for %sha%..."
+  fixup_success: "✅ Changes saved as a fixup for commit %sha%."
+  note_no_logical: "No previous logical commit found or --new flag used. Starting interactive prompter..."
+  error_no_key: "Could not find a Jira key in your current branch name.\nPlease use \"stud start <key>\" to create a branch."
+  fetching_jira: "Fetching Jira issue: %key%"
+  error_not_found: "Could not find Jira issue with key \"%key%\"."
+  jira_details: "Jira Issue Details:"
+  jira_title: "Title: %title%"
+  jira_type: "Type: %type% -> %commit_type%"
+  jira_components: "Components: %components%"
+  scope_prompt: "Scope (optional)"
+  scope_auto: "Scope (auto-detected '%scope%')"
+  type_prompt: "Commit Type (auto-detected '%type%')"
+  summary_prompt: "Short Message (auto-filled from Jira)"
+  generated_message: "Generated commit message:\n%message%"
+
+# Update Handler
+update:
+  section: "Checking for updates"
+  binary_path: "Binary path"
+  repository: "Repository"
+  current_version: "Current version"
+  latest_version: "Latest version"
+  downloading_from: "Downloading from"
+  warning_no_releases: "No releases found for this repository.\nThe repository may not have any published releases yet."
+  error_fetch: "Failed to fetch latest release information.\nError: %error%"
+  success_latest: "You are already on the latest version (%version%)."
+  new_version: "A new version (%version%) is available. Updating..."
+  error_no_phar: "Could not find stud.phar asset in the latest release.\nRelease assets: %assets%"
+  error_download: "Failed to download the new version.\nError: %error%"
+  error_asset_id: "Failed to download the new version.\nError: Asset ID not found in release asset."
+  error_not_writable: "Update failed: The file is not writable.\nPlease re-run with elevated privileges: sudo stud update"
+  error_backup: "Failed to create backup of current version.\nError: %error%"
+  error_rollback: "Update failed and was rolled back.\nError: %error%"
+  error_rollback_failed: "Update failed and rollback also failed!\nOriginal error: %original_error%\nRollback error: %rollback_error%\nPlease manually restore from: %backup_path%"
+
+# Release Handler
+release:
+  section: "Starting release process for version %version%"
+  fetched: "Fetched latest changes from origin."
+  created_branch: "Created release branch: %branch%"
+  updated_composer: "Updated version in composer.json to %version%"
+  updated_lock: "Updated composer.lock"
+  dumped_config: "Dumped config to config/app.php"
+  updated_changelog: "Updated CHANGELOG.md with version %version%"
+  staged: "Staged changes."
+  committed: "Committed version bump."
+  published: "Release branch published to remote."
+  confirm_publish: "Would you like to publish the release branch to remote?"
+  success: "Release %version% is ready to be deployed."
+
+# Deploy Handler
+deploy:
+  section: "Starting deployment process"
+  error_not_release: "You must be on a release branch to deploy."
+  deployed: "Deployed to main and tagged."
+  updated_develop: "Updated develop branch."
+  cleaned: "Cleaned up release branch."
+  success: "Release v%version% successfully deployed to main. develop has been rebased and force-pushed. Branches cleaned up."
+
+# Table Headers
+table:
+  key: "Key"
+  status: "Status"
+  summary: "Summary"
+  name: "Name"
+  command: "Command"
+  alias: "Alias"
+  description: "Description"
+
+# Help Command
+help:
+  title: "Manual"
+  description_section: "DESCRIPTION"
+  description_text: "`stud-cli` is a command-line interface tool designed to streamline a developer's daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the \"golden path\" of starting a task, making conventional commits, and preparing your work for submission, all from the command line."
+  global_options_section: "GLOBAL OPTIONS"
+  commands_section: "COMMANDS"
+  global_option_help: "Display help for the given command. When no command is given, display help for the list command."
+  global_option_silent: "Do not output any message."
+  global_option_quiet: "Only errors are displayed. All other output is suppressed."
+  global_option_verbose: "Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug."
+  category_configuration: "Configuration"
+  category_jira_information: "Jira Information"
+  category_git_workflow: "Git Workflow"
+  category_release_commands: "Release Commands"
+  example_prefix: "Example: %example%"
+  command_config_init: "Interactive wizard to set up Jira & Git connection details."
+  command_projects_list: "Lists all visible Jira projects."
+  command_items_list: "Lists active work items (your dashboard)."
+  command_items_show: "Shows detailed info for one work item."
+  command_issues_search: "Search for issues using JQL."
+  command_items_start: "Creates a new git branch from a Jira item."
+  command_commit: "Guides you through making a conventional commit."
+  command_please: "A power-user, safe force-push (force-with-lease)."
+  command_submit: "Pushes the current branch and creates a Pull Request."
+  command_status: "A quick \"where am I?\" dashboard."
+  command_release: "Creates a new release branch and bumps the version."
+  command_deploy: "Deploys the current release branch."
+

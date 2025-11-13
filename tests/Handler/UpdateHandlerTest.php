@@ -33,6 +33,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',  // repoName
             '1.0.0',     // currentVersion
             $this->tempBinaryPath,
+            $this->translationService,
             null,        // gitToken
             $this->httpClient
         );
@@ -395,6 +396,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             'v1.0.0',
             $this->tempBinaryPath,
+            $this->translationService,
             null,
             $this->httpClient
         );
@@ -513,6 +515,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             '1.0.0',
             $badBinaryPath,
+            $this->translationService,
             null,
             $this->httpClient
         );
@@ -586,6 +589,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
+            $this->translationService,
             'test-token-123',
             $this->httpClient
         );
@@ -647,6 +651,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             '1.0.0',
             $testPath,
+            $this->translationService,
             null,
             $this->httpClient
         );
@@ -669,6 +674,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             '1.0.0',
             $testPath,
+            $this->translationService,
             null,
             $this->httpClient
         );
@@ -686,6 +692,7 @@ class UpdateHandlerTest extends CommandTestCase
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
+            $this->translationService,
             'test-token-123',
             $this->httpClient
         );

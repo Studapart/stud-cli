@@ -20,9 +20,10 @@ class ItemShowHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$translationService = $this->translationService;
         $this->handler = new ItemShowHandler($this->jiraService, [
             'JIRA_URL' => 'https://studapart.atlassian.net',
-        ]);
+        ], $this->translationService);
     }
 
     public function testHandle(): void

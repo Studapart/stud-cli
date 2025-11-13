@@ -25,6 +25,7 @@ use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\ProcessFactory;
+use App\Service\TranslationService;
 use App\Handler\CommitHandler;
 use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
@@ -86,10 +87,8 @@ function _get_config(): array
 {
     $configPath = _get_config_path();
     if (!file_exists($configPath)) {
-        io()->error([
-            'Configuration file not found at: ' . $configPath,
-            'Please run "stud config:init" to create one.',
-        ]);
+        $translator = _get_translation_service();
+        io()->error(explode("\n", $translator->trans('config.error.not_found', ['path' => $configPath])));
         exit(1);
     }
 
@@ -105,10 +104,8 @@ function _get_jira_config(): array
     $missingKeys = array_diff(['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'], array_keys($config));
 
     if (!empty($missingKeys)) {
-        io()->error([
-            'Your configuration file is missing required Jira keys: ' . implode(', ', $missingKeys),
-            'Please run "stud config:init" again.',
-        ]);
+        $translator = _get_translation_service();
+        io()->error(explode("\n", $translator->trans('config.error.missing_jira_keys', ['keys' => implode(', ', $missingKeys)])));
         exit(1);
     }
 
@@ -124,10 +121,8 @@ function _get_git_config(): array
     $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN'], array_keys($config));
 
     if (!empty($missingKeys)) {
-        io()->error([
-            'Your configuration file is missing required Git provider keys: ' . implode(', ', $missingKeys),
-            'Please run "stud config:init" again.',
-        ]);
+        $translator = _get_translation_service();
+        io()->error(explode("\n", $translator->trans('config.error.missing_git_keys', ['keys' => implode(', ', $missingKeys)])));
         exit(1);
     }
 
@@ -182,6 +177,31 @@ function _get_git_repository(): GitRepository
     return new GitRepository(_get_process_factory());
 }
 
+function _get_translation_service(): TranslationService
+{
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "translationService") && \App\Tests\TestKernel::$translationService) {
+        return \App\Tests\TestKernel::$translationService;
+    }
+
+    // Get locale from config, default to 'en'
+    $locale = 'en';
+    try {
+        $config = _get_config();
+        $locale = $config['LANGUAGE'] ?? 'en';
+    } catch (\Exception $e) {
+        // Config might not exist yet (e.g., during config:init), use default
+    }
+
+    // Determine translations path - works both in PHAR and development
+    $translationsPath = __DIR__ . '/src/resources/translations';
+    if (class_exists('Phar') && \Phar::running(false)) {
+        // When running as PHAR, use the PHAR path
+        $translationsPath = 'phar://' . \Phar::running(false) . '/src/resources/translations';
+    }
+
+    return new TranslationService($locale, $translationsPath);
+}
+
 
 
 
@@ -194,7 +214,7 @@ function _get_git_repository(): GitRepository
 function config_init(): void
 {
     _load_constants();
-    $handler = new InitHandler(new FileSystem(), _get_config_path());
+    $handler = new InitHandler(new FileSystem(), _get_config_path(), _get_translation_service());
     $handler->handle(io());
 }
 
@@ -206,7 +226,7 @@ function config_init(): void
 function projects_list(): void
 {
     _load_constants();
-    $handler = new ProjectListHandler(_get_jira_service());
+    $handler = new ProjectListHandler(_get_jira_service(), _get_translation_service());
     $handler->handle(io());
 }
 
@@ -216,7 +236,7 @@ function items_list(
     #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')] ?string $project = null
 ): void {
     _load_constants();
-    $handler = new ItemListHandler(_get_jira_service());
+    $handler = new ItemListHandler(_get_jira_service(), _get_translation_service());
     $handler->handle(io(), $all, $project);
 }
 
@@ -225,7 +245,7 @@ function issues_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
 ): void {
     _load_constants();
-    $handler = new SearchHandler(_get_jira_service());
+    $handler = new SearchHandler(_get_jira_service(), _get_translation_service());
     $handler->handle(io(), $jql);
 }
 
@@ -235,7 +255,7 @@ function items_show(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
     _load_constants();
-    $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config());
+    $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
     $handler->handle(io(), $key);
 }
 
@@ -248,7 +268,7 @@ function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
     $handler->handle(io(), $key);
 }
 
@@ -258,7 +278,7 @@ function commit(
     #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null
 ): void {
     _load_constants();
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH);
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
     $handler->handle(io(), $isNew, $message);
 }
 
@@ -266,7 +286,7 @@ function commit(
 function please(): void
 {
     _load_constants();
-    $handler = new PleaseHandler(_get_git_repository());
+    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
     $handler->handle(io());
 }
 
@@ -316,7 +336,8 @@ function submit(): void
         _get_jira_service(),
         $githubProvider,
         _get_jira_config(),
-        DEFAULT_BASE_BRANCH
+        DEFAULT_BASE_BRANCH,
+        _get_translation_service()
     );
     $handler->handle(io());
 }
@@ -325,99 +346,100 @@ function submit(): void
 function help(): void
 {
     _load_constants();
+    $translator = _get_translation_service();
     $logo = require APP_LOGO_PATH;
     io()->writeln($logo(APP_NAME, APP_VERSION));
-    io()->title('Manual');
+    io()->title($translator->trans('help.title'));
 
-    io()->section('DESCRIPTION');
-    io()->writeln('    `stud-cli` is a command-line interface tool designed to streamline a developer\'s daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the "golden path" of starting a task, making conventional commits, and preparing your work for submission, all from the command line.');
+    io()->section($translator->trans('help.description_section'));
+    io()->writeln('    ' . $translator->trans('help.description_text'));
 
-    io()->section('GLOBAL OPTIONS');
+    io()->section($translator->trans('help.global_options_section'));
     io()->definitionList(
-        ['-h, --help' => 'Display help for the given command. When no command is given, display help for the list command.'],
-        ['-s, --silent' => 'Do not output any message.'],
-        ['-q, --quiet' => 'Only errors are displayed. All other output is suppressed.'],
-        ['-v|vv|vvv, --verbose' => 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug.'],
+        ['-h, --help' => $translator->trans('help.global_option_help')],
+        ['-s, --silent' => $translator->trans('help.global_option_silent')],
+        ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
+        ['-v|vv|vvv, --verbose' => $translator->trans('help.global_option_verbose')],
     );
 
-    io()->section('COMMANDS');
+    io()->section($translator->trans('help.commands_section'));
     io()->writeln('  <info>stud</info> [command|alias] [-options] [arguments]');
     $commands = [
-        'Configuration' => [
+        $translator->trans('help.category_configuration') => [
             [
                 'name' => 'config:init',
                 'alias' => 'init',
-                'description' => 'Interactive wizard to set up Jira & Git connection details.',
+                'description' => $translator->trans('help.command_config_init'),
             ],
         ],
-        'Jira Information' => [
+        $translator->trans('help.category_jira_information') => [
             [
                 'name' => 'projects:list',
                 'alias' => 'pj',
-                'description' => 'Lists all visible Jira projects.',
+                'description' => $translator->trans('help.command_projects_list'),
             ],
             [
                 'name' => 'items:list',
                 'alias' => 'ls',
-                'description' => 'Lists active work items (your dashboard).',
+                'description' => $translator->trans('help.command_items_list'),
                 'example' => 'stud ls -p PROJ',
             ],
             [
                 'name' => 'items:show',
                 'alias' => 'sh',
                 'args' => '<key>',
-                'description' => 'Shows detailed info for one work item.',
+                'description' => $translator->trans('help.command_items_show'),
                 'example' => 'stud sh PROJ-123',
             ],
             [
                 'name' => 'issues:search',
                 'alias' => 'search',
                 'args' => '<jql>',
-                'description' => 'Search for issues using JQL.',
+                'description' => $translator->trans('help.command_issues_search'),
                 'example' => 'stud search "project = PROJ and status = Done"',
             ],
         ],
-        'Git Workflow' => [
+        $translator->trans('help.category_git_workflow') => [
             [
                 'name' => 'items:start',
                 'alias' => 'start',
                 'args' => '<key>',
-                'description' => 'Creates a new git branch from a Jira item.',
+                'description' => $translator->trans('help.command_items_start'),
                 'example' => 'stud start PROJ-123',
             ],
             [
                 'name' => 'commit',
                 'alias' => 'co',
-                'description' => 'Guides you through making a conventional commit.',
+                'description' => $translator->trans('help.command_commit'),
             ],
             [
                 'name' => 'please',
                 'alias' => 'pl',
-                'description' => 'A power-user, safe force-push (force-with-lease).',
+                'description' => $translator->trans('help.command_please'),
             ],
             [
                 'name' => 'submit',
                 'alias' => 'su',
-                'description' => 'Pushes the current branch and creates a Pull Request.',
+                'description' => $translator->trans('help.command_submit'),
             ],
             [
                 'name' => 'status',
                 'alias' => 'ss',
-                'description' => 'A quick "where am I?" dashboard.',
+                'description' => $translator->trans('help.command_status'),
             ],
         ],
-        'Release Commands' => [
+        $translator->trans('help.category_release_commands') => [
             [
                 'name' => 'release',
                 'alias' => 'rl',
                 'args' => '<version>',
-                'description' => 'Creates a new release branch and bumps the version.',
+                'description' => $translator->trans('help.command_release'),
                 'example' => 'stud release 1.2.0',
             ],
             [
                 'name' => 'deploy',
                 'alias' => 'mep',
-                'description' => 'Deploys the current release branch.',
+                'description' => $translator->trans('help.command_deploy'),
                 'example' => 'stud deploy',
             ],
         ],
@@ -434,7 +456,7 @@ function help(): void
 
             $description = $command['description'];
             if (isset($command['example'])) {
-                $description .= "\n<fg=gray>Example: {$command['example']}</>";
+                $description .= "\n<fg=gray>" . $translator->trans('help.example_prefix', ['example' => $command['example']]) . "</>";
             }
 
             $tableRows[] = [
@@ -443,7 +465,11 @@ function help(): void
                 $description,
             ];
         }
-        io()->table(['Command', 'Alias', 'Description'], $tableRows);
+        io()->table([
+            $translator->trans('table.command'),
+            $translator->trans('table.alias'),
+            $translator->trans('table.description')
+        ], $tableRows);
     }
 }
 
@@ -452,7 +478,7 @@ function help(): void
 function status(): void
 {
     _load_constants();
-    $handler = new StatusHandler(_get_git_repository(), _get_jira_service());
+    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
     $handler->handle(io());
 }
 
@@ -466,7 +492,7 @@ function release(
     #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')] bool $publish = false
 ): void {
     _load_constants();
-    $handler = new ReleaseHandler(_get_git_repository());
+    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service());
     $handler->handle(io(), $version, $publish);
 }
 
@@ -474,7 +500,7 @@ function release(
 function deploy(): void
 {
     _load_constants();
-    $handler = new DeployHandler(_get_git_repository());
+    $handler = new DeployHandler(_get_git_repository(), _get_translation_service());
     $handler->handle(io());
 }
 
@@ -528,6 +554,7 @@ function update(): void
         $repoName,
         APP_VERSION,
         $binaryPath,
+        _get_translation_service(),
         $gitToken
     );
     $result = $handler->handle(io());

@@ -3,22 +3,24 @@
 namespace App\Handler;
 
 use App\Service\GitRepository;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class DeployHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly TranslationService $translator
     ) {
     }
 
     public function handle(SymfonyStyle $io): void
     {
-        $io->section('Starting deployment process');
+        $io->section($this->translator->trans('deploy.section'));
 
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         if (!str_starts_with($currentBranch, 'release/v')) {
-            $io->error('You must be on a release branch to deploy.');
+            $io->error($this->translator->trans('deploy.error_not_release'));
             return;
         }
 
@@ -30,14 +32,14 @@ class DeployHandler
         $this->gitRepository->merge($currentBranch);
         $this->gitRepository->tag('v' . $version, 'Release v' . $version);
         $this->gitRepository->pushTags('origin');
-        $io->text('Deployed to main and tagged.');
+        $io->text($this->translator->trans('deploy.deployed'));
 
         // Update develop
         $this->gitRepository->checkout('develop');
         $this->gitRepository->pull('origin', 'develop');
         $this->gitRepository->rebase('main');
         $this->gitRepository->forcePushWithLeaseRemote('origin', 'develop');
-        $io->text('Updated develop branch.');
+        $io->text($this->translator->trans('deploy.updated_develop'));
 
         // Cleanup
         if ($this->gitRepository->localBranchExists($currentBranch)) {
@@ -46,8 +48,8 @@ class DeployHandler
         if ($this->gitRepository->remoteBranchExists('origin', $currentBranch)) {
             $this->gitRepository->deleteRemoteBranch('origin', $currentBranch);
         }
-        $io->text('Cleaned up release branch.');
+        $io->text($this->translator->trans('deploy.cleaned'));
 
-        $io->success('Release v' . $version . ' successfully deployed to main. develop has been rebased and force-pushed. Branches cleaned up.');
+        $io->success($this->translator->trans('deploy.success', ['version' => $version]));
     }
 }

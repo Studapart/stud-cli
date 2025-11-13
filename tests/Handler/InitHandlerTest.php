@@ -20,7 +20,7 @@ class InitHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml');
+        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService);
     }
 
     public function testHandle(): void
@@ -46,6 +46,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -81,6 +82,7 @@ class InitHandlerTest extends CommandTestCase
             ->with(
                 '/tmp/config.yml',
                 Yaml::dump([
+                    'LANGUAGE' => 'en',
                     'JIRA_URL' => 'https://new-jira.example.com',
                     'JIRA_EMAIL' => 'new@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token', // Should remain unchanged
@@ -108,6 +110,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "https://new-jira.example.com/\n"); // New Jira URL
         fwrite($inputStream, "new@example.com\n"); // New Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
@@ -150,6 +153,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -185,6 +189,7 @@ class InitHandlerTest extends CommandTestCase
             ->with(
                 '/tmp/config.yml',
                 Yaml::dump([
+                    'LANGUAGE' => 'en',
                     'JIRA_URL' => 'https://jira.example.com',
                     'JIRA_EMAIL' => 'existing@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token',
@@ -212,6 +217,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
@@ -239,6 +245,7 @@ class InitHandlerTest extends CommandTestCase
             ->with(
                 '/tmp/config.yml',
                 Yaml::dump([
+                    'LANGUAGE' => 'en',
                     'JIRA_URL' => 'https://jira.example.com',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
@@ -260,6 +267,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "https://jira.example.com/\n"); // Jira URL with trailing slash
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -287,6 +295,7 @@ class InitHandlerTest extends CommandTestCase
             ->with(
                 '/tmp/config.yml',
                 Yaml::dump([
+                    'LANGUAGE' => 'en',
                     'JIRA_URL' => 'jira_url',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
@@ -308,6 +317,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -335,6 +345,7 @@ class InitHandlerTest extends CommandTestCase
             ->with(
                 '/tmp/config.yml',
                 Yaml::dump([
+                    'LANGUAGE' => 'en',
                     'JIRA_URL' => 'jira_url',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
@@ -356,6 +367,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
