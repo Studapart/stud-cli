@@ -71,12 +71,21 @@ This project is configured to be compiled into a single, executable PHAR file us
     ```bash
     PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
     ```
-    This will generate an executable `stud.phar` file in the project's root directory. You can rename it to `stud` for easier use.
+    This will generate an executable `stud.phar` file in the project's root directory.
 
-3.  **Compile:**
+3.  **Install (Recommended):**
+    Move the compiled `stud.phar` to a user-owned directory in your PATH (e.g., `~/.local/bin/`):
+    ```bash
+    mv stud.phar ~/.local/bin/stud && chmod +x ~/.local/bin/stud
+    ```
+    Make sure `~/.local/bin/` is in your `$PATH`. This allows you to use `stud update` without needing `sudo`.
+
+    **Alternative (Global installation):**
+    If you prefer to install globally for all users:
     ```bash
     sudo mv stud.phar /usr/local/bin/stud && sudo chmod +x /usr/local/bin/stud
     ```
+    Note: If you use this method, you will need to run `sudo stud update` to update the tool.
 
 ### Developer Troubleshooting
 
@@ -99,21 +108,57 @@ This section is for users who want to use the `stud-cli` tool as a standalone ex
 
 ### User Installation
 
-1.  **Download the `stud` PHAR:**
-    Obtain the `stud` PHAR file from the project's releases or build it yourself (see [Compiling to PHAR](#compiling-to-phar-using-box)).
+#### Recommended Installation (for seamless `stud update`)
 
-2.  **Make it Executable:**
+This is the recommended installation method as it allows you to use `stud update` without needing `sudo`.
+
+1.  **Download the `stud.phar` file:**
+    Download the `stud.phar` file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub.
+
+2.  **Move it to a user-owned binary directory:**
+    Move the `stud.phar` file to a directory in your user's home directory that is in your shell's `$PATH`. Common locations include:
+    - `~/.local/bin/` (standard on modern Linux/macOS)
+    - `~/bin/` (custom directory)
+
+    Example command:
     ```bash
-    chmod +x stud
+    mv ./stud.phar ~/.local/bin/stud
+    chmod +x ~/.local/bin/stud
     ```
 
-3.  **Move it to your PATH:**
-    For global access, move the `stud` executable to a directory in your system's PATH (e.g., `/usr/local/bin/`):
+3.  **Ensure the directory is in your PATH:**
+    Make sure the directory you chose (e.g., `~/.local/bin/`) is in your shell's `$PATH`. You can verify this by running:
     ```bash
-    sudo mv stud /usr/local/bin/stud
+    echo $PATH
+    ```
+    
+    If it's not in your PATH, add it to your shell configuration file (e.g., `~/.bashrc`, `~/.zshrc`):
+    ```bash
+    export PATH="$HOME/.local/bin:$PATH"
     ```
 
-    Now you can run `stud-cli` commands from anywhere using `stud <command>`.
+    Now you can run `stud-cli` commands from anywhere using `stud <command>`, and you'll be able to update the tool seamlessly with `stud update` without needing `sudo`.
+
+#### Alternative Installation (Global sudo)
+
+If you prefer to install `stud` globally for all users, you can use the traditional method:
+
+```bash
+sudo mv ./stud.phar /usr/local/bin/stud
+sudo chmod +x /usr/local/bin/stud
+```
+
+**Note:** If you use this method, you will need to run `sudo stud update` to update the tool.
+
+### Updating
+
+To update `stud-cli` to the latest version, simply run:
+
+```bash
+stud update
+```
+
+The tool will automatically check for new releases, download the latest version, and replace your current installation. If you installed using the recommended method (user-owned directory), this will work seamlessly without requiring `sudo`.
 
 ### Configuration
 
@@ -214,6 +259,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit
         stud sub
         ```
+
+-   **`stud update`** (Alias: `stud up`)
+    -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
+    -   **Usage:**
+        ```bash
+        stud update
+        stud up
+        ```
+    -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
 
 #### Release Commands
 

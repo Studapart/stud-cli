@@ -7,14 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+## [1.2.3] - 2025-11-13
+
+### Added
+
+- Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
+- Add `getLatestRelease()` method to `GithubProvider` service for fetching the latest GitHub release.
+- Add "Updating" section to README.md with instructions for using `stud update`.
+
+### Changed
+
+- Update README.md installation guide to recommend user-owned installation path (`~/.local/bin/`) for seamless updates without `sudo`.
+- Move global installation method (`/usr/local/bin/`) to "Alternative Installation" section with note about requiring `sudo` for updates.
+
+## [1.0.4] - 2025-11-12
+
 ### Added
 
 - GitHub Action to automatically build and release `stud.phar` on new version tags.
 - CI: Implement automatic PHPUnit tests and coverage reporting on Pull Requests.
+- Add `getRepositoryOwner()` and `getRepositoryName()` methods to `GitRepository` service for dynamic repository detection.
 
 ### Changed
 
 - Update `items:list` command to use `statusCategory` for JQL queries, providing more flexible filtering.
+- **[BREAKING]** Remove `GIT_REPO_OWNER` and `GIT_REPO_NAME` from global configuration - repository details are now automatically detected from git remote.
+- Refactor `config:init` command to no longer prompt for repository owner and name.
+- Update `submit` command to dynamically detect repository owner and name from git remote at runtime.
 
 ### Fixed
 

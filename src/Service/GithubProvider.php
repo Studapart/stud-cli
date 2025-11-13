@@ -47,4 +47,24 @@ class GithubProvider
 
         return $response->toArray();
     }
+
+    public function getLatestRelease(): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/releases/latest";
+
+        $response = $this->client->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
 }

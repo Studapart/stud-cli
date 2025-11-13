@@ -19,6 +19,7 @@ use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\DeployHandler;
+use App\Handler\UpdateHandler;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -102,7 +103,7 @@ function _get_jira_config(): array
 function _get_git_config(): array
 {
     $config = _get_config();
-    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN', 'GIT_REPO_OWNER', 'GIT_REPO_NAME'], array_keys($config));
+    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN'], array_keys($config));
 
     if (!empty($missingKeys)) {
         io()->error([
@@ -259,17 +260,41 @@ function submit(): void
 {
     _load_constants();
     $gitConfig = _get_git_config();
+    $gitRepository = _get_git_repository();
+    
     $githubProvider = null;
     if ($gitConfig['GIT_PROVIDER'] === 'github') {
+        // Get repository owner and name from git remote at runtime
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+        
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
+            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
+        }
+        
+        if (!$repoOwner || !$repoName) {
+            io()->error([
+                'Could not determine repository owner or name from git remote.',
+                'Please ensure your repository has a remote named "origin" configured.',
+                'You can check with: git remote -v',
+            ]);
+            exit(1);
+        }
+        
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
+        }
+        
         $githubProvider = new GithubProvider(
             $gitConfig['GIT_TOKEN'],
-            $gitConfig['GIT_REPO_OWNER'],
-            $gitConfig['GIT_REPO_NAME']
+            $repoOwner,
+            $repoName
         );
     }
 
     $handler = new SubmitHandler(
-        _get_git_repository(),
+        $gitRepository,
         _get_jira_service(),
         $githubProvider,
         _get_jira_config(),
@@ -433,5 +458,38 @@ function deploy(): void
     _load_constants();
     $handler = new DeployHandler(_get_git_repository());
     $handler->handle(io());
+}
+
+#[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
+function update(): void
+{
+    _load_constants();
+    
+    // Get binary path - try Phar first, then fallback
+    $binaryPath = '';
+    if (class_exists('Phar') && \Phar::running(false)) {
+        $binaryPath = \Phar::running(false);
+    } else {
+        // Fallback for development/testing
+        $binaryPath = __FILE__;
+    }
+    
+    // Get Git token from config if available (needed for private repositories)
+    $gitToken = null;
+    try {
+        $gitConfig = _get_git_config();
+        $gitToken = $gitConfig['GIT_TOKEN'] ?? null;
+    } catch (\Exception $e) {
+        // Config might not exist, that's okay - we'll try without token
+    }
+    
+    $handler = new UpdateHandler(
+        _get_git_repository(),
+        APP_VERSION,
+        $binaryPath,
+        $gitToken
+    );
+    $result = $handler->handle(io());
+    exit($result);
 }
 

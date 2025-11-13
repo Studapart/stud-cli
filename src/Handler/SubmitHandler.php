@@ -89,7 +89,7 @@ class SubmitHandler
 
         // 7. Format the head parameter for GitHub API
         // GitHub requires "owner:branch" format when creating PR from a fork
-        $remoteOwner = $this->gitRepository->getRemoteOwner('origin');
+        $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
         if ($io->isVerbose()) {
@@ -107,9 +107,21 @@ class SubmitHandler
                 $io->warning('No Git provider configured for this project.');
             }
         } catch (\Exception $e) {
+            // Check if PR already exists (GitHub returns 422 status)
+            $errorMessage = $e->getMessage();
+            $lowerMessage = strtolower($errorMessage);
+            
+            // GitHub returns 422 with "A pull request already exists" message
+            if (str_contains($errorMessage, 'Status: 422') && 
+                str_contains($lowerMessage, 'pull request already exists')) {
+                $io->note('A Pull Request already exists for this branch.');
+                $io->success('✅ Changes have been pushed to GitHub');
+                return 0;
+            }
+            
             $io->error([
                 'Failed to create Pull Request.',
-                'Error: ' . $e->getMessage(),
+                'Error: ' . $errorMessage,
             ]);
             return 1;
         }

@@ -50,7 +50,7 @@ class ItemStartHandler
         return 0;
     }
 
-    private function getBranchPrefixFromIssueType(string $issueType): string
+    protected function getBranchPrefixFromIssueType(string $issueType): string
     {
         return match (strtolower($issueType)) {
             'bug' => 'fix',
@@ -60,7 +60,7 @@ class ItemStartHandler
         };
     }
 
-    private function slugify(string $string): string
+    protected function slugify(string $string): string
     {
         // Lowercase, remove accents, remove non-word chars, and replace spaces with hyphens.
         $string = strtolower(trim($string));
