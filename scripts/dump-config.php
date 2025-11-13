@@ -3,7 +3,8 @@
 $composerJson = json_decode(file_get_contents(__DIR__ . '/../composer.json'), true);
 
 $config = [
-    'name' => $composerJson['description'],
+    'repo_slug' => $composerJson['name'],
+    'description' => $composerJson['description'],
     'version' => $composerJson['version'],
 ];
 

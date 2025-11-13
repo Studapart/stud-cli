@@ -7,18 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-11-13
+
+### Fixed
+- Fixed `stud update` command failing with "Could not find composer.json" when run from PHAR. The command now uses the `APP_REPO_SLUG` constant (baked into the PHAR during build) instead of reading composer.json at runtime.
+
 ## [2.0.0] - 2025-11-13
 
 ### Added
 - chore: Docs create convention for development standards [TPW-49] (#25)
-
 ### Changed
 - Refactored entire codebase to align with new CONVENTIONS.md for testability and reliability. All injectable service classes are no longer final, complex private methods are now protected for direct testing, and all unit tests now test intent (behavior, return values, exceptions) rather than specific output text strings.
 - chore: Docs Update and rename GEMINI markdown to AI markdown [TPW-50] (#26)
 - fix: Update command must use composer name [TPW-48] (#24)
 
 ## [1.1.3] - 2025-11-13
-
 ### Added
 
 - Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
