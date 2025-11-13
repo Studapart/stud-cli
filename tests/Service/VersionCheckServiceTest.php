@@ -42,6 +42,19 @@ class VersionCheckServiceTest extends TestCase
         );
     }
 
+    public function testConstructor(): void
+    {
+        $service = new VersionCheckService(
+            'owner',
+            'repo',
+            '1.0.0',
+            'token',
+            $this->httpClientMock
+        );
+
+        $this->assertInstanceOf(VersionCheckService::class, $service);
+    }
+
     protected function tearDown(): void
     {
         // Clean up cache file and directory
@@ -296,6 +309,293 @@ class VersionCheckServiceTest extends TestCase
         // Stale cache (25 hours ago)
         $staleCache = ['timestamp' => time() - 90000];
         $this->assertFalse($method->invoke($this->service, $staleCache));
+    }
+
+    public function testGetCachePathThrowsExceptionWhenHomeNotSet(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('getCachePath');
+        $method->setAccessible(true);
+
+        $originalHome = $_SERVER['HOME'] ?? null;
+        unset($_SERVER['HOME']);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Could not determine home directory.');
+            $method->invoke($this->service);
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            }
+        }
+    }
+
+    public function testGetCachePathCreatesDirectoryIfNotExists(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('getCachePath');
+        $method->setAccessible(true);
+
+        $tempDir = sys_get_temp_dir() . '/stud-test-cache-dir-' . uniqid();
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $tempDir;
+
+        try {
+            // Remove directory if it exists
+            @rmdir($tempDir . '/.cache/stud');
+            @rmdir($tempDir . '/.cache');
+            @rmdir($tempDir);
+
+            $path = $method->invoke($this->service);
+            $this->assertStringContainsString('.cache/stud/last_update_check.json', $path);
+            $this->assertDirectoryExists(dirname($path));
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+            @rmdir($tempDir . '/.cache/stud');
+            @rmdir($tempDir . '/.cache');
+            @rmdir($tempDir);
+        }
+    }
+
+    public function testReadCacheReturnsNullWhenFileDoesNotExist(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('readCache');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->service, '/nonexistent/path/file.json');
+        $this->assertNull($result);
+    }
+
+    public function testReadCacheReturnsNullWhenFileGetContentsFails(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('readCache');
+        $method->setAccessible(true);
+
+        // Create a directory path (not a file) to simulate read failure
+        $nonReadablePath = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        @mkdir($nonReadablePath, 0000);
+
+        try {
+            $result = $method->invoke($this->service, $nonReadablePath . '/file.json');
+            $this->assertNull($result);
+        } finally {
+            @chmod($nonReadablePath, 0755);
+            @rmdir($nonReadablePath);
+        }
+    }
+
+    public function testReadCacheReturnsNullWhenJsonIsInvalid(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('readCache');
+        $method->setAccessible(true);
+
+        $invalidJsonFile = sys_get_temp_dir() . '/stud-test-invalid-' . uniqid() . '.json';
+        file_put_contents($invalidJsonFile, 'invalid json content');
+
+        try {
+            $result = $method->invoke($this->service, $invalidJsonFile);
+            $this->assertNull($result);
+        } finally {
+            @unlink($invalidJsonFile);
+        }
+    }
+
+    public function testReadCacheReturnsNullWhenTimestampMissing(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('readCache');
+        $method->setAccessible(true);
+
+        $cacheFile = sys_get_temp_dir() . '/stud-test-no-timestamp-' . uniqid() . '.json';
+        file_put_contents($cacheFile, json_encode(['latest_version' => '1.2.0']));
+
+        try {
+            $result = $method->invoke($this->service, $cacheFile);
+            $this->assertNull($result);
+        } finally {
+            @unlink($cacheFile);
+        }
+    }
+
+    public function testCreateGithubProviderWithoutToken(): void
+    {
+        $service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            null, // No token
+            $this->httpClientMock
+        );
+
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('createGithubProvider');
+        $method->setAccessible(true);
+
+        $provider = $method->invoke($service);
+        $this->assertInstanceOf(GithubProvider::class, $provider);
+    }
+
+    public function testCreateGithubProviderWithToken(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('createGithubProvider');
+        $method->setAccessible(true);
+
+        $provider = $method->invoke($this->service);
+        $this->assertInstanceOf(GithubProvider::class, $provider);
+    }
+
+    public function testCreateGithubProviderWithoutHttpClient(): void
+    {
+        $service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            self::GIT_TOKEN,
+            null // No httpClient provided
+        );
+
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('createGithubProvider');
+        $method->setAccessible(true);
+
+        $provider = $method->invoke($service);
+        $this->assertInstanceOf(GithubProvider::class, $provider);
+    }
+
+    public function testCreateGithubProviderWithoutTokenAndWithoutHttpClient(): void
+    {
+        $service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            null, // No token
+            null  // No httpClient
+        );
+
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('createGithubProvider');
+        $method->setAccessible(true);
+
+        $provider = $method->invoke($service);
+        $this->assertInstanceOf(GithubProvider::class, $provider);
+    }
+
+    public function testFetchLatestVersionFromGitHubWithNoTagName(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('fetchLatestVersionFromGitHub');
+        $method->setAccessible(true);
+
+        // Override HOME
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $this->tempCacheDir;
+
+        try {
+            $releaseData = [
+                // No tag_name
+            ];
+
+            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock->method('getStatusCode')->willReturn(200);
+            $responseMock->method('toArray')->willReturn($releaseData);
+
+            $this->httpClientMock->expects($this->once())
+                ->method('request')
+                ->willReturn($responseMock);
+
+            $result = $method->invoke($this->service);
+            $this->assertSame('', $result); // Empty string after ltrim
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+        }
+    }
+
+    public function testCheckForUpdateWithFreshCacheButNullVersion(): void
+    {
+        // Create a fresh cache file with null latest_version
+        $cacheData = [
+            'latest_version' => null,
+            'timestamp' => time() - 3600, // 1 hour ago
+        ];
+        file_put_contents($this->tempCacheFile, json_encode($cacheData));
+
+        // Override HOME to use our temp directory
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $this->tempCacheDir;
+
+        try {
+            // Should not call GitHub API when cache is fresh
+            $this->httpClientMock->expects($this->never())
+                ->method('request');
+
+            $result = $this->service->checkForUpdate();
+
+            $this->assertNull($result['latest_version']);
+            $this->assertFalse($result['should_display']);
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+        }
+    }
+
+    public function testWriteCache(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('writeCache');
+        $method->setAccessible(true);
+
+        $testCacheFile = sys_get_temp_dir() . '/stud-test-write-' . uniqid() . '.json';
+        @mkdir(dirname($testCacheFile), 0755, true);
+
+        try {
+            $method->invoke($this->service, $testCacheFile, '1.2.0');
+
+            $this->assertFileExists($testCacheFile);
+            $data = json_decode(file_get_contents($testCacheFile), true);
+            $this->assertSame('1.2.0', $data['latest_version']);
+            $this->assertIsInt($data['timestamp']);
+        } finally {
+            @unlink($testCacheFile);
+            @rmdir(dirname($testCacheFile));
+        }
+    }
+
+    public function testWriteCacheWithNullVersion(): void
+    {
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('writeCache');
+        $method->setAccessible(true);
+
+        $testCacheFile = sys_get_temp_dir() . '/stud-test-write-null-' . uniqid() . '.json';
+        @mkdir(dirname($testCacheFile), 0755, true);
+
+        try {
+            $method->invoke($this->service, $testCacheFile, null);
+
+            $this->assertFileExists($testCacheFile);
+            $data = json_decode(file_get_contents($testCacheFile), true);
+            $this->assertNull($data['latest_version']);
+            $this->assertIsInt($data['timestamp']);
+        } finally {
+            @unlink($testCacheFile);
+            @rmdir(dirname($testCacheFile));
+        }
     }
 }
 
