@@ -3,7 +3,6 @@
 namespace App\Handler;
 
 use App\Service\GithubProvider;
-use App\Service\GitRepository;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -11,7 +10,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class UpdateHandler
 {
     public function __construct(
-        protected readonly GitRepository $gitRepository,
+        protected readonly string $repoOwner,
+        protected readonly string $repoName,
         protected readonly string $currentVersion,
         protected readonly string $binaryPath,
         protected ?string $gitToken = null,
@@ -25,17 +25,10 @@ class UpdateHandler
 
         $binaryPath = $this->getBinaryPath();
         $this->logVerbose($io, 'Binary path', $binaryPath);
-
-        $repositoryInfo = $this->getRepositoryInfo($io);
-        if (!$repositoryInfo) {
-            return 1;
-        }
-
-        [$repoOwner, $repoName] = $repositoryInfo;
-        $this->logVerbose($io, 'Detected repository', "{$repoOwner}/{$repoName}");
+        $this->logVerbose($io, 'Repository', "{$this->repoOwner}/{$this->repoName}");
         $this->logVerbose($io, 'Current version', $this->currentVersion);
 
-        $githubProvider = $this->createGithubProvider($repoOwner, $repoName);
+        $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
         $releaseResult = $this->fetchLatestRelease($io, $githubProvider);
         
         if ($releaseResult['is404']) {
@@ -59,7 +52,7 @@ class UpdateHandler
             return 1;
         }
 
-        $tempFile = $this->downloadPhar($io, $pharAsset, $repoOwner, $repoName);
+        $tempFile = $this->downloadPhar($io, $pharAsset, $this->repoOwner, $this->repoName);
         if ($tempFile === null) {
             return 1;
         }
@@ -67,21 +60,6 @@ class UpdateHandler
         return $this->replaceBinary($io, $tempFile, $binaryPath, $release['tag_name']);
     }
 
-    protected function getRepositoryInfo(SymfonyStyle $io): ?array
-    {
-        $repoOwner = $this->gitRepository->getRepositoryOwner();
-        $repoName = $this->gitRepository->getRepositoryName();
-
-        if (!$repoOwner || !$repoName) {
-            $io->error([
-                'Could not determine repository owner or name from git remote.',
-                'Please ensure your repository has a remote named "origin" configured.',
-            ]);
-            return null;
-        }
-
-        return [$repoOwner, $repoName];
-    }
 
     protected function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
     {
@@ -240,8 +218,8 @@ class UpdateHandler
             rename($tempFile, $binaryPath);
             chmod($binaryPath, 0755);
             
-            $io->success("✅ Update complete! You are now on {$tagName}.");
             // Backup file is left behind for cleanup on next run
+            // Note: No $io->success() call here to avoid zlib error after PHAR replacement
             return 0;
             // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
             // Rollback on failure
