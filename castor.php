@@ -228,14 +228,38 @@ $GLOBALS['_version_check_message'] = null;
 /**
  * Performs a version check at bootstrap.
  * This function runs silently and stores the result for later display.
+ * 
+ * @codeCoverageIgnore - This function is difficult to test as it runs at bootstrap
  */
 function _version_check_bootstrap(): void
 {
-    // Load constants first
+    // Skip version check during PHAR compilation/build process
+    // During castor repack, the execution context is not suitable for this check
+    // We use multiple checks to detect if we're in a safe execution context
+    
+    // Check 1: Ensure we're in CLI mode (not during compilation analysis)
+    if (php_sapi_name() !== 'cli') {
+        return;
+    }
+    
+    // Check 2: Ensure constants file exists (it won't exist during initial build)
+    $constantsPath = __DIR__ . '/src/config/constants.php';
+    if (!file_exists($constantsPath)) {
+        // Constants file doesn't exist (likely during build)
+        return;
+    }
+    
+    // Check 3: Ensure required classes are available (autoloader might not be ready during compilation)
+    if (!class_exists(\App\Service\VersionCheckService::class)) {
+        // Class not available yet (likely during compilation)
+        return;
+    }
+
+    // Load constants
     try {
-        require_once __DIR__ . '/src/config/constants.php';
-    } catch (\Exception $e) {
-        // Constants file might not exist or be accessible, skip check
+        require_once $constantsPath;
+    } catch (\Throwable $e) {
+        // Any error loading constants means we should skip
         return;
     }
 
@@ -255,12 +279,16 @@ function _version_check_bootstrap(): void
     // Get Git token from config if available (needed for private repositories)
     $gitToken = null;
     try {
-        $config = _get_config();
-        $gitToken = $config['GIT_TOKEN'] ?? null;
-    } catch (\Exception $e) {
+        // Only try to get config if the function exists and we're in a safe context
+        if (function_exists('_get_config')) {
+            $config = _get_config();
+            $gitToken = $config['GIT_TOKEN'] ?? null;
+        }
+    } catch (\Throwable $e) {
         // Config might not exist, that's okay - we'll try without token
     }
 
+    // Perform version check with comprehensive error handling
     try {
         $versionCheckService = new VersionCheckService(
             $repoOwner,
@@ -274,8 +302,9 @@ function _version_check_bootstrap(): void
         if ($result['should_display'] && $result['latest_version'] !== null) {
             $GLOBALS['_version_check_message'] = $result['latest_version'];
         }
-    } catch (\Exception $e) {
-        // Fail silently - don't block the user's command
+    } catch (\Throwable $e) {
+        // Fail silently - don't block the user's command or build process
+        // Catch Throwable (not just Exception) to catch all errors including fatal ones
     }
 }
 
