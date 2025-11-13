@@ -18,7 +18,7 @@ class InitHandler
     {
         $existingConfig = $this->fileSystem->fileExists($this->configPath) ? $this->fileSystem->parseFile($this->configPath) : [];
 
-        $io->title('Stud CLI Configuration Wizard');
+        $io->section('Stud CLI Configuration Wizard');
         $io->text('This will create or update your configuration file at: ' . $this->configPath);
 
         // Jira Configuration
