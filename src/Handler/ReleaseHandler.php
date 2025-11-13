@@ -10,6 +10,7 @@ class ReleaseHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly string $composerJsonPath = 'composer.json',
+        private readonly string $changelogPath = 'CHANGELOG.md',
     ) {
     }
 
@@ -32,6 +33,9 @@ class ReleaseHandler
 
         $this->gitRepository->run('composer dump-config');
         $io->comment('Dumped config to config/app.php');
+
+        $this->updateChangelog($version);
+        $io->comment('Updated CHANGELOG.md with version ' . $version);
 
         $this->gitRepository->stageAllChanges();
         $io->comment('Staged changes.');
@@ -57,5 +61,20 @@ class ReleaseHandler
         $composerJson = json_decode(file_get_contents($this->composerJsonPath), true);
         $composerJson['version'] = $version;
         file_put_contents($this->composerJsonPath, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function updateChangelog(string $version): void
+    {
+        $content = file_get_contents($this->changelogPath);
+        
+        $currentDate = date('Y-m-d');
+        $newVersionHeader = "## [{$version}] - {$currentDate}";
+        $unreleasedHeader = '## [Unreleased]';
+        
+        // Replace ## [Unreleased] with ## [Unreleased] followed by the new version header
+        $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
+        $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
+        
+        file_put_contents($this->changelogPath, $updatedContent);
     }
 }
