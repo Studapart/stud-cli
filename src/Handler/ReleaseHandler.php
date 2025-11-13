@@ -56,14 +56,14 @@ class ReleaseHandler
         $io->success('Release ' . $version . ' is ready to be deployed.');
     }
 
-    private function updateComposerVersion(string $version): void
+    protected function updateComposerVersion(string $version): void
     {
         $composerJson = json_decode(file_get_contents($this->composerJsonPath), true);
         $composerJson['version'] = $version;
         file_put_contents($this->composerJsonPath, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
-    private function updateChangelog(string $version): void
+    protected function updateChangelog(string $version): void
     {
         $content = file_get_contents($this->changelogPath);
         
