@@ -67,10 +67,6 @@ if (class_exists('Phar') && \Phar::running(false)) {
     }
 }
 
-// Version check at bootstrap
-// This runs silently in the background to check for updates without blocking the user's command
-_version_check_bootstrap();
-
 #[AsTask(default: true)]
 function main(): void
 {
@@ -99,9 +95,23 @@ function _get_config_path(): string
 /**
  * Reads configuration from the YAML file.
  * Throws an exception if the config is not found.
+ * 
+ * This function also triggers the version check on first call (after app initialization).
  */
 function _get_config(): array
 {
+    // Perform version check once when config is first accessed (app is initialized)
+    // Use static variable to ensure it only runs once
+    static $versionCheckDone = false;
+    if (!$versionCheckDone) {
+        $versionCheckDone = true;
+        try {
+            _version_check_bootstrap();
+        } catch (\Throwable $e) {
+            // Silently fail - don't block config loading or build process
+        }
+    }
+    
     $configPath = _get_config_path();
     if (!file_exists($configPath)) {
         $translator = _get_translation_service();
@@ -249,9 +259,11 @@ function _version_check_bootstrap(): void
         return;
     }
     
-    // Check 3: Ensure required classes are available (autoloader might not be ready during compilation)
-    if (!class_exists(\App\Service\VersionCheckService::class)) {
-        // Class not available yet (likely during compilation)
+    // Check 3: Don't use class_exists() as it can trigger autoloading which causes segfault during compilation
+    // Instead, check if we can safely proceed by verifying the file exists
+    $serviceFile = __DIR__ . '/src/Service/VersionCheckService.php';
+    if (!file_exists($serviceFile)) {
+        // Service file doesn't exist (likely during build or incomplete installation)
         return;
     }
 
@@ -277,15 +289,16 @@ function _version_check_bootstrap(): void
     [$repoOwner, $repoName] = $nameParts;
 
     // Get Git token from config if available (needed for private repositories)
+    // Read config file directly to avoid circular dependency with _get_config()
     $gitToken = null;
     try {
-        // Only try to get config if the function exists and we're in a safe context
-        if (function_exists('_get_config')) {
-            $config = _get_config();
+        $configPath = _get_config_path();
+        if (file_exists($configPath)) {
+            $config = Yaml::parseFile($configPath);
             $gitToken = $config['GIT_TOKEN'] ?? null;
         }
     } catch (\Throwable $e) {
-        // Config might not exist, that's okay - we'll try without token
+        // Config might not exist or be unreadable, that's okay - we'll try without token
     }
 
     // Perform version check with comprehensive error handling
