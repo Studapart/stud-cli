@@ -67,21 +67,6 @@ if (class_exists('Phar') && \Phar::running(false)) {
     }
 }
 
-// Version check at bootstrap
-// This runs silently in the background to check for updates without blocking the user's command
-// Skip during PHAR compilation to avoid segfaults
-// Only run if we're already running as a PHAR (not during compilation/repack)
-// During castor repack, we're not running as a PHAR yet, so this check will be skipped
-if (class_exists('Phar') && \Phar::running(false) !== '') {
-    // We're running as a PHAR, safe to perform version check
-    // Wrap in try-catch to prevent any unexpected errors
-    try {
-        _version_check_bootstrap();
-    } catch (\Throwable $e) {
-        // Silently fail - don't block execution
-    }
-}
-
 #[AsTask(default: true)]
 function main(): void
 {
@@ -110,9 +95,23 @@ function _get_config_path(): string
 /**
  * Reads configuration from the YAML file.
  * Throws an exception if the config is not found.
+ * 
+ * This function also triggers the version check on first call (after app initialization).
  */
 function _get_config(): array
 {
+    // Perform version check once when config is first accessed (app is initialized)
+    // Use static variable to ensure it only runs once
+    static $versionCheckDone = false;
+    if (!$versionCheckDone) {
+        $versionCheckDone = true;
+        try {
+            _version_check_bootstrap();
+        } catch (\Throwable $e) {
+            // Silently fail - don't block config loading or build process
+        }
+    }
+    
     $configPath = _get_config_path();
     if (!file_exists($configPath)) {
         $translator = _get_translation_service();
@@ -290,15 +289,16 @@ function _version_check_bootstrap(): void
     [$repoOwner, $repoName] = $nameParts;
 
     // Get Git token from config if available (needed for private repositories)
+    // Read config file directly to avoid circular dependency with _get_config()
     $gitToken = null;
     try {
-        // Only try to get config if the function exists and we're in a safe context
-        if (function_exists('_get_config')) {
-            $config = _get_config();
+        $configPath = _get_config_path();
+        if (file_exists($configPath)) {
+            $config = Yaml::parseFile($configPath);
             $gitToken = $config['GIT_TOKEN'] ?? null;
         }
     } catch (\Throwable $e) {
-        // Config might not exist, that's okay - we'll try without token
+        // Config might not exist or be unreadable, that's okay - we'll try without token
     }
 
     // Perform version check with comprehensive error handling
