@@ -118,7 +118,7 @@ class CommitHandler
         return 0;
     }
 
-    private function getCommitTypeFromIssueType(string $issueType): string
+    protected function getCommitTypeFromIssueType(string $issueType): string
     {
         return match (strtolower($issueType)) {
             'bug' => 'fix',
