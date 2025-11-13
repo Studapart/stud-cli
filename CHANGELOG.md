@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `TranslationService` to handle all user-facing messages
 - All user-facing strings (success, error, warning, note, text, section messages) are now translatable
 - Translation files are PHAR-safe and located in `src/resources/translations/`
+- Add proactive, non-blocking version check at application bootstrap that silently checks for updates every 24 hours and displays a warning message at the end of command execution if a new version is available [TPW-54]
+- Add `VersionCheckService` to handle version checking logic with file-based caching
 
 ### Changed
 - Refactor all handlers to use `TranslationService` for output messages
