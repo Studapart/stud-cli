@@ -20,12 +20,17 @@ if (class_exists('Phar') && \Phar::running(false)) {
     }
 }
 
+// Version check at bootstrap
+// This runs silently in the background to check for updates without blocking the user's command
+_version_check_bootstrap();
+
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\ProcessFactory;
 use App\Service\TranslationService;
+use App\Service\VersionCheckService;
 use App\Handler\CommitHandler;
 use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
@@ -40,8 +45,12 @@ use App\Handler\ReleaseHandler;
 use App\Handler\DeployHandler;
 use App\Handler\UpdateHandler;
 use Castor\Attribute\AsArgument;
+use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
+use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\Console\Event\ConsoleTerminateEvent;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Yaml\Yaml;
 use function Castor\io;
@@ -202,9 +211,90 @@ function _get_translation_service(): TranslationService
     return new TranslationService($locale, $translationsPath);
 }
 
+/**
+ * Global variable to store the update message for display at command termination.
+ * @var string|null
+ */
+$GLOBALS['_version_check_message'] = null;
 
+/**
+ * Performs a version check at bootstrap.
+ * This function runs silently and stores the result for later display.
+ */
+function _version_check_bootstrap(): void
+{
+    // Load constants first
+    try {
+        require_once __DIR__ . '/src/config/constants.php';
+    } catch (\Exception $e) {
+        // Constants file might not exist or be accessible, skip check
+        return;
+    }
 
+    if (!defined('APP_VERSION') || !defined('APP_REPO_SLUG')) {
+        // Constants not defined, skip check
+        return;
+    }
 
+    // Parse repository owner and name from APP_REPO_SLUG
+    $nameParts = explode('/', APP_REPO_SLUG, 2);
+    if (count($nameParts) !== 2) {
+        return;
+    }
+
+    [$repoOwner, $repoName] = $nameParts;
+
+    // Get Git token from config if available (needed for private repositories)
+    $gitToken = null;
+    try {
+        $config = _get_config();
+        $gitToken = $config['GIT_TOKEN'] ?? null;
+    } catch (\Exception $e) {
+        // Config might not exist, that's okay - we'll try without token
+    }
+
+    try {
+        $versionCheckService = new VersionCheckService(
+            $repoOwner,
+            $repoName,
+            APP_VERSION,
+            $gitToken
+        );
+
+        $result = $versionCheckService->checkForUpdate();
+
+        if ($result['should_display'] && $result['latest_version'] !== null) {
+            $GLOBALS['_version_check_message'] = $result['latest_version'];
+        }
+    } catch (\Exception $e) {
+        // Fail silently - don't block the user's command
+    }
+}
+
+/**
+ * Displays the version update warning at the end of command execution.
+ */
+#[AsListener(event: ConsoleEvents::TERMINATE)]
+function _version_check_listener(ConsoleTerminateEvent $event): void
+{
+    if (!isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
+        return;
+    }
+
+    $latestVersion = $GLOBALS['_version_check_message'];
+    $output = $event->getOutput();
+
+    // Only display if output is not quiet
+    if ($output->isQuiet()) {
+        return;
+    }
+
+    $io = new SymfonyStyle($event->getInput(), $output);
+    $io->warning(sprintf(
+        "A new version (v%s) is available. Run 'stud up' to update.",
+        $latestVersion
+    ));
+}
 
 // =================================================================================
 // Configuration Command
