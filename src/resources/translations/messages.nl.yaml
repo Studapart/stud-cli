@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Stud CLI Configuratie Wizard"
+      description: "Dit zal uw configuratiebestand maken of bijwerken op: %path%"
+    language:
+      title: "Taalconfiguratie"
+      prompt: "Selecteer uw taal"
+    jira:
+      title: "Jira Configuratie"
+      token_help: "U kunt hier een API-token genereren: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Voer uw Jira URL in"
+      email_prompt: "Voer uw Jira e-mailadres in"
+      token_prompt: "Voer uw Jira API-token in (laat leeg om bestaande te behouden)"
+    git:
+      title: "Git Provider Configuratie"
+      description: "Dit is vereist voor het `stud submit` commando om Pull Requests te maken."
+      token_help: "U kunt hier een token genereren: https://github.com/settings/tokens"
+      auto_detect_note: "Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote."
+      provider_prompt: "Selecteer uw Git provider"
+      token_prompt: "Voer uw Git provider PAT in (laat leeg om bestaande te behouden)"
+    success: "Configuratie succesvol opgeslagen!"
+  error:
+    not_found: "Configuratiebestand niet gevonden op: %path%\nVoer alstublieft \"stud config:init\" uit om er een te maken."
+    missing_jira_keys: "Uw configuratiebestand mist vereiste Jira-sleutels: %keys%\nVoer alstublieft \"stud config:init\" opnieuw uit."
+    missing_git_keys: "Uw configuratiebestand mist vereiste Git provider-sleutels: %keys%\nVoer alstublieft \"stud config:init\" opnieuw uit."
+
+# Item Start Handler
+item:
+  start:
+    section: "Werk starten op %key%"
+    fetching: "Details ophalen voor ticket: %key%"
+    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
+    generated_branch: "Gegenereerde branchnaam: %branch%"
+    fetching_changes: "Laatste wijzigingen ophalen van origin..."
+    creating_branch: "Nieuwe branch aanmaken: %branch%"
+    success: "Branch '%branch%' aangemaakt vanaf '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Details voor ticket %key%"
+    fetching: "Details ophalen voor ticket: %key%"
+    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
+    label_key: "Sleutel"
+    label_title: "Titel"
+    label_status: "Status"
+    label_assignee: "Toegewezen"
+    label_type: "Type"
+    label_labels: "Labels"
+    label_description: "Beschrijving"
+    label_link: "Link"
+    label_none: "Geen"
+
+# Item List Handler
+  list:
+    section: "Jira Tickets ophalen"
+    error_fetch: "Fout bij ophalen van tickets: %error%"
+    no_items: "Geen tickets gevonden die overeenkomen met uw criteria."
+
+# Project List Handler
+project:
+  list:
+    section: "Jira Projecten ophalen"
+    error_fetch: "Fout bij ophalen van projecten: %error%"
+    no_projects: "Geen projecten gevonden."
+
+# Search Handler
+search:
+  section: "Jira tickets zoeken met JQL"
+  jql_query: "JQL Query: %jql%"
+  error_search: "Fout bij zoeken naar tickets: %error%"
+  no_results: "Geen tickets gevonden die overeenkomen met uw JQL-query."
+
+# Status Handler
+status:
+  section: "Huidige Status"
+  fetching: "Status ophalen voor Jira ticket: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Kon Jira ticket details niet ophalen: %error%"
+  jira_no_key: "Geen Jira-sleutel gevonden in branchnaam."
+  git_branch: "Op branch '%branch%'"
+  local_changes: "U heeft %count% niet-gecommitte wijzigingen."
+  local_clean: "Werkdirectory is schoon."
+
+# Please Handler
+please:
+  error_no_upstream: "Uw huidige branch heeft geen upstream remote geconfigureerd.\nVoor de eerste push en om een Pull Request te maken, gebruik alstublieft \"stud submit\"."
+  warning_force: "⚠️  Forceren met lease..."
+
+# Submit Handler
+submit:
+  section: "Pull Request indienen"
+  error_dirty_working: "Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u indient."
+  error_base_branch: "Kan geen Pull Request maken vanaf de basisbranch."
+  pushing: "Branch %branch% pushen..."
+  error_push: "Push mislukt. Uw branch heeft mogelijk geschiedenis herschreven.\nProbeer 'stud please' uit te voeren om te force-pushen."
+  finding_commit: "Eerste logische commit zoeken om te gebruiken voor PR-details..."
+  fetching_jira: "Jira ticket ophalen voor PR-body: %key%"
+  error_no_logical: "Kon geen logische commit vinden op deze branch. Kan PR niet maken."
+  error_no_jira_key: "Kon Jira-sleutel niet parseren uit commit-bericht. Kan PR niet maken."
+  warning_jira_fetch: "Kon Jira ticket details niet ophalen voor PR-body: %error%\nTerugvallen op een eenvoudige link."
+  creating: "Pull Request aanmaken..."
+  success_created: "✅ Pull Request aangemaakt: %url%"
+  warning_no_provider: "Geen Git provider geconfigureerd voor dit project."
+  note_pr_exists: "Een Pull Request bestaat al voor deze branch."
+  success_pushed: "✅ Wijzigingen zijn naar GitHub gepusht"
+  error_create_pr: "Fout bij aanmaken van Pull Request.\nFout: %error%"
+  using_head: "Head branch gebruiken: %head%"
+
+# Commit Handler
+commit:
+  section: "Conventionele Commit Helper"
+  staging: "Alle wijzigingen stagen..."
+  committing: "Committen met opgegeven bericht..."
+  committing_simple: "Committen..."
+  success: "Commit succesvol aangemaakt!"
+  checking_logical: "Controleren op vorige logische commit..."
+  found_logical: "Logische commit SHA gevonden: %sha%"
+  creating_fixup: "Fixup commit aanmaken voor %sha%..."
+  fixup_success: "✅ Wijzigingen opgeslagen als fixup voor commit %sha%."
+  note_no_logical: "Geen vorige logische commit gevonden of --new flag gebruikt. Interactieve prompt starten..."
+  error_no_key: "Kon geen Jira-sleutel vinden in uw huidige branchnaam.\nGebruik alstublieft \"stud start <key>\" om een branch aan te maken."
+  fetching_jira: "Jira ticket ophalen: %key%"
+  error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
+  jira_details: "Jira Ticket Details:"
+  jira_title: "Titel: %title%"
+  jira_type: "Type: %type% -> %commit_type%"
+  jira_components: "Componenten: %components%"
+  scope_prompt: "Scope (optioneel)"
+  scope_auto: "Scope (auto-gedetecteerd '%scope%')"
+  type_prompt: "Commit Type (auto-gedetecteerd '%type%')"
+  summary_prompt: "Kort Bericht (auto-ingevuld vanuit Jira)"
+  generated_message: "Gegenereerd commit-bericht:\n%message%"
+
+# Update Handler
+update:
+  section: "Controleren op updates"
+  binary_path: "Binair pad"
+  repository: "Repository"
+  current_version: "Huidige versie"
+  latest_version: "Laatste versie"
+  downloading_from: "Downloaden vanaf"
+  warning_no_releases: "Geen releases gevonden voor deze repository.\nDe repository heeft mogelijk nog geen gepubliceerde releases."
+  error_fetch: "Fout bij ophalen van laatste release-informatie.\nFout: %error%"
+  success_latest: "U gebruikt al de laatste versie (%version%)."
+  new_version: "Een nieuwe versie (%version%) is beschikbaar. Bijwerken..."
+  error_no_phar: "Kon stud.phar asset niet vinden in de laatste release.\nRelease assets: %assets%"
+  error_download: "Fout bij downloaden van nieuwe versie.\nFout: %error%"
+  error_asset_id: "Fout bij downloaden van nieuwe versie.\nFout: Asset ID niet gevonden in release asset."
+  error_not_writable: "Update mislukt: Het bestand is niet beschrijfbaar.\nVoer alstublieft opnieuw uit met verhoogde rechten: sudo stud update"
+  error_backup: "Fout bij aanmaken van backup van huidige versie.\nFout: %error%"
+  error_rollback: "Update mislukt en is teruggedraaid.\nFout: %error%"
+  error_rollback_failed: "Update mislukt en terugdraaien is ook mislukt!\nOriginele fout: %original_error%\nTerugdraai fout: %rollback_error%\nHerstel alstublieft handmatig vanaf: %backup_path%"
+
+# Release Handler
+release:
+  section: "Release proces starten voor versie %version%"
+  fetched: "Laatste wijzigingen opgehaald van origin."
+  created_branch: "Release branch aangemaakt: %branch%"
+  updated_composer: "Versie bijgewerkt in composer.json naar %version%"
+  updated_lock: "composer.lock bijgewerkt"
+  dumped_config: "Config gedumpt naar config/app.php"
+  updated_changelog: "CHANGELOG.md bijgewerkt met versie %version%"
+  staged: "Wijzigingen gestaged."
+  committed: "Versie bump gecommit."
+  published: "Release branch gepubliceerd naar remote."
+  confirm_publish: "Wilt u de release branch naar remote publiceren?"
+  success: "Release %version% is klaar om te worden gedeployed."
+
+# Deploy Handler
+deploy:
+  section: "Deployment proces starten"
+  error_not_release: "U moet op een release branch zijn om te deployen."
+  deployed: "Gedeployed naar main en getagged."
+  updated_develop: "Develop branch bijgewerkt."
+  cleaned: "Release branch opgeschoond."
+  success: "Release v%version% succesvol gedeployed naar main. develop is gerebaseerd en force-pusht. Branches opgeschoond."
+
+# Table Headers
+table:
+  key: "Sleutel"
+  status: "Status"
+  summary: "Samenvatting"
+  name: "Naam"
+  command: "Commando"
+  alias: "Alias"
+  description: "Beschrijving"
+
+# Help Command
+help:
+  title: "Handleiding"
+  description_section: "BESCHRIJVING"
+  description_text: "`stud-cli` is een command-line interface tool ontworpen om de dagelijkse workflow van een ontwikkelaar te stroomlijnen door Jira werkitems nauw te integreren met lokale Git repository operaties. Het begeleidt u door het \"gouden pad\" van het starten van een taak, het maken van conventionele commits en het voorbereiden van uw werk voor indiening, allemaal vanaf de command line."
+  global_options_section: "GLOBALE OPTIES"
+  commands_section: "COMMANDO'S"
+  global_option_help: "Help weergeven voor het gegeven commando. Wanneer geen commando wordt gegeven, help weergeven voor het list commando."
+  global_option_silent: "Geen berichten weergeven."
+  global_option_quiet: "Alleen fouten worden weergegeven. Alle andere output wordt onderdrukt."
+  global_option_verbose: "Verhoog de uitgebreidheid van berichten: 1 voor normale output, 2 voor meer uitgebreide output en 3 voor debug."
+  category_configuration: "Configuratie"
+  category_jira_information: "Jira Informatie"
+  category_git_workflow: "Git Workflow"
+  category_release_commands: "Release Commando's"
+  example_prefix: "Voorbeeld: %example%"
+  command_config_init: "Interactieve wizard om Jira & Git verbindingsdetails in te stellen."
+  command_projects_list: "Lijst alle zichtbare Jira projecten."
+  command_items_list: "Lijst actieve werkitems (uw dashboard)."
+  command_items_show: "Toon gedetailleerde informatie voor één werkitem."
+  command_issues_search: "Zoek issues met JQL."
+  command_items_start: "Maakt een nieuwe git tak van een Jira item."
+  command_commit: "Begeleidt u bij het maken van een conventionele commit."
+  command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
+  command_submit: "Pusht de huidige tak en maakt een Pull Request."
+  command_status: "Een snelle \"waar ben ik?\" dashboard."
+  command_release: "Maakt een nieuwe release tak en verhoogt de versie."
+  command_deploy: "Deployt de huidige release tak."
+

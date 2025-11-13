@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Οδηγός Ρύθμισης Stud CLI"
+      description: "Αυτό θα δημιουργήσει ή θα ενημερώσει το αρχείο ρύθμισης σας στο: %path%"
+    language:
+      title: "Ρύθμιση Γλώσσας"
+      prompt: "Επιλέξτε τη γλώσσα σας"
+    jira:
+      title: "Ρύθμιση Jira"
+      token_help: "Μπορείτε να δημιουργήσετε ένα token API εδώ: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Εισάγετε το URL σας Jira"
+      email_prompt: "Εισάγετε τη διεύθυνση email σας Jira"
+      token_prompt: "Εισάγετε το token API σας Jira (αφήστε κενό για να διατηρήσετε το υπάρχον)"
+    git:
+      title: "Ρύθμιση Παροχέα Git"
+      description: "Αυτό απαιτείται για την εντολή `stud submit` για να δημιουργήσει Pull Requests."
+      token_help: "Μπορείτε να δημιουργήσετε ένα token εδώ: https://github.com/settings/tokens"
+      auto_detect_note: "Σημείωση: Ο κάτοχος και το όνομα του αποθετηρίου θα εντοπιστούν αυτόματα από το git remote σας."
+      provider_prompt: "Επιλέξτε τον παροχέα Git σας"
+      token_prompt: "Εισάγετε το PAT του παροχέα Git σας (αφήστε κενό για να διατηρήσετε το υπάρχον)"
+    success: "Η ρύθμιση αποθηκεύτηκε με επιτυχία!"
+  error:
+    not_found: "Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%\nΠαρακαλώ εκτελέστε \"stud config:init\" για να δημιουργήσετε ένα."
+    missing_jira_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά Jira: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
+    missing_git_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά παροχέα Git: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
+
+# Item Start Handler
+item:
+  start:
+    section: "Έναρξη εργασίας στο %key%"
+    fetching: "Λήψη λεπτομερειών για το θέμα: %key%"
+    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
+    generated_branch: "Δημιουργημένο όνομα κλάδου: %branch%"
+    fetching_changes: "Λήψη των τελευταίων αλλαγών από origin..."
+    creating_branch: "Δημιουργία νέου κλάδου: %branch%"
+    success: "Ο κλάδος '%branch%' δημιουργήθηκε από '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Λεπτομέρειες για το θέμα %key%"
+    fetching: "Λήψη λεπτομερειών για το θέμα: %key%"
+    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
+    label_key: "Κλειδί"
+    label_title: "Τίτλος"
+    label_status: "Κατάσταση"
+    label_assignee: "Ανατεθειμένος"
+    label_type: "Τύπος"
+    label_labels: "Ετικέτες"
+    label_description: "Περιγραφή"
+    label_link: "Σύνδεσμος"
+    label_none: "Κανένα"
+
+# Item List Handler
+  list:
+    section: "Λήψη Θεμάτων Jira"
+    error_fetch: "Αποτυχία λήψης θεμάτων: %error%"
+    no_items: "Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας."
+
+# Project List Handler
+project:
+  list:
+    section: "Λήψη Έργων Jira"
+    error_fetch: "Αποτυχία λήψης έργων: %error%"
+    no_projects: "Δεν βρέθηκαν έργα."
+
+# Search Handler
+search:
+  section: "Αναζήτηση θεμάτων Jira με JQL"
+  jql_query: "JQL Query: %jql%"
+  error_search: "Αποτυχία αναζήτησης θεμάτων: %error%"
+  no_results: "Δεν βρέθηκαν θέματα που να ταιριάζουν με το JQL query σας."
+
+# Status Handler
+status:
+  section: "Τρέχουσα Κατάσταση"
+  fetching: "Λήψη κατάστασης για το θέμα Jira: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira: %error%"
+  jira_no_key: "Δεν βρέθηκε κλειδί Jira στο όνομα του κλάδου."
+  git_branch: "Στον κλάδο '%branch%'"
+  local_changes: "Έχετε %count% μη-committed αλλαγές."
+  local_clean: "Ο κατάλογος εργασίας είναι καθαρός."
+
+# Please Handler
+please:
+  error_no_upstream: "Ο τρέχων κλάδος σας δεν έχει ρυθμισμένο upstream remote.\nΓια την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε \"stud submit\"."
+  warning_force: "⚠️  Εξαναγκασμός με lease..."
+
+# Submit Handler
+submit:
+  section: "Υποβολή Pull Request"
+  error_dirty_working: "Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την υποβολή."
+  error_base_branch: "Δεν μπορεί να δημιουργηθεί Pull Request από τον βασικό κλάδο."
+  pushing: "Push του κλάδου %branch%..."
+  error_push: "Η push απέτυχε. Ο κλάδος σας μπορεί να έχει ξαναγράψει το ιστορικό.\nΔοκιμάστε να εκτελέσετε 'stud please' για force-push."
+  finding_commit: "Εύρεση πρώτου λογικού commit για χρήση σε λεπτομέρειες PR..."
+  fetching_jira: "Λήψη θέματος Jira για το σώμα PR: %key%"
+  error_no_logical: "Δεν ήταν δυνατή η εύρεση λογικού commit σε αυτόν τον κλάδο. Δεν μπορεί να δημιουργηθεί PR."
+  error_no_jira_key: "Δεν ήταν δυνατή η ανάλυση κλειδιού Jira από το μήνυμα commit. Δεν μπορεί να δημιουργηθεί PR."
+  warning_jira_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
+  creating: "Δημιουργία Pull Request..."
+  success_created: "✅ Pull Request δημιουργήθηκε: %url%"
+  warning_no_provider: "Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο."
+  note_pr_exists: "Υπάρχει ήδη Pull Request για αυτόν τον κλάδο."
+  success_pushed: "✅ Οι αλλαγές έχουν σταλεί στο GitHub"
+  error_create_pr: "Αποτυχία δημιουργίας Pull Request.\nΣφάλμα: %error%"
+  using_head: "Χρήση head κλάδου: %head%"
+
+# Commit Handler
+commit:
+  section: "Βοηθός Συμβατικού Commit"
+  staging: "Staging όλων των αλλαγών..."
+  committing: "Commit με το παρεχόμενο μήνυμα..."
+  committing_simple: "Commit..."
+  success: "Το commit δημιουργήθηκε με επιτυχία!"
+  checking_logical: "Έλεγχος για προηγούμενο λογικό commit..."
+  found_logical: "Βρέθηκε λογικό commit SHA: %sha%"
+  creating_fixup: "Δημιουργία fixup commit για %sha%..."
+  fixup_success: "✅ Οι αλλαγές αποθηκεύτηκαν ως fixup για το commit %sha%."
+  note_no_logical: "Δεν βρέθηκε προηγούμενο λογικό commit ή χρησιμοποιήθηκε το flag --new. Έναρξη διαδραστικού βοηθού..."
+  error_no_key: "Δεν ήταν δυνατή η εύρεση κλειδιού Jira στο όνομα του τρέχοντος κλάδου σας.\nΠαρακαλώ χρησιμοποιήστε \"stud start <key>\" για να δημιουργήσετε έναν κλάδο."
+  fetching_jira: "Λήψη θέματος Jira: %key%"
+  error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
+  jira_details: "Λεπτομέρειες Θέματος Jira:"
+  jira_title: "Τίτλος: %title%"
+  jira_type: "Τύπος: %type% -> %commit_type%"
+  jira_components: "Συστατικά: %components%"
+  scope_prompt: "Εμβέλεια (προαιρετικό)"
+  scope_auto: "Εμβέλεια (αυτόματη ανίχνευση '%scope%')"
+  type_prompt: "Τύπος Commit (αυτόματη ανίχνευση '%type%')"
+  summary_prompt: "Σύντομο Μήνυμα (αυτόματη συμπλήρωση από Jira)"
+  generated_message: "Δημιουργημένο μήνυμα commit:\n%message%"
+
+# Update Handler
+update:
+  section: "Έλεγχος για ενημερώσεις"
+  binary_path: "Διαδρομή δυαδικού"
+  repository: "Αποθετήριο"
+  current_version: "Τρέχουσα έκδοση"
+  latest_version: "Τελευταία έκδοση"
+  downloading_from: "Λήψη από"
+  warning_no_releases: "Δεν βρέθηκαν releases για αυτό το αποθετήριο.\nΤο αποθετήριο μπορεί να μην έχει δημοσιευμένες releases ακόμα."
+  error_fetch: "Αποτυχία λήψης πληροφοριών τελευταίας release.\nΣφάλμα: %error%"
+  success_latest: "Είστε ήδη στην τελευταία έκδοση (%version%)."
+  new_version: "Μια νέα έκδοση (%version%) είναι διαθέσιμη. Ενημέρωση..."
+  error_no_phar: "Δεν ήταν δυνατή η εύρεση asset stud.phar στην τελευταία release.\nAssets release: %assets%"
+  error_download: "Αποτυχία λήψης νέας έκδοσης.\nΣφάλμα: %error%"
+  error_asset_id: "Αποτυχία λήψης νέας έκδοσης.\nΣφάλμα: Το ID asset δεν βρέθηκε στο asset release."
+  error_not_writable: "Η ενημέρωση απέτυχε: Το αρχείο δεν είναι εγγράψιμο.\nΠαρακαλώ εκτελέστε ξανά με αυξημένα δικαιώματα: sudo stud update"
+  error_backup: "Αποτυχία δημιουργίας αντιγράφου ασφαλείας της τρέχουσας έκδοσης.\nΣφάλμα: %error%"
+  error_rollback: "Η ενημέρωση απέτυχε και επανήλθε.\nΣφάλμα: %error%"
+  error_rollback_failed: "Η ενημέρωση απέτυχε και η επαναφορά απέτυχε επίσης!\nΑρχικό σφάλμα: %original_error%\nΣφάλμα επαναφοράς: %rollback_error%\nΠαρακαλώ επαναφέρετε χειροκίνητα από: %backup_path%"
+
+# Release Handler
+release:
+  section: "Έναρξη διαδικασίας release για έκδοση %version%"
+  fetched: "Λήφθηκαν οι τελευταίες αλλαγές από origin."
+  created_branch: "Δημιουργήθηκε κλάδος release: %branch%"
+  updated_composer: "Η έκδοση ενημερώθηκε στο composer.json σε %version%"
+  updated_lock: "Το composer.lock ενημερώθηκε"
+  dumped_config: "Η ρύθμιση αποθηκεύτηκε στο config/app.php"
+  updated_changelog: "Το CHANGELOG.md ενημερώθηκε με έκδοση %version%"
+  staged: "Οι αλλαγές προετοιμάστηκαν."
+  committed: "Η αύξηση έκδοσης commit."
+  published: "Ο κλάδος release δημοσιεύτηκε στο remote."
+  confirm_publish: "Θέλετε να δημοσιεύσετε τον κλάδο release στο remote?"
+  success: "Το release %version% είναι έτοιμο για ανάπτυξη."
+
+# Deploy Handler
+deploy:
+  section: "Έναρξη διαδικασίας ανάπτυξης"
+  error_not_release: "Πρέπει να είστε σε κλάδο release για ανάπτυξη."
+  deployed: "Αναπτύχθηκε στο main και επισημάνθηκε."
+  updated_develop: "Ο κλάδος develop ενημερώθηκε."
+  cleaned: "Ο κλάδος release καθαρίστηκε."
+  success: "Το release v%version% αναπτύχθηκε με επιτυχία στο main. Το develop rebase και force-push. Οι κλάδοι καθαρίστηκαν."
+
+# Table Headers
+table:
+  key: "Κλειδί"
+  status: "Κατάσταση"
+  summary: "Περίληψη"
+  name: "Όνομα"
+  command: "Εντολή"
+  alias: "Ψευδώνυμο"
+  description: "Περιγραφή"
+
+# Help Command
+help:
+  title: "Εγχειρίδιο"
+  description_section: "ΠΕΡΙΓΡΑΦΗ"
+  description_text: "Το `stud-cli` είναι ένα εργαλείο διεπαφής γραμμής εντολών σχεδιασμένο να απλοποιεί την καθημερινή ροή εργασίας ενός προγραμματιστή ενσωματώνοντας στενά τα στοιχεία εργασίας Jira με τις λειτουργίες του τοπικού αποθετηρίου Git. Σας καθοδηγεί μέσα από το \"χρυσό μονοπάτι\" της έναρξης μιας εργασίας, της δημιουργίας συμβατικών commits και της προετοιμασίας της εργασίας σας για υποβολή, όλα από τη γραμμή εντολών."
+  global_options_section: "ΚΑΘΟΛΙΚΕΣ ΕΠΙΛΟΓΕΣ"
+  commands_section: "ΕΝΤΟΛΕΣ"
+  global_option_help: "Εμφάνιση βοήθειας για την δεδομένη εντολή. Όταν δεν δίνεται εντολή, εμφάνιση βοήθειας για την εντολή list."
+  global_option_silent: "Να μην εμφανίζονται μηνύματα."
+  global_option_quiet: "Εμφανίζονται μόνο σφάλματα. Όλη η άλλη έξοδος καταστέλλεται."
+  global_option_verbose: "Αύξηση της λεπτομέρειας των μηνυμάτων: 1 για κανονική έξοδο, 2 για πιο λεπτομερή έξοδο και 3 για debug."
+  category_configuration: "Ρύθμιση"
+  category_jira_information: "Πληροφορίες Jira"
+  category_git_workflow: "Ροή Εργασίας Git"
+  category_release_commands: "Εντολές Release"
+  example_prefix: "Παράδειγμα: %example%"
+  command_config_init: "Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git."
+  command_projects_list: "Λίστα όλων των ορατών έργων Jira."
+  command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
+  command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."
+  command_issues_search: "Αναζήτηση issues με JQL."
+  command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."
+  command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
+  command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
+  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
+  command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."
+  command_release: "Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση."
+  command_deploy: "Αναπτύσσει τον τρέχοντα κλάδο release."
+

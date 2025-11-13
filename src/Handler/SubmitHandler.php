@@ -5,6 +5,7 @@ namespace App\Handler;
 use App\Service\GitRepository;
 use App\Service\GithubProvider;
 use App\Service\JiraService;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SubmitHandler
@@ -14,46 +15,44 @@ class SubmitHandler
         private readonly JiraService $jiraService,
         private readonly ?GithubProvider $githubProvider,
         private readonly array $jiraConfig,
-        private readonly string $baseBranch
+        private readonly string $baseBranch,
+        private readonly TranslationService $translator
     ) {
     }
 
     public function handle(SymfonyStyle $io): int
     {
-        $io->section('Submitting Pull Request');
+        $io->section($this->translator->trans('submit.section'));
 
         // 1. Check for clean working directory
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (!empty($gitStatus)) {
-            $io->error('Your working directory is not clean. Please commit your changes with \'stud commit\' before submitting.');
+            $io->error($this->translator->trans('submit.error_dirty_working'));
             return 1;
         }
 
         // 2. Get current branch name and check if it is a base branch
         $branch = $this->gitRepository->getCurrentBranchName();
         if (in_array($branch, ['develop', 'main', 'master'])) {
-            $io->error('Cannot create a Pull Request from the base branch.');
+            $io->error($this->translator->trans('submit.error_base_branch'));
             return 1;
         }
 
         // 3. Push the branch
-        $io->text("Pushing branch <info>{$branch}</info>...");
+        $io->text($this->translator->trans('submit.pushing', ['branch' => $branch]));
         $pushProcess = $this->gitRepository->pushToOrigin('HEAD');
         if (!$pushProcess->isSuccessful()) {
-            $io->error([
-                'Push failed. Your branch may have rewritten history.',
-                "Try running 'stud please' to force-push.",
-            ]);
+            $io->error(explode("\n", $this->translator->trans('submit.error_push')));
             return 1;
         }
 
         // 4. Find the first logical commit
-        $io->text('Finding first logical commit to use for PR details...');
+        $io->text($this->translator->trans('submit.finding_commit'));
         $ancestorSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
         $firstCommitSha = $this->gitRepository->findFirstLogicalSha($ancestorSha);
 
         if (null === $firstCommitSha) {
-            $io->error('Could not find a logical commit on this branch. Cannot create PR.');
+            $io->error($this->translator->trans('submit.error_no_logical'));
             return 1;
         }
         $firstLogicalMessage = $this->gitRepository->getCommitMessage($firstCommitSha);
@@ -64,7 +63,7 @@ class SubmitHandler
         $jiraKey = $matches[1] ?? null;
 
         if (!$jiraKey) {
-            $io->error('Could not parse Jira key from commit message. Cannot create PR.');
+            $io->error($this->translator->trans('submit.error_no_jira_key'));
             return 1;
         }
 
@@ -72,15 +71,12 @@ class SubmitHandler
         $prBody = null;
         try {
             if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>Fetching Jira issue for PR body: {$jiraKey}</>");
+                $io->writeln("  <fg=gray>{$this->translator->trans('submit.fetching_jira', ['key' => $jiraKey])}</>");
             }
             $issue = $this->jiraService->getIssue($jiraKey, true); // Request rendered fields
             $prBody = $issue->renderedDescription;
         } catch (\Exception $e) {
-            $io->warning([
-                'Could not fetch Jira issue details for PR body: ' . $e->getMessage(),
-                'Falling back to a simple link.',
-            ]);
+            $io->warning(explode("\n", $this->translator->trans('submit.warning_jira_fetch', ['error' => $e->getMessage()])));
         }
         // Fallback if API fails or if description is empty/default
         if (empty($prBody)) {
@@ -93,18 +89,18 @@ class SubmitHandler
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
         if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Using head branch: {$headBranch}</>");
+            $io->writeln("  <fg=gray>{$this->translator->trans('submit.using_head', ['head' => $headBranch])}</>");
         }
 
         // 8. Call the Git Provider API
-        $io->text('Creating Pull Request...');
+        $io->text($this->translator->trans('submit.creating'));
 
         try {
             if ($this->githubProvider) {
                 $prData = $this->githubProvider->createPullRequest($prTitle, $headBranch, 'develop', $prBody);
-                $io->success("✅ Pull Request created: {$prData['html_url']}");
+                $io->success($this->translator->trans('submit.success_created', ['url' => $prData['html_url']]));
             } else {
-                $io->warning('No Git provider configured for this project.');
+                $io->warning($this->translator->trans('submit.warning_no_provider'));
             }
         } catch (\Exception $e) {
             // Check if PR already exists (GitHub returns 422 status)
@@ -114,15 +110,12 @@ class SubmitHandler
             // GitHub returns 422 with "A pull request already exists" message
             if (str_contains($errorMessage, 'Status: 422') && 
                 str_contains($lowerMessage, 'pull request already exists')) {
-                $io->note('A Pull Request already exists for this branch.');
-                $io->success('✅ Changes have been pushed to GitHub');
+                $io->note($this->translator->trans('submit.note_pr_exists'));
+                $io->success($this->translator->trans('submit.success_pushed'));
                 return 0;
             }
             
-            $io->error([
-                'Failed to create Pull Request.',
-                'Error: ' . $errorMessage,
-            ]);
+            $io->error(explode("\n", $this->translator->trans('submit.error_create_pr', ['error' => $errorMessage])));
             return 1;
         }
         

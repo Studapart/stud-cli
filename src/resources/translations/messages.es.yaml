@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Asistente de configuración de Stud CLI"
+      description: "Esto creará o actualizará su archivo de configuración en: %path%"
+    language:
+      title: "Configuración de idioma"
+      prompt: "Seleccione su idioma"
+    jira:
+      title: "Configuración de Jira"
+      token_help: "Puede generar un token de API aquí: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Ingrese su URL de Jira"
+      email_prompt: "Ingrese su dirección de correo electrónico de Jira"
+      token_prompt: "Ingrese su token de API de Jira (deje en blanco para mantener el existente)"
+    git:
+      title: "Configuración del proveedor Git"
+      description: "Esto es necesario para el comando `stud submit` para crear Pull Requests."
+      token_help: "Puede generar un token aquí: https://github.com/settings/tokens"
+      auto_detect_note: "Nota: El propietario y el nombre del repositorio se detectarán automáticamente desde su remote git."
+      provider_prompt: "Seleccione su proveedor Git"
+      token_prompt: "Ingrese su PAT del proveedor Git (deje en blanco para mantener el existente)"
+    success: "¡Configuración guardada exitosamente!"
+  error:
+    not_found: "Archivo de configuración no encontrado en: %path%\nPor favor ejecute \"stud config:init\" para crear uno."
+    missing_jira_keys: "Su archivo de configuración falta las claves de Jira requeridas: %keys%\nPor favor ejecute \"stud config:init\" nuevamente."
+    missing_git_keys: "Su archivo de configuración falta las claves del proveedor Git requeridas: %keys%\nPor favor ejecute \"stud config:init\" nuevamente."
+
+# Item Start Handler
+item:
+  start:
+    section: "Iniciando trabajo en %key%"
+    fetching: "Obteniendo detalles del ticket: %key%"
+    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
+    generated_branch: "Nombre de rama generado: %branch%"
+    fetching_changes: "Obteniendo los últimos cambios desde origin..."
+    creating_branch: "Creando nueva rama: %branch%"
+    success: "Rama '%branch%' creada desde '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Detalles del ticket %key%"
+    fetching: "Obteniendo detalles del ticket: %key%"
+    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
+    label_key: "Clave"
+    label_title: "Título"
+    label_status: "Estado"
+    label_assignee: "Asignado"
+    label_type: "Tipo"
+    label_labels: "Etiquetas"
+    label_description: "Descripción"
+    label_link: "Enlace"
+    label_none: "Ninguno"
+
+# Item List Handler
+  list:
+    section: "Obteniendo tickets de Jira"
+    error_fetch: "Error al obtener tickets: %error%"
+    no_items: "No se encontraron tickets que coincidan con sus criterios."
+
+# Project List Handler
+project:
+  list:
+    section: "Obteniendo proyectos de Jira"
+    error_fetch: "Error al obtener proyectos: %error%"
+    no_projects: "No se encontraron proyectos."
+
+# Search Handler
+search:
+  section: "Buscando tickets de Jira con JQL"
+  jql_query: "Consulta JQL: %jql%"
+  error_search: "Error al buscar tickets: %error%"
+  no_results: "No se encontraron tickets que coincidan con su consulta JQL."
+
+# Status Handler
+status:
+  section: "Estado actual"
+  fetching: "Obteniendo estado del ticket de Jira: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "No se pudieron obtener los detalles del ticket de Jira: %error%"
+  jira_no_key: "No se encontró una clave de Jira en el nombre de la rama."
+  git_branch: "En la rama '%branch%'"
+  local_changes: "Tiene %count% cambios sin commitear."
+  local_clean: "El directorio de trabajo está limpio."
+
+# Please Handler
+please:
+  error_no_upstream: "Su rama actual no tiene un remote upstream configurado.\nPara el push inicial y para crear una Pull Request, por favor use \"stud submit\"."
+  warning_force: "⚠️  Forzando con lease..."
+
+# Submit Handler
+submit:
+  section: "Enviando Pull Request"
+  error_dirty_working: "Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de enviar."
+  error_base_branch: "No se puede crear una Pull Request desde la rama base."
+  pushing: "Haciendo push de la rama %branch%..."
+  error_push: "Error en el push. Su rama puede haber reescrito el historial.\nIntente ejecutar 'stud please' para forzar el push."
+  finding_commit: "Buscando el primer commit lógico para usar en los detalles de la PR..."
+  fetching_jira: "Obteniendo ticket de Jira para el cuerpo de la PR: %key%"
+  error_no_logical: "No se pudo encontrar un commit lógico en esta rama. No se puede crear la PR."
+  error_no_jira_key: "No se pudo analizar la clave de Jira del mensaje de commit. No se puede crear la PR."
+  warning_jira_fetch: "No se pudieron obtener los detalles del ticket de Jira para el cuerpo de la PR: %error%\nVolviendo a un enlace simple."
+  creating: "Creando Pull Request..."
+  success_created: "✅ Pull Request creada: %url%"
+  warning_no_provider: "No hay proveedor Git configurado para este proyecto."
+  note_pr_exists: "Ya existe una Pull Request para esta rama."
+  success_pushed: "✅ Los cambios han sido enviados a GitHub"
+  error_create_pr: "Error al crear la Pull Request.\nError: %error%"
+  using_head: "Usando rama head: %head%"
+
+# Commit Handler
+commit:
+  section: "Asistente de commit convencional"
+  staging: "Preparando todos los cambios..."
+  committing: "Haciendo commit con el mensaje proporcionado..."
+  committing_simple: "Haciendo commit..."
+  success: "¡Commit creado exitosamente!"
+  checking_logical: "Verificando commit lógico anterior..."
+  found_logical: "SHA de commit lógico encontrado: %sha%"
+  creating_fixup: "Creando commit fixup para %sha%..."
+  fixup_success: "✅ Cambios guardados como fixup para el commit %sha%."
+  note_no_logical: "No se encontró commit lógico anterior o se usó el flag --new. Iniciando asistente interactivo..."
+  error_no_key: "No se pudo encontrar una clave de Jira en el nombre de su rama actual.\nPor favor use \"stud start <key>\" para crear una rama."
+  fetching_jira: "Obteniendo ticket de Jira: %key%"
+  error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
+  jira_details: "Detalles del ticket de Jira:"
+  jira_title: "Título: %title%"
+  jira_type: "Tipo: %type% -> %commit_type%"
+  jira_components: "Componentes: %components%"
+  scope_prompt: "Alcance (opcional)"
+  scope_auto: "Alcance (auto-detectado '%scope%')"
+  type_prompt: "Tipo de commit (auto-detectado '%type%')"
+  summary_prompt: "Mensaje corto (auto-completado desde Jira)"
+  generated_message: "Mensaje de commit generado:\n%message%"
+
+# Update Handler
+update:
+  section: "Verificando actualizaciones"
+  binary_path: "Ruta del binario"
+  repository: "Repositorio"
+  current_version: "Versión actual"
+  latest_version: "Última versión"
+  downloading_from: "Descargando desde"
+  warning_no_releases: "No se encontraron releases para este repositorio.\nEl repositorio puede no tener releases publicadas aún."
+  error_fetch: "Error al obtener información de la última release.\nError: %error%"
+  success_latest: "Ya está en la última versión (%version%)."
+  new_version: "Una nueva versión (%version%) está disponible. Actualizando..."
+  error_no_phar: "No se pudo encontrar el asset stud.phar en la última release.\nAssets de release: %assets%"
+  error_download: "Error al descargar la nueva versión.\nError: %error%"
+  error_asset_id: "Error al descargar la nueva versión.\nError: ID de asset no encontrado en el asset de release."
+  error_not_writable: "Error en la actualización: El archivo no es escribible.\nPor favor vuelva a ejecutar con privilegios elevados: sudo stud update"
+  error_backup: "Error al crear respaldo de la versión actual.\nError: %error%"
+  error_rollback: "Error en la actualización y se revirtió.\nError: %error%"
+  error_rollback_failed: "¡Error en la actualización y la reversión también falló!\nError original: %original_error%\nError de reversión: %rollback_error%\nPor favor restaure manualmente desde: %backup_path%"
+
+# Release Handler
+release:
+  section: "Iniciando proceso de release para la versión %version%"
+  fetched: "Últimos cambios obtenidos desde origin."
+  created_branch: "Rama de release creada: %branch%"
+  updated_composer: "Versión actualizada en composer.json a %version%"
+  updated_lock: "composer.lock actualizado"
+  dumped_config: "Config volcado en config/app.php"
+  updated_changelog: "CHANGELOG.md actualizado con la versión %version%"
+  staged: "Cambios preparados."
+  committed: "Incremento de versión commitado."
+  published: "Rama de release publicada en el remote."
+  confirm_publish: "¿Desea publicar la rama de release en el remote?"
+  success: "La release %version% está lista para ser desplegada."
+
+# Deploy Handler
+deploy:
+  section: "Iniciando proceso de despliegue"
+  error_not_release: "Debe estar en una rama de release para desplegar."
+  deployed: "Desplegado en main y etiquetado."
+  updated_develop: "Rama develop actualizada."
+  cleaned: "Rama de release limpiada."
+  success: "Release v%version% desplegada exitosamente en main. develop ha sido rebaseado y force-pusheado. Ramas limpiadas."
+
+# Table Headers
+table:
+  key: "Clave"
+  status: "Estado"
+  summary: "Resumen"
+  name: "Nombre"
+  command: "Comando"
+  alias: "Alias"
+  description: "Descripción"
+
+# Help Command
+help:
+  title: "Manual"
+  description_section: "DESCRIPCIÓN"
+  description_text: "`stud-cli` es una herramienta de interfaz de línea de comandos diseñada para optimizar el flujo de trabajo diario de un desarrollador integrando estrechamente los elementos de trabajo de Jira con las operaciones del repositorio Git local. Le guía a través del \"camino dorado\" de iniciar una tarea, hacer commits convencionales y preparar su trabajo para su envío, todo desde la línea de comandos."
+  global_options_section: "OPCIONES GLOBALES"
+  commands_section: "COMANDOS"
+  global_option_help: "Mostrar ayuda para el comando dado. Cuando no se da ningún comando, mostrar ayuda para el comando list."
+  global_option_silent: "No mostrar ningún mensaje."
+  global_option_quiet: "Solo se muestran errores. Todas las demás salidas se suprimen."
+  global_option_verbose: "Aumentar la verbosidad de los mensajes: 1 para salida normal, 2 para salida más verbosa y 3 para debug."
+  category_configuration: "Configuración"
+  category_jira_information: "Información de Jira"
+  category_git_workflow: "Flujo de trabajo Git"
+  category_release_commands: "Comandos de Release"
+  example_prefix: "Ejemplo: %example%"
+  command_config_init: "Asistente interactivo para configurar los detalles de conexión de Jira y Git."
+  command_projects_list: "Lista todos los proyectos de Jira visibles."
+  command_items_list: "Lista elementos de trabajo activos (su panel de control)."
+  command_items_show: "Muestra información detallada para un elemento de trabajo."
+  command_issues_search: "Buscar issues usando JQL."
+  command_items_start: "Crea una nueva rama git desde un elemento de Jira."
+  command_commit: "Le guía a través de la creación de un commit convencional."
+  command_please: "Un force-push seguro para usuario avanzado (force-with-lease)."
+  command_submit: "Envía la rama actual y crea una Pull Request."
+  command_status: "Un panel de control rápido \"¿dónde estoy?\"."
+  command_release: "Crea una nueva rama de release y aumenta la versión."
+  command_deploy: "Despliega la rama de release actual."
+

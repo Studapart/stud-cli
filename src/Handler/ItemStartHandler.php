@@ -4,6 +4,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemStartHandler
@@ -11,23 +12,24 @@ class ItemStartHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly string $baseBranch
+        private readonly string $baseBranch,
+        private readonly TranslationService $translator
     ) {
     }
 
     public function handle(SymfonyStyle $io, string $key): int
     {
         $key = strtoupper($key);
-        $io->section("Starting work on {$key}");
+        $io->section($this->translator->trans('item.start.section', ['key' => $key]));
 
         if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Fetching details for issue: {$key}</>");
+            $io->writeln("  <fg=gray>{$this->translator->trans('item.start.fetching', ['key' => $key])}</>");
         }
         
         try {
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
-            $io->error("Could not find Jira issue with key \"{$key}\".");
+            $io->error($this->translator->trans('item.start.error_not_found', ['key' => $key]));
             return 1;
         }
 
@@ -36,16 +38,16 @@ class ItemStartHandler
         $branchName = "{$prefix}/{$key}-{$slug}";
 
         if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>Generated branch name: {$branchName}</>");
+            $io->writeln("  <fg=gray>{$this->translator->trans('item.start.generated_branch', ['branch' => $branchName])}</>");
         }
 
-        $io->text("Fetching latest changes from origin...");
+        $io->text($this->translator->trans('item.start.fetching_changes'));
         $this->gitRepository->fetch();
 
-        $io->text("Creating new branch: <info>{$branchName}</info>");
+        $io->text($this->translator->trans('item.start.creating_branch', ['branch' => $branchName]));
         $this->gitRepository->createBranch($branchName, $this->baseBranch);
 
-        $io->success("Branch '{$branchName}' created from '" . $this->baseBranch . "'.");
+        $io->success($this->translator->trans('item.start.success', ['branch' => $branchName, 'base' => $this->baseBranch]));
 
         return 0;
     }

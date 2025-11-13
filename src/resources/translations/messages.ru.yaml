@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Мастер настройки Stud CLI"
+      description: "Это создаст или обновит ваш файл конфигурации по адресу: %path%"
+    language:
+      title: "Настройка языка"
+      prompt: "Выберите ваш язык"
+    jira:
+      title: "Настройка Jira"
+      token_help: "Вы можете создать API-токен здесь: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Введите ваш URL Jira"
+      email_prompt: "Введите ваш адрес электронной почты Jira"
+      token_prompt: "Введите ваш API-токен Jira (оставьте пустым, чтобы сохранить существующий)"
+    git:
+      title: "Настройка провайдера Git"
+      description: "Это необходимо для команды `stud submit` для создания Pull Requests."
+      token_help: "Вы можете создать токен здесь: https://github.com/settings/tokens"
+      auto_detect_note: "Примечание: Владелец и имя репозитория будут автоматически определены из вашего git remote."
+      provider_prompt: "Выберите ваш провайдер Git"
+      token_prompt: "Введите ваш PAT провайдера Git (оставьте пустым, чтобы сохранить существующий)"
+    success: "Конфигурация успешно сохранена!"
+  error:
+    not_found: "Файл конфигурации не найден по адресу: %path%\nПожалуйста, выполните \"stud config:init\" для создания."
+    missing_jira_keys: "В вашем файле конфигурации отсутствуют необходимые ключи Jira: %keys%\nПожалуйста, выполните \"stud config:init\" снова."
+    missing_git_keys: "В вашем файле конфигурации отсутствуют необходимые ключи провайдера Git: %keys%\nПожалуйста, выполните \"stud config:init\" снова."
+
+# Item Start Handler
+item:
+  start:
+    section: "Начало работы над %key%"
+    fetching: "Получение деталей для задачи: %key%"
+    error_not_found: "Не удалось найти задачу Jira с ключом \"%key%\"."
+    generated_branch: "Сгенерированное имя ветки: %branch%"
+    fetching_changes: "Получение последних изменений из origin..."
+    creating_branch: "Создание новой ветки: %branch%"
+    success: "Ветка '%branch%' создана из '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Детали задачи %key%"
+    fetching: "Получение деталей для задачи: %key%"
+    error_not_found: "Не удалось найти задачу Jira с ключом \"%key%\"."
+    label_key: "Ключ"
+    label_title: "Название"
+    label_status: "Статус"
+    label_assignee: "Исполнитель"
+    label_type: "Тип"
+    label_labels: "Метки"
+    label_description: "Описание"
+    label_link: "Ссылка"
+    label_none: "Нет"
+
+# Item List Handler
+  list:
+    section: "Получение задач Jira"
+    error_fetch: "Ошибка при получении задач: %error%"
+    no_items: "Не найдено задач, соответствующих вашим критериям."
+
+# Project List Handler
+project:
+  list:
+    section: "Получение проектов Jira"
+    error_fetch: "Ошибка при получении проектов: %error%"
+    no_projects: "Проекты не найдены."
+
+# Search Handler
+search:
+  section: "Поиск задач Jira с помощью JQL"
+  jql_query: "JQL Запрос: %jql%"
+  error_search: "Ошибка при поиске задач: %error%"
+  no_results: "Не найдено задач, соответствующих вашему JQL-запросу."
+
+# Status Handler
+status:
+  section: "Текущий статус"
+  fetching: "Получение статуса для задачи Jira: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Не удалось получить детали задачи Jira: %error%"
+  jira_no_key: "Ключ Jira не найден в имени ветки."
+  git_branch: "На ветке '%branch%'"
+  local_changes: "У вас есть %count% незакоммиченных изменений."
+  local_clean: "Рабочая директория чиста."
+
+# Please Handler
+please:
+  error_no_upstream: "У вашей текущей ветки нет настроенного upstream remote.\nДля первоначальной отправки и создания Pull Request, пожалуйста, используйте \"stud submit\"."
+  warning_force: "⚠️  Принудительная отправка с lease..."
+
+# Submit Handler
+submit:
+  section: "Отправка Pull Request"
+  error_dirty_working: "Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед отправкой."
+  error_base_branch: "Невозможно создать Pull Request из базовой ветки."
+  pushing: "Отправка ветки %branch%..."
+  error_push: "Отправка не удалась. Ваша ветка могла переписать историю.\nПопробуйте выполнить 'stud please' для принудительной отправки."
+  finding_commit: "Поиск первого логического коммита для использования в деталях PR..."
+  fetching_jira: "Получение задачи Jira для тела PR: %key%"
+  error_no_logical: "Не удалось найти логический коммит на этой ветке. Невозможно создать PR."
+  error_no_jira_key: "Не удалось распарсить ключ Jira из сообщения коммита. Невозможно создать PR."
+  warning_jira_fetch: "Не удалось получить детали задачи Jira для тела PR: %error%\nВозврат к простой ссылке."
+  creating: "Создание Pull Request..."
+  success_created: "✅ Pull Request создан: %url%"
+  warning_no_provider: "Провайдер Git не настроен для этого проекта."
+  note_pr_exists: "Pull Request уже существует для этой ветки."
+  success_pushed: "✅ Изменения отправлены в GitHub"
+  error_create_pr: "Ошибка при создании Pull Request.\nОшибка: %error%"
+  using_head: "Использование head ветки: %head%"
+
+# Commit Handler
+commit:
+  section: "Помощник обычных коммитов"
+  staging: "Подготовка всех изменений..."
+  committing: "Коммит с предоставленным сообщением..."
+  committing_simple: "Коммит..."
+  success: "Коммит успешно создан!"
+  checking_logical: "Проверка предыдущего логического коммита..."
+  found_logical: "Найден логический коммит SHA: %sha%"
+  creating_fixup: "Создание fixup коммита для %sha%..."
+  fixup_success: "✅ Изменения сохранены как fixup для коммита %sha%."
+  note_no_logical: "Предыдущий логический коммит не найден или использован флаг --new. Запуск интерактивного помощника..."
+  error_no_key: "Не удалось найти ключ Jira в имени вашей текущей ветки.\nПожалуйста, используйте \"stud start <key>\" для создания ветки."
+  fetching_jira: "Получение задачи Jira: %key%"
+  error_not_found: "Не удалось найти задачу Jira с ключом \"%key%\"."
+  jira_details: "Детали задачи Jira:"
+  jira_title: "Название: %title%"
+  jira_type: "Тип: %type% -> %commit_type%"
+  jira_components: "Компоненты: %components%"
+  scope_prompt: "Область (опционально)"
+  scope_auto: "Область (автоопределена '%scope%')"
+  type_prompt: "Тип коммита (автоопределен '%type%')"
+  summary_prompt: "Краткое сообщение (автозаполнено из Jira)"
+  generated_message: "Сгенерированное сообщение коммита:\n%message%"
+
+# Update Handler
+update:
+  section: "Проверка обновлений"
+  binary_path: "Путь к бинарному файлу"
+  repository: "Репозиторий"
+  current_version: "Текущая версия"
+  latest_version: "Последняя версия"
+  downloading_from: "Загрузка из"
+  warning_no_releases: "Релизы не найдены для этого репозитория.\nРепозиторий может не иметь опубликованных релизов."
+  error_fetch: "Ошибка при получении информации о последнем релизе.\nОшибка: %error%"
+  success_latest: "Вы уже используете последнюю версию (%version%)."
+  new_version: "Доступна новая версия (%version%). Обновление..."
+  error_no_phar: "Не удалось найти asset stud.phar в последнем релизе.\nAssets релиза: %assets%"
+  error_download: "Ошибка при загрузке новой версии.\nОшибка: %error%"
+  error_asset_id: "Ошибка при загрузке новой версии.\nОшибка: ID asset не найден в asset релиза."
+  error_not_writable: "Обновление не удалось: Файл недоступен для записи.\nПожалуйста, выполните снова с повышенными привилегиями: sudo stud update"
+  error_backup: "Ошибка при создании резервной копии текущей версии.\nОшибка: %error%"
+  error_rollback: "Обновление не удалось и было откачено.\nОшибка: %error%"
+  error_rollback_failed: "Обновление не удалось и откат также не удался!\nИсходная ошибка: %original_error%\nОшибка отката: %rollback_error%\nПожалуйста, восстановите вручную из: %backup_path%"
+
+# Release Handler
+release:
+  section: "Запуск процесса релиза для версии %version%"
+  fetched: "Получены последние изменения из origin."
+  created_branch: "Создана ветка релиза: %branch%"
+  updated_composer: "Версия обновлена в composer.json до %version%"
+  updated_lock: "composer.lock обновлен"
+  dumped_config: "Конфиг сохранен в config/app.php"
+  updated_changelog: "CHANGELOG.md обновлен с версией %version%"
+  staged: "Изменения подготовлены."
+  committed: "Увеличение версии закоммичено."
+  published: "Ветка релиза опубликована в remote."
+  confirm_publish: "Хотите ли вы опубликовать ветку релиза в remote?"
+  success: "Релиз %version% готов к развертыванию."
+
+# Deploy Handler
+deploy:
+  section: "Запуск процесса развертывания"
+  error_not_release: "Вы должны быть на ветке релиза для развертывания."
+  deployed: "Развернуто в main и помечено тегом."
+  updated_develop: "Ветка develop обновлена."
+  cleaned: "Ветка релиза очищена."
+  success: "Релиз v%version% успешно развернут в main. develop был перебазирован и принудительно отправлен. Ветки очищены."
+
+# Table Headers
+table:
+  key: "Ключ"
+  status: "Статус"
+  summary: "Резюме"
+  name: "Имя"
+  command: "Команда"
+  alias: "Псевдоним"
+  description: "Описание"
+
+# Help Command
+help:
+  title: "Руководство"
+  description_section: "ОПИСАНИЕ"
+  description_text: "`stud-cli` - это инструмент интерфейса командной строки, предназначенный для оптимизации ежедневного рабочего процесса разработчика путем тесной интеграции элементов работы Jira с операциями локального репозитория Git. Он проводит вас через \"золотой путь\" начала задачи, создания обычных коммитов и подготовки вашей работы для отправки, все из командной строки."
+  global_options_section: "ГЛОБАЛЬНЫЕ ОПЦИИ"
+  commands_section: "КОМАНДЫ"
+  global_option_help: "Показать справку для данной команды. Когда команда не указана, показать справку для команды list."
+  global_option_silent: "Не выводить никаких сообщений."
+  global_option_quiet: "Отображаются только ошибки. Весь остальной вывод подавлен."
+  global_option_verbose: "Увеличить подробность сообщений: 1 для обычного вывода, 2 для более подробного вывода и 3 для отладки."
+  category_configuration: "Конфигурация"
+  category_jira_information: "Информация Jira"
+  category_git_workflow: "Рабочий процесс Git"
+  category_release_commands: "Команды релиза"
+  example_prefix: "Пример: %example%"
+  command_config_init: "Интерактивный мастер для настройки деталей подключения Jira и Git."
+  command_projects_list: "Список всех видимых проектов Jira."
+  command_items_list: "Список активных элементов работы (ваша панель управления)."
+  command_items_show: "Показать подробную информацию об одном элементе работы."
+  command_issues_search: "Поиск issues с помощью JQL."
+  command_items_start: "Создает новую ветку git из элемента Jira."
+  command_commit: "Проводит вас через создание обычного коммита."
+  command_please: "Безопасный force-push для опытных пользователей (force-with-lease)."
+  command_submit: "Отправляет текущую ветку и создает Pull Request."
+  command_status: "Быстрая панель управления \"где я?\"."
+  command_release: "Создает новую ветку релиза и увеличивает версию."
+  command_deploy: "Развертывает текущую ветку релиза."
+

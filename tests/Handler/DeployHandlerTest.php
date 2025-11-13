@@ -35,7 +35,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
         $handler->handle($io->reveal());
     }
 
@@ -62,7 +62,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
         $handler->handle($io->reveal());
     }
 
@@ -89,7 +89,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
         $handler->handle($io->reveal());
     }
 
@@ -116,7 +116,7 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
         $handler->handle($io->reveal());
     }
 
@@ -129,7 +129,7 @@ class DeployHandlerTest extends CommandTestCase
         $io->section('Starting deployment process')->shouldBeCalled();
         $io->error('You must be on a release branch to deploy.')->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
         $handler->handle($io->reveal());
     }
 }

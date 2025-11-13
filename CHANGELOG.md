@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Implement internationalization (i18n) support with translation files for 8 languages: English (en), French (fr), Spanish (es), Dutch (nl), Russian (ru), Greek (el), Afrikaans (af), and Vietnamese (vi) [TPW-53]
+- Add language selection prompt to `stud config:init` command (defaults to English)
+- Add `TranslationService` to handle all user-facing messages
+- All user-facing strings (success, error, warning, note, text, section messages) are now translatable
+- Translation files are PHAR-safe and located in `src/resources/translations/`
+
+### Changed
+- Refactor all handlers to use `TranslationService` for output messages
+- Update `stud commit` command to display prompts in user's selected language while maintaining English commit messages (per Conventional Commits standard)
+- All error messages and user feedback now respect the user's language preference from config
+
 ## [2.0.1] - 2025-11-13
 
 ### Fixed

@@ -47,7 +47,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = __DIR__ . '/composer.json';
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -94,7 +94,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = __DIR__ . '/composer.json';
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, true);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -141,7 +141,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = __DIR__ . '/composer.json';
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -187,7 +187,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = __DIR__ . '/composer.json';
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -235,7 +235,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
         $io->success('Release ' . $version . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false);
 
         // Verify CHANGELOG.md was updated correctly

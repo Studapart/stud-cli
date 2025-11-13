@@ -19,7 +19,8 @@ class ItemListHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$jiraService = $this->jiraService;
-        $this->handler = new ItemListHandler($this->jiraService);
+        TestKernel::$translationService = $this->translationService;
+        $this->handler = new ItemListHandler($this->jiraService, $this->translationService);
     }
 
     public function testHandleDefault(): void

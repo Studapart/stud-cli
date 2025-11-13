@@ -1,0 +1,218 @@
+# Configuration
+config:
+  init:
+    wizard:
+      title: "Trình hướng dẫn cấu hình Stud CLI"
+      description: "Điều này sẽ tạo hoặc cập nhật tệp cấu hình của bạn tại: %path%"
+    language:
+      title: "Cấu hình ngôn ngữ"
+      prompt: "Chọn ngôn ngữ của bạn"
+    jira:
+      title: "Cấu hình Jira"
+      token_help: "Bạn có thể tạo token API tại đây: https://id.atlassian.com/manage-profile/security/api-tokens"
+      url_prompt: "Nhập URL Jira của bạn"
+      email_prompt: "Nhập địa chỉ email Jira của bạn"
+      token_prompt: "Nhập token API Jira của bạn (để trống để giữ nguyên giá trị hiện có)"
+    git:
+      title: "Cấu hình nhà cung cấp Git"
+      description: "Điều này được yêu cầu cho lệnh `stud submit` để tạo Pull Requests."
+      token_help: "Bạn có thể tạo token tại đây: https://github.com/settings/tokens"
+      auto_detect_note: "Lưu ý: Chủ sở hữu và tên kho lưu trữ sẽ được tự động phát hiện từ git remote của bạn."
+      provider_prompt: "Chọn nhà cung cấp Git của bạn"
+      token_prompt: "Nhập PAT nhà cung cấp Git của bạn (để trống để giữ nguyên giá trị hiện có)"
+    success: "Cấu hình đã được lưu thành công!"
+  error:
+    not_found: "Không tìm thấy tệp cấu hình tại: %path%\nVui lòng chạy \"stud config:init\" để tạo một tệp."
+    missing_jira_keys: "Tệp cấu hình của bạn thiếu các khóa Jira bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
+    missing_git_keys: "Tệp cấu hình của bạn thiếu các khóa nhà cung cấp Git bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
+
+# Item Start Handler
+item:
+  start:
+    section: "Bắt đầu làm việc trên %key%"
+    fetching: "Đang lấy chi tiết cho issue: %key%"
+    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
+    generated_branch: "Tên nhánh đã tạo: %branch%"
+    fetching_changes: "Đang lấy các thay đổi mới nhất từ origin..."
+    creating_branch: "Đang tạo nhánh mới: %branch%"
+    success: "Nhánh '%branch%' đã được tạo từ '%base%'."
+
+# Item Show Handler
+  show:
+    section: "Chi tiết cho issue %key%"
+    fetching: "Đang lấy chi tiết cho issue: %key%"
+    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
+    label_key: "Khóa"
+    label_title: "Tiêu đề"
+    label_status: "Trạng thái"
+    label_assignee: "Người được giao"
+    label_type: "Loại"
+    label_labels: "Nhãn"
+    label_description: "Mô tả"
+    label_link: "Liên kết"
+    label_none: "Không có"
+
+# Item List Handler
+  list:
+    section: "Đang lấy các mục Jira"
+    error_fetch: "Không thể lấy các mục: %error%"
+    no_items: "Không tìm thấy mục nào phù hợp với tiêu chí của bạn."
+
+# Project List Handler
+project:
+  list:
+    section: "Đang lấy các dự án Jira"
+    error_fetch: "Không thể lấy các dự án: %error%"
+    no_projects: "Không tìm thấy dự án nào."
+
+# Search Handler
+search:
+  section: "Tìm kiếm các issue Jira với JQL"
+  jql_query: "Truy vấn JQL: %jql%"
+  error_search: "Không thể tìm kiếm các issue: %error%"
+  no_results: "Không tìm thấy issue nào phù hợp với truy vấn JQL của bạn."
+
+# Status Handler
+status:
+  section: "Trạng thái hiện tại"
+  fetching: "Đang lấy trạng thái cho issue Jira: %key%"
+  jira_status: "[%status%] %key%: %title%"
+  jira_error: "Không thể lấy chi tiết issue Jira: %error%"
+  jira_no_key: "Không tìm thấy khóa Jira trong tên nhánh."
+  git_branch: "Trên nhánh '%branch%'"
+  local_changes: "Bạn có %count% thay đổi chưa commit."
+  local_clean: "Thư mục làm việc sạch sẽ."
+
+# Please Handler
+please:
+  error_no_upstream: "Nhánh hiện tại của bạn chưa được cấu hình upstream remote.\nĐể push lần đầu và tạo Pull Request, vui lòng sử dụng \"stud submit\"."
+  warning_force: "⚠️  Đang ép buộc với lease..."
+
+# Submit Handler
+submit:
+  section: "Gửi Pull Request"
+  error_dirty_working: "Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi gửi."
+  error_base_branch: "Không thể tạo Pull Request từ nhánh cơ sở."
+  pushing: "Đang push nhánh %branch%..."
+  error_push: "Push thất bại. Nhánh của bạn có thể đã viết lại lịch sử.\nThử chạy 'stud please' để force-push."
+  finding_commit: "Đang tìm commit logic đầu tiên để sử dụng cho chi tiết PR..."
+  fetching_jira: "Đang lấy issue Jira cho nội dung PR: %key%"
+  error_no_logical: "Không tìm thấy commit logic trên nhánh này. Không thể tạo PR."
+  error_no_jira_key: "Không thể phân tích khóa Jira từ thông báo commit. Không thể tạo PR."
+  warning_jira_fetch: "Không thể lấy chi tiết issue Jira cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
+  creating: "Đang tạo Pull Request..."
+  success_created: "✅ Pull Request đã được tạo: %url%"
+  warning_no_provider: "Chưa cấu hình nhà cung cấp Git cho dự án này."
+  note_pr_exists: "Đã tồn tại Pull Request cho nhánh này."
+  success_pushed: "✅ Các thay đổi đã được push lên GitHub"
+  error_create_pr: "Không thể tạo Pull Request.\nLỗi: %error%"
+  using_head: "Đang sử dụng nhánh head: %head%"
+
+# Commit Handler
+commit:
+  section: "Trợ lý Commit thông thường"
+  staging: "Đang staging tất cả các thay đổi..."
+  committing: "Đang commit với thông báo được cung cấp..."
+  committing_simple: "Đang commit..."
+  success: "Commit đã được tạo thành công!"
+  checking_logical: "Đang kiểm tra commit logic trước đó..."
+  found_logical: "Đã tìm thấy commit logic SHA: %sha%"
+  creating_fixup: "Đang tạo commit fixup cho %sha%..."
+  fixup_success: "✅ Các thay đổi đã được lưu dưới dạng fixup cho commit %sha%."
+  note_no_logical: "Không tìm thấy commit logic trước đó hoặc đã sử dụng cờ --new. Đang bắt đầu trình nhắc tương tác..."
+  error_no_key: "Không tìm thấy khóa Jira trong tên nhánh hiện tại của bạn.\nVui lòng sử dụng \"stud start <key>\" để tạo nhánh."
+  fetching_jira: "Đang lấy issue Jira: %key%"
+  error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
+  jira_details: "Chi tiết Issue Jira:"
+  jira_title: "Tiêu đề: %title%"
+  jira_type: "Loại: %type% -> %commit_type%"
+  jira_components: "Các thành phần: %components%"
+  scope_prompt: "Phạm vi (tùy chọn)"
+  scope_auto: "Phạm vi (tự động phát hiện '%scope%')"
+  type_prompt: "Loại Commit (tự động phát hiện '%type%')"
+  summary_prompt: "Thông báo ngắn (tự động điền từ Jira)"
+  generated_message: "Thông báo commit đã tạo:\n%message%"
+
+# Update Handler
+update:
+  section: "Đang kiểm tra cập nhật"
+  binary_path: "Đường dẫn nhị phân"
+  repository: "Kho lưu trữ"
+  current_version: "Phiên bản hiện tại"
+  latest_version: "Phiên bản mới nhất"
+  downloading_from: "Đang tải xuống từ"
+  warning_no_releases: "Không tìm thấy bản phát hành cho kho lưu trữ này.\nKho lưu trữ có thể chưa có bản phát hành nào được xuất bản."
+  error_fetch: "Không thể lấy thông tin bản phát hành mới nhất.\nLỗi: %error%"
+  success_latest: "Bạn đã ở phiên bản mới nhất (%version%)."
+  new_version: "Có phiên bản mới (%version%) sẵn có. Đang cập nhật..."
+  error_no_phar: "Không tìm thấy asset stud.phar trong bản phát hành mới nhất.\nAssets bản phát hành: %assets%"
+  error_download: "Không thể tải xuống phiên bản mới.\nLỗi: %error%"
+  error_asset_id: "Không thể tải xuống phiên bản mới.\nLỗi: Không tìm thấy ID asset trong asset bản phát hành."
+  error_not_writable: "Cập nhật thất bại: Tệp không thể ghi được.\nVui lòng chạy lại với quyền nâng cao: sudo stud update"
+  error_backup: "Không thể tạo bản sao lưu của phiên bản hiện tại.\nLỗi: %error%"
+  error_rollback: "Cập nhật thất bại và đã được hoàn nguyên.\nLỗi: %error%"
+  error_rollback_failed: "Cập nhật thất bại và hoàn nguyên cũng thất bại!\nLỗi ban đầu: %original_error%\nLỗi hoàn nguyên: %rollback_error%\nVui lòng khôi phục thủ công từ: %backup_path%"
+
+# Release Handler
+release:
+  section: "Bắt đầu quy trình phát hành cho phiên bản %version%"
+  fetched: "Đã lấy các thay đổi mới nhất từ origin."
+  created_branch: "Đã tạo nhánh phát hành: %branch%"
+  updated_composer: "Đã cập nhật phiên bản trong composer.json thành %version%"
+  updated_lock: "Đã cập nhật composer.lock"
+  dumped_config: "Đã dump cấu hình vào config/app.php"
+  updated_changelog: "Đã cập nhật CHANGELOG.md với phiên bản %version%"
+  staged: "Đã staging các thay đổi."
+  committed: "Đã commit tăng phiên bản."
+  published: "Nhánh phát hành đã được xuất bản lên remote."
+  confirm_publish: "Bạn có muốn xuất bản nhánh phát hành lên remote không?"
+  success: "Bản phát hành %version% đã sẵn sàng để triển khai."
+
+# Deploy Handler
+deploy:
+  section: "Bắt đầu quy trình triển khai"
+  error_not_release: "Bạn phải ở trên nhánh phát hành để triển khai."
+  deployed: "Đã triển khai lên main và đã gắn thẻ."
+  updated_develop: "Đã cập nhật nhánh develop."
+  cleaned: "Đã dọn dẹp nhánh phát hành."
+  success: "Bản phát hành v%version% đã được triển khai thành công lên main. develop đã được rebase và force-push. Các nhánh đã được dọn dẹp."
+
+# Table Headers
+table:
+  key: "Khóa"
+  status: "Trạng thái"
+  summary: "Tóm tắt"
+  name: "Tên"
+  command: "Lệnh"
+  alias: "Bí danh"
+  description: "Mô tả"
+
+# Help Command
+help:
+  title: "Hướng dẫn"
+  description_section: "MÔ TẢ"
+  description_text: "`stud-cli` là một công cụ giao diện dòng lệnh được thiết kế để tối ưu hóa quy trình làm việc hàng ngày của nhà phát triển bằng cách tích hợp chặt chẽ các mục công việc Jira với các thao tác kho lưu trữ Git cục bộ. Nó hướng dẫn bạn qua \"con đường vàng\" của việc bắt đầu một nhiệm vụ, tạo các commit thông thường và chuẩn bị công việc của bạn để gửi, tất cả từ dòng lệnh."
+  global_options_section: "TÙY CHỌN TOÀN CỤC"
+  commands_section: "LỆNH"
+  global_option_help: "Hiển thị trợ giúp cho lệnh đã cho. Khi không có lệnh nào được đưa ra, hiển thị trợ giúp cho lệnh danh sách."
+  global_option_silent: "Không xuất bất kỳ thông báo nào."
+  global_option_quiet: "Chỉ hiển thị lỗi. Tất cả các đầu ra khác bị ẩn."
+  global_option_verbose: "Tăng mức chi tiết của thông báo: 1 cho đầu ra bình thường, 2 cho đầu ra chi tiết hơn và 3 cho debug."
+  category_configuration: "Cấu hình"
+  category_jira_information: "Thông tin Jira"
+  category_git_workflow: "Quy trình Git"
+  category_release_commands: "Lệnh Phát hành"
+  example_prefix: "Ví dụ: %example%"
+  command_config_init: "Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git."
+  command_projects_list: "Liệt kê tất cả các dự án Jira có thể nhìn thấy."
+  command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
+  command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
+  command_issues_search: "Tìm kiếm các issue bằng JQL."
+  command_items_start: "Tạo một nhánh git mới từ một mục Jira."
+  command_commit: "Hướng dẫn bạn tạo một commit thông thường."
+  command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
+  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request."
+  command_status: "Bảng điều khiển \"tôi đang ở đâu?\" nhanh."
+  command_release: "Tạo nhánh phát hành mới và tăng phiên bản."
+  command_deploy: "Triển khai nhánh phát hành hiện tại."
+
