@@ -2,27 +2,20 @@
 
 declare(strict_types=1);
 
-// Cleanup old backup files from previous updates
-// This runs on every command execution to clean up versioned backup files (e.g., stud-1.1.1.bak)
-if (class_exists('Phar') && \Phar::running(false)) {
-    $executablePath = \Phar::running(false);
-    $executableDir = dirname($executablePath);
-    $executableName = basename($executablePath);
-    
-    // Glob for backup files matching the pattern: {executable-name}-*.bak
-    $backupPattern = $executableDir . '/' . $executableName . '-*.bak';
-    $backupFiles = glob($backupPattern);
-    
-    if ($backupFiles !== false) {
-        foreach ($backupFiles as $backupFile) {
-            @unlink($backupFile);
-        }
-    }
+// =================================================================================
+// Constants & Configuration
+// =================================================================================
+
+if (!defined('CONFIG_DIR_NAME')) {
+    define('CONFIG_DIR_NAME', '.config/stud');
+}
+if (!defined('CONFIG_FILE_NAME')) {
+    define('CONFIG_FILE_NAME', 'config.yml');
+}
+if (!defined('DEFAULT_BASE_BRANCH')) {
+    define('DEFAULT_BASE_BRANCH', 'origin/develop');
 }
 
-// Version check at bootstrap
-// This runs silently in the background to check for updates without blocking the user's command
-_version_check_bootstrap();
 
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
@@ -55,6 +48,29 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Yaml\Yaml;
 use function Castor\io;
 
+
+// Cleanup old backup files from previous updates
+// This runs on every command execution to clean up versioned backup files (e.g., stud-1.1.1.bak)
+if (class_exists('Phar') && \Phar::running(false)) {
+    $executablePath = \Phar::running(false);
+    $executableDir = dirname($executablePath);
+    $executableName = basename($executablePath);
+    
+    // Glob for backup files matching the pattern: {executable-name}-*.bak
+    $backupPattern = $executableDir . '/' . $executableName . '-*.bak';
+    $backupFiles = glob($backupPattern);
+    
+    if ($backupFiles !== false) {
+        foreach ($backupFiles as $backupFile) {
+            @unlink($backupFile);
+        }
+    }
+}
+
+// Version check at bootstrap
+// This runs silently in the background to check for updates without blocking the user's command
+_version_check_bootstrap();
+
 #[AsTask(default: true)]
 function main(): void
 {
@@ -65,20 +81,6 @@ function main(): void
 function _load_constants(): void
 {
     require_once __DIR__ . '/src/config/constants.php';
-}
-
-// =================================================================================
-// Constants & Configuration
-// =================================================================================
-
-if (!defined('CONFIG_DIR_NAME')) {
-    define('CONFIG_DIR_NAME', '.config/stud');
-}
-if (!defined('CONFIG_FILE_NAME')) {
-    define('CONFIG_FILE_NAME', 'config.yml');
-}
-if (!defined('DEFAULT_BASE_BRANCH')) {
-    define('DEFAULT_BASE_BRANCH', 'origin/develop');
 }
 
 // =================================================================================
