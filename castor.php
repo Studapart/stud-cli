@@ -71,9 +71,15 @@ function _load_constants(): void
 // Constants & Configuration
 // =================================================================================
 
-const CONFIG_DIR_NAME = '.config/stud';
-const CONFIG_FILE_NAME = 'config.yml';
-const DEFAULT_BASE_BRANCH = 'origin/develop';
+if (!defined('CONFIG_DIR_NAME')) {
+    define('CONFIG_DIR_NAME', '.config/stud');
+}
+if (!defined('CONFIG_FILE_NAME')) {
+    define('CONFIG_FILE_NAME', 'config.yml');
+}
+if (!defined('DEFAULT_BASE_BRANCH')) {
+    define('DEFAULT_BASE_BRANCH', 'origin/develop');
+}
 
 // =================================================================================
 // Helper Functions
