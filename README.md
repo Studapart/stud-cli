@@ -215,6 +215,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud sub
         ```
 
+-   **`stud update`** (Alias: `stud up`)
+    -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
+    -   **Usage:**
+        ```bash
+        stud update
+        stud up
+        ```
+    -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
+
 #### Release Commands
 
 These commands help you manage the release process.
