@@ -214,6 +214,7 @@ help:
   category_release_commands: "Εντολές Release"
   example_prefix: "Παράδειγμα: %example%"
   command_config_init: "Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git."
+  command_completion: "Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh."
   command_projects_list: "Λίστα όλων των ορατών έργων Jira."
   command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
   command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."

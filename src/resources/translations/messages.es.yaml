@@ -214,6 +214,7 @@ help:
   category_release_commands: "Comandos de Release"
   example_prefix: "Ejemplo: %example%"
   command_config_init: "Asistente interactivo para configurar los detalles de conexión de Jira y Git."
+  command_completion: "Genera scripts de auto-completado para bash o zsh."
   command_projects_list: "Lista todos los proyectos de Jira visibles."
   command_items_list: "Lista elementos de trabajo activos (su panel de control)."
   command_items_show: "Muestra información detallada para un elemento de trabajo."

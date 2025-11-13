@@ -214,6 +214,7 @@ help:
   category_release_commands: "Vrystelling Opdragte"
   example_prefix: "Voorbeeld: %example%"
   command_config_init: "Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel."
+  command_completion: "Genereer shell outo-voltooiing scripts vir bash of zsh."
   command_projects_list: "Lys alle sigbare Jira projekte."
   command_items_list: "Lys aktiewe werkitems (jou dashboard)."
   command_items_show: "Toon gedetailleerde inligting vir een werkitem."

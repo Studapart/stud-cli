@@ -214,6 +214,7 @@ help:
   category_release_commands: "Lệnh Phát hành"
   example_prefix: "Ví dụ: %example%"
   command_config_init: "Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git."
+  command_completion: "Tạo script tự động hoàn thành shell cho bash hoặc zsh."
   command_projects_list: "Liệt kê tất cả các dự án Jira có thể nhìn thấy."
   command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
   command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."

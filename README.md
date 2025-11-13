@@ -176,6 +176,31 @@ stud config:init
 stud init
 ```
 
+#### `stud completion <shell>`
+
+**Description:** Generates shell completion scripts for bash or zsh. This command is used to set up auto-completion for all `stud-cli` commands, including aliases like `init` (for `config:init`).
+
+**Arguments:**
+- `<shell>`: The shell type (`bash` or `zsh`)
+
+**Usage:**
+```bash
+# Generate bash completion script
+stud completion bash
+
+# Generate zsh completion script
+stud completion zsh
+
+# To install, add to your shell configuration file:
+# For bash:
+eval "$(stud completion bash)" >> ~/.bashrc
+
+# For zsh:
+eval "$(stud completion zsh)" >> ~/.zshrc
+```
+
+**Note:** The easiest way to set up completion is through the `stud config:init` wizard, which will guide you through the installation process.
+
 ### Usage
 
 All `stud-cli` commands are executed via the `stud` executable. The general syntax is `stud <command> [arguments] [options]`.

@@ -214,6 +214,7 @@ help:
   category_release_commands: "Release Commando's"
   example_prefix: "Voorbeeld: %example%"
   command_config_init: "Interactieve wizard om Jira & Git verbindingsdetails in te stellen."
+  command_completion: "Genereert shell auto-aanvulling scripts voor bash of zsh."
   command_projects_list: "Lijst alle zichtbare Jira projecten."
   command_items_list: "Lijst actieve werkitems (uw dashboard)."
   command_items_show: "Toon gedetailleerde informatie voor één werkitem."
