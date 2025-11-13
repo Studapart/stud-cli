@@ -126,7 +126,7 @@ class DeployHandlerTest extends CommandTestCase
         $io = $this->prophesize(SymfonyStyle::class);
 
         $gitRepository->getCurrentBranchName()->willReturn('feat/some-feature');
-        $io->title('Starting deployment process')->shouldBeCalled();
+        $io->section('Starting deployment process')->shouldBeCalled();
         $io->error('You must be on a release branch to deploy.')->shouldBeCalled();
 
         $handler = new DeployHandler($gitRepository->reveal());
