@@ -11,11 +11,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class UpdateHandler
 {
     public function __construct(
-        private readonly GitRepository $gitRepository,
-        private readonly string $currentVersion,
-        private readonly string $binaryPath,
-        private ?string $gitToken = null,
-        private ?HttpClientInterface $httpClient = null
+        protected readonly GitRepository $gitRepository,
+        protected readonly string $currentVersion,
+        protected readonly string $binaryPath,
+        protected ?string $gitToken = null,
+        protected ?HttpClientInterface $httpClient = null
     ) {
     }
 
@@ -67,7 +67,7 @@ class UpdateHandler
         return $this->replaceBinary($io, $tempFile, $binaryPath, $release['tag_name']);
     }
 
-    private function getRepositoryInfo(SymfonyStyle $io): ?array
+    protected function getRepositoryInfo(SymfonyStyle $io): ?array
     {
         $repoOwner = $this->gitRepository->getRepositoryOwner();
         $repoName = $this->gitRepository->getRepositoryName();
@@ -83,7 +83,7 @@ class UpdateHandler
         return [$repoOwner, $repoName];
     }
 
-    private function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
+    protected function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
     {
         $headers = [
             'Accept' => 'application/vnd.github.v3+json',
@@ -104,7 +104,7 @@ class UpdateHandler
     /**
      * @return array{release: array|null, is404: bool}
      */
-    private function fetchLatestRelease(SymfonyStyle $io, GithubProvider $githubProvider): array
+    protected function fetchLatestRelease(SymfonyStyle $io, GithubProvider $githubProvider): array
     {
         try {
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
@@ -125,7 +125,7 @@ class UpdateHandler
         }
     }
 
-    private function isAlreadyLatestVersion(SymfonyStyle $io, array $release): bool
+    protected function isAlreadyLatestVersion(SymfonyStyle $io, array $release): bool
     {
         $latestVersion = ltrim($release['tag_name'], 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
@@ -140,7 +140,7 @@ class UpdateHandler
         return false;
     }
 
-    private function findPharAsset(SymfonyStyle $io, array $release): ?array
+    protected function findPharAsset(SymfonyStyle $io, array $release): ?array
     {
         $io->text("A new version ({$release['tag_name']}) is available. Updating...");
 
@@ -159,7 +159,7 @@ class UpdateHandler
         return null;
     }
 
-    private function downloadPhar(SymfonyStyle $io, array $pharAsset): ?string
+    protected function downloadPhar(SymfonyStyle $io, array $pharAsset): ?string
     {
         $tempFile = sys_get_temp_dir() . '/stud.phar.new';
         $this->logVerbose($io, 'Downloading from', $pharAsset['browser_download_url']);
@@ -178,7 +178,7 @@ class UpdateHandler
         }
     }
 
-    private function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $tagName): int
+    protected function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $tagName): int
     {
         if (!is_writable($binaryPath)) {
             $io->error([
@@ -205,14 +205,14 @@ class UpdateHandler
         return 0;
     }
 
-    private function logVerbose(SymfonyStyle $io, string $label, string $value): void
+    protected function logVerbose(SymfonyStyle $io, string $label, string $value): void
     {
         if ($io->isVerbose()) {
             $io->writeln("  <fg=gray>{$label}: {$value}</>");
         }
     }
 
-    private function getBinaryPath(): string
+    protected function getBinaryPath(): string
     {
         // If running as PHAR, use Phar::running()
         if (class_exists('Phar') && \Phar::running(false)) {
