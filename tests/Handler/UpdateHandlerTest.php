@@ -914,5 +914,41 @@ class UpdateHandlerTest extends CommandTestCase
         // Clean up backup
         @unlink($backupPath);
     }
+
+    public function testHandleWithMissingAssetId(): void
+    {
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryName')->willReturn('stud-cli');
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    // Missing 'id' field
+                    'name' => 'stud.phar',
+                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($releaseResponse);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(1, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Asset ID not found in release asset', $outputText);
+    }
+
 }
 
