@@ -192,14 +192,17 @@ class UpdateHandler
         try {
             rename($tempFile, $binaryPath);
             chmod($binaryPath, 0755);
-        } catch (\Exception $e) { // @codeCoverageIgnoreStart - rename() doesn't throw in PHP, but chmod() might in edge cases
+            // @codeCoverageIgnoreStart
+        } catch (\Exception $e) {
+            // rename() doesn't throw in PHP, but chmod() might in edge cases
             $io->error([
                 'Failed to replace the binary.',
                 'Error: ' . $e->getMessage(),
             ]);
             @unlink($tempFile);
             return 1;
-        } // @codeCoverageIgnoreEnd
+            // @codeCoverageIgnoreEnd
+        }
 
         $io->success("✅ Update complete! You are now on {$tagName}.");
         return 0;
@@ -215,9 +218,11 @@ class UpdateHandler
     protected function getBinaryPath(): string
     {
         // If running as PHAR, use Phar::running()
+        // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
         if (class_exists('Phar') && \Phar::running(false)) {
-            return \Phar::running(false); // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
+            return \Phar::running(false);
         }
+        // @codeCoverageIgnoreEnd
 
         // Otherwise, try to get path from ReflectionClass as suggested in ticket
         try {
@@ -225,11 +230,15 @@ class UpdateHandler
             $filename = $reflection->getFileName();
             
             // If we're in a PHAR, the filename will be phar://...
+            // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
             if (str_starts_with($filename, 'phar://')) {
-                return $filename; // @codeCoverageIgnore - Hard to test in unit tests without actual PHAR environment
+                return $filename;
             }
-        } catch (\ReflectionException $e) { // @codeCoverageIgnore - ReflectionException is hard to trigger in tests
+            // @codeCoverageIgnoreEnd
+        } catch (\ReflectionException $e) {
+            // @codeCoverageIgnoreStart - ReflectionException is hard to trigger in tests
             // Fall through to next method
+            // @codeCoverageIgnoreEnd
         }
 
         // Fallback: use the provided binary path
