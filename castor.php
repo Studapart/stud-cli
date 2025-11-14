@@ -511,6 +511,12 @@ function help(): void
                 'alias' => 'init',
                 'description' => $translator->trans('help.command_config_init'),
             ],
+            [
+                'name' => 'completion',
+                'args' => '<shell>',
+                'description' => $translator->trans('help.command_completion'),
+                'example' => 'stud completion bash',
+            ],
         ],
         $translator->trans('help.category_jira_information') => [
             [
