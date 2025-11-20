@@ -582,4 +582,58 @@ class InitHandlerTest extends CommandTestCase
             putenv('SHELL');
         }
     }
+
+    public function testHandleWithCompletionNoAndVerbose(): void
+    {
+        // Set SHELL environment variable for bash
+        $originalShell = getenv('SHELL');
+        putenv('SHELL=/usr/bin/bash');
+
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->with('/tmp/config.yml')
+            ->willReturn(false);
+
+        $this->fileSystem->expects($this->once())
+            ->method('dirname')
+            ->with('/tmp/config.yml')
+            ->willReturn('/tmp');
+
+        $this->fileSystem->expects($this->once())
+            ->method('isDir')
+            ->with('/tmp')
+            ->willReturn(true);
+
+        $this->fileSystem->expects($this->once())
+            ->method('filePutContents');
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "jira_url\n");
+        fwrite($inputStream, "jira_email\n");
+        fwrite($inputStream, "jira_token\n");
+        fwrite($inputStream, "github\n");
+        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "No\n"); // Completion prompt - No
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $this->handler->handle($io);
+
+        // Restore original SHELL
+        if ($originalShell !== false) {
+            putenv('SHELL=' . $originalShell);
+        } else {
+            putenv('SHELL');
+        }
+
+        // Test intent: verbose message is shown when user chooses No and verbose is enabled
+        $outputContent = $output->fetch();
+        $this->assertStringContainsString('Shell auto-completion setup skipped', $outputContent);
+    }
 }
