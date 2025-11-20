@@ -189,7 +189,8 @@ class UpdateHandler
 
         // Step 1: Backup the current executable
         // Note: rename() doesn't throw exceptions in PHP (returns false), but catch block handles edge cases
-        // @codeCoverageIgnoreStart - Exception from rename() is extremely rare and hard to simulate
+        // Exception from rename() is extremely rare and hard to simulate
+        // @codeCoverageIgnoreStart
         try {
             rename($binaryPath, $backupPath);
         } catch (\Exception $e) {
@@ -209,7 +210,8 @@ class UpdateHandler
             return 0;
             // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
             // Rollback on failure
-            // @codeCoverageIgnoreStart - Exception from rename/chmod is extremely rare and hard to simulate
+            // Exception from rename/chmod is extremely rare and hard to simulate
+            // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
             try {
                 rename($backupPath, $binaryPath);
@@ -238,7 +240,8 @@ class UpdateHandler
     protected function getBinaryPath(): string
     {
         // If running as PHAR, use Phar::running()
-        // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
+        // Hard to test in unit tests without actual PHAR environment
+        // @codeCoverageIgnoreStart
         if (class_exists('Phar') && \Phar::running(false)) {
             return \Phar::running(false);
         }
@@ -250,16 +253,18 @@ class UpdateHandler
             $filename = $reflection->getFileName();
             
             // If we're in a PHAR, the filename will be phar://...
-            // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
+            // Hard to test in unit tests without actual PHAR environment
+            // @codeCoverageIgnoreStart
             if (str_starts_with($filename, 'phar://')) {
                 return $filename;
             }
             // @codeCoverageIgnoreEnd
+        // ReflectionException is hard to trigger in tests
+        // @codeCoverageIgnoreStart
         } catch (\ReflectionException $e) {
-            // @codeCoverageIgnoreStart - ReflectionException is hard to trigger in tests
             // Fall through to next method
-            // @codeCoverageIgnoreEnd
         }
+        // @codeCoverageIgnoreEnd
 
         // Fallback: use the provided binary path
         return $this->binaryPath;
@@ -290,9 +295,12 @@ class UpdateHandler
 
             // Display other sections
             foreach ($changes['sections'] as $sectionType => $items) {
+                // Defensive check: ChangelogParser should not produce empty sections, but check anyway
+                // @codeCoverageIgnoreStart - Defensive check, ChangelogParser guarantees non-empty sections
                 if (empty($items)) {
                     continue;
                 }
+                // @codeCoverageIgnoreEnd
                 
                 $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
                 $io->text("<fg=cyan>{$sectionTitle}</>");

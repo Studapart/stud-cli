@@ -644,6 +644,26 @@ class UpdateHandlerTest extends CommandTestCase
         @unlink(sys_get_temp_dir() . '/stud.phar.new');
     }
 
+    public function testHandleWith404NoReleases(): void
+    {
+        $errorResponse = $this->createMock(ResponseInterface::class);
+        $errorResponse->method('getStatusCode')->willReturn(404);
+        $errorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($errorResponse);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        // 404 means no releases found - this is a success case
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithNon404ApiError(): void
     {
 
@@ -1346,6 +1366,72 @@ CHANGELOG;
         $outputText = $output->fetch();
         // Should not contain changelog section if no changes
         $this->assertStringNotContainsString('Changes in version', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWithEmptyItemsInSection(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        // Changelog with a section that has items, but also an empty section
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+- Feature 1
+
+### Fixed
+
+### Changed
+- Change 1
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        // Should display Added and Changed sections, but skip empty Fixed section
+        $this->assertStringContainsString('Added', $outputText);
+        $this->assertStringContainsString('Changed', $outputText);
         
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }

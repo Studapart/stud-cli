@@ -167,6 +167,37 @@ CHANGELOG;
         $this->assertStringNotContainsString('Should not be included', $allItems);
     }
 
+    public function testParseStopsAtOlderVersion(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.2] - 2025-01-03
+
+### Added
+- Feature in 1.0.2
+
+## [1.0.1] - 2025-01-02
+
+### Added
+- Feature in 1.0.1
+
+## [0.9.9] - 2025-01-01
+
+### Added
+- Should not be included (older than current)
+
+CHANGELOG;
+
+        // Current version is 1.0.0, so 0.9.9 should stop parsing
+        $result = $this->parser->parse($changelogContent, '1.0.0', '1.0.2');
+
+        $this->assertArrayHasKey('added', $result['sections']);
+        $this->assertCount(2, $result['sections']['added']);
+        $allItems = implode(' ', $result['sections']['added']);
+        $this->assertStringNotContainsString('Should not be included', $allItems);
+        $this->assertStringContainsString('1.0.2', $allItems);
+        $this->assertStringContainsString('1.0.1', $allItems);
+    }
+
     public function testGetSectionTitle(): void
     {
         $this->assertSame('### Added', $this->parser->getSectionTitle('added'));
