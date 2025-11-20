@@ -218,7 +218,7 @@ help:
   command_projects_list: "Λίστα όλων των ορατών έργων Jira."
   command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
   command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."
-  command_issues_search: "Αναζήτηση issues με JQL."
+  command_items_search: "Αναζήτηση issues με JQL."
   command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
   command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."

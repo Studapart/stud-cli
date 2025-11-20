@@ -218,7 +218,7 @@ help:
   command_projects_list: "Lijst alle zichtbare Jira projecten."
   command_items_list: "Lijst actieve werkitems (uw dashboard)."
   command_items_show: "Toon gedetailleerde informatie voor één werkitem."
-  command_issues_search: "Zoek issues met JQL."
+  command_items_search: "Zoek issues met JQL."
   command_items_start: "Maakt een nieuwe git tak van een Jira item."
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
