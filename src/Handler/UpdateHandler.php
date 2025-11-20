@@ -2,6 +2,7 @@
 
 namespace App\Handler;
 
+use App\Service\ChangelogParser;
 use App\Service\GithubProvider;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -16,6 +17,7 @@ class UpdateHandler
         protected readonly string $currentVersion,
         protected readonly string $binaryPath,
         protected readonly TranslationService $translator,
+        protected readonly ChangelogParser $changelogParser,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null
     ) {
@@ -48,6 +50,9 @@ class UpdateHandler
         if ($this->isAlreadyLatestVersion($io, $release)) {
             return 0;
         }
+
+        // Display changelog before downloading
+        $this->displayChangelog($io, $githubProvider, $release);
 
         $pharAsset = $this->findPharAsset($io, $release);
         if (!$pharAsset) {
@@ -184,6 +189,7 @@ class UpdateHandler
 
         // Step 1: Backup the current executable
         // Note: rename() doesn't throw exceptions in PHP (returns false), but catch block handles edge cases
+        // Exception from rename() is extremely rare and hard to simulate
         // @codeCoverageIgnoreStart
         try {
             rename($binaryPath, $backupPath);
@@ -204,6 +210,7 @@ class UpdateHandler
             return 0;
             // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
             // Rollback on failure
+            // Exception from rename/chmod is extremely rare and hard to simulate
             // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
             try {
@@ -217,10 +224,10 @@ class UpdateHandler
                     'backup_path' => $backupPath
                 ])));
             }
-            // @codeCoverageIgnoreEnd
             @unlink($tempFile);
             return 1;
         }
+        // @codeCoverageIgnoreEnd
     }
 
     protected function logVerbose(SymfonyStyle $io, string $label, string $value): void
@@ -233,7 +240,8 @@ class UpdateHandler
     protected function getBinaryPath(): string
     {
         // If running as PHAR, use Phar::running()
-        // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
+        // Hard to test in unit tests without actual PHAR environment
+        // @codeCoverageIgnoreStart
         if (class_exists('Phar') && \Phar::running(false)) {
             return \Phar::running(false);
         }
@@ -245,19 +253,67 @@ class UpdateHandler
             $filename = $reflection->getFileName();
             
             // If we're in a PHAR, the filename will be phar://...
-            // @codeCoverageIgnoreStart - Hard to test in unit tests without actual PHAR environment
+            // Hard to test in unit tests without actual PHAR environment
+            // @codeCoverageIgnoreStart
             if (str_starts_with($filename, 'phar://')) {
                 return $filename;
             }
             // @codeCoverageIgnoreEnd
+        // ReflectionException is hard to trigger in tests
+        // @codeCoverageIgnoreStart
         } catch (\ReflectionException $e) {
-            // @codeCoverageIgnoreStart - ReflectionException is hard to trigger in tests
             // Fall through to next method
-            // @codeCoverageIgnoreEnd
         }
+        // @codeCoverageIgnoreEnd
 
         // Fallback: use the provided binary path
         return $this->binaryPath;
     }
+
+    protected function displayChangelog(SymfonyStyle $io, GithubProvider $githubProvider, array $release): void
+    {
+        try {
+            $latestVersion = ltrim($release['tag_name'], 'v');
+            $changelogContent = $githubProvider->getChangelogContent($release['tag_name']);
+            $changes = $this->changelogParser->parse($changelogContent, $this->currentVersion, $latestVersion);
+            
+            if (empty($changes['sections']) && !$changes['hasBreaking']) {
+                // No changes found or already up to date
+                return;
+            }
+
+            $io->section($this->translator->trans('update.changelog_section', ['version' => $release['tag_name']]));
+            
+            // Display breaking changes first with warning
+            if ($changes['hasBreaking']) {
+                $io->warning($this->translator->trans('update.breaking_changes_detected'));
+                foreach ($changes['breakingChanges'] as $breakingChange) {
+                    $io->writeln("  <fg=red>⚠️  {$breakingChange}</>");
+                }
+                $io->newLine();
+            }
+
+            // Display other sections
+            foreach ($changes['sections'] as $sectionType => $items) {
+                // Defensive check: ChangelogParser should not produce empty sections, but check anyway
+                // @codeCoverageIgnoreStart - Defensive check, ChangelogParser guarantees non-empty sections
+                if (empty($items)) {
+                    continue;
+                }
+                // @codeCoverageIgnoreEnd
+                
+                $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
+                $io->text("<fg=cyan>{$sectionTitle}</>");
+                foreach ($items as $item) {
+                    $io->writeln("  • {$item}");
+                }
+                $io->newLine();
+            }
+        } catch (\Exception $e) {
+            // Silently fail - don't block update if changelog can't be fetched
+            $this->logVerbose($io, $this->translator->trans('update.changelog_error'), $e->getMessage());
+        }
+    }
+
 }
 

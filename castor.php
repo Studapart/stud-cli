@@ -17,6 +17,7 @@ if (!defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
@@ -701,6 +702,7 @@ function update(): void
         APP_VERSION,
         $binaryPath,
         _get_translation_service(),
+        new ChangelogParser(),
         $gitToken
     );
     $result = $handler->handle(io());

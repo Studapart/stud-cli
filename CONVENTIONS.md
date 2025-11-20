@@ -46,6 +46,25 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 100% test coverage is prioritized over architectural purity. Every line of code that can be tested should be tested. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (e.g., PHAR-specific code, edge cases that cannot be simulated).
 
+**Important**: When using `@codeCoverageIgnoreStart` and `@codeCoverageIgnoreEnd`, these annotations must be on their own lines. If you need to add an explanatory comment, place it on a separate line before the ignore tag:
+
+```php
+// Exception from rename() is extremely rare and hard to simulate
+// @codeCoverageIgnoreStart
+try {
+    rename($binaryPath, $backupPath);
+} catch (\Exception $e) {
+    // ...
+}
+// @codeCoverageIgnoreEnd
+```
+
+**Do NOT** combine the comment with the annotation on the same line:
+```php
+// ❌ BAD: Comment and annotation on same line
+// @codeCoverageIgnoreStart - Exception from rename() is extremely rare
+```
+
 ### Core Principle: "Test the Intent, Not the Text"
 
 This is a fundamental principle that guides all test writing in `stud-cli`.
@@ -121,11 +140,23 @@ The following table defines the standard output methods and their usage in `stud
    }
    ```
 
+## CHANGELOG.md Format
+
+The `CHANGELOG.md` file follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format with the following sections:
+
+- **`### Added`**: For new features and additions
+- **`### Changed`**: For updates and modifications to existing functionality
+- **`### Fixed`**: For bug fixes
+- **`### Breaking`**: For breaking changes that require user action
+
+**Important**: Breaking changes must be placed in the `### Breaking` section. Do not use markers like `[BREAKING CHANGE]`, `[BREAKING]`, or `[REMOVED]` within other sections. Breaking changes should be clearly separated into their own section.
+
 ## Summary
 
 - **Code Architecture**: Follow PSR-12 and SOLID principles. Use `protected` for testable helper methods, avoid `final` on injectable services.
 - **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text.
 - **Output**: Use the standardized output methods consistently to provide a uniform user experience.
+- **CHANGELOG**: Use `### Breaking` section for breaking changes, not inline markers.
 
 These conventions ensure that `stud-cli` remains maintainable, testable, and provides a consistent developer experience.
 

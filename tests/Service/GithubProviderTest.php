@@ -125,4 +125,90 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->getLatestRelease();
     }
+
+    public function testGetChangelogContentSuccess(): void
+    {
+        $tag = 'v1.0.0';
+        $changelogContent = '# Changelog\n\n## [1.0.0] - 2025-01-01\n\n### Added\n- Initial release';
+        $encodedContent = base64_encode($changelogContent);
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'content' => $encodedContent,
+            'encoding' => 'base64',
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/contents/CHANGELOG.md?ref=" . $tag
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getChangelogContent($tag);
+
+        $this->assertSame($changelogContent, $result);
+    }
+
+    public function testGetChangelogContentFailure(): void
+    {
+        $tag = 'v1.0.0';
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->getChangelogContent($tag);
+    }
+
+    public function testGetChangelogContentInvalidEncoding(): void
+    {
+        $tag = 'v1.0.0';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'content' => 'not-base64-content',
+            'encoding' => 'text',
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to decode CHANGELOG.md content from GitHub API');
+
+        $this->githubProvider->getChangelogContent($tag);
+    }
+
+    public function testGetChangelogContentMissingContent(): void
+    {
+        $tag = 'v1.0.0';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'encoding' => 'base64',
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to decode CHANGELOG.md content from GitHub API');
+
+        $this->githubProvider->getChangelogContent($tag);
+    }
 }

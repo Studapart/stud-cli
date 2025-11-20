@@ -67,4 +67,33 @@ class GithubProvider
 
         return $response->toArray();
     }
+
+    public function getChangelogContent(string $tag): string
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/contents/CHANGELOG.md";
+        $queryParams = http_build_query(['ref' => $tag]);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->client->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        $content = $response->toArray();
+        
+        // GitHub API returns base64 encoded content
+        if (isset($content['content']) && isset($content['encoding']) && $content['encoding'] === 'base64') {
+            return base64_decode($content['content'], true);
+        }
+
+        throw new \RuntimeException('Unable to decode CHANGELOG.md content from GitHub API');
+    }
 }
