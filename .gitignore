@@ -41,6 +41,11 @@
 .phpunit.result.cache
 phpunit-results.xml
 
+# Coverage
+coverage.xml
+clover.xml
+coverage-html/
+
 # Build data
 /build/
 
