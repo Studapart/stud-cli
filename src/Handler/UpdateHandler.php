@@ -348,36 +348,31 @@ class UpdateHandler
                 continue;
             }
 
-            // Check for section headers: ### Added, ### Fixed, etc.
+            // Check for section headers: ### Added, ### Fixed, ### Breaking, etc.
             if (preg_match('/^###\s+(\w+)/', $line, $matches)) {
                 $currentSection = strtolower($matches[1]);
-                continue;
-            }
-
-            // Check for breaking changes markers
-            if (preg_match('/\[BREAKING\s+CHANGE\]|\[BREAKING\]|\[REMOVED\]/i', $line)) {
-                $result['hasBreaking'] = true;
-                // Extract the breaking change text (remove markdown list markers)
-                $breakingText = preg_replace('/^[\s*\-]+/', '', trim($line));
-                if (!empty($breakingText)) {
-                    $result['breakingChanges'][] = $breakingText;
+                // If we're entering the Breaking section, mark that breaking changes exist
+                if ($currentSection === 'breaking') {
+                    $result['hasBreaking'] = true;
                 }
-            }
-
-            // Check for command renaming (e.g., "issues:search" to "items:search")
-            if (preg_match('/(?:rename|changed|renamed).*?(\w+:\w+).*?to.*?(\w+:\w+)/i', $line, $matches)) {
-                $result['hasBreaking'] = true;
-                $result['breakingChanges'][] = "Command renamed: {$matches[1]} → {$matches[2]}";
+                continue;
             }
 
             // Collect items in current section
             if ($currentSection && preg_match('/^[\s*\-]+\s*(.+)$/', $line, $matches)) {
                 $item = trim($matches[1]);
                 if (!empty($item)) {
-                    if (!isset($result['sections'][$currentSection])) {
-                        $result['sections'][$currentSection] = [];
+                    // If we're in the Breaking section, add to breakingChanges
+                    if ($currentSection === 'breaking') {
+                        $result['hasBreaking'] = true;
+                        $result['breakingChanges'][] = $item;
+                    } else {
+                        // Otherwise, add to regular sections
+                        if (!isset($result['sections'][$currentSection])) {
+                            $result['sections'][$currentSection] = [];
+                        }
+                        $result['sections'][$currentSection][] = $item;
                     }
-                    $result['sections'][$currentSection][] = $item;
                 }
             }
         }
@@ -393,6 +388,7 @@ class UpdateHandler
             'deprecated' => '### Deprecated',
             'removed' => '### Removed',
             'fixed' => '### Fixed',
+            'breaking' => '### Breaking',
             'security' => '### Security',
             default => '### ' . ucfirst($sectionType),
         };

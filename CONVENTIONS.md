@@ -121,11 +121,23 @@ The following table defines the standard output methods and their usage in `stud
    }
    ```
 
+## CHANGELOG.md Format
+
+The `CHANGELOG.md` file follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format with the following sections:
+
+- **`### Added`**: For new features and additions
+- **`### Changed`**: For updates and modifications to existing functionality
+- **`### Fixed`**: For bug fixes
+- **`### Breaking`**: For breaking changes that require user action
+
+**Important**: Breaking changes must be placed in the `### Breaking` section. Do not use markers like `[BREAKING CHANGE]`, `[BREAKING]`, or `[REMOVED]` within other sections. Breaking changes should be clearly separated into their own section.
+
 ## Summary
 
 - **Code Architecture**: Follow PSR-12 and SOLID principles. Use `protected` for testable helper methods, avoid `final` on injectable services.
 - **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text.
 - **Output**: Use the standardized output methods consistently to provide a uniform user experience.
+- **CHANGELOG**: Use `### Breaking` section for breaking changes, not inline markers.
 
 These conventions ensure that `stud-cli` remains maintainable, testable, and provides a consistent developer experience.
 
