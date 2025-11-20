@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatically detect user's shell (bash or zsh) and provide installation instructions for shell completion [TPW-56]
 
 ### Changed
-- Rename command `issues:search` to `items:search` for consistency with other item-related commands (alias `search` remains unchanged) [SCI-2]
+- Rename command `issues:search` to `items:search` for consistency with other item-related commands (alias `search` remains unchanged) [SCI-2] [BREAKING CHANGE]
 
 ## [2.1.5] - 2025-11-13
 
