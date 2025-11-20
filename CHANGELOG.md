@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Display CHANGELOG diff and flag breaking changes during `stud update` [SCI-3]
+
 ### Fixed
 - Fix CHANGELOG.md to document missing changes in version 2.1.5
 

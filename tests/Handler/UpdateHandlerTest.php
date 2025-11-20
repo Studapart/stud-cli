@@ -93,11 +93,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -148,11 +155,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -185,10 +199,21 @@ class UpdateHandlerTest extends CommandTestCase
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $this->httpClient->expects($this->once())
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(2))
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback(function ($method, $url) use ($response, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $response;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                return $response;
+            });
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -239,11 +264,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -280,11 +312,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -337,11 +376,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint with the correct asset ID
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -373,10 +419,21 @@ class UpdateHandlerTest extends CommandTestCase
         $response->method('getStatusCode')->willReturn(200);
         $response->method('toArray')->willReturn($releaseData);
 
-        $this->httpClient->expects($this->once())
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(2))
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($response);
+            ->willReturnCallback(function ($method, $url) use ($response, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $response;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                return $response;
+            });
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -419,11 +476,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -483,11 +547,18 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Simulate download failure
                 throw new \Exception('Network error');
@@ -538,11 +609,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -716,15 +794,22 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+        
         // Verify that the download request is made (the httpClient is used for API, 
         // but download creates a new client with auth headers)
         // Since we can't easily verify headers on a new HttpClient instance,
         // we verify the download succeeds when token is provided
-        $this->httpClient->expects($this->exactly(2))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 // For download URL, return success - the auth header will be included
                 // by the new HttpClient created in downloadPhar
@@ -774,11 +859,18 @@ class UpdateHandlerTest extends CommandTestCase
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn('phar binary content');
 
-        $this->httpClient->expects($this->exactly(2))
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
                 }
                 return $downloadResponse;
             });
@@ -837,10 +929,21 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
-        $this->httpClient->expects($this->once())
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(2))
             ->method('request')
-            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
-            ->willReturn($releaseResponse);
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                return $releaseResponse;
+            });
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);

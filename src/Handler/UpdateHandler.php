@@ -49,6 +49,9 @@ class UpdateHandler
             return 0;
         }
 
+        // Display changelog before downloading
+        $this->displayChangelog($io, $githubProvider, $release);
+
         $pharAsset = $this->findPharAsset($io, $release);
         if (!$pharAsset) {
             return 1;
@@ -258,6 +261,141 @@ class UpdateHandler
 
         // Fallback: use the provided binary path
         return $this->binaryPath;
+    }
+
+    protected function displayChangelog(SymfonyStyle $io, GithubProvider $githubProvider, array $release): void
+    {
+        try {
+            $latestVersion = ltrim($release['tag_name'], 'v');
+            $changelogContent = $githubProvider->getChangelogContent($release['tag_name']);
+            $changes = $this->parseChangelog($changelogContent, $this->currentVersion, $latestVersion);
+            
+            if (empty($changes['sections']) && !$changes['hasBreaking']) {
+                // No changes found or already up to date
+                return;
+            }
+
+            $io->section($this->translator->trans('update.changelog_section', ['version' => $release['tag_name']]));
+            
+            // Display breaking changes first with warning
+            if ($changes['hasBreaking']) {
+                $io->warning($this->translator->trans('update.breaking_changes_detected'));
+                foreach ($changes['breakingChanges'] as $breakingChange) {
+                    $io->writeln("  <fg=red>⚠️  {$breakingChange}</>");
+                }
+                $io->newLine();
+            }
+
+            // Display other sections
+            foreach ($changes['sections'] as $sectionType => $items) {
+                if (empty($items)) {
+                    continue;
+                }
+                
+                $sectionTitle = $this->getSectionTitle($sectionType);
+                $io->text("<fg=cyan>{$sectionTitle}</>");
+                foreach ($items as $item) {
+                    $io->writeln("  • {$item}");
+                }
+                $io->newLine();
+            }
+        } catch (\Exception $e) {
+            // Silently fail - don't block update if changelog can't be fetched
+            $this->logVerbose($io, $this->translator->trans('update.changelog_error'), $e->getMessage());
+        }
+    }
+
+    protected function parseChangelog(string $changelogContent, string $currentVersion, string $latestVersion): array
+    {
+        $currentVersion = ltrim($currentVersion, 'v');
+        $latestVersion = ltrim($latestVersion, 'v');
+        
+        $result = [
+            'sections' => [],
+            'hasBreaking' => false,
+            'breakingChanges' => [],
+        ];
+
+        // Split changelog into lines
+        $lines = explode("\n", $changelogContent);
+        
+        $inTargetVersion = false;
+        $currentSection = null;
+        
+        foreach ($lines as $lineNum => $line) {
+            // Check for version header: ## [x.y.z] - YYYY-MM-DD
+            if (preg_match('/^##\s+\[(\d+\.\d+\.\d+)\]/', $line, $matches)) {
+                $versionInChangelog = $matches[1];
+                
+                // Check if we've reached a version older than current (stop parsing)
+                if (version_compare($versionInChangelog, $currentVersion, '<')) {
+                    break;
+                }
+                
+                // Check if this version is between current and latest (inclusive of latest, exclusive of current)
+                // We want to include all versions: current < version <= latest
+                if (version_compare($versionInChangelog, $latestVersion, '<=') && 
+                    version_compare($versionInChangelog, $currentVersion, '>')) {
+                    $inTargetVersion = true;
+                    $currentSection = null; // Reset section when entering new version
+                } else {
+                    $inTargetVersion = false;
+                }
+                continue;
+            }
+
+            if (!$inTargetVersion) {
+                continue;
+            }
+
+            // Check for section headers: ### Added, ### Fixed, etc.
+            if (preg_match('/^###\s+(\w+)/', $line, $matches)) {
+                $currentSection = strtolower($matches[1]);
+                continue;
+            }
+
+            // Check for breaking changes markers
+            if (preg_match('/\[BREAKING\s+CHANGE\]|\[BREAKING\]|\[REMOVED\]/i', $line)) {
+                $result['hasBreaking'] = true;
+                // Extract the breaking change text (remove markdown list markers)
+                $breakingText = preg_replace('/^[\s*\-]+/', '', trim($line));
+                if (!empty($breakingText)) {
+                    $result['breakingChanges'][] = $breakingText;
+                }
+            }
+
+            // Check for command renaming (e.g., "issues:search" to "items:search")
+            if (preg_match('/(?:rename|changed|renamed).*?(\w+:\w+).*?to.*?(\w+:\w+)/i', $line, $matches)) {
+                $result['hasBreaking'] = true;
+                $result['breakingChanges'][] = "Command renamed: {$matches[1]} → {$matches[2]}";
+            }
+
+            // Collect items in current section
+            if ($currentSection && preg_match('/^[\s*\-]+\s*(.+)$/', $line, $matches)) {
+                $item = trim($matches[1]);
+                if (!empty($item)) {
+                    if (!isset($result['sections'][$currentSection])) {
+                        $result['sections'][$currentSection] = [];
+                    }
+                    $result['sections'][$currentSection][] = $item;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    protected function getSectionTitle(string $sectionType): string
+    {
+        return match(strtolower($sectionType)) {
+            'added' => '### Added',
+            'changed' => '### Changed',
+            'deprecated' => '### Deprecated',
+            'removed' => '### Removed',
+            'fixed' => '### Fixed',
+            'security' => '### Security',
+            default => '### ' . ucfirst($sectionType),
+        };
     }
 }
 

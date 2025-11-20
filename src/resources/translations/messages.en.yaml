@@ -162,6 +162,9 @@ update:
   error_backup: "Failed to create backup of current version.\nError: %error%"
   error_rollback: "Update failed and was rolled back.\nError: %error%"
   error_rollback_failed: "Update failed and rollback also failed!\nOriginal error: %original_error%\nRollback error: %rollback_error%\nPlease manually restore from: %backup_path%"
+  changelog_section: "Changes in version %version%"
+  breaking_changes_detected: "⚠️  Breaking changes detected in this update:"
+  changelog_error: "Could not fetch changelog"
 
 # Release Handler
 release:
