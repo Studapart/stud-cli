@@ -218,7 +218,7 @@ help:
   command_projects_list: "Lists all visible Jira projects."
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
-  command_issues_search: "Search for issues using JQL."
+  command_items_search: "Search for issues using JQL."
   command_items_start: "Creates a new git branch from a Jira item."
   command_commit: "Guides you through making a conventional commit."
   command_please: "A power-user, safe force-push (force-with-lease)."

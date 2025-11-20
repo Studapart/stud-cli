@@ -380,8 +380,8 @@ function items_list(
     $handler->handle(io(), $all, $project);
 }
 
-#[AsTask(name: 'issues:search', aliases: ['search'], description: 'Search for issues using JQL')]
-function issues_search(
+#[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
+function items_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
 ): void {
     _load_constants();
@@ -538,10 +538,10 @@ function help(): void
                 'example' => 'stud sh PROJ-123',
             ],
             [
-                'name' => 'issues:search',
+                'name' => 'items:search',
                 'alias' => 'search',
                 'args' => '<jql>',
-                'description' => $translator->trans('help.command_issues_search'),
+                'description' => $translator->trans('help.command_items_search'),
                 'example' => 'stud search "project = PROJ and status = Done"',
             ],
         ],

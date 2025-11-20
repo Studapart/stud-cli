@@ -218,7 +218,7 @@ help:
   command_projects_list: "Liệt kê tất cả các dự án Jira có thể nhìn thấy."
   command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
   command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
-  command_issues_search: "Tìm kiếm các issue bằng JQL."
+  command_items_search: "Tìm kiếm các issue bằng JQL."
   command_items_start: "Tạo một nhánh git mới từ một mục Jira."
   command_commit: "Hướng dẫn bạn tạo một commit thông thường."
   command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
