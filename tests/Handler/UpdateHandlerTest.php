@@ -953,5 +953,511 @@ class UpdateHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testDisplayChangelogWithBreakingChanges(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Breaking
+- Rename command `issues:search` to `items:search` [SCI-2]
+
+### Added
+- New feature [TPW-1]
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Breaking changes detected', $outputText);
+        $this->assertStringContainsString('issues:search', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWithRegularSections(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+- New feature [TPW-1]
+
+### Fixed
+- Bug fix [TPW-2]
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Added', $outputText);
+        $this->assertStringContainsString('Fixed', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWhenFetchFails(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(500);
+        $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        // Should still succeed even if changelog fetch fails
+        $this->assertSame(0, $result);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testParseChangelogWithMultipleVersions(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.2] - 2025-01-03
+
+### Added
+- Feature in 1.0.2
+
+## [1.0.1] - 2025-01-02
+
+### Breaking
+- Breaking change in 1.0.1
+
+### Fixed
+- Fix in 1.0.1
+
+## [1.0.0] - 2025-01-01
+
+### Added
+- Initial release
+
+CHANGELOG;
+
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+
+        $this->assertTrue($result['hasBreaking']);
+        $this->assertCount(1, $result['breakingChanges']);
+        $this->assertStringContainsString('Breaking change in 1.0.1', $result['breakingChanges'][0]);
+        $this->assertArrayHasKey('added', $result['sections']);
+        $this->assertArrayHasKey('fixed', $result['sections']);
+        $this->assertCount(1, $result['sections']['added']);
+        $this->assertCount(1, $result['sections']['fixed']);
+    }
+
+    public function testParseChangelogWithBreakingSection(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Breaking
+- Command renamed: old:command to new:command
+- Removed deprecated feature
+
+### Added
+- New feature
+
+CHANGELOG;
+
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.1']);
+
+        $this->assertTrue($result['hasBreaking']);
+        $this->assertCount(2, $result['breakingChanges']);
+        $this->assertStringContainsString('Command renamed', $result['breakingChanges'][0]);
+        $this->assertStringContainsString('Removed deprecated', $result['breakingChanges'][1]);
+        $this->assertArrayHasKey('added', $result['sections']);
+    }
+
+    public function testParseChangelogStopsAtCurrentVersion(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.2] - 2025-01-03
+
+### Added
+- Feature in 1.0.2
+
+## [1.0.1] - 2025-01-02
+
+### Added
+- Feature in 1.0.1
+
+## [1.0.0] - 2025-01-01
+
+### Added
+- Should not be included
+
+CHANGELOG;
+
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+
+        // Should include 1.0.1 and 1.0.2, but not 1.0.0
+        $this->assertArrayHasKey('added', $result['sections']);
+        $this->assertCount(2, $result['sections']['added']);
+        $this->assertStringContainsString('1.0.2', $result['sections']['added'][0]);
+        $this->assertStringContainsString('1.0.1', $result['sections']['added'][1]);
+    }
+
+    public function testGetSectionTitle(): void
+    {
+        $this->assertSame('### Added', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['added']));
+        $this->assertSame('### Changed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['changed']));
+        $this->assertSame('### Fixed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['fixed']));
+        $this->assertSame('### Breaking', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['breaking']));
+        $this->assertSame('### Deprecated', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['deprecated']));
+        $this->assertSame('### Removed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['removed']));
+        $this->assertSame('### Security', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['security']));
+        $this->assertSame('### Custom', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['custom']));
+    }
+
+    public function testDisplayChangelogWithEmptyChanges(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+- Feature
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Added', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWithNoChangesReturnsEarly(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        // Changelog with no items in sections
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        // Should not contain changelog section if no changes
+        $this->assertStringNotContainsString('Changes in version', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWithVerboseErrorLogging(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(500);
+        $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('phar binary content');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        // In verbose mode, should log the error
+        $this->assertStringContainsString('Could not fetch changelog', $outputText);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testParseChangelogWithEmptySections(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+
+### Fixed
+
+CHANGELOG;
+
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.1']);
+
+        $this->assertFalse($result['hasBreaking']);
+        $this->assertEmpty($result['breakingChanges']);
+        $this->assertEmpty($result['sections']);
+    }
+
+    public function testParseChangelogWithVersionPrefixes(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+- Feature
+
+CHANGELOG;
+
+        // Test with 'v' prefix in versions
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, 'v1.0.0', 'v1.0.1']);
+
+        $this->assertArrayHasKey('added', $result['sections']);
+        $this->assertCount(1, $result['sections']['added']);
+    }
+
+    public function testParseChangelogSkipsVersionsOutsideRange(): void
+    {
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.3] - 2025-01-03
+
+### Added
+- Should not be included
+
+## [1.0.2] - 2025-01-02
+
+### Added
+- Should be included
+
+## [1.0.1] - 2025-01-01
+
+### Added
+- Should be included
+
+## [1.0.0] - 2025-01-01
+
+### Added
+- Should not be included
+
+CHANGELOG;
+
+        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+
+        $this->assertArrayHasKey('added', $result['sections']);
+        $this->assertCount(2, $result['sections']['added']);
+        // Items should be from 1.0.2 and 1.0.1, but not 1.0.3 or 1.0.0
+        $this->assertStringContainsString('Should be included', $result['sections']['added'][0]);
+        $this->assertStringContainsString('Should be included', $result['sections']['added'][1]);
+        // Verify 1.0.3 and 1.0.0 items are not included
+        $allItems = implode(' ', $result['sections']['added']);
+        $this->assertStringNotContainsString('Should not be included', $allItems);
+    }
+
 }
 
