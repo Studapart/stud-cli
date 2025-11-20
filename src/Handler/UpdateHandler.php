@@ -10,6 +10,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateHandler
 {
+    private const CHANGELOG_SECTION_BREAKING = 'breaking';
+
     public function __construct(
         protected readonly string $repoOwner,
         protected readonly string $repoName,
@@ -187,7 +189,7 @@ class UpdateHandler
 
         // Step 1: Backup the current executable
         // Note: rename() doesn't throw exceptions in PHP (returns false), but catch block handles edge cases
-        // @codeCoverageIgnoreStart
+        // @codeCoverageIgnoreStart - Exception from rename() is extremely rare and hard to simulate
         try {
             rename($binaryPath, $backupPath);
         } catch (\Exception $e) {
@@ -207,7 +209,7 @@ class UpdateHandler
             return 0;
             // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
             // Rollback on failure
-            // @codeCoverageIgnoreStart
+            // @codeCoverageIgnoreStart - Exception from rename/chmod is extremely rare and hard to simulate
         } catch (\Exception $e) {
             try {
                 rename($backupPath, $binaryPath);
@@ -220,10 +222,10 @@ class UpdateHandler
                     'backup_path' => $backupPath
                 ])));
             }
-            // @codeCoverageIgnoreEnd
             @unlink($tempFile);
             return 1;
         }
+        // @codeCoverageIgnoreEnd
     }
 
     protected function logVerbose(SymfonyStyle $io, string $label, string $value): void
@@ -352,7 +354,7 @@ class UpdateHandler
             if (preg_match('/^###\s+(\w+)/', $line, $matches)) {
                 $currentSection = strtolower($matches[1]);
                 // If we're entering the Breaking section, mark that breaking changes exist
-                if ($currentSection === 'breaking') {
+                if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
                     $result['hasBreaking'] = true;
                 }
                 continue;
@@ -363,7 +365,7 @@ class UpdateHandler
                 $item = trim($matches[1]);
                 if (!empty($item)) {
                     // If we're in the Breaking section, add to breakingChanges
-                    if ($currentSection === 'breaking') {
+                    if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
                         $result['hasBreaking'] = true;
                         $result['breakingChanges'][] = $item;
                     } else {
@@ -388,7 +390,7 @@ class UpdateHandler
             'deprecated' => '### Deprecated',
             'removed' => '### Removed',
             'fixed' => '### Fixed',
-            'breaking' => '### Breaking',
+            self::CHANGELOG_SECTION_BREAKING => '### Breaking',
             'security' => '### Security',
             default => '### ' . ucfirst($sectionType),
         };
