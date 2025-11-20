@@ -46,6 +46,25 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 100% test coverage is prioritized over architectural purity. Every line of code that can be tested should be tested. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (e.g., PHAR-specific code, edge cases that cannot be simulated).
 
+**Important**: When using `@codeCoverageIgnoreStart` and `@codeCoverageIgnoreEnd`, these annotations must be on their own lines. If you need to add an explanatory comment, place it on a separate line before the ignore tag:
+
+```php
+// Exception from rename() is extremely rare and hard to simulate
+// @codeCoverageIgnoreStart
+try {
+    rename($binaryPath, $backupPath);
+} catch (\Exception $e) {
+    // ...
+}
+// @codeCoverageIgnoreEnd
+```
+
+**Do NOT** combine the comment with the annotation on the same line:
+```php
+// ❌ BAD: Comment and annotation on same line
+// @codeCoverageIgnoreStart - Exception from rename() is extremely rare
+```
+
 ### Core Principle: "Test the Intent, Not the Text"
 
 This is a fundamental principle that guides all test writing in `stud-cli`.
