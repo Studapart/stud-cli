@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-11-20
+
+### Added
+- Prepend clickable Jira issue link to Pull Request description when using `stud submit` [SCI-1]
+- Add `init` alias for `config:init` command [TPW-56]
+- Add interactive shell auto-completion setup prompt at the end of `config:init` command [TPW-56]
+- Automatically detect user's shell (bash or zsh) and provide installation instructions for shell completion [TPW-56]
+
+### Changed
+- Rename command `issues:search` to `items:search` for consistency with other item-related commands (alias `search` remains unchanged) [SCI-2]
+
 ## [2.1.5] - 2025-11-13
 
 ## [2.1.4] - 2025-11-13

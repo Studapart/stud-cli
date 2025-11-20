@@ -73,7 +73,7 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 'studapart:feat/TPW-35-my-feature',
                 'develop',
-                'My rendered description'
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -176,7 +176,16 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->jiraService->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
-        $this->githubProvider->method('createPullRequest')->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                $this->anything(),
+                'develop',
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -212,7 +221,16 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        $this->githubProvider->method('createPullRequest')->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                $this->anything(),
+                'develop',
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -413,7 +431,7 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 'feat/TPW-35-my-feature',
                 'develop',
-                'My rendered description'
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 

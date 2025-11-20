@@ -164,14 +164,42 @@ The tool will automatically check for new releases, download the latest version,
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
 
-#### `stud config:init`
+#### `stud config:init` (Alias: `stud init`)
 
 **Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
+
+At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
 
 **Usage:**
 ```bash
 stud config:init
+stud init
 ```
+
+#### `stud completion <shell>`
+
+**Description:** Generates shell completion scripts for bash or zsh. This command is used to set up auto-completion for all `stud-cli` commands, including aliases like `init` (for `config:init`).
+
+**Arguments:**
+- `<shell>`: The shell type (`bash` or `zsh`)
+
+**Usage:**
+```bash
+# Generate bash completion script
+stud completion bash
+
+# Generate zsh completion script
+stud completion zsh
+
+# To install, add to your shell configuration file:
+# For bash:
+eval "$(stud completion bash)" >> ~/.bashrc
+
+# For zsh:
+eval "$(stud completion zsh)" >> ~/.zshrc
+```
+
+**Note:** The easiest way to set up completion is through the `stud config:init` wizard, which will guide you through the installation process.
 
 ### Usage
 

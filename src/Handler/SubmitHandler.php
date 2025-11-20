@@ -83,6 +83,9 @@ class SubmitHandler
             $prBody = "Resolves: {$this->jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
         }
 
+        // 6.5. Prepend clickable Jira link to PR body
+        $prBody = $this->prependJiraLinkToBody($prBody, $jiraKey);
+
         // 7. Format the head parameter for GitHub API
         // GitHub requires "owner:branch" format when creating PR from a fork
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
@@ -120,5 +123,13 @@ class SubmitHandler
         }
         
         return 0;
+    }
+
+    protected function prependJiraLinkToBody(string $body, string $jiraKey): string
+    {
+        $jiraUrl = $this->jiraConfig['JIRA_URL'];
+        $jiraLink = "🔗 **Jira Issue:** [{$jiraKey}]({$jiraUrl}/browse/{$jiraKey})";
+        
+        return $jiraLink . "\n\n" . $body;
     }
 }
