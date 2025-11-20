@@ -2,6 +2,7 @@
 
 namespace App\Handler;
 
+use App\Service\ChangelogParser;
 use App\Service\GithubProvider;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -10,14 +11,13 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateHandler
 {
-    private const CHANGELOG_SECTION_BREAKING = 'breaking';
-
     public function __construct(
         protected readonly string $repoOwner,
         protected readonly string $repoName,
         protected readonly string $currentVersion,
         protected readonly string $binaryPath,
         protected readonly TranslationService $translator,
+        protected readonly ChangelogParser $changelogParser,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null
     ) {
@@ -270,7 +270,7 @@ class UpdateHandler
         try {
             $latestVersion = ltrim($release['tag_name'], 'v');
             $changelogContent = $githubProvider->getChangelogContent($release['tag_name']);
-            $changes = $this->parseChangelog($changelogContent, $this->currentVersion, $latestVersion);
+            $changes = $this->changelogParser->parse($changelogContent, $this->currentVersion, $latestVersion);
             
             if (empty($changes['sections']) && !$changes['hasBreaking']) {
                 // No changes found or already up to date
@@ -294,7 +294,7 @@ class UpdateHandler
                     continue;
                 }
                 
-                $sectionTitle = $this->getSectionTitle($sectionType);
+                $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
                 $io->text("<fg=cyan>{$sectionTitle}</>");
                 foreach ($items as $item) {
                     $io->writeln("  • {$item}");
@@ -307,93 +307,5 @@ class UpdateHandler
         }
     }
 
-    protected function parseChangelog(string $changelogContent, string $currentVersion, string $latestVersion): array
-    {
-        $currentVersion = ltrim($currentVersion, 'v');
-        $latestVersion = ltrim($latestVersion, 'v');
-        
-        $result = [
-            'sections' => [],
-            'hasBreaking' => false,
-            'breakingChanges' => [],
-        ];
-
-        // Split changelog into lines
-        $lines = explode("\n", $changelogContent);
-        
-        $inTargetVersion = false;
-        $currentSection = null;
-        
-        foreach ($lines as $lineNum => $line) {
-            // Check for version header: ## [x.y.z] - YYYY-MM-DD
-            if (preg_match('/^##\s+\[(\d+\.\d+\.\d+)\]/', $line, $matches)) {
-                $versionInChangelog = $matches[1];
-                
-                // Check if we've reached a version older than current (stop parsing)
-                if (version_compare($versionInChangelog, $currentVersion, '<')) {
-                    break;
-                }
-                
-                // Check if this version is between current and latest (inclusive of latest, exclusive of current)
-                // We want to include all versions: current < version <= latest
-                if (version_compare($versionInChangelog, $latestVersion, '<=') && 
-                    version_compare($versionInChangelog, $currentVersion, '>')) {
-                    $inTargetVersion = true;
-                    $currentSection = null; // Reset section when entering new version
-                } else {
-                    $inTargetVersion = false;
-                }
-                continue;
-            }
-
-            if (!$inTargetVersion) {
-                continue;
-            }
-
-            // Check for section headers: ### Added, ### Fixed, ### Breaking, etc.
-            if (preg_match('/^###\s+(\w+)/', $line, $matches)) {
-                $currentSection = strtolower($matches[1]);
-                // If we're entering the Breaking section, mark that breaking changes exist
-                if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
-                    $result['hasBreaking'] = true;
-                }
-                continue;
-            }
-
-            // Collect items in current section
-            if ($currentSection && preg_match('/^[\s*\-]+\s*(.+)$/', $line, $matches)) {
-                $item = trim($matches[1]);
-                if (!empty($item)) {
-                    // If we're in the Breaking section, add to breakingChanges
-                    if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
-                        $result['hasBreaking'] = true;
-                        $result['breakingChanges'][] = $item;
-                    } else {
-                        // Otherwise, add to regular sections
-                        if (!isset($result['sections'][$currentSection])) {
-                            $result['sections'][$currentSection] = [];
-                        }
-                        $result['sections'][$currentSection][] = $item;
-                    }
-                }
-            }
-        }
-
-        return $result;
-    }
-
-    protected function getSectionTitle(string $sectionType): string
-    {
-        return match(strtolower($sectionType)) {
-            'added' => '### Added',
-            'changed' => '### Changed',
-            'deprecated' => '### Deprecated',
-            'removed' => '### Removed',
-            'fixed' => '### Fixed',
-            self::CHANGELOG_SECTION_BREAKING => '### Breaking',
-            'security' => '### Security',
-            default => '### ' . ucfirst($sectionType),
-        };
-    }
 }
 

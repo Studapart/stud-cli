@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\Handler\UpdateHandler;
+use App\Service\ChangelogParser;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -34,6 +35,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',     // currentVersion
             $this->tempBinaryPath,
             $this->translationService,
+            new ChangelogParser(),
             null,        // gitToken
             $this->httpClient
         );
@@ -454,6 +456,7 @@ class UpdateHandlerTest extends CommandTestCase
             'v1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
+            new ChangelogParser(),
             null,
             $this->httpClient
         );
@@ -587,6 +590,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
+            new ChangelogParser(),
             null,
             $this->httpClient
         );
@@ -668,6 +672,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
+            new ChangelogParser(),
             'test-token-123',
             $this->httpClient
         );
@@ -730,6 +735,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $testPath,
             $this->translationService,
+            new ChangelogParser(),
             null,
             $this->httpClient
         );
@@ -753,6 +759,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $testPath,
             $this->translationService,
+            new ChangelogParser(),
             null,
             $this->httpClient
         );
@@ -771,6 +778,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
+            new ChangelogParser(),
             'test-token-123',
             $this->httpClient
         );
@@ -797,7 +805,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
-        
+
         // Verify that the download request is made (the httpClient is used for API, 
         // but download creates a new client with auth headers)
         // Since we can't easily verify headers on a new HttpClient instance,
@@ -1146,7 +1154,8 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, '1.0.0', '1.0.2');
 
         $this->assertTrue($result['hasBreaking']);
         $this->assertCount(1, $result['breakingChanges']);
@@ -1171,7 +1180,8 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.1']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, '1.0.0', '1.0.1');
 
         $this->assertTrue($result['hasBreaking']);
         $this->assertCount(2, $result['breakingChanges']);
@@ -1200,7 +1210,8 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, '1.0.0', '1.0.2');
 
         // Should include 1.0.1 and 1.0.2, but not 1.0.0
         $this->assertArrayHasKey('added', $result['sections']);
@@ -1211,14 +1222,15 @@ CHANGELOG;
 
     public function testGetSectionTitle(): void
     {
-        $this->assertSame('### Added', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['added']));
-        $this->assertSame('### Changed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['changed']));
-        $this->assertSame('### Fixed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['fixed']));
-        $this->assertSame('### Breaking', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['breaking']));
-        $this->assertSame('### Deprecated', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['deprecated']));
-        $this->assertSame('### Removed', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['removed']));
-        $this->assertSame('### Security', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['security']));
-        $this->assertSame('### Custom', $this->callPrivateMethod($this->handler, 'getSectionTitle', ['custom']));
+        $parser = new ChangelogParser();
+        $this->assertSame('### Added', $parser->getSectionTitle('added'));
+        $this->assertSame('### Changed', $parser->getSectionTitle('changed'));
+        $this->assertSame('### Fixed', $parser->getSectionTitle('fixed'));
+        $this->assertSame('### Breaking', $parser->getSectionTitle('breaking'));
+        $this->assertSame('### Deprecated', $parser->getSectionTitle('deprecated'));
+        $this->assertSame('### Removed', $parser->getSectionTitle('removed'));
+        $this->assertSame('### Security', $parser->getSectionTitle('security'));
+        $this->assertSame('### Custom', $parser->getSectionTitle('custom'));
     }
 
     public function testDisplayChangelogWithEmptyChanges(): void
@@ -1398,7 +1410,8 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.1']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, '1.0.0', '1.0.1');
 
         $this->assertFalse($result['hasBreaking']);
         $this->assertEmpty($result['breakingChanges']);
@@ -1416,7 +1429,8 @@ CHANGELOG;
 CHANGELOG;
 
         // Test with 'v' prefix in versions
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, 'v1.0.0', 'v1.0.1']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, 'v1.0.0', 'v1.0.1');
 
         $this->assertArrayHasKey('added', $result['sections']);
         $this->assertCount(1, $result['sections']['added']);
@@ -1447,7 +1461,8 @@ CHANGELOG;
 
 CHANGELOG;
 
-        $result = $this->callPrivateMethod($this->handler, 'parseChangelog', [$changelogContent, '1.0.0', '1.0.2']);
+        $parser = new ChangelogParser();
+        $result = $parser->parse($changelogContent, '1.0.0', '1.0.2');
 
         $this->assertArrayHasKey('added', $result['sections']);
         $this->assertCount(2, $result['sections']['added']);
