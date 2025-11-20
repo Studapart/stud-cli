@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix CHANGELOG.md to document missing changes in version 2.1.5
+
 ## [2.2.0] - 2025-11-20
 
 ### Added
@@ -19,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename command `issues:search` to `items:search` for consistency with other item-related commands (alias `search` remains unchanged) [SCI-2]
 
 ## [2.1.5] - 2025-11-13
+
+### Fixed
+- Fix segfault issue during PHAR execution by moving version check to a function called after initialization
+- Fix segfault issue by implementing a more defensive approach to version checking
 
 ## [2.1.4] - 2025-11-13
 
