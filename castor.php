@@ -501,10 +501,38 @@ function submit(
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
-function help(): void
-{
+function help(
+    #[AsArgument(name: 'command_name', description: 'The command name to get help for')] ?string $commandName = null
+): void {
     _load_constants();
     $translator = _get_translation_service();
+    
+    // If a command is provided, show help for that specific command
+    if ($commandName !== null) {
+        $helpService = new \App\Service\HelpService($translator);
+        
+        // Map aliases to command names
+        $aliasMap = [
+            'init' => 'config:init',
+            'pj' => 'projects:list',
+            'ls' => 'items:list',
+            'search' => 'items:search',
+            'sh' => 'items:show',
+            'start' => 'items:start',
+            'co' => 'commit',
+            'pl' => 'please',
+            'su' => 'submit',
+            'ss' => 'status',
+            'rl' => 'release',
+            'mep' => 'deploy',
+        ];
+        
+        $mappedCommandName = $aliasMap[$commandName] ?? $commandName;
+        $helpService->displayCommandHelp(io(), $mappedCommandName);
+        return;
+    }
+    
+    // Otherwise, show general help
     $logo = require APP_LOGO_PATH;
     io()->writeln($logo(APP_NAME, APP_VERSION));
     io()->title($translator->trans('help.title'));
@@ -513,6 +541,8 @@ function help(): void
     io()->writeln('    ' . $translator->trans('help.description_text'));
     io()->newLine();
     io()->note($translator->trans('help.universal_help_note'));
+    io()->newLine();
+    io()->note($translator->trans('help.command_specific_help_note'));
 
     io()->section($translator->trans('help.global_options_section'));
     io()->definitionList(

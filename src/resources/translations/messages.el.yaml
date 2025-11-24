@@ -243,4 +243,9 @@ help:
   command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."
   command_release: "Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση."
   command_deploy: "Αναπτύσσει τον τρέχοντα κλάδο release."
+  universal_help_note: "Συμβουλή: Χρησιμοποιήστε --help (ή -h) με οποιαδήποτε εντολή για να δείτε λεπτομερή βοήθεια. Για παράδειγμα: stud commit --help"
+  command_specific_help_note: "Συμβουλή: Εκτελέστε 'stud help <εντολή>' για να δείτε λεπτομερή βοήθεια για μια συγκεκριμένη εντολή. Για παράδειγμα: stud help commit"
+  command_help_title: "Βοήθεια: %command%"
+  see_readme_note: "Για περισσότερες πληροφορίες, δείτε την πλήρη τεκμηρίωση στο README.md"
+  command_not_found: "Κείμενο βοήθειας δεν είναι διαθέσιμο για την εντολή: %command%"
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud help <command>` to display detailed help for a specific command, with support for command aliases [SCI-7]
 - Add `--info` (`-i`) option to `stud update` command to preview changelog without downloading [SCI-6]
 
 ## [2.3.0] - 2025-11-24

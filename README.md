@@ -224,7 +224,16 @@ stud submit -h
 stud items:list --help
 ```
 
-You can also use `stud help` to see a list of all available commands.
+You can also use `stud help` to see a list of all available commands. For detailed help on a specific command, use `stud help <command>`:
+
+```bash
+stud help commit
+stud help submit
+stud help items:list
+stud help co  # Works with aliases too
+```
+
+The `stud help <command>` command provides the same detailed information as `stud <command> --help`, extracted from this documentation.
 
 #### Jira Information Commands
 

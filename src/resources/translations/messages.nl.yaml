@@ -243,4 +243,9 @@ help:
   command_status: "Een snelle \"waar ben ik?\" dashboard."
   command_release: "Maakt een nieuwe release tak en verhoogt de versie."
   command_deploy: "Deployt de huidige release tak."
+  universal_help_note: "Tip: Gebruik --help (of -h) met elk commando om gedetailleerde help te zien. Bijvoorbeeld: stud commit --help"
+  command_specific_help_note: "Tip: Voer 'stud help <commando>' uit om gedetailleerde help voor een specifiek commando te zien. Bijvoorbeeld: stud help commit"
+  command_help_title: "Help: %command%"
+  see_readme_note: "Voor meer informatie, zie de volledige documentatie in README.md"
+  command_not_found: "Helptekst niet beschikbaar voor commando: %command%"
 

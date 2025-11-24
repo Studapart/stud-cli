@@ -41,9 +41,12 @@ class HelpService
         }
 
         $readmeContent = @file_get_contents(self::README_PATH);
+        // File read failure is extremely rare and hard to simulate in tests
+        // @codeCoverageIgnoreStart
         if ($readmeContent === false) {
             return null;
         }
+        // @codeCoverageIgnoreEnd
 
         $pattern = self::COMMAND_PATTERNS[$commandName];
         $lines = explode("\n", $readmeContent);

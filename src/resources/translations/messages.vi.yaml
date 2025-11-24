@@ -243,4 +243,9 @@ help:
   command_status: "Bảng điều khiển \"tôi đang ở đâu?\" nhanh."
   command_release: "Tạo nhánh phát hành mới và tăng phiên bản."
   command_deploy: "Triển khai nhánh phát hành hiện tại."
+  universal_help_note: "Mẹo: Sử dụng --help (hoặc -h) với bất kỳ lệnh nào để xem trợ giúp chi tiết. Ví dụ: stud commit --help"
+  command_specific_help_note: "Mẹo: Chạy 'stud help <lệnh>' để xem trợ giúp chi tiết cho một lệnh cụ thể. Ví dụ: stud help commit"
+  command_help_title: "Trợ giúp: %command%"
+  see_readme_note: "Để biết thêm thông tin, xem tài liệu đầy đủ trong README.md"
+  command_not_found: "Văn bản trợ giúp không có sẵn cho lệnh: %command%"
 
