@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Các thay đổi đã được push lên GitHub"
   error_create_pr: "Không thể tạo Pull Request.\nLỗi: %error%"
   using_head: "Đang sử dụng nhánh head: %head%"
+  fetching_labels: "Đang lấy nhãn từ kho lưu trữ..."
+  label_unknown_prompt: "Nhãn '%label%' không tồn tại trong kho lưu trữ. Bạn muốn làm gì?"
+  label_create_option: "Tạo: Tạo nhãn trên GitHub và thêm vào PR"
+  label_ignore_option: "Bỏ qua: Bỏ qua nhãn này và xóa khỏi danh sách cuối cùng"
+  label_retry_option: "Thử lại: Hủy lệnh và chạy lại với danh sách đã sửa"
+  label_creating: "Đang tạo nhãn '%label%'..."
+  label_created: "✅ Nhãn '%label%' đã được tạo thành công"
+  label_ignored: "Nhãn '%label%' sẽ bị bỏ qua"
+  error_fetch_labels: "Không thể lấy nhãn từ GitHub.\nLỗi: %error%"
+  error_create_label: "Không thể tạo nhãn '%label%'.\nLỗi: %error%"
+  error_add_labels: "Không thể thêm nhãn vào Pull Request.\nLỗi: %error%"
+  adding_labels: "Đang thêm nhãn vào Pull Request..."
+  updating_to_draft: "Đang cập nhật Pull Request sang trạng thái bản nháp..."
+  error_update_draft: "Không thể cập nhật trạng thái bản nháp của Pull Request.\nLỗi: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Không thể tạo bản sao lưu của phiên bản hiện tại.\nLỗi: %error%"
   error_rollback: "Cập nhật thất bại và đã được hoàn nguyên.\nLỗi: %error%"
   error_rollback_failed: "Cập nhật thất bại và hoàn nguyên cũng thất bại!\nLỗi ban đầu: %original_error%\nLỗi hoàn nguyên: %rollback_error%\nVui lòng khôi phục thủ công từ: %backup_path%"
+  changelog_section: "Thay đổi trong phiên bản %version%"
+  breaking_changes_detected: "⚠️  Phát hiện thay đổi phá vỡ trong bản cập nhật này:"
+  changelog_error: "Không thể lấy changelog"
 
 # Release Handler
 release:

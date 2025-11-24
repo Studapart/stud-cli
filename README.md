@@ -282,10 +282,17 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud submit`** (Alias: `stud sub`)
     -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub.
+    -   **Options:**
+        -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
+        -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
     -   **Usage:**
         ```bash
         stud submit
         stud sub
+        stud submit --draft
+        stud sub -d
+        stud submit --labels "bug,enhancement"
+        stud submit --draft --labels "bug,ui"
         ```
 
 -   **`stud update`** (Alias: `stud up`)

@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Changes have been pushed to GitHub"
   error_create_pr: "Failed to create Pull Request.\nError: %error%"
   using_head: "Using head branch: %head%"
+  fetching_labels: "Fetching repository labels..."
+  label_unknown_prompt: "Label '%label%' does not exist on the repository. What would you like to do?"
+  label_create_option: "Create: Create the label on GitHub and add it to the PR"
+  label_ignore_option: "Ignore: Skip this label and remove it from the final list"
+  label_retry_option: "Retry: Abort the command and re-run with a corrected list"
+  label_creating: "Creating label '%label%'..."
+  label_created: "✅ Label '%label%' created successfully"
+  label_ignored: "Label '%label%' will be ignored"
+  error_fetch_labels: "Failed to fetch labels from GitHub.\nError: %error%"
+  error_create_label: "Failed to create label '%label%'.\nError: %error%"
+  error_add_labels: "Failed to add labels to Pull Request.\nError: %error%"
+  adding_labels: "Adding labels to Pull Request..."
+  updating_to_draft: "Updating Pull Request to draft status..."
+  error_update_draft: "Failed to update Pull Request draft status.\nError: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Failed to create backup of current version.\nError: %error%"
   error_rollback: "Update failed and was rolled back.\nError: %error%"
   error_rollback_failed: "Update failed and rollback also failed!\nOriginal error: %original_error%\nRollback error: %rollback_error%\nPlease manually restore from: %backup_path%"
+  changelog_section: "Changes in version %version%"
+  breaking_changes_detected: "⚠️  Breaking changes detected in this update:"
+  changelog_error: "Could not fetch changelog"
 
 # Release Handler
 release:

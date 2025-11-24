@@ -17,6 +17,7 @@ if (!defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
@@ -434,8 +435,10 @@ function please(): void
 
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
-function submit(): void
-{
+function submit(
+    #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')] bool $draft = false,
+    #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')] ?string $labels = null
+): void {
     _load_constants();
     $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
@@ -479,7 +482,7 @@ function submit(): void
         DEFAULT_BASE_BRANCH,
         _get_translation_service()
     );
-    $handler->handle(io());
+    $handler->handle(io(), $draft, $labels);
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
@@ -701,6 +704,7 @@ function update(): void
         APP_VERSION,
         $binaryPath,
         _get_translation_service(),
+        new ChangelogParser(),
         $gitToken
     );
     $result = $handler->handle(io());

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-11-24
+
+### Added
+- Add `--labels` option to `stud submit` command to apply labels to Pull Requests with interactive validation and creation of missing labels [SCI-5]
+- Add `--draft` (`-d`) option to `stud submit` command to create Draft Pull Requests on GitHub [SCI-4]
+- Display CHANGELOG diff and flag breaking changes during `stud update` [SCI-3]
+
+### Fixed
+- Fix CHANGELOG.md to document missing changes in version 2.1.5
+
 ## [2.2.0] - 2025-11-20
 
 ### Added
@@ -15,10 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add interactive shell auto-completion setup prompt at the end of `config:init` command [TPW-56]
 - Automatically detect user's shell (bash or zsh) and provide installation instructions for shell completion [TPW-56]
 
-### Changed
+### Breaking
 - Rename command `issues:search` to `items:search` for consistency with other item-related commands (alias `search` remains unchanged) [SCI-2]
 
 ## [2.1.5] - 2025-11-13
+
+### Fixed
+- Fix segfault issue during PHAR execution by moving version check to a function called after initialization
+- Fix segfault issue by implementing a more defensive approach to version checking
 
 ## [2.1.4] - 2025-11-13
 
