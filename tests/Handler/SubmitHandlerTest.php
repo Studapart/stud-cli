@@ -492,4 +492,182 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
     }
+
+    public function testValidateAndProcessLabelsAllValid(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+            ['name' => 'enhancement'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,enhancement');
+
+        $this->assertSame(['bug', 'enhancement'], $result);
+    }
+
+
+    public function testValidateAndProcessLabelsEmptyInput(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, '');
+
+        $this->assertSame([], $result);
+    }
+
+    public function testValidateAndProcessLabelsNullInput(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        // Test with whitespace-only input
+        $result = $method->invoke($this->handler, $io, '  ,  ,  ');
+
+        $this->assertSame([], $result);
+    }
+
+    public function testValidateAndProcessLabelsCaseInsensitive(): void
+    {
+        $remoteLabels = [
+            ['name' => 'Bug'], // Note: capital B
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        // Request lowercase 'bug' but it should match 'Bug' from GitHub
+        $result = $method->invoke($this->handler, $io, 'bug');
+
+        $this->assertSame(['Bug'], $result); // Should use the exact case from GitHub
+    }
+
+    public function testHandleSuccessWithLabels(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $remoteLabels = [
+            ['name' => 'bug'],
+            ['name' => 'enhancement'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                'studapart:feat/TPW-35-my-feature',
+                'develop',
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
+                false
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(1, ['bug', 'enhancement']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'bug,enhancement');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithLabelsFetchError(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willThrowException(new \Exception('API Error'));
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'bug');
+
+        $this->assertSame(1, $result);
+    }
 }

@@ -97,4 +97,71 @@ class GithubProvider
 
         throw new \RuntimeException('Unable to decode CHANGELOG.md content from GitHub API');
     }
+
+    public function getLabels(): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
+
+        $response = $this->client->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
+
+    public function createLabel(string $name, string $color, ?string $description = null): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
+        $payload = [
+            'name' => $name,
+            'color' => $color,
+        ];
+
+        if ($description !== null) {
+            $payload['description'] = $description;
+        }
+
+        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+
+        if ($response->getStatusCode() !== 201) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
+
+    public function addLabelsToPullRequest(int $issueNumber, array $labels): void
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/labels";
+        $payload = $labels;
+
+        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+    }
 }
