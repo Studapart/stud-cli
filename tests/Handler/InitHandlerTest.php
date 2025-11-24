@@ -14,13 +14,28 @@ class InitHandlerTest extends CommandTestCase
 {
     private InitHandler $handler;
     private FileSystem $fileSystem;
+    private ?string $originalShell = null;
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        // Save original SHELL to restore in tearDown
+        $this->originalShell = getenv('SHELL') ?: null;
+
         $this->fileSystem = $this->createMock(FileSystem::class);
         $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService);
+    }
+
+    protected function tearDown(): void
+    {
+        // Always restore SHELL environment variable to prevent test pollution
+        if ($this->originalShell !== null) {
+            putenv('SHELL=' . $this->originalShell);
+        } else {
+            putenv('SHELL');
+        }
+        parent::tearDown();
     }
 
     public function testHandle(): void
