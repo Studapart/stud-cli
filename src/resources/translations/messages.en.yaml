@@ -129,6 +129,8 @@ submit:
   error_create_label: "Failed to create label '%label%'.\nError: %error%"
   error_add_labels: "Failed to add labels to Pull Request.\nError: %error%"
   adding_labels: "Adding labels to Pull Request..."
+  updating_to_draft: "Updating Pull Request to draft status..."
+  error_update_draft: "Failed to update Pull Request draft status.\nError: %error%"
 
 # Commit Handler
 commit:

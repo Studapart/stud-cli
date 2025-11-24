@@ -131,6 +131,43 @@ class SubmitHandler
             if (str_contains($errorMessage, 'Status: 422') && 
                 str_contains($lowerMessage, 'pull request already exists')) {
                 $io->note($this->translator->trans('submit.note_pr_exists'));
+                
+                // Find the existing PR and apply labels/draft if needed
+                if ($this->githubProvider) {
+                    try {
+                        $existingPr = $this->githubProvider->findPullRequestByBranch($headBranch);
+                        
+                        if ($existingPr) {
+                            $prNumber = $existingPr['number'];
+                            
+                            // Apply labels if provided
+                            if (!empty($finalLabels)) {
+                                $io->text($this->translator->trans('submit.adding_labels'));
+                                try {
+                                    $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
+                                } catch (\Exception $labelError) {
+                                    $io->warning(explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
+                                }
+                            }
+                            
+                            // Update draft status if --draft flag is set
+                            if ($draft && !$existingPr['draft']) {
+                                $io->text($this->translator->trans('submit.updating_to_draft'));
+                                try {
+                                    $this->githubProvider->updatePullRequest($prNumber, true);
+                                } catch (\Exception $draftError) {
+                                    $io->warning(explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
+                                }
+                            }
+                        }
+                    } catch (\Exception $findError) {
+                        // If we can't find the PR, just continue with success message
+                        if ($io->isVerbose()) {
+                            $io->writeln("  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
+                        }
+                    }
+                }
+                
                 $io->success($this->translator->trans('submit.success_pushed'));
                 return 0;
             }

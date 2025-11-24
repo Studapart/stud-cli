@@ -966,4 +966,501 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
     }
+
+    public function testHandleWithExistingPRAndLabels(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $remoteLabels = [
+            ['name' => 'bug'],
+            ['name' => 'enhancement'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        // Should find existing PR
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/TPW-35-my-feature')
+            ->willReturn($existingPr);
+
+        // Should add labels to existing PR
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(42, ['bug', 'enhancement']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'bug,enhancement');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRAndDraft(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        // Should find existing PR (not draft)
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/TPW-35-my-feature')
+            ->willReturn($existingPr);
+
+        // Should update PR to draft
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('updatePullRequest')
+            ->with(42, true);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRAndLabelsAndDraft(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        // Should find existing PR (not draft)
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/TPW-35-my-feature')
+            ->willReturn($existingPr);
+
+        // Should add labels
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(42, ['bug']);
+
+        // Should update PR to draft
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('updatePullRequest')
+            ->with(42, true);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true, 'bug');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRAlreadyDraft(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        // Should find existing PR (already draft)
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => true,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/TPW-35-my-feature')
+            ->willReturn($existingPr);
+
+        // Should NOT update PR to draft (already draft)
+        $this->githubProvider
+            ->expects($this->never())
+            ->method('updatePullRequest');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRFindFails(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        // Finding PR fails
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->willThrowException(new \Exception('API Error'));
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $this->handler->handle($io, false, 'bug');
+
+        // Should still succeed even if finding PR fails
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRAddLabelsFails(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->willReturn($existingPr);
+
+        // Adding labels fails
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->willThrowException(new \Exception('Label API Error'));
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'bug');
+
+        // Should still succeed even if adding labels fails
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRUpdateDraftFails(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        // PR creation fails because it already exists
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            );
+
+        $existingPr = [
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->willReturn($existingPr);
+
+        // Updating draft fails
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('updatePullRequest')
+            ->willThrowException(new \Exception('Draft API Error'));
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        // Should still succeed even if updating draft fails
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithExistingPRNoProvider(): void
+    {
+        $this->handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            null, // No GithubProvider
+            $this->jiraConfig,
+            'origin/develop',
+            $this->translationService
+        );
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Should handle gracefully when no provider (labels/draft ignored)
+        $result = $this->handler->handle($io, true, 'bug');
+
+        $this->assertSame(0, $result);
+    }
 }

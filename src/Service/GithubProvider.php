@@ -164,4 +164,52 @@ class GithubProvider
             throw new \RuntimeException($errorMessage);
         }
     }
+
+    public function findPullRequestByBranch(string $head): ?array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
+        $queryParams = http_build_query(['head' => $head, 'state' => 'open']);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->client->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        $pulls = $response->toArray();
+        
+        // Return the first PR if any exist
+        return !empty($pulls) ? $pulls[0] : null;
+    }
+
+    public function updatePullRequest(int $pullNumber, bool $draft): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
+        $payload = [
+            'draft' => $draft,
+        ];
+
+        $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
 }
