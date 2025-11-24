@@ -20,7 +20,7 @@ class SubmitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $draft = false): int
+    public function handle(SymfonyStyle $io, bool $draft = false, ?string $labels = null): int
     {
         $io->section($this->translator->trans('submit.section'));
 
@@ -95,12 +95,29 @@ class SubmitHandler
             $io->writeln("  <fg=gray>{$this->translator->trans('submit.using_head', ['head' => $headBranch])}</>");
         }
 
-        // 8. Call the Git Provider API
+        // 8. Validate and process labels if provided
+        $finalLabels = [];
+        if ($labels !== null && $this->githubProvider) {
+            $finalLabels = $this->validateAndProcessLabels($io, $labels);
+            if ($finalLabels === null) {
+                // User chose to retry, abort the command
+                return 1;
+            }
+        }
+
+        // 9. Call the Git Provider API
         $io->text($this->translator->trans('submit.creating'));
 
         try {
             if ($this->githubProvider) {
                 $prData = $this->githubProvider->createPullRequest($prTitle, $headBranch, 'develop', $prBody, $draft);
+                
+                // Add labels to PR if any were provided
+                if (!empty($finalLabels)) {
+                    $io->text($this->translator->trans('submit.adding_labels'));
+                    $this->githubProvider->addLabelsToPullRequest($prData['number'], $finalLabels);
+                }
+                
                 $io->success($this->translator->trans('submit.success_created', ['url' => $prData['html_url']]));
             } else {
                 $io->warning($this->translator->trans('submit.warning_no_provider'));
@@ -114,6 +131,43 @@ class SubmitHandler
             if (str_contains($errorMessage, 'Status: 422') && 
                 str_contains($lowerMessage, 'pull request already exists')) {
                 $io->note($this->translator->trans('submit.note_pr_exists'));
+                
+                // Find the existing PR and apply labels/draft if needed
+                if ($this->githubProvider) {
+                    try {
+                        $existingPr = $this->githubProvider->findPullRequestByBranch($headBranch);
+                        
+                        if ($existingPr) {
+                            $prNumber = $existingPr['number'];
+                            
+                            // Apply labels if provided
+                            if (!empty($finalLabels)) {
+                                $io->text($this->translator->trans('submit.adding_labels'));
+                                try {
+                                    $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
+                                } catch (\Exception $labelError) {
+                                    $io->warning(explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
+                                }
+                            }
+                            
+                            // Update draft status if --draft flag is set
+                            if ($draft && !$existingPr['draft']) {
+                                $io->text($this->translator->trans('submit.updating_to_draft'));
+                                try {
+                                    $this->githubProvider->updatePullRequest($prNumber, true);
+                                } catch (\Exception $draftError) {
+                                    $io->warning(explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
+                                }
+                            }
+                        }
+                    } catch (\Exception $findError) {
+                        // If we can't find the PR, just continue with success message
+                        if ($io->isVerbose()) {
+                            $io->writeln("  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
+                        }
+                    }
+                }
+                
                 $io->success($this->translator->trans('submit.success_pushed'));
                 return 0;
             }
@@ -131,5 +185,93 @@ class SubmitHandler
         $jiraLink = "🔗 **Jira Issue:** [{$jiraKey}]({$jiraUrl}/browse/{$jiraKey})";
         
         return $jiraLink . "\n\n" . $body;
+    }
+
+    /**
+     * Validates and processes labels, handling unknown labels interactively.
+     * 
+     * @param SymfonyStyle $io
+     * @param string $labelsInput Comma-separated string of labels
+     * @return array|null Array of final labels to apply, or null if user chose to retry
+     */
+    protected function validateAndProcessLabels(SymfonyStyle $io, string $labelsInput): ?array
+    {
+        // 1. Parse input into clean array
+        $requestedLabels = array_map('trim', explode(',', $labelsInput));
+        $requestedLabels = array_filter($requestedLabels, fn($label) => !empty($label));
+        $requestedLabels = array_values($requestedLabels);
+
+        if (empty($requestedLabels)) {
+            return [];
+        }
+
+        // 2. Fetch remote labels
+        $io->text($this->translator->trans('submit.fetching_labels'));
+        try {
+            $remoteLabels = $this->githubProvider->getLabels();
+        } catch (\Exception $e) {
+            $io->error(explode("\n", $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()])));
+            return null;
+        }
+
+        // Create a map of existing label names (case-insensitive)
+        $existingLabelsMap = [];
+        foreach ($remoteLabels as $label) {
+            $existingLabelsMap[strtolower($label['name'])] = $label['name'];
+        }
+
+        // 3. Compare and bucket labels
+        $finalLabels = [];
+        $unknownLabels = [];
+
+        foreach ($requestedLabels as $requestedLabel) {
+            $normalizedLabel = strtolower($requestedLabel);
+            if (isset($existingLabelsMap[$normalizedLabel])) {
+                // Use the exact case from GitHub
+                $finalLabels[] = $existingLabelsMap[$normalizedLabel];
+            } else {
+                $unknownLabels[] = $requestedLabel;
+            }
+        }
+
+        // 4. Interactive resolution for unknown labels
+        foreach ($unknownLabels as $unknownLabel) {
+            $choice = $io->choice(
+                $this->translator->trans('submit.label_unknown_prompt', ['label' => $unknownLabel]),
+                [
+                    $this->translator->trans('submit.label_create_option'),
+                    $this->translator->trans('submit.label_ignore_option'),
+                    $this->translator->trans('submit.label_retry_option'),
+                ],
+                0
+            );
+
+            if ($choice === $this->translator->trans('submit.label_retry_option')) {
+                // User chose to retry, abort
+                return null;
+            }
+
+            if ($choice === $this->translator->trans('submit.label_create_option')) {
+                // Create the label
+                $io->text($this->translator->trans('submit.label_creating', ['label' => $unknownLabel]));
+                try {
+                    // Generate a random color (GitHub requires 6 hex digits)
+                    $color = sprintf('%06x', mt_rand(0, 0xffffff));
+                    $this->githubProvider->createLabel($unknownLabel, $color);
+                    $finalLabels[] = $unknownLabel;
+                    $io->success($this->translator->trans('submit.label_created', ['label' => $unknownLabel]));
+                } catch (\Exception $e) {
+                    $io->error(explode("\n", $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()])));
+                    return null;
+                }
+            } else {
+                // Ignore the label
+                if ($io->isVerbose()) {
+                    $io->writeln("  <fg=gray>{$this->translator->trans('submit.label_ignored', ['label' => $unknownLabel])}</>");
+                }
+            }
+        }
+
+        return $finalLabels;
     }
 }

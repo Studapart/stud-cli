@@ -246,4 +246,316 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->getChangelogContent($tag);
     }
+
+    public function testGetLabelsSuccess(): void
+    {
+        $expectedResponse = [
+            ['name' => 'bug', 'color' => 'd73a4a'],
+            ['name' => 'enhancement', 'color' => 'a2eeef'],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/labels"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getLabels();
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testGetLabelsFailure(): void
+    {
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->getLabels();
+    }
+
+    public function testCreateLabelSuccess(): void
+    {
+        $name = 'new-label';
+        $color = 'ff0000';
+        $description = 'A new label';
+        $expectedResponse = ['name' => $name, 'color' => $color, 'description' => $description];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/labels",
+                [
+                    'json' => [
+                        'name' => $name,
+                        'color' => $color,
+                        'description' => $description,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->createLabel($name, $color, $description);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testCreateLabelWithoutDescription(): void
+    {
+        $name = 'new-label';
+        $color = 'ff0000';
+        $expectedResponse = ['name' => $name, 'color' => $color];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/labels",
+                [
+                    'json' => [
+                        'name' => $name,
+                        'color' => $color,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->createLabel($name, $color);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testCreateLabelFailure(): void
+    {
+        $name = 'new-label';
+        $color = 'ff0000';
+        $errorMessage = 'Validation Failed';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(422);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+
+        $this->githubProvider->createLabel($name, $color);
+    }
+
+    public function testAddLabelsToPullRequestSuccess(): void
+    {
+        $issueNumber = 123;
+        $labels = ['bug', 'enhancement'];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/issues/{$issueNumber}/labels",
+                [
+                    'json' => $labels,
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $this->githubProvider->addLabelsToPullRequest($issueNumber, $labels);
+    }
+
+    public function testAddLabelsToPullRequestFailure(): void
+    {
+        $issueNumber = 123;
+        $labels = ['bug', 'enhancement'];
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->addLabelsToPullRequest($issueNumber, $labels);
+    }
+
+    public function testFindPullRequestByBranchSuccess(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+                'draft' => false,
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head);
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchNotFound(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head);
+
+        $this->assertNull($result);
+    }
+
+    public function testFindPullRequestByBranchFailure(): void
+    {
+        $head = 'test_owner:feature/test';
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->findPullRequestByBranch($head);
+    }
+
+    public function testUpdatePullRequestToDraft(): void
+    {
+        $pullNumber = 123;
+        $draft = true;
+        $expectedResponse = [
+            'number' => $pullNumber,
+            'draft' => true,
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'PATCH',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}",
+                [
+                    'json' => [
+                        'draft' => $draft,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->updatePullRequest($pullNumber, $draft);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testUpdatePullRequestFromDraft(): void
+    {
+        $pullNumber = 123;
+        $draft = false;
+        $expectedResponse = [
+            'number' => $pullNumber,
+            'draft' => false,
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'PATCH',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}",
+                [
+                    'json' => [
+                        'draft' => $draft,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->updatePullRequest($pullNumber, $draft);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testUpdatePullRequestFailure(): void
+    {
+        $pullNumber = 123;
+        $draft = true;
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'PATCH .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->updatePullRequest($pullNumber, $draft);
+    }
 }

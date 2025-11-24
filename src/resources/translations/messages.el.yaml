@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Οι αλλαγές έχουν σταλεί στο GitHub"
   error_create_pr: "Αποτυχία δημιουργίας Pull Request.\nΣφάλμα: %error%"
   using_head: "Χρήση head κλάδου: %head%"
+  fetching_labels: "Λήψη ετικετών αποθετηρίου..."
+  label_unknown_prompt: "Η ετικέτα '%label%' δεν υπάρχει στο αποθετήριο. Τι θα θέλατε να κάνετε;"
+  label_create_option: "Δημιουργία: Δημιουργήστε την ετικέτα στο GitHub και προσθέστε την στο PR"
+  label_ignore_option: "Αγνόηση: Παραλείψτε αυτή την ετικέτα και αφαιρέστε την από την τελική λίστα"
+  label_retry_option: "Επανάληψη: Ακυρώστε την εντολή και εκτελέστε ξανά με διορθωμένη λίστα"
+  label_creating: "Δημιουργία ετικέτας '%label%'..."
+  label_created: "✅ Η ετικέτα '%label%' δημιουργήθηκε επιτυχώς"
+  label_ignored: "Η ετικέτα '%label%' θα αγνοηθεί"
+  error_fetch_labels: "Αποτυχία λήψης ετικετών από το GitHub.\nΣφάλμα: %error%"
+  error_create_label: "Αποτυχία δημιουργίας ετικέτας '%label%'.\nΣφάλμα: %error%"
+  error_add_labels: "Αποτυχία προσθήκης ετικετών στο Pull Request.\nΣφάλμα: %error%"
+  adding_labels: "Προσθήκη ετικετών στο Pull Request..."
+  updating_to_draft: "Ενημέρωση Pull Request σε κατάσταση προσχεδίου..."
+  error_update_draft: "Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.\nΣφάλμα: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Αποτυχία δημιουργίας αντιγράφου ασφαλείας της τρέχουσας έκδοσης.\nΣφάλμα: %error%"
   error_rollback: "Η ενημέρωση απέτυχε και επανήλθε.\nΣφάλμα: %error%"
   error_rollback_failed: "Η ενημέρωση απέτυχε και η επαναφορά απέτυχε επίσης!\nΑρχικό σφάλμα: %original_error%\nΣφάλμα επαναφοράς: %rollback_error%\nΠαρακαλώ επαναφέρετε χειροκίνητα από: %backup_path%"
+  changelog_section: "Αλλαγές στην έκδοση %version%"
+  breaking_changes_detected: "⚠️  Ανιχνεύθηκαν κρίσιμες αλλαγές σε αυτή την ενημέρωση:"
+  changelog_error: "Δεν ήταν δυνατή η λήψη του changelog"
 
 # Release Handler
 release:

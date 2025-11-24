@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Veranderinge is na GitHub gepush"
   error_create_pr: "Kon nie Pull Request skep nie.\nFout: %error%"
   using_head: "Gebruik head tak: %head%"
+  fetching_labels: "Kry etikette van repository..."
+  label_unknown_prompt: "Etiket '%label%' bestaan nie in die repository nie. Wat wil jy doen?"
+  label_create_option: "Skep: Skep die etiket op GitHub en voeg dit by die PR"
+  label_ignore_option: "Ignoreer: Slaan hierdie etiket oor en verwyder dit uit die finale lys"
+  label_retry_option: "Probeer weer: Breek die opdrag af en voer weer uit met 'n gekorrigeerde lys"
+  label_creating: "Skep etiket '%label%'..."
+  label_created: "✅ Etiket '%label%' suksesvol geskep"
+  label_ignored: "Etiket '%label%' sal geïgnoreer word"
+  error_fetch_labels: "Kon nie etikette van GitHub kry nie.\nFout: %error%"
+  error_create_label: "Kon nie etiket '%label%' skep nie.\nFout: %error%"
+  error_add_labels: "Kon nie etikette by Pull Request voeg nie.\nFout: %error%"
+  adding_labels: "Voeg etikette by Pull Request..."
+  updating_to_draft: "Werk Pull Request op na konsepstatus..."
+  error_update_draft: "Kon nie konsepstatus van Pull Request opdateer nie.\nFout: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Kon nie backup van huidige weergawe skep nie.\nFout: %error%"
   error_rollback: "Opdatering het misluk en is teruggedraai.\nFout: %error%"
   error_rollback_failed: "Opdatering het misluk en terugdraai het ook misluk!\nOorspronklike fout: %original_error%\nTerugdraai fout: %rollback_error%\nHerstel asseblief handmatig vanaf: %backup_path%"
+  changelog_section: "Veranderinge in weergawe %version%"
+  breaking_changes_detected: "⚠️  Breaking changes opgespoor in hierdie opdatering:"
+  changelog_error: "Kon nie changelog kry nie"
 
 # Release Handler
 release:
