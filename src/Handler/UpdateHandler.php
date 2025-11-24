@@ -23,7 +23,7 @@ class UpdateHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(SymfonyStyle $io, bool $info = false): int
     {
         $io->section($this->translator->trans('update.section'));
 
@@ -53,6 +53,11 @@ class UpdateHandler
 
         // Display changelog before downloading
         $this->displayChangelog($io, $githubProvider, $release);
+
+        // If --info flag is set, exit after displaying changelog without downloading
+        if ($info) {
+            return 0;
+        }
 
         $pharAsset = $this->findPharAsset($io, $release);
         if (!$pharAsset) {

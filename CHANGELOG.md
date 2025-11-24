@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `--info` (`-i`) option to `stud update` command to preview changelog without downloading [SCI-6]
+
 ## [2.3.0] - 2025-11-24
 
 ### Added
