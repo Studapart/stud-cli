@@ -625,7 +625,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->with(1, ['bug', 'enhancement']);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, false, 'bug,enhancement');
 
@@ -664,7 +670,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \Exception('API Error'));
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, false, 'bug');
 
@@ -916,7 +928,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \Exception('API Error'));
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, false, 'bug');
 
@@ -959,7 +977,13 @@ class SubmitHandlerTest extends CommandTestCase
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         // Labels should be ignored when no provider is configured
         $result = $this->handler->handle($io, false, 'bug,enhancement');
@@ -1032,7 +1056,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->with(42, ['bug', 'enhancement']);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, false, 'bug,enhancement');
 
@@ -1171,7 +1201,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->with(42, true);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true, 'bug');
 
@@ -1281,7 +1317,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \Exception('API Error'));
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io, false, 'bug');
@@ -1352,7 +1394,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \Exception('Label API Error'));
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, false, 'bug');
 
@@ -1456,7 +1504,13 @@ class SubmitHandlerTest extends CommandTestCase
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for choice() in case unknown labels trigger interactive prompt
+        fwrite($inputStream, "0\n"); // Create option (in case needed)
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         // Should handle gracefully when no provider (labels/draft ignored)
         $result = $this->handler->handle($io, true, 'bug');

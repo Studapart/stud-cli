@@ -1560,5 +1560,200 @@ CHANGELOG;
         $this->assertStringNotContainsString('Should not be included', $allItems);
     }
 
+    public function testHandleWithInfoFlagDisplaysChangelogAndExits(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Added
+- New feature [TPW-1]
+
+### Fixed
+- Bug fix [TPW-2]
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        // With --info flag, should NOT make download request
+        $this->httpClient->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                $this->fail('Should not request download when --info flag is set');
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Added', $outputText);
+        $this->assertStringContainsString('Fixed', $outputText);
+        
+        // Verify binary was NOT updated
+        $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithInfoFlagAndBreakingChanges(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $changelogContent = <<<'CHANGELOG'
+## [1.0.1] - 2025-01-01
+
+### Breaking
+- Rename command `issues:search` to `items:search` [SCI-2]
+
+### Added
+- New feature [TPW-1]
+
+CHANGELOG;
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')->willReturn([
+            'content' => base64_encode($changelogContent),
+            'encoding' => 'base64',
+        ]);
+
+        $this->httpClient->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                $this->fail('Should not request download when --info flag is set');
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Breaking changes detected', $outputText);
+        $this->assertStringContainsString('issues:search', $outputText);
+        
+        // Verify binary was NOT updated
+        $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithInfoFlagAlreadyOnLatestVersion(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.0',
+            'assets' => [],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+        $response->method('toArray')->willReturn($releaseData);
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($response);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+        $outputText = $output->fetch();
+        // Should display standard "already on latest version" message
+        $this->assertStringContainsString('already on the latest version', $outputText);
+    }
+
+    public function testHandleWithInfoFlagAndChangelogFetchFails(): void
+    {
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(500);
+        $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
+
+        $this->httpClient->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                $this->fail('Should not request download when --info flag is set');
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        // Should still exit successfully even if changelog fetch fails
+        $this->assertSame(0, $result);
+        
+        // Verify binary was NOT updated
+        $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
 }
 

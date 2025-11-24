@@ -160,6 +160,15 @@ stud update
 
 The tool will automatically check for new releases, download the latest version, and replace your current installation. If you installed using the recommended method (user-owned directory), this will work seamlessly without requiring `sudo`.
 
+You can preview the changelog of the latest available version (including breaking changes) without downloading by using the `--info` flag:
+
+```bash
+stud update --info
+stud up -i
+```
+
+This is especially useful for checking breaking changes before updating.
+
 ### Configuration
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
@@ -297,10 +306,14 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
+    -   **Options:**
+        -   `--info` or `-i`: Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating.
     -   **Usage:**
         ```bash
         stud update
         stud up
+        stud update --info
+        stud up -i
         ```
     -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
 

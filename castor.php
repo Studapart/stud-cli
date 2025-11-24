@@ -654,8 +654,9 @@ function deploy(): void
 }
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
-function update(): void
-{
+function update(
+    #[AsOption(name: 'info', shortcut: 'i', description: 'Preview the changelog of the latest available version without downloading')] bool $info = false
+): void {
     _load_constants();
     
     // Get binary path - try Phar first, then fallback
@@ -707,7 +708,7 @@ function update(): void
         new ChangelogParser(),
         $gitToken
     );
-    $result = $handler->handle(io());
+    $result = $handler->handle(io(), $info);
     exit($result);
 }
 
