@@ -531,7 +531,9 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "github\n");
         fwrite($inputStream, "git_token\n");
-        // No completion prompt expected for unsupported shell
+        // No completion prompt expected for unsupported shell, but provide input as safeguard
+        // in case environment variable wasn't properly reset from previous test
+        fwrite($inputStream, "No\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
