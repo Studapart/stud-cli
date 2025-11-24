@@ -127,13 +127,13 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "https://new-jira.example.com/\n"); // New Jira URL
         fwrite($inputStream, "new@example.com\n"); // New Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
-        fwrite($inputStream, "gitlab\n"); // Change Git provider
+        fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
         fwrite($inputStream, "\n"); // Keep existing Git token
-        fwrite($inputStream, "No\n"); // Completion prompt
+        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
@@ -237,13 +237,13 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
         fwrite($inputStream, "\n"); // Keep existing Jira token
         fwrite($inputStream, "\n"); // Keep existing Git provider
         fwrite($inputStream, "\n"); // Keep existing Git token
-        fwrite($inputStream, "No\n"); // Completion prompt
+        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
@@ -288,7 +288,7 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "https://jira.example.com/\n"); // Jira URL with trailing slash
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -339,13 +339,13 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n"); // Language selection (first prompt)
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
         fwrite($inputStream, "git_token\n");
-        fwrite($inputStream, "No\n"); // Completion prompt
+        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
@@ -435,11 +435,11 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "github\n");
+        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
@@ -489,11 +489,11 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "github\n");
+        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
@@ -543,15 +543,15 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "github\n");
+        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
         // No completion prompt expected for unsupported shell, but provide input as safeguard
         // in case environment variable wasn't properly reset from previous test
-        fwrite($inputStream, "No\n");
+        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
@@ -630,13 +630,13 @@ class InitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
-        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1) - No
+        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
