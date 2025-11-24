@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Изменения отправлены в GitHub"
   error_create_pr: "Ошибка при создании Pull Request.\nОшибка: %error%"
   using_head: "Использование head ветки: %head%"
+  fetching_labels: "Получение меток репозитория..."
+  label_unknown_prompt: "Метка '%label%' не существует в репозитории. Что вы хотите сделать?"
+  label_create_option: "Создать: Создать метку на GitHub и добавить её в PR"
+  label_ignore_option: "Игнорировать: Пропустить эту метку и удалить её из финального списка"
+  label_retry_option: "Повторить: Прервать команду и запустить заново с исправленным списком"
+  label_creating: "Создание метки '%label%'..."
+  label_created: "✅ Метка '%label%' успешно создана"
+  label_ignored: "Метка '%label%' будет проигнорирована"
+  error_fetch_labels: "Ошибка при получении меток из GitHub.\nОшибка: %error%"
+  error_create_label: "Ошибка при создании метки '%label%'.\nОшибка: %error%"
+  error_add_labels: "Ошибка при добавлении меток к Pull Request.\nОшибка: %error%"
+  adding_labels: "Добавление меток к Pull Request..."
+  updating_to_draft: "Обновление Pull Request до статуса черновика..."
+  error_update_draft: "Ошибка при обновлении статуса черновика Pull Request.\nОшибка: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Ошибка при создании резервной копии текущей версии.\nОшибка: %error%"
   error_rollback: "Обновление не удалось и было откачено.\nОшибка: %error%"
   error_rollback_failed: "Обновление не удалось и откат также не удался!\nИсходная ошибка: %original_error%\nОшибка отката: %rollback_error%\nПожалуйста, восстановите вручную из: %backup_path%"
+  changelog_section: "Изменения в версии %version%"
+  breaking_changes_detected: "⚠️  Обнаружены критические изменения в этом обновлении:"
+  changelog_error: "Не удалось получить changelog"
 
 # Release Handler
 release:

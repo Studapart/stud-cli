@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Wijzigingen zijn naar GitHub gepusht"
   error_create_pr: "Fout bij aanmaken van Pull Request.\nFout: %error%"
   using_head: "Head branch gebruiken: %head%"
+  fetching_labels: "Labels van repository ophalen..."
+  label_unknown_prompt: "Label '%label%' bestaat niet in de repository. Wat wil je doen?"
+  label_create_option: "Aanmaken: Maak het label aan op GitHub en voeg het toe aan de PR"
+  label_ignore_option: "Negeren: Sla dit label over en verwijder het uit de definitieve lijst"
+  label_retry_option: "Opnieuw proberen: Annuleer de opdracht en voer opnieuw uit met een gecorrigeerde lijst"
+  label_creating: "Label '%label%' aanmaken..."
+  label_created: "✅ Label '%label%' succesvol aangemaakt"
+  label_ignored: "Label '%label%' wordt genegeerd"
+  error_fetch_labels: "Fout bij ophalen van labels van GitHub.\nFout: %error%"
+  error_create_label: "Fout bij aanmaken van label '%label%'.\nFout: %error%"
+  error_add_labels: "Fout bij toevoegen van labels aan Pull Request.\nFout: %error%"
+  adding_labels: "Labels toevoegen aan Pull Request..."
+  updating_to_draft: "Pull Request bijwerken naar conceptstatus..."
+  error_update_draft: "Fout bij bijwerken van conceptstatus van Pull Request.\nFout: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Fout bij aanmaken van backup van huidige versie.\nFout: %error%"
   error_rollback: "Update mislukt en is teruggedraaid.\nFout: %error%"
   error_rollback_failed: "Update mislukt en terugdraaien is ook mislukt!\nOriginele fout: %original_error%\nTerugdraai fout: %rollback_error%\nHerstel alstublieft handmatig vanaf: %backup_path%"
+  changelog_section: "Wijzigingen in versie %version%"
+  breaking_changes_detected: "⚠️  Breaking changes gedetecteerd in deze update:"
+  changelog_error: "Kon changelog niet ophalen"
 
 # Release Handler
 release:

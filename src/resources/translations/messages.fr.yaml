@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Les modifications ont été poussées vers GitHub"
   error_create_pr: "Échec de la création de la Pull Request.\nErreur : %error%"
   using_head: "Utilisation de la branche head : %head%"
+  fetching_labels: "Récupération des labels du dépôt..."
+  label_unknown_prompt: "Le label '%label%' n'existe pas dans le dépôt. Que souhaitez-vous faire ?"
+  label_create_option: "Créer : Créer le label sur GitHub et l'ajouter à la PR"
+  label_ignore_option: "Ignorer : Ignorer ce label et le retirer de la liste finale"
+  label_retry_option: "Réessayer : Annuler la commande et la relancer avec une liste corrigée"
+  label_creating: "Création du label '%label%'..."
+  label_created: "✅ Label '%label%' créé avec succès"
+  label_ignored: "Le label '%label%' sera ignoré"
+  error_fetch_labels: "Échec de la récupération des labels depuis GitHub.\nErreur : %error%"
+  error_create_label: "Échec de la création du label '%label%'.\nErreur : %error%"
+  error_add_labels: "Échec de l'ajout des labels à la Pull Request.\nErreur : %error%"
+  adding_labels: "Ajout des labels à la Pull Request..."
+  updating_to_draft: "Mise à jour de la Pull Request en statut brouillon..."
+  error_update_draft: "Échec de la mise à jour du statut brouillon de la Pull Request.\nErreur : %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Échec de la création d'une sauvegarde de la version actuelle.\nErreur : %error%"
   error_rollback: "Échec de la mise à jour et retour en arrière effectué.\nErreur : %error%"
   error_rollback_failed: "Échec de la mise à jour et le retour en arrière a également échoué !\nErreur originale : %original_error%\nErreur de retour en arrière : %rollback_error%\nVeuillez restaurer manuellement depuis : %backup_path%"
+  changelog_section: "Modifications dans la version %version%"
+  breaking_changes_detected: "⚠️  Changements cassants détectés dans cette mise à jour :"
+  changelog_error: "Impossible de récupérer le changelog"
 
 # Release Handler
 release:

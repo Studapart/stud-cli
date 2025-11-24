@@ -117,6 +117,20 @@ submit:
   success_pushed: "✅ Los cambios han sido enviados a GitHub"
   error_create_pr: "Error al crear la Pull Request.\nError: %error%"
   using_head: "Usando rama head: %head%"
+  fetching_labels: "Obteniendo etiquetas del repositorio..."
+  label_unknown_prompt: "La etiqueta '%label%' no existe en el repositorio. ¿Qué te gustaría hacer?"
+  label_create_option: "Crear: Crear la etiqueta en GitHub y agregarla a la PR"
+  label_ignore_option: "Ignorar: Omitir esta etiqueta y eliminarla de la lista final"
+  label_retry_option: "Reintentar: Abortar el comando y volver a ejecutar con una lista corregida"
+  label_creating: "Creando etiqueta '%label%'..."
+  label_created: "✅ Etiqueta '%label%' creada exitosamente"
+  label_ignored: "La etiqueta '%label%' será ignorada"
+  error_fetch_labels: "Error al obtener las etiquetas de GitHub.\nError: %error%"
+  error_create_label: "Error al crear la etiqueta '%label%'.\nError: %error%"
+  error_add_labels: "Error al agregar etiquetas a la Pull Request.\nError: %error%"
+  adding_labels: "Agregando etiquetas a la Pull Request..."
+  updating_to_draft: "Actualizando Pull Request a estado borrador..."
+  error_update_draft: "Error al actualizar el estado borrador de la Pull Request.\nError: %error%"
 
 # Commit Handler
 commit:
@@ -162,6 +176,9 @@ update:
   error_backup: "Error al crear respaldo de la versión actual.\nError: %error%"
   error_rollback: "Error en la actualización y se revirtió.\nError: %error%"
   error_rollback_failed: "¡Error en la actualización y la reversión también falló!\nError original: %original_error%\nError de reversión: %rollback_error%\nPor favor restaure manualmente desde: %backup_path%"
+  changelog_section: "Cambios en la versión %version%"
+  breaking_changes_detected: "⚠️  Cambios incompatibles detectados en esta actualización:"
+  changelog_error: "No se pudo obtener el changelog"
 
 # Release Handler
 release:
