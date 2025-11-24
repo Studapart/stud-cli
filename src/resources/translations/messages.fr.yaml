@@ -243,4 +243,9 @@ help:
   command_status: "Un tableau de bord rapide \"où suis-je ?\"."
   command_release: "Crée une nouvelle branche de release et incrémente la version."
   command_deploy: "Déploie la branche de release actuelle."
+  universal_help_note: "Astuce : Utilisez --help (ou -h) avec n'importe quelle commande pour voir l'aide détaillée. Par exemple : stud commit --help"
+  command_specific_help_note: "Astuce : Exécutez 'stud help <commande>' pour voir l'aide détaillée d'une commande spécifique. Par exemple : stud help commit"
+  command_help_title: "Aide : %command%"
+  see_readme_note: "Pour plus d'informations, consultez la documentation complète dans README.md"
+  command_not_found: "Texte d'aide non disponible pour la commande : %command%"
 

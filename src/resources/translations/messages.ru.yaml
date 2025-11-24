@@ -243,4 +243,9 @@ help:
   command_status: "Быстрая панель управления \"где я?\"."
   command_release: "Создает новую ветку релиза и увеличивает версию."
   command_deploy: "Развертывает текущую ветку релиза."
+  universal_help_note: "Совет: Используйте --help (или -h) с любой командой, чтобы увидеть подробную справку. Например: stud commit --help"
+  command_specific_help_note: "Совет: Запустите 'stud help <команда>' для просмотра подробной справки по конкретной команде. Например: stud help commit"
+  command_help_title: "Справка: %command%"
+  see_readme_note: "Для получения дополнительной информации см. полную документацию в README.md"
+  command_not_found: "Текст справки недоступен для команды: %command%"
 

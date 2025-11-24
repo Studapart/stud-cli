@@ -43,6 +43,7 @@ use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\Console\Event\ConsoleCommandEvent;
 use Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
@@ -364,8 +365,9 @@ function config_init(): void
 // =================================================================================
 
 #[AsTask(name: 'projects:list', aliases: ['pj'], description: 'Lists all visible Jira projects')]
-function projects_list(): void
-{
+function projects_list(
+    
+): void {
     _load_constants();
     $handler = new ProjectListHandler(_get_jira_service(), _get_translation_service());
     $handler->handle(io());
@@ -374,7 +376,8 @@ function projects_list(): void
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
 function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')] bool $all = false,
-    #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')] ?string $project = null
+    #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')] ?string $project = null,
+    
 ): void {
     _load_constants();
     $handler = new ItemListHandler(_get_jira_service(), _get_translation_service());
@@ -383,7 +386,8 @@ function items_list(
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
 function items_search(
-    #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql
+    #[AsArgument(name: 'jql', description: 'The JQL query string')] string $jql,
+    
 ): void {
     _load_constants();
     $handler = new SearchHandler(_get_jira_service(), _get_translation_service());
@@ -393,7 +397,8 @@ function items_search(
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
 function items_show(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
+    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key,
+    
 ): void {
     _load_constants();
     $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
@@ -406,7 +411,8 @@ function items_show(
 
 #[AsTask(name: 'items:start', aliases: ['start'], description: 'Creates a new git branch from a Jira item')]
 function items_start(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key
+    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')] string $key,
+    
 ): void {
     _load_constants();
     $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
@@ -416,16 +422,23 @@ function items_start(
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')] bool $isNew = false,
-    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null
+    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')] ?string $message = null,
+    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')] bool $help = false
 ): void {
     _load_constants();
+    if ($help) {
+        $helpService = new \App\Service\HelpService(_get_translation_service());
+        $helpService->displayCommandHelp(io(), 'commit');
+        return;
+    }
     $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
     $handler->handle(io(), $isNew, $message);
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
-function please(): void
-{
+function please(
+    
+): void {
     _load_constants();
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
     $handler->handle(io());
@@ -437,8 +450,10 @@ function please(): void
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')] bool $draft = false,
-    #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')] ?string $labels = null
+    #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')] ?string $labels = null,
+    
 ): void {
+    _load_constants();
     _load_constants();
     $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
@@ -486,16 +501,48 @@ function submit(
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
-function help(): void
-{
+function help(
+    #[AsArgument(name: 'command_name', description: 'The command name to get help for')] ?string $commandName = null
+): void {
     _load_constants();
     $translator = _get_translation_service();
+    
+    // If a command is provided, show help for that specific command
+    if ($commandName !== null) {
+        $helpService = new \App\Service\HelpService($translator);
+        
+        // Map aliases to command names
+        $aliasMap = [
+            'init' => 'config:init',
+            'pj' => 'projects:list',
+            'ls' => 'items:list',
+            'search' => 'items:search',
+            'sh' => 'items:show',
+            'start' => 'items:start',
+            'co' => 'commit',
+            'pl' => 'please',
+            'su' => 'submit',
+            'ss' => 'status',
+            'rl' => 'release',
+            'mep' => 'deploy',
+        ];
+        
+        $mappedCommandName = $aliasMap[$commandName] ?? $commandName;
+        $helpService->displayCommandHelp(io(), $mappedCommandName);
+        return;
+    }
+    
+    // Otherwise, show general help
     $logo = require APP_LOGO_PATH;
     io()->writeln($logo(APP_NAME, APP_VERSION));
     io()->title($translator->trans('help.title'));
 
     io()->section($translator->trans('help.description_section'));
     io()->writeln('    ' . $translator->trans('help.description_text'));
+    io()->newLine();
+    io()->note($translator->trans('help.universal_help_note'));
+    io()->newLine();
+    io()->note($translator->trans('help.command_specific_help_note'));
 
     io()->section($translator->trans('help.global_options_section'));
     io()->definitionList(
@@ -624,8 +671,9 @@ function help(): void
 
 
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
-function status(): void
-{
+function status(
+    
+): void {
     _load_constants();
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
     $handler->handle(io());
@@ -638,7 +686,8 @@ function status(): void
 #[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
 function release(
     #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')] string $version,
-    #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')] bool $publish = false
+    #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')] bool $publish = false,
+    
 ): void {
     _load_constants();
     $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service());
@@ -646,8 +695,9 @@ function release(
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
-function deploy(): void
-{
+function deploy(
+    
+): void {
     _load_constants();
     $handler = new DeployHandler(_get_git_repository(), _get_translation_service());
     $handler->handle(io());
@@ -655,7 +705,8 @@ function deploy(): void
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
 function update(
-    #[AsOption(name: 'info', shortcut: 'i', description: 'Preview the changelog of the latest available version without downloading')] bool $info = false
+    #[AsOption(name: 'info', shortcut: 'i', description: 'Preview the changelog of the latest available version without downloading')] bool $info = false,
+    
 ): void {
     _load_constants();
     

@@ -214,6 +214,27 @@ eval "$(stud completion zsh)" >> ~/.zshrc
 
 All `stud-cli` commands are executed via the `stud` executable. The general syntax is `stud <command> [arguments] [options]`.
 
+#### Getting Help
+
+Every command supports the `--help` (or `-h`) option to display context-specific help directly in your terminal. This shows detailed information about the command, its options, and usage examples extracted from this documentation.
+
+```bash
+stud commit --help
+stud submit -h
+stud items:list --help
+```
+
+You can also use `stud help` to see a list of all available commands. For detailed help on a specific command, use `stud help <command>`:
+
+```bash
+stud help commit
+stud help submit
+stud help items:list
+stud help co  # Works with aliases too
+```
+
+The `stud help <command>` command provides the same detailed information as `stud <command> --help`, extracted from this documentation.
+
 #### Jira Information Commands
 
 These commands help you browse and view your Jira work items.
@@ -246,6 +267,15 @@ These commands help you browse and view your Jira work items.
         ```bash
         stud items:show PROJ-123
         stud sh BUG-456
+        ```
+
+-   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
+    -   **Description:** Search for issues using JQL (Jira Query Language).
+    -   **Argument:** `<jql>` (e.g., `"project = PROJ and status = Done"`)
+    -   **Usage:**
+        ```bash
+        stud items:search "project = PROJ and status = Done"
+        stud search "assignee = currentUser()"
         ```
 
 #### Git Workflow Commands

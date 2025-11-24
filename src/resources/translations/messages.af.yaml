@@ -243,4 +243,9 @@ help:
   command_status: "'n Vinnige \"waar is ek?\" dashboard."
   command_release: "Skep 'n nuwe vrystelling tak en verhoog die weergawe."
   command_deploy: "Deploy die huidige vrystelling tak."
+  universal_help_note: "Wenk: Gebruik --help (of -h) met enige opdrag om gedetailleerde hulp te sien. Byvoorbeeld: stud commit --help"
+  command_specific_help_note: "Wenk: Voer 'stud help <opdrag>' uit om gedetailleerde hulp vir 'n spesifieke opdrag te sien. Byvoorbeeld: stud help commit"
+  command_help_title: "Hulp: %command%"
+  see_readme_note: "Vir meer inligting, sien die volledige dokumentasie in README.md"
+  command_not_found: "Hulpteks nie beskikbaar vir opdrag: %command%"
 
