@@ -73,7 +73,8 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 'studapart:feat/TPW-35-my-feature',
                 'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
+                false
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -81,6 +82,52 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleSuccessWithDraft(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with(
+                'feat(my-scope): My feature [TPW-35]',
+                'studapart:feat/TPW-35-my-feature',
+                'develop',
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
+                true
+            )
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
 
         $this->assertSame(0, $result);
     }
@@ -183,7 +230,8 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 $this->anything(),
                 'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35",
+                false
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -228,7 +276,8 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 $this->anything(),
                 'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35",
+                false
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -431,7 +480,8 @@ class SubmitHandlerTest extends CommandTestCase
                 'feat(my-scope): My feature [TPW-35]',
                 'feat/TPW-35-my-feature',
                 'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
+                false
             )
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
