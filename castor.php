@@ -435,8 +435,9 @@ function please(): void
 
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
-function submit(): void
-{
+function submit(
+    #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')] bool $draft = false
+): void {
     _load_constants();
     $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
@@ -480,7 +481,7 @@ function submit(): void
         DEFAULT_BASE_BRANCH,
         _get_translation_service()
     );
-    $handler->handle(io());
+    $handler->handle(io(), $draft);
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]

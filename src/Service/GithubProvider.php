@@ -22,7 +22,7 @@ class GithubProvider
         ]);
     }
 
-    public function createPullRequest(string $title, string $head, string $base, string $body): array
+    public function createPullRequest(string $title, string $head, string $base, string $body, bool $draft = false): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
         $payload = [
@@ -30,6 +30,7 @@ class GithubProvider
             'head' => $head,
             'base' => $base,
             'body' => $body,
+            'draft' => $draft,
         ];
 
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);

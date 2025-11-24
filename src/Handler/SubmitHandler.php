@@ -20,7 +20,7 @@ class SubmitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(SymfonyStyle $io, bool $draft = false): int
     {
         $io->section($this->translator->trans('submit.section'));
 
@@ -100,7 +100,7 @@ class SubmitHandler
 
         try {
             if ($this->githubProvider) {
-                $prData = $this->githubProvider->createPullRequest($prTitle, $headBranch, 'develop', $prBody);
+                $prData = $this->githubProvider->createPullRequest($prTitle, $headBranch, 'develop', $prBody, $draft);
                 $io->success($this->translator->trans('submit.success_created', ['url' => $prData['html_url']]));
             } else {
                 $io->warning($this->translator->trans('submit.warning_no_provider'));

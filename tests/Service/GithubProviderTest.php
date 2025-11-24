@@ -51,12 +51,47 @@ class GithubProviderTest extends TestCase
                         'head' => $head,
                         'base' => $base,
                         'body' => $body,
+                        'draft' => false,
                     ],
                 ]
             )
             ->willReturn($responseMock);
 
         $result = $this->githubProvider->createPullRequest($title, $head, $base, $body);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testCreatePullRequestWithDraft(): void
+    {
+        $title = 'Test Draft PR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'This is a draft pull request.';
+        $expectedResponse = ['html_url' => 'https://github.com/test_owner/test_repo/pull/1'];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls",
+                [
+                    'json' => [
+                        'title' => $title,
+                        'head' => $head,
+                        'base' => $base,
+                        'body' => $body,
+                        'draft' => true,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->createPullRequest($title, $head, $base, $body, true);
 
         $this->assertSame($expectedResponse, $result);
     }
