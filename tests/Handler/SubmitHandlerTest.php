@@ -670,4 +670,300 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(1, $result);
     }
+
+    public function testValidateAndProcessLabelsCreateMissingLabel(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createLabel')
+            ->with('new-label', $this->matchesRegularExpression('/^[0-9a-f]{6}$/i'), null)
+            ->willReturn(['name' => 'new-label']);
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        // Mock the methods that will be called
+        $io->expects($this->exactly(2))
+            ->method('text')
+            ->with($this->anything());
+        
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn($this->translationService->trans('submit.label_create_option'));
+        
+        $io->expects($this->once())
+            ->method('success')
+            ->with($this->anything());
+        
+        $io->method('isVerbose')->willReturn(false);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+
+        $this->assertCount(2, $result);
+        $this->assertContains('bug', $result);
+        $this->assertContains('new-label', $result);
+    }
+
+    public function testValidateAndProcessLabelsIgnoreMissingLabel(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->never())
+            ->method('createLabel');
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->anything());
+        
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
+        
+        $io->method('isVerbose')->willReturn(false);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,typo');
+
+        $this->assertSame(['bug'], $result);
+    }
+
+    public function testValidateAndProcessLabelsRetryMissingLabel(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->never())
+            ->method('createLabel');
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->anything());
+        
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn($this->translationService->trans('submit.label_retry_option'));
+        
+        $io->method('isVerbose')->willReturn(false);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,typo');
+
+        $this->assertNull($result);
+    }
+
+    public function testValidateAndProcessLabelsCreateLabelFails(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createLabel')
+            ->willThrowException(new \Exception('API Error'));
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->exactly(2))
+            ->method('text')
+            ->with($this->anything());
+        
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn($this->translationService->trans('submit.label_create_option'));
+        
+        $io->expects($this->once())
+            ->method('error')
+            ->with($this->anything());
+        
+        $io->method('isVerbose')->willReturn(false);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+
+        $this->assertNull($result);
+    }
+
+    public function testValidateAndProcessLabelsIgnoreWithVerbose(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->anything());
+        
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
+        
+        $io->method('isVerbose')->willReturn(true);
+        
+        $io->expects($this->once())
+            ->method('writeln')
+            ->with($this->stringContains('ignored'));
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, $io, 'bug,typo');
+
+        $this->assertSame(['bug'], $result);
+    }
+
+    public function testHandleWithLabelsAddLabelsError(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->willThrowException(new \Exception('API Error'));
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'bug');
+
+        // Adding labels failure causes the whole operation to fail
+        $this->assertSame(1, $result);
+    }
+
+    public function testHandleWithLabelsNoProvider(): void
+    {
+        $this->handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            null, // No GithubProvider
+            $this->jiraConfig,
+            'origin/develop',
+            $this->translationService
+        );
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Labels should be ignored when no provider is configured
+        $result = $this->handler->handle($io, false, 'bug,enhancement');
+
+        $this->assertSame(0, $result);
+    }
 }
