@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-11-24
+
 ### Added
 - Add `--labels` option to `stud submit` command to apply labels to Pull Requests with interactive validation and creation of missing labels [SCI-5]
 - Add `--draft` (`-d`) option to `stud submit` command to create Draft Pull Requests on GitHub [SCI-4]
