@@ -539,16 +539,16 @@ function help(
 
     io()->section($translator->trans('help.description_section'));
     io()->writeln('    ' . $translator->trans('help.description_text'));
-    io()->newLine();
-    io()->note($translator->trans('help.universal_help_note'));
+    // io()->newLine();
+    // io()->note($translator->trans('help.universal_help_note'));
     io()->newLine();
     io()->note($translator->trans('help.command_specific_help_note'));
 
     io()->section($translator->trans('help.global_options_section'));
     io()->definitionList(
-        ['-h, --help' => $translator->trans('help.global_option_help')],
-        ['-s, --silent' => $translator->trans('help.global_option_silent')],
-        ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
+        // ['-h, --help' => $translator->trans('help.global_option_help')],
+        // ['-s, --silent' => $translator->trans('help.global_option_silent')],
+        // ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
         ['-v|vv|vvv, --verbose' => $translator->trans('help.global_option_verbose')],
     );
 

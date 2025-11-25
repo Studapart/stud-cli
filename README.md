@@ -216,15 +216,7 @@ All `stud-cli` commands are executed via the `stud` executable. The general synt
 
 #### Getting Help
 
-Every command supports the `--help` (or `-h`) option to display context-specific help directly in your terminal. This shows detailed information about the command, its options, and usage examples extracted from this documentation.
-
-```bash
-stud commit --help
-stud submit -h
-stud items:list --help
-```
-
-You can also use `stud help` to see a list of all available commands. For detailed help on a specific command, use `stud help <command>`:
+Commands do not support the `--help` (or `-h`) option to display context-specific help directly in your terminal (due to a Castor bug). To see detailed information about the command, its options, and usage examples extracted from this documentation, use `stud help <command>` instead.
 
 ```bash
 stud help commit
@@ -232,8 +224,6 @@ stud help submit
 stud help items:list
 stud help co  # Works with aliases too
 ```
-
-The `stud help <command>` command provides the same detailed information as `stud <command> --help`, extracted from this documentation.
 
 #### Jira Information Commands
 
