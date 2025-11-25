@@ -45,6 +45,7 @@ phpunit-results.xml
 coverage.xml
 clover.xml
 coverage-html/
+coverage/
 
 # Build data
 /build/
