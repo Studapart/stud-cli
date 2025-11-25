@@ -160,6 +160,15 @@ stud update
 
 The tool will automatically check for new releases, download the latest version, and replace your current installation. If you installed using the recommended method (user-owned directory), this will work seamlessly without requiring `sudo`.
 
+You can preview the changelog of the latest available version (including breaking changes) without downloading by using the `--info` flag:
+
+```bash
+stud update --info
+stud up -i
+```
+
+This is especially useful for checking breaking changes before updating.
+
 ### Configuration
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
@@ -205,6 +214,27 @@ eval "$(stud completion zsh)" >> ~/.zshrc
 
 All `stud-cli` commands are executed via the `stud` executable. The general syntax is `stud <command> [arguments] [options]`.
 
+#### Getting Help
+
+Every command supports the `--help` (or `-h`) option to display context-specific help directly in your terminal. This shows detailed information about the command, its options, and usage examples extracted from this documentation.
+
+```bash
+stud commit --help
+stud submit -h
+stud items:list --help
+```
+
+You can also use `stud help` to see a list of all available commands. For detailed help on a specific command, use `stud help <command>`:
+
+```bash
+stud help commit
+stud help submit
+stud help items:list
+stud help co  # Works with aliases too
+```
+
+The `stud help <command>` command provides the same detailed information as `stud <command> --help`, extracted from this documentation.
+
 #### Jira Information Commands
 
 These commands help you browse and view your Jira work items.
@@ -237,6 +267,15 @@ These commands help you browse and view your Jira work items.
         ```bash
         stud items:show PROJ-123
         stud sh BUG-456
+        ```
+
+-   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
+    -   **Description:** Search for issues using JQL (Jira Query Language).
+    -   **Argument:** `<jql>` (e.g., `"project = PROJ and status = Done"`)
+    -   **Usage:**
+        ```bash
+        stud items:search "project = PROJ and status = Done"
+        stud search "assignee = currentUser()"
         ```
 
 #### Git Workflow Commands
@@ -297,10 +336,14 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
+    -   **Options:**
+        -   `--info` or `-i`: Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating.
     -   **Usage:**
         ```bash
         stud update
         stud up
+        stud update --info
+        stud up -i
         ```
     -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
 
