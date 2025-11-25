@@ -58,10 +58,18 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'tests'],
                 new TableSeparator(),
-                ['Description' => $expectedDescription],
-                new TableSeparator(),
                 ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
+        $io->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->callback(function ($title) {
+                return is_string($title) && !empty($title);
+            }));
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) use ($expectedDescription) {
+                return is_string($content) && str_contains($content, $expectedDescription);
+            }));
 
         $this->handler->handle($io, 'TPW-35');
     }
@@ -111,6 +119,16 @@ class ItemShowHandlerTest extends CommandTestCase
             ->with('  <fg=gray>Fetching details for issue: TPW-35</>');
         $io->expects($this->once())
             ->method('definitionList'); // We don't care about the content here, just that it's called
+        $io->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->callback(function ($title) {
+                return is_string($title) && !empty($title);
+            }));
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) use ($expectedDescription) {
+                return is_string($content) && str_contains($content, $expectedDescription);
+            }));
 
         $this->handler->handle($io, 'TPW-35');
     }
@@ -147,10 +165,18 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'None'],
                 new TableSeparator(),
-                ['Description' => $expectedDescription],
-                new TableSeparator(),
                 ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
+        $io->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->callback(function ($title) {
+                return is_string($title) && !empty($title);
+            }));
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) use ($expectedDescription) {
+                return is_string($content) && str_contains($content, $expectedDescription);
+            }));
 
         $this->handler->handle($io, 'TPW-35');
     }
@@ -187,10 +213,126 @@ class ItemShowHandlerTest extends CommandTestCase
                 ['Type' => 'Task'],
                 ['Labels' => 'label1, label2, label3'],
                 new TableSeparator(),
-                ['Description' => $expectedDescription],
-                new TableSeparator(),
                 ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
+        $io->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->callback(function ($title) {
+                return is_string($title) && !empty($title);
+            }));
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) use ($expectedDescription) {
+                return is_string($content) && str_contains($content, $expectedDescription);
+            }));
+
+        $this->handler->handle($io, 'TPW-35');
+    }
+
+    public function testHandleWithDescriptionContainingDividers(): void
+    {
+        $description = "Title: Test Feature\n\n---\n\nUser Story\nAs a developer\nI want to test\nSo that I can verify";
+        $issue = new WorkItem(
+            '1000',
+            'TPW-35',
+            'Test Feature',
+            'In Progress',
+            'John Doe',
+            $description,
+            [],
+            'Task',
+            [],
+            '<p>Test Feature</p>'
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35', true)
+            ->willReturn($issue);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('definitionList');
+        // Should create multiple sections when dividers are present
+        $io->expects($this->atLeast(2))
+            ->method('section')
+            ->with($this->callback(function ($title) {
+                return is_string($title) && !empty($title);
+            }));
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_string($content);
+            }));
+
+        $this->handler->handle($io, 'TPW-35');
+    }
+
+    public function testHandleWithDescriptionContainingMultipleNewlines(): void
+    {
+        $description = "First paragraph\n\n\n\n\nSecond paragraph\n\n\nThird paragraph";
+        $issue = new WorkItem(
+            '1000',
+            'TPW-35',
+            'Test Feature',
+            'In Progress',
+            'John Doe',
+            $description,
+            [],
+            'Task',
+            [],
+            '<p>Test Feature</p>'
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35', true)
+            ->willReturn($issue);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('definitionList');
+        $io->expects($this->atLeastOnce())
+            ->method('section');
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                // Verify that multiple newlines are collapsed (should not contain 3+ consecutive newlines)
+                return is_string($content) && !preg_match('/\n{3,}/', $content);
+            }));
+
+        $this->handler->handle($io, 'TPW-35');
+    }
+
+    public function testHandleWithEmptyDescription(): void
+    {
+        $issue = new WorkItem(
+            '1000',
+            'TPW-35',
+            'Test Feature',
+            'In Progress',
+            'John Doe',
+            '', // Empty description
+            [],
+            'Task',
+            [],
+            null
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35', true)
+            ->willReturn($issue);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('section')
+            ->with('Details for issue TPW-35'); // Main section header
+        $io->expects($this->once())
+            ->method('definitionList');
+        // Should not call text for empty description (section is only called once for main header)
+        $io->expects($this->never())
+            ->method('text');
 
         $this->handler->handle($io, 'TPW-35');
     }
