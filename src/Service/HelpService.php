@@ -108,21 +108,240 @@ class HelpService
      */
     public function displayCommandHelp(\Symfony\Component\Console\Style\SymfonyStyle $io, string $commandName): void
     {
-        $helpText = $this->getCommandHelp($commandName);
-        
-        if ($helpText === null) {
-            // Fallback to translation if README extraction fails
-            $translationKey = "help.command_{$commandName}";
-            $helpText = $this->translator->trans($translationKey);
-            if ($helpText === $translationKey) {
-                $helpText = $this->translator->trans('help.command_not_found', ['command' => $commandName]);
-            }
-        }
+        // Always use translation-based help for consistent formatting with aliases and options
+        $helpText = $this->formatCommandHelpFromTranslation($commandName);
         
         $io->section($this->translator->trans('help.command_help_title', ['command' => $commandName]));
         $io->writeln($helpText);
         $io->newLine();
         $io->note($this->translator->trans('help.see_readme_note'));
+    }
+
+    /**
+     * Format command help from translation keys
+     */
+    protected function formatCommandHelpFromTranslation(string $commandName): string
+    {
+        // Map command names to their translation keys and metadata
+        $commandMap = [
+            'config:init' => [
+                'alias' => 'init',
+                'description_key' => 'help.command_config_init',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'completion' => [
+                'alias' => null,
+                'description_key' => 'help.command_completion',
+                'options' => [],
+                'arguments' => ['<shell>'],
+            ],
+            'projects:list' => [
+                'alias' => 'pj',
+                'description_key' => 'help.command_projects_list',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'items:list' => [
+                'alias' => 'ls',
+                'description_key' => 'help.command_items_list',
+                'options' => [
+                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_all', 'argument' => null],
+                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_project', 'argument' => '<key>'],
+                ],
+                'arguments' => [],
+            ],
+            'items:search' => [
+                'alias' => 'search',
+                'description_key' => 'help.command_items_search',
+                'options' => [],
+                'arguments' => ['<jql>'],
+            ],
+            'items:show' => [
+                'alias' => 'sh',
+                'description_key' => 'help.command_items_show',
+                'options' => [],
+                'arguments' => ['<key>'],
+            ],
+            'items:start' => [
+                'alias' => 'start',
+                'description_key' => 'help.command_items_start',
+                'options' => [],
+                'arguments' => ['<key>'],
+            ],
+            'commit' => [
+                'alias' => 'co',
+                'description_key' => 'help.command_commit',
+                'options' => [
+                    ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
+                    ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
+                ],
+                'arguments' => [],
+            ],
+            'please' => [
+                'alias' => 'pl',
+                'description_key' => 'help.command_please',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'status' => [
+                'alias' => 'ss',
+                'description_key' => 'help.command_status',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'submit' => [
+                'alias' => 'su',
+                'description_key' => 'help.command_submit',
+                'options' => [
+                    ['name' => '--draft', 'shortcut' => '-d', 'description_key' => 'help.option_submit_draft', 'argument' => null],
+                    ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_submit_labels', 'argument' => '<labels>'],
+                ],
+                'arguments' => [],
+            ],
+            'update' => [
+                'alias' => 'up',
+                'description_key' => 'help.command_update',
+                'options' => [
+                    ['name' => '--info', 'shortcut' => '-i', 'description_key' => 'help.option_update_info', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
+            'release' => [
+                'alias' => 'rl',
+                'description_key' => 'help.command_release',
+                'options' => [
+                    ['name' => '--publish', 'shortcut' => '-p', 'description_key' => 'help.option_release_publish', 'argument' => null],
+                ],
+                'arguments' => ['<version>'],
+            ],
+            'deploy' => [
+                'alias' => 'mep',
+                'description_key' => 'help.command_deploy',
+                'options' => [],
+                'arguments' => [],
+            ],
+        ];
+
+        if (!isset($commandMap[$commandName])) {
+            return $this->translator->trans('help.command_not_found', ['command' => $commandName]);
+        }
+
+        $command = $commandMap[$commandName];
+        $lines = [];
+
+        // Command name with alias
+        $commandLine = "stud {$commandName}";
+        if (!empty($command['arguments'])) {
+            $commandLine .= ' ' . implode(' ', $command['arguments']);
+        }
+        if ($command['alias']) {
+            $commandLine .= " (Alias: stud {$command['alias']}";
+            if (!empty($command['arguments'])) {
+                $commandLine .= ' ' . implode(' ', $command['arguments']);
+            }
+            $commandLine .= ')';
+        }
+        $lines[] = $commandLine;
+
+        // Description
+        $description = $this->translator->trans($command['description_key']);
+        $lines[] = "-   Description: {$description}";
+
+        // Options
+        if (!empty($command['options'])) {
+            $lines[] = "-   Options:";
+            foreach ($command['options'] as $option) {
+                $optionName = $option['name'];
+                if (isset($option['argument']) && $option['argument']) {
+                    $optionName .= ' ' . $option['argument'];
+                }
+                if ($option['shortcut']) {
+                    $shortcutName = $option['shortcut'];
+                    if (isset($option['argument']) && $option['argument']) {
+                        $shortcutName .= ' ' . $option['argument'];
+                    }
+                    $optionName .= " or {$shortcutName}";
+                }
+                $optionDesc = $this->translator->trans($option['description_key']);
+                $lines[] = "    -   {$optionName}: {$optionDesc}.";
+            }
+        }
+
+        // Usage examples
+        $lines[] = "-   Usage:";
+        $lines[] = "    ``bash";
+        
+        // Build example values for arguments
+        $exampleArgs = [];
+        foreach ($command['arguments'] as $arg) {
+            if ($arg === '<key>') {
+                $exampleArgs[] = 'JIRA-33';
+            } elseif ($arg === '<version>') {
+                $exampleArgs[] = '1.2.0';
+            } elseif ($arg === '<jql>') {
+                $exampleArgs[] = '"project = PROJ and status = Done"';
+            } elseif ($arg === '<shell>') {
+                $exampleArgs[] = 'bash';
+            } else {
+                $exampleArgs[] = str_replace(['<', '>'], '', $arg);
+            }
+        }
+        $argsString = !empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : '';
+        
+        // Basic usage with command name
+        $lines[] = "    stud {$commandName}{$argsString}";
+        
+        // Basic usage with alias
+        if ($command['alias']) {
+            $lines[] = "    stud {$command['alias']}{$argsString}";
+        }
+        
+        // Usage with options
+        if (!empty($command['options'])) {
+            // Show example with first option
+            $firstOption = $command['options'][0];
+            $optionExample = $firstOption['shortcut'] ?: $firstOption['name'];
+            if (isset($firstOption['argument']) && $firstOption['argument']) {
+                $optionArg = '';
+                if ($firstOption['argument'] === '<labels>') {
+                    $optionArg = ' "bug,enhancement"';
+                } elseif ($firstOption['argument'] === '<message>') {
+                    $optionArg = ' "feat: My custom message"';
+                } elseif ($firstOption['argument'] === '<key>') {
+                    $optionArg = ' PROJ';
+                }
+                $optionExample .= $optionArg;
+            }
+            $lines[] = "    stud {$commandName}{$argsString} {$optionExample}";
+            if ($command['alias']) {
+                $lines[] = "    stud {$command['alias']}{$argsString} {$optionExample}";
+            }
+            
+            // If there's a second option, show it too
+            if (count($command['options']) > 1) {
+                $secondOption = $command['options'][1];
+                $secondOptionExample = $secondOption['shortcut'] ?: $secondOption['name'];
+                if (isset($secondOption['argument']) && $secondOption['argument']) {
+                    $optionArg = '';
+                    if ($secondOption['argument'] === '<labels>') {
+                        $optionArg = ' "bug,enhancement"';
+                    } elseif ($secondOption['argument'] === '<message>') {
+                        $optionArg = ' "feat: My custom message"';
+                    } elseif ($secondOption['argument'] === '<key>') {
+                        $optionArg = ' PROJ';
+                    }
+                    $secondOptionExample .= $optionArg;
+                }
+                $lines[] = "    stud {$commandName}{$argsString} {$secondOptionExample}";
+                if ($command['alias']) {
+                    $lines[] = "    stud {$command['alias']}{$argsString} {$secondOptionExample}";
+                }
+            }
+        }
+        $lines[] = "    ``";
+
+        return implode("\n", $lines);
     }
 }
 
