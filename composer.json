@@ -4,6 +4,25 @@
     "type": "project",
     "license": "MIT",
     "version": "2.4.1",
+    "authors": [
+        {
+            "name": "Pierre-Emmanuel Manteau",
+            "homepage": "https://github.com/PEM-FR",
+            "role": "Head of Engineering"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/studapart/stud-cli/issues",
+        "source": "https://github.com/studapart/stud-cli"
+    },
+    "homepage": "https://github.com/studapart/stud-cli",
+    "keywords": [
+        "stud",
+        "stud-cli",
+        "jira",
+        "git",
+        "workflow"
+    ],
     "require": {
         "symfony/http-client": "^7.3",
         "symfony/process": "^7.3",

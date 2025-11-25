@@ -22,7 +22,7 @@ class ItemShowHandlerTest extends CommandTestCase
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
         $this->handler = new ItemShowHandler($this->jiraService, [
-            'JIRA_URL' => 'https://studapart.atlassian.net',
+            'JIRA_URL' => 'https://your-company.atlassian.net',
         ], $this->translationService);
     }
 
@@ -60,7 +60,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 new TableSeparator(),
                 ['Description' => $expectedDescription],
                 new TableSeparator(),
-                ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
+                ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
 
         $this->handler->handle($io, 'TPW-35');
@@ -149,7 +149,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 new TableSeparator(),
                 ['Description' => $expectedDescription],
                 new TableSeparator(),
-                ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
+                ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
 
         $this->handler->handle($io, 'TPW-35');
@@ -189,7 +189,7 @@ class ItemShowHandlerTest extends CommandTestCase
                 new TableSeparator(),
                 ['Description' => $expectedDescription],
                 new TableSeparator(),
-                ['Link' => 'https://studapart.atlassian.net/browse/TPW-35']
+                ['Link' => 'https://your-company.atlassian.net/browse/TPW-35']
             );
 
         $this->handler->handle($io, 'TPW-35');
