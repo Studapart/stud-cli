@@ -135,6 +135,10 @@ class JiraService
         $html = preg_replace('/<hr\s*\/?>/i', "\n---\n", $html);
         $html = preg_replace('/<hr\s+[^>]*\/?>/i', "\n---\n", $html);
 
+        $text = $this->transformer
+            ->keepLinks()
+            ->keepNewLines()
+            ->toText($html);
 
         // Don't remove leading whitespace here - let the handler do it
         // This prevents accidentally removing non-whitespace characters

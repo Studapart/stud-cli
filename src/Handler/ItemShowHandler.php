@@ -190,13 +190,16 @@ class ItemShowHandler
     /**
      * Displays content lines, handling checkbox lists specially.
      * Lines starting with [ ] are displayed as a list using $io->listing().
-     * Regular text lines are displayed using $io->text() with an array.
+     * Lines without [ ] that come after a checkbox item are treated as sub-items of that checkbox.
+     * Regular text lines (not following a checkbox) are displayed using $io->text() with an array.
      * Uses trim() only to safely remove whitespace.
      */
     protected function displayContent(SymfonyStyle $io, array $lines): void
     {
         $currentList = [];
         $currentText = [];
+        $currentListItem = null;
+        $currentSubItems = [];
         
         foreach ($lines as $line) {
             // Use trim() only - it's safe and only removes whitespace
@@ -204,26 +207,64 @@ class ItemShowHandler
             
             // Check if line is a checkbox (starts with [ ] or [x])
             if (preg_match('/^\[\s*[xX]?\s*\]\s*(.+)$/', $trimmed, $matches)) {
-                // If we have accumulated text, display it first
+                // If we have a previous list item with sub-items, add it to the list
+                if ($currentListItem !== null) {
+                    if (!empty($currentSubItems)) {
+                        // Format: main item with sub-items indented
+                        $formattedItem = $currentListItem;
+                        foreach ($currentSubItems as $subItem) {
+                            $formattedItem .= "\n  - " . $subItem;
+                        }
+                        $currentList[] = $formattedItem;
+                    } else {
+                        $currentList[] = $currentListItem;
+                    }
+                    $currentListItem = null;
+                    $currentSubItems = [];
+                }
+                
+                // If we have accumulated text (not part of a list), display it first
                 if (!empty($currentText)) {
                     $io->text($currentText);
                     $currentText = [];
                 }
-                // Add checkbox item to list
-                $currentList[] = trim($matches[1]);
+                
+                // Start a new list item
+                $currentListItem = trim($matches[1]);
             } else {
-                // If we have accumulated list items, display them as a list
-                if (!empty($currentList)) {
-                    $io->listing($currentList);
-                    $currentList = [];
+                // Non-checkbox line
+                if ($currentListItem !== null) {
+                    // This is a sub-item of the current list item
+                    if (!empty($trimmed)) {
+                        $currentSubItems[] = $trimmed;
+                    }
+                } else {
+                    // If we have accumulated list items, display them as a list
+                    if (!empty($currentList)) {
+                        $io->listing($currentList);
+                        $currentList = [];
+                    }
+                    // Add regular line to text - use trimmed version (trim() is safe)
+                    if (!empty($trimmed)) {
+                        $currentText[] = $trimmed;
+                    } elseif (!empty($currentText)) {
+                        // Preserve empty lines if we have text (for paragraph breaks)
+                        $currentText[] = '';
+                    }
                 }
-                // Add regular line to text - use trimmed version (trim() is safe)
-                if (!empty($trimmed)) {
-                    $currentText[] = $trimmed;
-                } elseif (!empty($currentText)) {
-                    // Preserve empty lines if we have text (for paragraph breaks)
-                    $currentText[] = '';
+            }
+        }
+        
+        // Handle the last list item if it exists
+        if ($currentListItem !== null) {
+            if (!empty($currentSubItems)) {
+                $formattedItem = $currentListItem;
+                foreach ($currentSubItems as $subItem) {
+                    $formattedItem .= "\n  - " . $subItem;
                 }
+                $currentList[] = $formattedItem;
+            } else {
+                $currentList[] = $currentListItem;
             }
         }
         
