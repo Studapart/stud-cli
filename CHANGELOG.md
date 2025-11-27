@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Improve `stud items:show` command to display description in dedicated sections with automatic text sanitization and divider detection [SCI-8]
+- Add defensive error handling for transition ID extraction in `stud items:start` command to prevent potential undefined array key errors [SCI-12]
 
 ## [2.4.1] - 2025-11-25
 

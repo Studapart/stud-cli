@@ -110,6 +110,10 @@ class ItemStartHandler
                 // SymfonyStyle::choice() validates input and only returns one of the provided options,
                 // which all match our regex pattern, so this will always succeed
                 preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
+                if (!isset($matches[1])) {
+                    // This should never happen in normal flow, but defensive programming
+                    throw new \RuntimeException("Could not extract transition ID from selection: {$selectedDisplay}");
+                }
                 $transitionId = (int) $matches[1];
 
                 // Ask if user wants to save the choice
