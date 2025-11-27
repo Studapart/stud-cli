@@ -88,16 +88,15 @@ class ItemStartHandler
         if ($transitionId === null) {
             try {
                 $transitions = $this->jiraService->getTransitions($key);
-                $inProgressTransitions = $this->filterInProgressTransitions($transitions);
 
-                if (empty($inProgressTransitions)) {
+                if (empty($transitions)) {
                     $io->warning($this->translator->trans('item.start.no_transitions', ['key' => $key]));
                     return 0; // Skip transition, continue with branch creation
                 }
 
                 // Display transitions and prompt user
                 $transitionOptions = [];
-                foreach ($inProgressTransitions as $transition) {
+                foreach ($transitions as $transition) {
                     $transitionOptions[] = "{$transition['name']} (ID: {$transition['id']})";
                 }
 
@@ -151,19 +150,6 @@ class ItemStartHandler
         return 0;
     }
 
-    /**
-     * Filters transitions to only those leading to 'In Progress' status category.
-     * 
-     * @param array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}> $transitions
-     * @return array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}>
-     */
-    protected function filterInProgressTransitions(array $transitions): array
-    {
-        return array_filter($transitions, function ($transition) {
-            return isset($transition['to']['statusCategory']['key']) 
-                && $transition['to']['statusCategory']['key'] === 'in_progress';
-        });
-    }
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
