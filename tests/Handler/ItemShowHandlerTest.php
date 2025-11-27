@@ -557,4 +557,262 @@ class ItemShowHandlerTest extends CommandTestCase
         
         $this->callPrivateMethod($this->handler, 'displayDescription', [$io, '   ']);
     }
+
+    public function testParseDescriptionSectionsWithEmptyLineAfterTitle(): void
+    {
+        $description = "Title\n\nContent line";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertNotEmpty($result[0]['contentLines']);
+        // Should preserve empty line after title
+        $this->assertContains('', $result[0]['contentLines']);
+    }
+
+    public function testParseDescriptionSectionsWithNoTitleFound(): void
+    {
+        $description = "\n\n\n"; // Only empty lines
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        // Empty description should return empty array (trimmed to empty)
+        $this->assertEmpty($result);
+    }
+
+    public function testParseDescriptionSectionsWithOnlyEmptyLinesInSection(): void
+    {
+        $description = "---\n\n\n"; // Divider followed by only empty lines
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should use default title when no title found in section
+        $this->assertNotEmpty($result[0]['title']);
+    }
+
+    public function testParseDescriptionSectionsWithSectionHavingOnlyEmptyLinesAfterDivider(): void
+    {
+        $description = "First section\n---\n\n\n"; // Section with content, then divider, then only empty lines
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        // Empty sections after divider are not added (empty currentSection check)
+        // So we get only the first section
+        $this->assertCount(1, $result);
+        $this->assertNotEmpty($result[0]['title']);
+    }
+
+    public function testParseDescriptionSectionsWithDescriptionAndImplementationLogicHeader(): void
+    {
+        $description = "Description & Implementation Logic";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should recognize "Description & Implementation Logic" as a header
+        $this->assertStringContainsString('Description & Implementation Logic', $result[0]['title']);
+    }
+
+    public function testParseDescriptionSectionsWithDividerAtStart(): void
+    {
+        $description = "---\nContent after divider";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // When divider is at start, empty currentSection is not added (line 96 check)
+        // Only the section after divider is added
+        $this->assertNotEmpty($result[0]['title']);
+    }
+
+    public function testParseDescriptionSectionsWithMultipleDividersAndEmptySections(): void
+    {
+        $description = "Section 1\n---\n---\nSection 3";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        // First section, then empty section between dividers (not added), then last section
+        $this->assertCount(2, $result);
+    }
+
+    public function testParseDescriptionSectionsWithEmptyCurrentSectionAtEnd(): void
+    {
+        $description = "Section 1\n---\n"; // Divider at end, empty currentSection
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        // Empty currentSection at end is not added (line 106 check)
+        $this->assertCount(1, $result);
+    }
+
+
+    public function testParseDescriptionSectionsWithSingleLineThatIsHeader(): void
+    {
+        $description = "Title: This is a title";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should recognize as header, not treat as content
+        $this->assertStringContainsString('Title', $result[0]['title']);
+        // Should be empty content since it's just a header
+        $this->assertEmpty($result[0]['contentLines']);
+    }
+
+    public function testParseDescriptionSectionsWithUserStoryHeader(): void
+    {
+        $description = "User Story";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should recognize "User Story" as a header
+        $this->assertStringContainsString('User Story', $result[0]['title']);
+    }
+
+    public function testParseDescriptionSectionsWithAcceptanceCriteriaHeader(): void
+    {
+        $description = "Acceptance Criteria:";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should recognize "Acceptance Criteria" as a header
+        $this->assertStringContainsString('Acceptance Criteria', $result[0]['title']);
+    }
+
+    public function testDisplayContentWithEmptySubItem(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Main item', '', 'Sub-item'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 1;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithEmptyLineInText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Text line 1', '', 'Text line 2'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content) && in_array('', $content);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithEmptyLineNotInText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['', 'Text line'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content) && !in_array('', $content);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithEmptyLineAfterText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Text line 1', '', 'Text line 2'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                // Should preserve empty line between text lines
+                return is_array($content) && in_array('', $content);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithCheckboxFollowedByEmptySubItem(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Item 1', '', '[ ] Item 2'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 2;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithTextThenCheckboxThenText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Text before', '[ ] Checkbox', 'Text after'];
+        
+        // Text before checkbox is displayed, then checkbox, then text after is accumulated and displayed at end
+        $io->expects($this->atLeastOnce())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content);
+            }));
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithMultipleCheckboxesAndSubItems(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Item 1', 'Sub 1', 'Sub 2', '[ ] Item 2', 'Sub 3'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 2;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithLastListItemHavingSubItems(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Item', 'Sub-item'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 1 && str_contains($list[0], 'Sub-item');
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithLastListItemNoSubItems(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Item'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 1;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
 }

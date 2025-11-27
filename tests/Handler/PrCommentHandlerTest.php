@@ -283,22 +283,6 @@ class PrCommentHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testGetCommentBodyWithStdinContent(): void
-    {
-        // This is hard to test directly since we can't easily mock STDIN
-        // But we can test that when readStdin returns content, it's used
-        // We'll test the verbose path separately
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        // When argument is provided, it should be used even if STDIN might have content
-        // (In real usage, STDIN takes precedence, but we can't easily test that)
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
-
-        $this->assertSame('My message', $result);
-    }
-
     public function testGetCommentBodyWithVerboseOutput(): void
     {
         $output = new BufferedOutput();
@@ -410,20 +394,6 @@ class PrCommentHandlerTest extends CommandTestCase
         $this->assertNull($result);
     }
 
-    public function testGetCommentBodyWithStdinPrecedence(): void
-    {
-        // Test that when both STDIN and argument are available, STDIN takes precedence
-        // Since we can't easily mock STDIN, we test the logic path
-        // In real usage, if STDIN has content, it's used; otherwise argument is used
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        
-        // When argument is provided and STDIN is empty (TTY), argument should be used
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'Argument message']);
-        
-        $this->assertSame('Argument message', $result);
-    }
-
     public function testGetCommentBodyWithVerboseAndStdin(): void
     {
         $output = new BufferedOutput();
@@ -453,8 +423,76 @@ class PrCommentHandlerTest extends CommandTestCase
         // This is hard to test directly, but we can verify the method handles it
         $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
         
-        // Should return empty string in test environment
+        // Should return empty string in test environment (TTY check returns early)
         $this->assertIsString($result);
+        $this->assertEmpty($result);
+    }
+
+    public function testReadStdinReturnsEmptyWhenTty(): void
+    {
+        // Test that readStdin returns empty when STDIN is a TTY
+        // In test environment, STDIN is typically a TTY
+        $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
+        
+        $this->assertSame('', $result);
+    }
+
+    public function testGetCommentBodyWithStdinAndVerbose(): void
+    {
+        // Test verbose output when STDIN has content
+        // Since STDIN reading with actual content requires process execution,
+        // this path is covered by integration tests
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        
+        // In test environment, STDIN is TTY, so argument is used
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
+        
+        $this->assertSame('My message', $result);
+    }
+
+    public function testGetCommentBodyWithStdinContent(): void
+    {
+        // Test that STDIN content takes precedence over argument
+        // We create a test handler that overrides readStdin to simulate STDIN input
+        $testHandler = new class($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+            protected function readStdin(): string
+            {
+                return 'STDIN content';
+            }
+        };
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', [$io, 'Argument message']);
+
+        // STDIN should take precedence
+        $this->assertSame('STDIN content', $result);
+    }
+
+    public function testGetCommentBodyWithStdinContentAndVerbose(): void
+    {
+        // Test verbose output path when STDIN has content
+        $testHandler = new class($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+            protected function readStdin(): string
+            {
+                return 'STDIN content';
+            }
+        };
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(true);
+        $io->expects($this->once())
+            ->method('writeln')
+            ->with($this->callback(function ($message) {
+                return is_string($message) && (str_contains($message, 'STDIN') || str_contains($message, 'stdin'));
+            }));
+
+        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', [$io, 'Argument message']);
+
+        $this->assertSame('STDIN content', $result);
     }
 }
 
