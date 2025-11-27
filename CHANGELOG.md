@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-11-27
+
+### Added
+- Add `stud pr:comment` (alias `pc`) command to post comments to active Pull Requests with STDIN support for automation workflows [SCI-10]
+- Add dynamic 'In Progress' transition support to `stud items:start` command with project-specific caching [SCI-11]
+  - Automatically assigns issue to current user and transitions to 'In Progress' when enabled
+  - Interactive transition selection on first run per project
+  - Caches transition ID in `.git/stud.config` for future use
+  - Adds `JIRA_TRANSITION_ENABLED` configuration flag in `stud config:init`
+
+### Changed
+- Improve `stud items:show` command to display description in dedicated sections with automatic text sanitization and divider detection [SCI-8]
+
+### Fixed
+- Remove brittle statusCategory filtering from `stud items:start` transition lookup to show all available transitions instead of filtering by 'in_progress' status category [SCI-13]
+
 ## [2.4.1] - 2025-11-25
 
 ### Removed

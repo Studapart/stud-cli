@@ -431,6 +431,164 @@ Line 3";
         $this->assertSame($expectedDescription, $workItem->description);
     }
 
+    public function testGetTransitionsSuccess(): void
+    {
+        $key = 'TEST-123';
+        $mockResponseData = [
+            'transitions' => [
+                [
+                    'id' => 11,
+                    'name' => 'Start Progress',
+                    'to' => [
+                        'name' => 'In Progress',
+                        'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                    ],
+                ],
+                [
+                    'id' => 21,
+                    'name' => 'Done',
+                    'to' => [
+                        'name' => 'Done',
+                        'statusCategory' => ['key' => 'done', 'name' => 'Done'],
+                    ],
+                ],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/{$key}/transitions")
+            ->willReturn($responseMock);
+
+        $transitions = $this->jiraService->getTransitions($key);
+
+        $this->assertIsArray($transitions);
+        $this->assertCount(2, $transitions);
+        $this->assertSame(11, $transitions[0]['id']);
+        $this->assertSame('Start Progress', $transitions[0]['name']);
+        $this->assertSame('in_progress', $transitions[0]['to']['statusCategory']['key']);
+    }
+
+    public function testGetTransitionsFailure(): void
+    {
+        $key = 'TEST-123';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/{$key}/transitions")
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage("Could not fetch transitions for issue \"{$key}\".");
+
+        $this->jiraService->getTransitions($key);
+    }
+
+    public function testTransitionIssueSuccess(): void
+    {
+        $key = 'TEST-123';
+        $transitionId = 11;
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(204);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', "/rest/api/3/issue/{$key}/transitions", [
+                'json' => [
+                    'transition' => [
+                        'id' => $transitionId,
+                    ],
+                ],
+            ])
+            ->willReturn($responseMock);
+
+        $this->jiraService->transitionIssue($key, $transitionId);
+        // No exception means success
+        $this->assertTrue(true);
+    }
+
+    public function testTransitionIssueFailure(): void
+    {
+        $key = 'TEST-123';
+        $transitionId = 11;
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage("Could not execute transition {$transitionId} for issue \"{$key}\".");
+
+        $this->jiraService->transitionIssue($key, $transitionId);
+    }
+
+    public function testAssignIssueToCurrentUser(): void
+    {
+        $key = 'TEST-123';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(204);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('PUT', "/rest/api/3/issue/{$key}/assignee", [
+                'json' => ['accountId' => null],
+            ])
+            ->willReturn($responseMock);
+
+        $this->jiraService->assignIssue($key);
+        // No exception means success
+        $this->assertTrue(true);
+    }
+
+    public function testAssignIssueToSpecificUser(): void
+    {
+        $key = 'TEST-123';
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(204);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('PUT', "/rest/api/3/issue/{$key}/assignee", [
+                'json' => ['accountId' => $accountId],
+            ])
+            ->willReturn($responseMock);
+
+        $this->jiraService->assignIssue($key, $accountId);
+        // No exception means success
+        $this->assertTrue(true);
+    }
+
+    public function testAssignIssueFailure(): void
+    {
+        $key = 'TEST-123';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(403);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage("Could not assign issue \"{$key}\" to user.");
+
+        $this->jiraService->assignIssue($key);
+    }
+
     // Helper to call private methods for testing
     private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {

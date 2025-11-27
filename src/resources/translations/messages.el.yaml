@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Σημείωση: Ο κάτοχος και το όνομα του αποθετηρίου θα εντοπιστούν αυτόματα από το git remote σας."
       provider_prompt: "Επιλέξτε τον παροχέα Git σας"
       token_prompt: "Εισάγετε το PAT του παροχέα Git σας (αφήστε κενό για να διατηρήσετε το υπάρχον)"
+    jira_transition:
+      title: "Ρύθμιση Μετάβασης Jira"
+      description: "Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα."
+      prompt: "Ενεργοποίηση αυτόματης μετάβασης Jira σε 'Σε Εξέλιξη';"
     success: "Η ρύθμιση αποθηκεύτηκε με επιτυχία!"
     completion:
       title: "Ρύθμιση Αυτόματης Συμπλήρωσης Shell"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Λήψη των τελευταίων αλλαγών από origin..."
     creating_branch: "Δημιουργία νέου κλάδου: %branch%"
     success: "Ο κλάδος '%branch%' δημιουργήθηκε από '%base%'."
+    assigning: "Ανάθεση θέματος %key% στον τρέχοντα χρήστη..."
+    assign_error: "Αποτυχία ανάθεσης θέματος: %error%"
+    no_transitions: "Δεν υπάρχουν μεταβάσεις 'Σε Εξέλιξη' διαθέσιμες για το θέμα %key%. Μετάβαση παραλείφθηκε."
+    select_transition: "Επιλέξτε τη μετάβαση σε 'Σε Εξέλιξη':"
+    invalid_selection: "Μη έγκυρη επιλογή μετάβασης."
+    save_transition: "Θα θέλατε να αποθηκεύσετε αυτή την επιλογή μετάβασης για το έργο '%project%';"
+    transition_saved: "Επιλογή μετάβασης αποθηκεύτηκε για το έργο '%project%'."
+    using_cached_transition: "Χρήση αποθηκευμένου ID μετάβασης: %id%"
+    transition_success: "✅ Το θέμα %key% μεταφέρθηκε σε 'Σε Εξέλιξη'"
+    transition_error: "Αποτυχία λήψης μεταβάσεων: %error%"
+    transition_exec_error: "Αποτυχία εκτέλεσης μετάβασης: %error%. Συνέχιση με δημιουργία κλάδου."
 
 # Item Show Handler
   show:
@@ -132,6 +147,20 @@ submit:
   updating_to_draft: "Ενημέρωση Pull Request σε κατάσταση προσχεδίου..."
   error_update_draft: "Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.\nΣφάλμα: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Δημοσίευση σχολίου στο Pull Request"
+    error_no_provider: "Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο."
+    error_no_input: "Δεν παρέχεται περιεχόμενο σχολίου.\nΠαρακαλώ παρέχετε περιεχόμενο μέσω STDIN (σωλήνωση) ή ως άμεσο όρισμα.\nΠαράδειγμα: echo \"Κείμενο σχολίου\" | stud pr:comment\nΠαράδειγμα: stud pr:comment \"Κείμενο σχολίου\""
+    error_no_pr: "Δεν ήταν δυνατή η εύρεση ενεργού Pull Request για τον τρέχοντα κλάδο."
+    error_post: "Αποτυχία δημοσίευσης σχολίου στο Pull Request.\nΣφάλμα: %error%"
+    finding_pr: "Εύρεση Pull Request για τον κλάδο: %branch%"
+    posting: "Δημοσίευση σχολίου στο Pull Request #%number%..."
+    success: "✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%"
+    using_stdin: "Ανάγνωση σχολίου από STDIN..."
+    using_argument: "Χρήση σχολίου από όρισμα..."
+
 # Commit Handler
 commit:
   section: "Βοηθός Συμβατικού Commit"
@@ -179,6 +208,12 @@ update:
   changelog_section: "Αλλαγές στην έκδοση %version%"
   breaking_changes_detected: "⚠️  Ανιχνεύθηκαν κρίσιμες αλλαγές σε αυτή την ενημέρωση:"
   changelog_error: "Δεν ήταν δυνατή η λήψη του changelog"
+  success_hash_verified: "✅ Επαλήθευση hash επιτυχής. Το δυαδικό είναι αυθεντικό."
+  error_hash_not_found: "Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατή η εύρεση του αρχείου checksum στην release.\nΤο δυαδικό δεν μπορεί να επαληθευτεί. Η ενημέρωση ακυρώθηκε για λόγους ασφαλείας."
+  error_hash_calculation: "Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατός ο υπολογισμός του hash του κατεβασμένου αρχείου.\nΗ ενημέρωση ακυρώθηκε για λόγους ασφαλείας."
+  error_hash_mismatch: "Σφάλμα επαλήθευσης ασφαλείας: Ανιχνεύθηκε ασυνέπεια hash!\n\nΑναμενόμενο hash: %expected%\nΥπολογισμένο hash: %calculated%\n\nΤο κατεβασμένο δυαδικό αρχείο μπορεί να είναι κατεστραμμένο ή να έχει τροποποιηθεί.\nΗ ενημέρωση ακυρώθηκε για λόγους ασφαλείας."
+  downloading_checksum: "Λήψη αρχείου checksum από"
+  checksum_download_error: "Σφάλμα κατά τη λήψη του αρχείου checksum"
 
 # Release Handler
 release:
@@ -240,6 +275,7 @@ help:
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
   command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
   command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
+  command_pr_comment: "Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα."
   command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."
   command_release: "Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση."
   command_deploy: "Αναπτύσσει τον τρέχοντα κλάδο release."

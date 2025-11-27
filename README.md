@@ -216,15 +216,7 @@ All `stud-cli` commands are executed via the `stud` executable. The general synt
 
 #### Getting Help
 
-Every command supports the `--help` (or `-h`) option to display context-specific help directly in your terminal. This shows detailed information about the command, its options, and usage examples extracted from this documentation.
-
-```bash
-stud commit --help
-stud submit -h
-stud items:list --help
-```
-
-You can also use `stud help` to see a list of all available commands. For detailed help on a specific command, use `stud help <command>`:
+Commands do not support the `--help` (or `-h`) option to display context-specific help directly in your terminal (due to a Castor bug). To see detailed information about the command, its options, and usage examples extracted from this documentation, use `stud help <command>` instead.
 
 ```bash
 stud help commit
@@ -232,8 +224,6 @@ stud help submit
 stud help items:list
 stud help co  # Works with aliases too
 ```
-
-The `stud help <command>` command provides the same detailed information as `stud <command> --help`, extracted from this documentation.
 
 #### Jira Information Commands
 
@@ -283,13 +273,18 @@ These commands help you browse and view your Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
         stud items:start PROJ-123
         stud start BUG-456
         ```
+    -   **Transition Behavior:**
+        -   On first run for a project, you'll be prompted to select the appropriate 'In Progress' transition from available options.
+        -   Your choice is saved to `.git/stud.config` for future use in the same project.
+        -   Subsequent runs will use the cached transition ID automatically.
+        -   If no 'In Progress' transitions are available, a warning is displayed and branch creation continues.
 
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.
@@ -333,6 +328,24 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
         ```
+
+-   **`stud pr:comment`** (Alias: `stud pc`)
+    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.
+    -   **Argument:** `<message>` (optional): The comment message. If not provided, content will be read from STDIN.
+    -   **Usage:**
+        ```bash
+        # Piped input (preferred for automation/AI workflows)
+        echo "Report content" | stud pr:comment
+        cat report.md | stud pr:comment
+        
+        # Direct argument (manual/quick workflow)
+        stud pr:comment "Manual message"
+        stud pc "Quick comment"
+        
+        # Using alias with piped input
+        echo "Comment text" | stud pc
+        ```
+    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.

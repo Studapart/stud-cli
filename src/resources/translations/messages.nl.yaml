@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote."
       provider_prompt: "Selecteer uw Git provider"
       token_prompt: "Voer uw Git provider PAT in (laat leeg om bestaande te behouden)"
+    jira_transition:
+      title: "Jira Transitie Configuratie"
+      description: "Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket."
+      prompt: "Automatische Jira transitie naar 'In Uitvoering' inschakelen?"
     success: "Configuratie succesvol opgeslagen!"
     completion:
       title: "Shell Auto-aanvulling Instellen"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Laatste wijzigingen ophalen van origin..."
     creating_branch: "Nieuwe branch aanmaken: %branch%"
     success: "Branch '%branch%' aangemaakt vanaf '%base%'."
+    assigning: "Ticket %key% toewijzen aan huidige gebruiker..."
+    assign_error: "Toewijzen van ticket mislukt: %error%"
+    no_transitions: "Geen 'In Uitvoering' transities beschikbaar voor ticket %key%. Transitie overgeslagen."
+    select_transition: "Selecteer de transitie naar 'In Uitvoering':"
+    invalid_selection: "Ongeldige transitie selectie."
+    save_transition: "Wilt u deze transitiekeuze opslaan voor project '%project%'?"
+    transition_saved: "Transitiekeuze opgeslagen voor project '%project%'."
+    using_cached_transition: "Gebruik gecachte transitie ID: %id%"
+    transition_success: "✅ Ticket %key% overgezet naar 'In Uitvoering'"
+    transition_error: "Ophalen van transities mislukt: %error%"
+    transition_exec_error: "Uitvoeren van transitie mislukt: %error%. Doorgaan met aanmaken van branch."
 
 # Item Show Handler
   show:
@@ -132,6 +147,20 @@ submit:
   updating_to_draft: "Pull Request bijwerken naar conceptstatus..."
   error_update_draft: "Fout bij bijwerken van conceptstatus van Pull Request.\nFout: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Commentaar plaatsen op Pull Request"
+    error_no_provider: "Geen Git provider geconfigureerd voor dit project."
+    error_no_input: "Geen commentaarinhoud opgegeven.\nGeef alstublieft inhoud op via STDIN (piping) of als direct argument.\nVoorbeeld: echo \"Commentaar tekst\" | stud pr:comment\nVoorbeeld: stud pr:comment \"Commentaar tekst\""
+    error_no_pr: "Kon geen actieve Pull Request vinden voor de huidige branch."
+    error_post: "Fout bij plaatsen van commentaar op Pull Request.\nFout: %error%"
+    finding_pr: "Zoeken naar Pull Request voor branch: %branch%"
+    posting: "Commentaar plaatsen op Pull Request #%number%..."
+    success: "✅ Commentaar succesvol geplaatst op Pull Request #%number%"
+    using_stdin: "Commentaar lezen van STDIN..."
+    using_argument: "Commentaar gebruiken van argument..."
+
 # Commit Handler
 commit:
   section: "Conventionele Commit Helper"
@@ -179,6 +208,12 @@ update:
   changelog_section: "Wijzigingen in versie %version%"
   breaking_changes_detected: "⚠️  Breaking changes gedetecteerd in deze update:"
   changelog_error: "Kon changelog niet ophalen"
+  success_hash_verified: "✅ Hash-verificatie geslaagd. Het binaire bestand is authentiek."
+  error_hash_not_found: "Beveiligingsverificatiefout: Kon het checksumbestand niet vinden in de release.\nHet binaire bestand kan niet worden geverifieerd. Update geannuleerd om veiligheidsredenen."
+  error_hash_calculation: "Beveiligingsverificatiefout: Kon de hash van het gedownloade bestand niet berekenen.\nUpdate geannuleerd om veiligheidsredenen."
+  error_hash_mismatch: "Beveiligingsverificatiefout: Hash-inconsistentie gedetecteerd!\n\nVerwachte hash: %expected%\nBerekende hash: %calculated%\n\nHet gedownloade binaire bestand kan corrupt zijn of zijn gewijzigd.\nUpdate geannuleerd om veiligheidsredenen."
+  downloading_checksum: "Checksumbestand downloaden vanaf"
+  checksum_download_error: "Fout bij downloaden van checksumbestand"
 
 # Release Handler
 release:
@@ -240,6 +275,7 @@ help:
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
   command_submit: "Pusht de huidige tak en maakt een Pull Request."
+  command_pr_comment: "Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument."
   command_status: "Een snelle \"waar ben ik?\" dashboard."
   command_release: "Maakt een nieuwe release tak en verhoogt de versie."
   command_deploy: "Deployt de huidige release tak."

@@ -55,6 +55,7 @@ class HelpServiceTest extends TestCase
             'please',
             'status',
             'submit',
+            'pr:comment',
             'update',
             'release',
             'deploy',
@@ -178,6 +179,250 @@ class HelpServiceTest extends TestCase
         // Test intent: should still display help (either from README or translation)
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('completion', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithAliasAndArguments(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test release command which has alias 'rl' and argument '<version>'
+        // This covers line 241: adding arguments to alias line
+        $this->helpService->displayCommandHelp($io, 'release');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should display help with alias and arguments
+        $this->assertStringContainsString('Help:', $outputText);
+        $this->assertStringContainsString('release', $outputText);
+        $this->assertStringContainsString('rl', $outputText);
+        $this->assertStringContainsString('<version>', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithVersionArgument(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test release command with <version> argument
+        // This covers line 281: version argument type
+        $this->helpService->displayCommandHelp($io, 'release');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with version
+        $this->assertStringContainsString('1.2.0', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithJqlArgument(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test items:search command with <jql> argument
+        // This covers line 283: jql argument type
+        $this->helpService->displayCommandHelp($io, 'items:search');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with jql
+        $this->assertStringContainsString('project = PROJ', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithShellArgument(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test completion command with <shell> argument
+        // This covers line 285: shell argument type (already covered, but let's be explicit)
+        $this->helpService->displayCommandHelp($io, 'completion');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with shell
+        $this->assertStringContainsString('bash', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithLabelsOption(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test submit command which has --labels option with <labels> argument
+        // This covers lines 307-308: labels option argument
+        $this->helpService->displayCommandHelp($io, 'submit');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with labels option
+        $this->assertStringContainsString('submit', $outputText);
+        $this->assertStringContainsString('--labels', $outputText);
+        $this->assertStringContainsString('bug,enhancement', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithMessageOption(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test commit command which has --message option with <message> argument
+        // This covers lines 309-310: message option argument
+        $this->helpService->displayCommandHelp($io, 'commit');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with message option
+        $this->assertStringContainsString('commit', $outputText);
+        $this->assertStringContainsString('--message', $outputText);
+        $this->assertStringContainsString('feat: My custom message', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithKeyOption(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test items:list command which has --project option with <key> argument
+        // This covers lines 311-312: key option argument
+        $this->helpService->displayCommandHelp($io, 'items:list');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show example with key option
+        $this->assertStringContainsString('items:list', $outputText);
+        $this->assertStringContainsString('--project', $outputText);
+        $this->assertStringContainsString('PROJ', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithMultipleOptions(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test submit command which has multiple options (--draft and --labels)
+        // This covers lines 322-339: second option handling
+        $this->helpService->displayCommandHelp($io, 'submit');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show examples with both options
+        $this->assertStringContainsString('submit', $outputText);
+        $this->assertStringContainsString('--draft', $outputText);
+        $this->assertStringContainsString('--labels', $outputText);
+    }
+
+    public function testDisplayCommandHelpWithCommitMultipleOptions(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test commit command which has multiple options (--new and --message)
+        // This covers lines 322-339: second option handling with different argument types
+        $this->helpService->displayCommandHelp($io, 'commit');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should show examples with both options
+        $this->assertStringContainsString('commit', $outputText);
+        $this->assertStringContainsString('--new', $outputText);
+        $this->assertStringContainsString('--message', $outputText);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithVersionArgument(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with release command
+        // This covers line 281: version argument type
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'release');
+        
+        // Test intent: should include version example
+        $this->assertStringContainsString('1.2.0', $result);
+        $this->assertStringContainsString('release', $result);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithItemsListFirstOptionWithArgument(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with items:list
+        // items:list has --project as first option with <key> argument
+        // This covers lines 306-312: first option with argument handling
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'items:list');
+        
+        // Test intent: should show --project option with PROJ example
+        $this->assertStringContainsString('--project', $result);
+        $this->assertStringContainsString('PROJ', $result);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithSubmitFirstOptionWithArgument(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with submit
+        // submit has --draft (no arg) as first, but we need to test when first has arg
+        // Actually, items:list is better for this. But let's also test submit's second option path
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'submit');
+        
+        // Test intent: should show --labels option with bug,enhancement example
+        $this->assertStringContainsString('--labels', $result);
+        $this->assertStringContainsString('bug,enhancement', $result);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithKeyArgument(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with items:show
+        // items:show has <key> as argument
+        // This covers line 279: key argument type
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'items:show');
+        
+        // Test intent: should include JIRA-33 example for key argument
+        $this->assertStringContainsString('JIRA-33', $result);
+        $this->assertStringContainsString('items:show', $result);
+    }
+
+    public function testDisplayCommandHelpWithPrCommentCommand(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test pr:comment command which has alias 'pc' and argument '<message>'
+        $this->helpService->displayCommandHelp($io, 'pr:comment');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should display help with alias and argument
+        $this->assertStringContainsString('Help:', $outputText);
+        $this->assertStringContainsString('pr:comment', $outputText);
+        $this->assertStringContainsString('pc', $outputText);
+        $this->assertStringContainsString('<message>', $outputText);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithPrComment(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with pr:comment
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'pr:comment');
+        
+        // Test intent: should include message argument example
+        $this->assertStringContainsString('pr:comment', $result);
+        $this->assertStringContainsString('pc', $result);
+        $this->assertStringContainsString('<message>', $result);
+        $this->assertStringContainsString('"Comment text"', $result);
     }
 }
 

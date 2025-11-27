@@ -13,7 +13,8 @@ class ItemStartHandler
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly array $jiraConfig
     ) {
     }
 
@@ -31,6 +32,13 @@ class ItemStartHandler
         } catch (\Exception $e) {
             $io->error($this->translator->trans('item.start.error_not_found', ['key' => $key]));
             return 1;
+        }
+
+        // Handle Jira transition if enabled
+        if (!empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
+            $this->handleTransition($io, $key, $issue);
+            // All error handling is done inside handleTransition with warnings/errors
+            // Branch creation continues regardless of transition success/failure
         }
 
         $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
@@ -51,6 +59,97 @@ class ItemStartHandler
 
         return 0;
     }
+
+    protected function handleTransition(SymfonyStyle $io, string $key, \App\DTO\WorkItem $issue): int
+    {
+        // Step 1: Assign issue to current user
+        try {
+            if ($io->isVerbose()) {
+                $io->writeln("  <fg=gray>{$this->translator->trans('item.start.assigning', ['key' => $key])}</>");
+            }
+            $this->jiraService->assignIssue($key);
+        } catch (\Exception $e) {
+            $io->warning($this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
+            // Continue even if assignment fails
+        }
+
+        // Step 2: Check cache for transition ID
+        $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
+        $projectConfig = $this->gitRepository->readProjectConfig();
+        $cachedTransitionId = null;
+
+        if (isset($projectConfig['projectKey']) && $projectConfig['projectKey'] === $projectKey && isset($projectConfig['transitionId'])) {
+            $cachedTransitionId = (int) $projectConfig['transitionId'];
+        }
+
+        $transitionId = $cachedTransitionId;
+
+        // Step 3: If not cached, interactive lookup
+        if ($transitionId === null) {
+            try {
+                $transitions = $this->jiraService->getTransitions($key);
+
+                if (empty($transitions)) {
+                    $io->warning($this->translator->trans('item.start.no_transitions', ['key' => $key]));
+                    return 0; // Skip transition, continue with branch creation
+                }
+
+                // Display transitions and prompt user
+                $transitionOptions = [];
+                foreach ($transitions as $transition) {
+                    $transitionOptions[] = "{$transition['name']} (ID: {$transition['id']})";
+                }
+
+                $selectedDisplay = $io->choice(
+                    $this->translator->trans('item.start.select_transition'),
+                    $transitionOptions
+                );
+
+                // Extract transition ID from selection
+                // SymfonyStyle::choice() validates input and only returns one of the provided options,
+                // which all match our regex pattern, so this will always succeed
+                preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
+                $transitionId = (int) $matches[1];
+
+                // Ask if user wants to save the choice
+                $saveChoice = $io->confirm(
+                    $this->translator->trans('item.start.save_transition', ['project' => $projectKey]),
+                    true
+                );
+
+                if ($saveChoice) {
+                    $this->gitRepository->writeProjectConfig([
+                        'projectKey' => $projectKey,
+                        'transitionId' => $transitionId,
+                    ]);
+                    if ($io->isVerbose()) {
+                        $io->writeln("  <fg=gray>{$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}</>");
+                    }
+                }
+            } catch (\Exception $e) {
+                $io->warning($this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+                return 0; // Skip transition, continue with branch creation
+            }
+        } else {
+            if ($io->isVerbose()) {
+                $io->writeln("  <fg=gray>{$this->translator->trans('item.start.using_cached_transition', ['id' => $transitionId])}</>");
+            }
+        }
+
+        // Step 4: Execute transition
+        if ($transitionId !== null) {
+            try {
+                $this->jiraService->transitionIssue($key, $transitionId);
+                $io->success($this->translator->trans('item.start.transition_success', ['key' => $key]));
+            } catch (\Exception $e) {
+                $io->warning($this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+                // Continue with branch creation even if transition fails
+            }
+        }
+
+        return 0;
+    }
+
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {

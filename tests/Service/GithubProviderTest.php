@@ -558,4 +558,52 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->updatePullRequest($pullNumber, $draft);
     }
+
+    public function testCreateCommentSuccess(): void
+    {
+        $issueNumber = 123;
+        $body = 'This is a test comment.';
+        $expectedResponse = ['id' => 456, 'body' => $body];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/issues/{$issueNumber}/comments",
+                [
+                    'json' => [
+                        'body' => $body,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->createComment($issueNumber, $body);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testCreateCommentFailure(): void
+    {
+        $issueNumber = 123;
+        $body = 'This is a test comment.';
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+
+        $this->githubProvider->createComment($issueNumber, $body);
+    }
 }

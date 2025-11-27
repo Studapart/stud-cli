@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Примечание: Владелец и имя репозитория будут автоматически определены из вашего git remote."
       provider_prompt: "Выберите ваш провайдер Git"
       token_prompt: "Введите ваш PAT провайдера Git (оставьте пустым, чтобы сохранить существующий)"
+    jira_transition:
+      title: "Настройка перехода Jira"
+      description: "Включить автоматический переход в 'В работе' при начале работы над задачей."
+      prompt: "Включить автоматический переход Jira в 'В работе'?"
     success: "Конфигурация успешно сохранена!"
     completion:
       title: "Настройка автодополнения оболочки"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Получение последних изменений из origin..."
     creating_branch: "Создание новой ветки: %branch%"
     success: "Ветка '%branch%' создана из '%base%'."
+    assigning: "Назначение задачи %key% текущему пользователю..."
+    assign_error: "Ошибка назначения задачи: %error%"
+    no_transitions: "Нет доступных переходов в 'В работе' для задачи %key%. Переход пропущен."
+    select_transition: "Выберите переход в 'В работе':"
+    invalid_selection: "Неверный выбор перехода."
+    save_transition: "Хотите ли вы сохранить этот выбор перехода для проекта '%project%'?"
+    transition_saved: "Выбор перехода сохранен для проекта '%project%'."
+    using_cached_transition: "Использование кэшированного ID перехода: %id%"
+    transition_success: "✅ Задача %key% переведена в 'В работе'"
+    transition_error: "Ошибка получения переходов: %error%"
+    transition_exec_error: "Ошибка выполнения перехода: %error%. Продолжение создания ветки."
 
 # Item Show Handler
   show:
@@ -132,6 +147,20 @@ submit:
   updating_to_draft: "Обновление Pull Request до статуса черновика..."
   error_update_draft: "Ошибка при обновлении статуса черновика Pull Request.\nОшибка: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Публикация комментария в Pull Request"
+    error_no_provider: "Провайдер Git не настроен для этого проекта."
+    error_no_input: "Содержимое комментария не предоставлено.\nПожалуйста, предоставьте содержимое через STDIN (конвейер) или как прямой аргумент.\nПример: echo \"Текст комментария\" | stud pr:comment\nПример: stud pr:comment \"Текст комментария\""
+    error_no_pr: "Не удалось найти активный Pull Request для текущей ветки."
+    error_post: "Ошибка при публикации комментария в Pull Request.\nОшибка: %error%"
+    finding_pr: "Поиск Pull Request для ветки: %branch%"
+    posting: "Публикация комментария в Pull Request #%number%..."
+    success: "✅ Комментарий успешно опубликован в Pull Request #%number%"
+    using_stdin: "Чтение комментария из STDIN..."
+    using_argument: "Использование комментария из аргумента..."
+
 # Commit Handler
 commit:
   section: "Помощник обычных коммитов"
@@ -179,6 +208,12 @@ update:
   changelog_section: "Изменения в версии %version%"
   breaking_changes_detected: "⚠️  Обнаружены критические изменения в этом обновлении:"
   changelog_error: "Не удалось получить changelog"
+  success_hash_verified: "✅ Проверка хеша успешна. Бинарный файл аутентичен."
+  error_hash_not_found: "Ошибка проверки безопасности: Не удалось найти файл контрольной суммы в релизе.\nБинарный файл не может быть проверен. Обновление отменено по соображениям безопасности."
+  error_hash_calculation: "Ошибка проверки безопасности: Не удалось вычислить хеш загруженного файла.\nОбновление отменено по соображениям безопасности."
+  error_hash_mismatch: "Ошибка проверки безопасности: Обнаружено несоответствие хеша!\n\nОжидаемый хеш: %expected%\nВычисленный хеш: %calculated%\n\nЗагруженный бинарный файл может быть поврежден или изменен.\nОбновление отменено по соображениям безопасности."
+  downloading_checksum: "Загрузка файла контрольной суммы из"
+  checksum_download_error: "Ошибка при загрузке файла контрольной суммы"
 
 # Release Handler
 release:
@@ -240,6 +275,7 @@ help:
   command_commit: "Проводит вас через создание обычного коммита."
   command_please: "Безопасный force-push для опытных пользователей (force-with-lease)."
   command_submit: "Отправляет текущую ветку и создает Pull Request."
+  command_pr_comment: "Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент."
   command_status: "Быстрая панель управления \"где я?\"."
   command_release: "Создает новую ветку релиза и увеличивает версию."
   command_deploy: "Развертывает текущую ветку релиза."

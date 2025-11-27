@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Note : Le propriétaire et le nom du dépôt seront automatiquement détectés depuis votre remote git."
       provider_prompt: "Sélectionnez votre fournisseur Git"
       token_prompt: "Entrez votre PAT du fournisseur Git (laissez vide pour conserver l'existant)"
+    jira_transition:
+      title: "Configuration de transition Jira"
+      description: "Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket."
+      prompt: "Activer la transition automatique Jira vers 'En cours' ?"
     success: "Configuration enregistrée avec succès !"
     completion:
       title: "Configuration de l'auto-complétion du shell"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Récupération des dernières modifications depuis origin..."
     creating_branch: "Création de la nouvelle branche : %branch%"
     success: "Branche '%branch%' créée depuis '%base%'."
+    assigning: "Attribution du ticket %key% à l'utilisateur actuel..."
+    assign_error: "Échec de l'attribution du ticket : %error%"
+    no_transitions: "Aucune transition vers 'En cours' disponible pour le ticket %key%. Transition ignorée."
+    select_transition: "Sélectionnez la transition vers 'En cours' :"
+    invalid_selection: "Sélection de transition invalide."
+    save_transition: "Souhaitez-vous enregistrer ce choix de transition pour le projet '%project%' ?"
+    transition_saved: "Choix de transition enregistré pour le projet '%project%'."
+    using_cached_transition: "Utilisation de l'ID de transition en cache : %id%"
+    transition_success: "✅ Ticket %key% transitionné vers 'En cours'"
+    transition_error: "Échec de la récupération des transitions : %error%"
+    transition_exec_error: "Échec de l'exécution de la transition : %error%. Poursuite de la création de branche."
 
 # Item Show Handler
   show:
@@ -132,6 +147,20 @@ submit:
   updating_to_draft: "Mise à jour de la Pull Request en statut brouillon..."
   error_update_draft: "Échec de la mise à jour du statut brouillon de la Pull Request.\nErreur : %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Publication d'un commentaire sur la Pull Request"
+    error_no_provider: "Aucun fournisseur Git configuré pour ce projet."
+    error_no_input: "Aucun contenu de commentaire fourni.\nVeuillez fournir le contenu via STDIN (pipeline) ou comme argument direct.\nExemple : echo \"Texte du commentaire\" | stud pr:comment\nExemple : stud pr:comment \"Texte du commentaire\""
+    error_no_pr: "Impossible de trouver une Pull Request active pour la branche actuelle."
+    error_post: "Échec de la publication du commentaire sur la Pull Request.\nErreur : %error%"
+    finding_pr: "Recherche de la Pull Request pour la branche : %branch%"
+    posting: "Publication du commentaire sur la Pull Request #%number%..."
+    success: "✅ Commentaire publié avec succès sur la Pull Request #%number%"
+    using_stdin: "Lecture du commentaire depuis STDIN..."
+    using_argument: "Utilisation du commentaire depuis l'argument..."
+
 # Commit Handler
 commit:
   section: "Assistant de commit conventionnel"
@@ -179,6 +208,12 @@ update:
   changelog_section: "Modifications dans la version %version%"
   breaking_changes_detected: "⚠️  Changements cassants détectés dans cette mise à jour :"
   changelog_error: "Impossible de récupérer le changelog"
+  success_hash_verified: "✅ Vérification du hash réussie. Le binaire est authentique."
+  error_hash_not_found: "Échec de la vérification de sécurité : Impossible de trouver le fichier de checksum dans la release.\nLe binaire ne peut pas être vérifié. Mise à jour annulée pour des raisons de sécurité."
+  error_hash_calculation: "Échec de la vérification de sécurité : Impossible de calculer le hash du fichier téléchargé.\nMise à jour annulée pour des raisons de sécurité."
+  error_hash_mismatch: "Échec de la vérification de sécurité : Incohérence de hash détectée !\n\nHash attendu : %expected%\nHash calculé : %calculated%\n\nLe binaire téléchargé peut être corrompu ou avoir été modifié.\nMise à jour annulée pour des raisons de sécurité."
+  downloading_checksum: "Téléchargement du fichier de checksum depuis"
+  checksum_download_error: "Erreur lors du téléchargement du fichier de checksum"
 
 # Release Handler
 release:
@@ -240,6 +275,7 @@ help:
   command_commit: "Vous guide à travers la création d'un commit conventionnel."
   command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."
   command_submit: "Pousse la branche actuelle et crée une Pull Request."
+  command_pr_comment: "Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct."
   command_status: "Un tableau de bord rapide \"où suis-je ?\"."
   command_release: "Crée une nouvelle branche de release et incrémente la version."
   command_deploy: "Déploie la branche de release actuelle."

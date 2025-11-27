@@ -31,6 +31,7 @@ use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
 use App\Handler\PleaseHandler;
+use App\Handler\PrCommentHandler;
 use App\Handler\ProjectListHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
@@ -415,7 +416,7 @@ function items_start(
     
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config());
     $handler->handle(io(), $key);
 }
 
@@ -500,6 +501,54 @@ function submit(
     $handler->handle(io(), $draft, $labels);
 }
 
+#[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
+function pr_comment(
+    #[AsArgument(name: 'message', description: 'The comment message (optional if piping from STDIN)')] ?string $message = null,
+): void {
+    _load_constants();
+    $gitConfig = _get_git_config();
+    $gitRepository = _get_git_repository();
+    
+    $githubProvider = null;
+    if ($gitConfig['GIT_PROVIDER'] === 'github') {
+        // Get repository owner and name from git remote at runtime
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+        
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
+            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
+        }
+        
+        if (!$repoOwner || !$repoName) {
+            io()->error([
+                'Could not determine repository owner or name from git remote.',
+                'Please ensure your repository has a remote named "origin" configured.',
+                'You can check with: git remote -v',
+            ]);
+            exit(1);
+        }
+        
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
+        }
+        
+        $githubProvider = new GithubProvider(
+            $gitConfig['GIT_TOKEN'],
+            $repoOwner,
+            $repoName
+        );
+    }
+
+    $handler = new PrCommentHandler(
+        $gitRepository,
+        $githubProvider,
+        _get_translation_service()
+    );
+    $exitCode = $handler->handle(io(), $message);
+    exit($exitCode);
+}
+
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(
     #[AsArgument(name: 'command_name', description: 'The command name to get help for')] ?string $commandName = null
@@ -522,6 +571,7 @@ function help(
             'co' => 'commit',
             'pl' => 'please',
             'su' => 'submit',
+            'pc' => 'pr:comment',
             'ss' => 'status',
             'rl' => 'release',
             'mep' => 'deploy',
@@ -539,16 +589,16 @@ function help(
 
     io()->section($translator->trans('help.description_section'));
     io()->writeln('    ' . $translator->trans('help.description_text'));
-    io()->newLine();
-    io()->note($translator->trans('help.universal_help_note'));
+    // io()->newLine();
+    // io()->note($translator->trans('help.universal_help_note'));
     io()->newLine();
     io()->note($translator->trans('help.command_specific_help_note'));
 
     io()->section($translator->trans('help.global_options_section'));
     io()->definitionList(
-        ['-h, --help' => $translator->trans('help.global_option_help')],
-        ['-s, --silent' => $translator->trans('help.global_option_silent')],
-        ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
+        // ['-h, --help' => $translator->trans('help.global_option_help')],
+        // ['-s, --silent' => $translator->trans('help.global_option_silent')],
+        // ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
         ['-v|vv|vvv, --verbose' => $translator->trans('help.global_option_verbose')],
     );
 
