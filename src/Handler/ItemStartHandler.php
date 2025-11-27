@@ -36,11 +36,9 @@ class ItemStartHandler
 
         // Handle Jira transition if enabled
         if (!empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
-            $transitionResult = $this->handleTransition($io, $key, $issue);
-            if ($transitionResult !== 0) {
-                // Transition failed or was skipped, but we continue with branch creation
-                // (error handling is done in handleTransition)
-            }
+            $this->handleTransition($io, $key, $issue);
+            // All error handling is done inside handleTransition with warnings/errors
+            // Branch creation continues regardless of transition success/failure
         }
 
         $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
@@ -109,12 +107,10 @@ class ItemStartHandler
                 );
 
                 // Extract transition ID from selection
-                if (preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches)) {
-                    $transitionId = (int) $matches[1];
-                } else {
-                    $io->error($this->translator->trans('item.start.invalid_selection'));
-                    return 0; // Skip transition
-                }
+                // SymfonyStyle::choice() validates input and only returns one of the provided options,
+                // which all match our regex pattern, so this will always succeed
+                preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
+                $transitionId = (int) $matches[1];
 
                 // Ask if user wants to save the choice
                 $saveChoice = $io->confirm(

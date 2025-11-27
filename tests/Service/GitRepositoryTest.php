@@ -1075,6 +1075,78 @@ class GitRepositoryTest extends CommandTestCase
         }
     }
 
+    public function testWriteProjectConfigThrowsExceptionWhenDirectoryDoesNotExist(): void
+    {
+        $nonExistentDir = sys_get_temp_dir() . '/stud-test-nonexistent-' . uniqid();
+        $configPath = $nonExistentDir . '/stud.config';
+
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn($nonExistentDir);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Git directory not found: {$nonExistentDir}");
+
+        $config = [
+            'projectKey' => 'TEST',
+            'transitionId' => 11,
+        ];
+
+        $this->gitRepository->writeProjectConfig($config);
+    }
+
+    public function testReadProjectConfigReturnsEmptyArrayWhenFileGetContentsFails(): void
+    {
+        // Create a file that exists but is unreadable (no read permissions)
+        // This makes file_exists() return true, but file_get_contents() will return false
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            // Create the file
+            touch($configPath);
+            // Remove read permissions so file_get_contents fails
+            chmod($configPath, 0000);
+
+            $process = $this->createMock(Process::class);
+            $this->processFactory->expects($this->once())
+                ->method('create')
+                ->with('git rev-parse --git-dir')
+                ->willReturn($process);
+
+            $process->expects($this->once())
+                ->method('run');
+            $process->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $config = $this->gitRepository->readProjectConfig();
+
+            $this->assertIsArray($config);
+            $this->assertEmpty($config);
+        } finally {
+            // Restore permissions so we can clean up
+            @chmod($configPath, 0644);
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
     public function testGetProjectKeyFromIssueKey(): void
     {
         $this->assertSame('TEST', $this->gitRepository->getProjectKeyFromIssueKey('TEST-123'));
