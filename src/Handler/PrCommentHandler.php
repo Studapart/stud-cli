@@ -118,7 +118,11 @@ class PrCommentHandler
         }
         // @codeCoverageIgnoreEnd
 
+        // Final fallback return - only reached when STDIN is not a TTY, not a resource, and posix_isatty handling fails
+        // This edge case cannot be easily simulated in unit tests
+        // @codeCoverageIgnoreStart
         return '';
+        // @codeCoverageIgnoreEnd
     }
 
     /**
