@@ -276,4 +276,68 @@ class GitRepository
 
         return $process;
     }
+
+    /**
+     * Gets the path to the project-specific config file (.git/stud.config).
+     */
+    public function getProjectConfigPath(): string
+    {
+        $process = $this->runQuietly('git rev-parse --git-dir');
+        if (!$process->isSuccessful()) {
+            throw new \RuntimeException('Not in a git repository.');
+        }
+        $gitDir = trim($process->getOutput());
+        return rtrim($gitDir, '/') . '/stud.config';
+    }
+
+    /**
+     * Reads the project-specific config file.
+     * Returns an empty array if the file doesn't exist.
+     * 
+     * @return array{projectKey?: string, transitionId?: int}
+     */
+    public function readProjectConfig(): array
+    {
+        $configPath = $this->getProjectConfigPath();
+        if (!file_exists($configPath)) {
+            return [];
+        }
+
+        $content = @file_get_contents($configPath);
+        if ($content === false) {
+            return [];
+        }
+
+        $config = \Symfony\Component\Yaml\Yaml::parse($content);
+        return is_array($config) ? $config : [];
+    }
+
+    /**
+     * Writes the project-specific config file.
+     * 
+     * @param array{projectKey?: string, transitionId?: int} $config
+     */
+    public function writeProjectConfig(array $config): void
+    {
+        $configPath = $this->getProjectConfigPath();
+        $configDir = dirname($configPath);
+        
+        if (!is_dir($configDir)) {
+            throw new \RuntimeException("Git directory not found: {$configDir}");
+        }
+
+        $yaml = \Symfony\Component\Yaml\Yaml::dump($config);
+        file_put_contents($configPath, $yaml);
+    }
+
+    /**
+     * Gets the project key from a Jira issue key (e.g., "PROJ-123" -> "PROJ").
+     */
+    public function getProjectKeyFromIssueKey(string $issueKey): string
+    {
+        if (preg_match('/^([A-Z]+)-\d+$/', strtoupper($issueKey), $matches)) {
+            return $matches[1];
+        }
+        throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
+    }
 }

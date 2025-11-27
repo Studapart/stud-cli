@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Note : Le propriétaire et le nom du dépôt seront automatiquement détectés depuis votre remote git."
       provider_prompt: "Sélectionnez votre fournisseur Git"
       token_prompt: "Entrez votre PAT du fournisseur Git (laissez vide pour conserver l'existant)"
+    jira_transition:
+      title: "Configuration de transition Jira"
+      description: "Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket."
+      prompt: "Activer la transition automatique Jira vers 'En cours' ?"
     success: "Configuration enregistrée avec succès !"
     completion:
       title: "Configuration de l'auto-complétion du shell"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Récupération des dernières modifications depuis origin..."
     creating_branch: "Création de la nouvelle branche : %branch%"
     success: "Branche '%branch%' créée depuis '%base%'."
+    assigning: "Attribution du ticket %key% à l'utilisateur actuel..."
+    assign_error: "Échec de l'attribution du ticket : %error%"
+    no_transitions: "Aucune transition vers 'En cours' disponible pour le ticket %key%. Transition ignorée."
+    select_transition: "Sélectionnez la transition vers 'En cours' :"
+    invalid_selection: "Sélection de transition invalide."
+    save_transition: "Souhaitez-vous enregistrer ce choix de transition pour le projet '%project%' ?"
+    transition_saved: "Choix de transition enregistré pour le projet '%project%'."
+    using_cached_transition: "Utilisation de l'ID de transition en cache : %id%"
+    transition_success: "✅ Ticket %key% transitionné vers 'En cours'"
+    transition_error: "Échec de la récupération des transitions : %error%"
+    transition_exec_error: "Échec de l'exécution de la transition : %error%. Poursuite de la création de branche."
 
 # Item Show Handler
   show:

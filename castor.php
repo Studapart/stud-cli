@@ -416,7 +416,7 @@ function items_start(
     
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config());
     $handler->handle(io(), $key);
 }
 

@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Lưu ý: Chủ sở hữu và tên kho lưu trữ sẽ được tự động phát hiện từ git remote của bạn."
       provider_prompt: "Chọn nhà cung cấp Git của bạn"
       token_prompt: "Nhập PAT nhà cung cấp Git của bạn (để trống để giữ nguyên giá trị hiện có)"
+    jira_transition:
+      title: "Cấu hình chuyển đổi Jira"
+      description: "Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue."
+      prompt: "Bật chuyển đổi tự động Jira sang 'Đang thực hiện'?"
     success: "Cấu hình đã được lưu thành công!"
     completion:
       title: "Thiết lập Tự động hoàn thành Shell"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Đang lấy các thay đổi mới nhất từ origin..."
     creating_branch: "Đang tạo nhánh mới: %branch%"
     success: "Nhánh '%branch%' đã được tạo từ '%base%'."
+    assigning: "Đang gán issue %key% cho người dùng hiện tại..."
+    assign_error: "Lỗi gán issue: %error%"
+    no_transitions: "Không có chuyển đổi 'Đang thực hiện' nào có sẵn cho issue %key%. Bỏ qua chuyển đổi."
+    select_transition: "Chọn chuyển đổi sang 'Đang thực hiện':"
+    invalid_selection: "Lựa chọn chuyển đổi không hợp lệ."
+    save_transition: "Bạn có muốn lưu lựa chọn chuyển đổi này cho dự án '%project%' không?"
+    transition_saved: "Lựa chọn chuyển đổi đã được lưu cho dự án '%project%'."
+    using_cached_transition: "Đang sử dụng ID chuyển đổi đã lưu: %id%"
+    transition_success: "✅ Issue %key% đã chuyển sang 'Đang thực hiện'"
+    transition_error: "Lỗi lấy chuyển đổi: %error%"
+    transition_exec_error: "Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh."
 
 # Item Show Handler
   show:

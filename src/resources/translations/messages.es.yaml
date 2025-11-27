@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Nota: El propietario y el nombre del repositorio se detectarán automáticamente desde su remote git."
       provider_prompt: "Seleccione su proveedor Git"
       token_prompt: "Ingrese su PAT del proveedor Git (deje en blanco para mantener el existente)"
+    jira_transition:
+      title: "Configuración de transición de Jira"
+      description: "Habilitar transición automática a 'En progreso' al iniciar trabajo en un ticket."
+      prompt: "¿Habilitar transición automática de Jira a 'En progreso'?"
     success: "¡Configuración guardada exitosamente!"
     completion:
       title: "Configuración de auto-completado del shell"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Obteniendo los últimos cambios desde origin..."
     creating_branch: "Creando nueva rama: %branch%"
     success: "Rama '%branch%' creada desde '%base%'."
+    assigning: "Asignando ticket %key% al usuario actual..."
+    assign_error: "Error al asignar ticket: %error%"
+    no_transitions: "No hay transiciones a 'En progreso' disponibles para el ticket %key%. Transición omitida."
+    select_transition: "Seleccione la transición a 'En progreso':"
+    invalid_selection: "Selección de transición inválida."
+    save_transition: "¿Desea guardar esta elección de transición para el proyecto '%project%'?"
+    transition_saved: "Elección de transición guardada para el proyecto '%project%'."
+    using_cached_transition: "Usando ID de transición en caché: %id%"
+    transition_success: "✅ Ticket %key% transitado a 'En progreso'"
+    transition_error: "Error al obtener transiciones: %error%"
+    transition_exec_error: "Error al ejecutar transición: %error%. Continuando con la creación de rama."
 
 # Item Show Handler
   show:

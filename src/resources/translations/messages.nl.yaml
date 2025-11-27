@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote."
       provider_prompt: "Selecteer uw Git provider"
       token_prompt: "Voer uw Git provider PAT in (laat leeg om bestaande te behouden)"
+    jira_transition:
+      title: "Jira Transitie Configuratie"
+      description: "Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket."
+      prompt: "Automatische Jira transitie naar 'In Uitvoering' inschakelen?"
     success: "Configuratie succesvol opgeslagen!"
     completion:
       title: "Shell Auto-aanvulling Instellen"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Laatste wijzigingen ophalen van origin..."
     creating_branch: "Nieuwe branch aanmaken: %branch%"
     success: "Branch '%branch%' aangemaakt vanaf '%base%'."
+    assigning: "Ticket %key% toewijzen aan huidige gebruiker..."
+    assign_error: "Toewijzen van ticket mislukt: %error%"
+    no_transitions: "Geen 'In Uitvoering' transities beschikbaar voor ticket %key%. Transitie overgeslagen."
+    select_transition: "Selecteer de transitie naar 'In Uitvoering':"
+    invalid_selection: "Ongeldige transitie selectie."
+    save_transition: "Wilt u deze transitiekeuze opslaan voor project '%project%'?"
+    transition_saved: "Transitiekeuze opgeslagen voor project '%project%'."
+    using_cached_transition: "Gebruik gecachte transitie ID: %id%"
+    transition_success: "✅ Ticket %key% overgezet naar 'In Uitvoering'"
+    transition_error: "Ophalen van transities mislukt: %error%"
+    transition_exec_error: "Uitvoeren van transitie mislukt: %error%. Doorgaan met aanmaken van branch."
 
 # Item Show Handler
   show:
