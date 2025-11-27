@@ -327,12 +327,6 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        // Mock user choice - we'll need to extend the handler or use a different approach
-        // For now, we'll test that the method filters correctly
-        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
-        $this->assertCount(1, $filtered);
-        $this->assertSame(11, $filtered[0]['id']);
-
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
@@ -367,64 +361,6 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testFilterInProgressTransitions(): void
-    {
-        $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
-            [
-                'id' => 21,
-                'name' => 'Done',
-                'to' => [
-                    'name' => 'Done',
-                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
-                ],
-            ],
-            [
-                'id' => 31,
-                'name' => 'Resume',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
-        ];
-
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
-
-        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
-
-        $this->assertCount(2, $filtered);
-        $ids = array_column($filtered, 'id');
-        $this->assertContains(11, $ids);
-        $this->assertContains(31, $ids);
-    }
-
-    public function testFilterInProgressTransitionsReturnsEmptyWhenNoneMatch(): void
-    {
-        $transitions = [
-            [
-                'id' => 21,
-                'name' => 'Done',
-                'to' => [
-                    'name' => 'Done',
-                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
-                ],
-            ],
-        ];
-
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
-
-        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
-
-        $this->assertEmpty($filtered);
-    }
 
     public function testHandleWithTransitionEnabledAndUserDeclinesToSave(): void
     {
@@ -1042,11 +978,10 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testHandleWithTransitionEnabledAndNullTransitionIdAfterInteractiveLookup(): void
+    public function testHandleWithTransitionEnabledAndNonInProgressTransition(): void
     {
-        // This tests the path where transitionId is null after interactive lookup
-        // but we don't return early - this shouldn't happen in normal flow, but
-        // we need to test the closing brace at line 151 when transitionId is null
+        // This tests that all transitions are shown, not just 'in_progress' ones
+        // Previously, transitions with statusCategory 'done' would be filtered out
         $workItem = new WorkItem(
             id: '10001',
             key: 'TPW-35',
@@ -1081,13 +1016,13 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn([]); // No cached transition
 
-        // Return transitions but they get filtered out (none are 'in_progress')
+        // Return transitions that are not 'in_progress' - these should now be shown
         $transitions = [
             [
                 'id' => 21,
-                'name' => 'Done',
+                'name' => 'Block',
                 'to' => [
-                    'name' => 'Done',
+                    'name' => 'Blocked',
                     'statusCategory' => ['key' => 'done', 'name' => 'Done'],
                 ],
             ],
@@ -1098,9 +1033,14 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        // This should trigger the warning and return early at line 95
-        // But we're testing that the path where transitionId remains null
-        // and we skip the transition execution block is covered
+        $this->gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with(['projectKey' => 'TPW', 'transitionId' => 21]);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 21);
+
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
@@ -1109,7 +1049,14 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "0\n"); // Select transition
+        fwrite($inputStream, "y\n"); // Save choice
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io, 'TPW-35');
 
