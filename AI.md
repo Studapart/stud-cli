@@ -24,7 +24,7 @@ For your task, you MUST follow these steps:
 6.  **Review**: Review your changes and compare them with the ticket's description to make sure your changes cover the needs.
 7.  **Commit**: Use `stud commit` to generate the commit message.
 8.  **Submit**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous steps, including testing and documentation, are complete.
-9.  **Report**: Report back to the user explaining the changes you've made and how they align with the ticket's description. Use a TODO list approach with OK / KO status for each item. And when you had to make assumptions or changes that were not requested, list them and explain why you did them.
+9.  **Report**: Report back to the user explaining the changes you've made and how they align with the ticket's description. Use a TODO list approach with OK / KO status for each item. And when you had to make assumptions or changes that were not requested, list them and explain why you did them. **After submitting the PR (Step 8), you should pipe your report directly to the PR as a comment using `stud pr:comment` (or `stud pc`).** For example: `echo "Your report content here" | stud pr:comment`
 10.  **Iterate**: Ask the user if he wants more work to be done on the ticket OR if you should work on another task.
 
 ## 4. Technical Context

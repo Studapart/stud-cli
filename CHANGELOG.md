@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `stud pr:comment` (alias `pc`) command to post comments to active Pull Requests with STDIN support for automation workflows [SCI-10]
+
 ### Changed
 - Improve `stud items:show` command to display description in dedicated sections with automatic text sanitization and divider detection [SCI-8]
 

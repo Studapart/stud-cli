@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Werk Pull Request op na konsepstatus..."
   error_update_draft: "Kon nie konsepstatus van Pull Request opdateer nie.\nFout: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Plaas kommentaar op Pull Request"
+    error_no_provider: "Geen Git verskaffer gekonfigureer vir hierdie projek nie."
+    error_no_input: "Geen kommentaar inhoud verskaf nie.\nVerskaf asseblief inhoud via STDIN (pyp) of as 'n direkte argument.\nVoorbeeld: echo \"Kommentaar teks\" | stud pr:comment\nVoorbeeld: stud pr:comment \"Kommentaar teks\""
+    error_no_pr: "Kon nie 'n aktiewe Pull Request vir die huidige tak vind nie."
+    error_post: "Kon nie kommentaar op Pull Request plaas nie.\nFout: %error%"
+    finding_pr: "Soek Pull Request vir tak: %branch%"
+    posting: "Plaas kommentaar op Pull Request #%number%..."
+    success: "✅ Kommentaar suksesvol geplaas op Pull Request #%number%"
+    using_stdin: "Lees kommentaar van STDIN..."
+    using_argument: "Gebruik kommentaar van argument..."
+
 # Commit Handler
 commit:
   section: "Konvensionele Commit Helper"
@@ -246,6 +260,7 @@ help:
   command_commit: "Lei jou deur die maak van 'n konvensionele commit."
   command_please: "'n Veilige force-push vir gevorderde gebruikers (force-with-lease)."
   command_submit: "Stuur die huidige tak en skep 'n Pull Request."
+  command_pr_comment: "Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument."
   command_status: "'n Vinnige \"waar is ek?\" dashboard."
   command_release: "Skep 'n nuwe vrystelling tak en verhoog die weergawe."
   command_deploy: "Deploy die huidige vrystelling tak."

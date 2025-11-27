@@ -212,4 +212,27 @@ class GithubProvider
 
         return $response->toArray();
     }
+
+    public function createComment(int $issueNumber, string $body): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
+        $payload = [
+            'body' => $body,
+        ];
+
+        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+
+        if ($response->getStatusCode() !== 201) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
 }

@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Đang cập nhật Pull Request sang trạng thái bản nháp..."
   error_update_draft: "Không thể cập nhật trạng thái bản nháp của Pull Request.\nLỗi: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Đăng bình luận trên Pull Request"
+    error_no_provider: "Chưa cấu hình nhà cung cấp Git cho dự án này."
+    error_no_input: "Không có nội dung bình luận được cung cấp.\nVui lòng cung cấp nội dung qua STDIN (ống dẫn) hoặc như một đối số trực tiếp.\nVí dụ: echo \"Văn bản bình luận\" | stud pr:comment\nVí dụ: stud pr:comment \"Văn bản bình luận\""
+    error_no_pr: "Không tìm thấy Pull Request đang hoạt động cho nhánh hiện tại."
+    error_post: "Không thể đăng bình luận trên Pull Request.\nLỗi: %error%"
+    finding_pr: "Đang tìm Pull Request cho nhánh: %branch%"
+    posting: "Đang đăng bình luận trên Pull Request #%number%..."
+    success: "✅ Bình luận đã được đăng thành công trên Pull Request #%number%"
+    using_stdin: "Đang đọc bình luận từ STDIN..."
+    using_argument: "Đang sử dụng bình luận từ đối số..."
+
 # Commit Handler
 commit:
   section: "Trợ lý Commit thông thường"
@@ -246,6 +260,7 @@ help:
   command_commit: "Hướng dẫn bạn tạo một commit thông thường."
   command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
   command_submit: "Đẩy nhánh hiện tại và tạo Pull Request."
+  command_pr_comment: "Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp."
   command_status: "Bảng điều khiển \"tôi đang ở đâu?\" nhanh."
   command_release: "Tạo nhánh phát hành mới và tăng phiên bản."
   command_deploy: "Triển khai nhánh phát hành hiện tại."

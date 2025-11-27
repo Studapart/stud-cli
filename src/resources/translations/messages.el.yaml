@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Ενημέρωση Pull Request σε κατάσταση προσχεδίου..."
   error_update_draft: "Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.\nΣφάλμα: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Δημοσίευση σχολίου στο Pull Request"
+    error_no_provider: "Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο."
+    error_no_input: "Δεν παρέχεται περιεχόμενο σχολίου.\nΠαρακαλώ παρέχετε περιεχόμενο μέσω STDIN (σωλήνωση) ή ως άμεσο όρισμα.\nΠαράδειγμα: echo \"Κείμενο σχολίου\" | stud pr:comment\nΠαράδειγμα: stud pr:comment \"Κείμενο σχολίου\""
+    error_no_pr: "Δεν ήταν δυνατή η εύρεση ενεργού Pull Request για τον τρέχοντα κλάδο."
+    error_post: "Αποτυχία δημοσίευσης σχολίου στο Pull Request.\nΣφάλμα: %error%"
+    finding_pr: "Εύρεση Pull Request για τον κλάδο: %branch%"
+    posting: "Δημοσίευση σχολίου στο Pull Request #%number%..."
+    success: "✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%"
+    using_stdin: "Ανάγνωση σχολίου από STDIN..."
+    using_argument: "Χρήση σχολίου από όρισμα..."
+
 # Commit Handler
 commit:
   section: "Βοηθός Συμβατικού Commit"
@@ -246,6 +260,7 @@ help:
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
   command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
   command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
+  command_pr_comment: "Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα."
   command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."
   command_release: "Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση."
   command_deploy: "Αναπτύσσει τον τρέχοντα κλάδο release."

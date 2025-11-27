@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Pull Request bijwerken naar conceptstatus..."
   error_update_draft: "Fout bij bijwerken van conceptstatus van Pull Request.\nFout: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Commentaar plaatsen op Pull Request"
+    error_no_provider: "Geen Git provider geconfigureerd voor dit project."
+    error_no_input: "Geen commentaarinhoud opgegeven.\nGeef alstublieft inhoud op via STDIN (piping) of als direct argument.\nVoorbeeld: echo \"Commentaar tekst\" | stud pr:comment\nVoorbeeld: stud pr:comment \"Commentaar tekst\""
+    error_no_pr: "Kon geen actieve Pull Request vinden voor de huidige branch."
+    error_post: "Fout bij plaatsen van commentaar op Pull Request.\nFout: %error%"
+    finding_pr: "Zoeken naar Pull Request voor branch: %branch%"
+    posting: "Commentaar plaatsen op Pull Request #%number%..."
+    success: "✅ Commentaar succesvol geplaatst op Pull Request #%number%"
+    using_stdin: "Commentaar lezen van STDIN..."
+    using_argument: "Commentaar gebruiken van argument..."
+
 # Commit Handler
 commit:
   section: "Conventionele Commit Helper"
@@ -246,6 +260,7 @@ help:
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
   command_submit: "Pusht de huidige tak en maakt een Pull Request."
+  command_pr_comment: "Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument."
   command_status: "Een snelle \"waar ben ik?\" dashboard."
   command_release: "Maakt een nieuwe release tak en verhoogt de versie."
   command_deploy: "Deployt de huidige release tak."

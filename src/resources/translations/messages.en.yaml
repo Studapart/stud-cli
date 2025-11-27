@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Updating Pull Request to draft status..."
   error_update_draft: "Failed to update Pull Request draft status.\nError: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Posting Pull Request Comment"
+    error_no_provider: "No Git provider configured for this project."
+    error_no_input: "No comment content provided.\nPlease provide content via STDIN (piping) or as a direct argument.\nExample: echo \"Comment text\" | stud pr:comment\nExample: stud pr:comment \"Comment text\""
+    error_no_pr: "Could not find an active Pull Request for the current branch."
+    error_post: "Failed to post comment to Pull Request.\nError: %error%"
+    finding_pr: "Finding Pull Request for branch: %branch%"
+    posting: "Posting comment to Pull Request #%number%..."
+    success: "✅ Comment posted successfully to Pull Request #%number%"
+    using_stdin: "Reading comment from STDIN..."
+    using_argument: "Using comment from argument..."
+
 # Commit Handler
 commit:
   section: "Conventional Commit Helper"
@@ -246,6 +260,7 @@ help:
   command_commit: "Guides you through making a conventional commit."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_submit: "Pushes the current branch and creates a Pull Request."
+  command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."

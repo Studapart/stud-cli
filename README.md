@@ -324,6 +324,24 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --draft --labels "bug,ui"
         ```
 
+-   **`stud pr:comment`** (Alias: `stud pc`)
+    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.
+    -   **Argument:** `<message>` (optional): The comment message. If not provided, content will be read from STDIN.
+    -   **Usage:**
+        ```bash
+        # Piped input (preferred for automation/AI workflows)
+        echo "Report content" | stud pr:comment
+        cat report.md | stud pr:comment
+        
+        # Direct argument (manual/quick workflow)
+        stud pr:comment "Manual message"
+        stud pc "Quick comment"
+        
+        # Using alias with piped input
+        echo "Comment text" | stud pc
+        ```
+    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
+
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
     -   **Options:**

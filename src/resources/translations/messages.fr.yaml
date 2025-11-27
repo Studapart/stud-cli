@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Mise à jour de la Pull Request en statut brouillon..."
   error_update_draft: "Échec de la mise à jour du statut brouillon de la Pull Request.\nErreur : %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Publication d'un commentaire sur la Pull Request"
+    error_no_provider: "Aucun fournisseur Git configuré pour ce projet."
+    error_no_input: "Aucun contenu de commentaire fourni.\nVeuillez fournir le contenu via STDIN (pipeline) ou comme argument direct.\nExemple : echo \"Texte du commentaire\" | stud pr:comment\nExemple : stud pr:comment \"Texte du commentaire\""
+    error_no_pr: "Impossible de trouver une Pull Request active pour la branche actuelle."
+    error_post: "Échec de la publication du commentaire sur la Pull Request.\nErreur : %error%"
+    finding_pr: "Recherche de la Pull Request pour la branche : %branch%"
+    posting: "Publication du commentaire sur la Pull Request #%number%..."
+    success: "✅ Commentaire publié avec succès sur la Pull Request #%number%"
+    using_stdin: "Lecture du commentaire depuis STDIN..."
+    using_argument: "Utilisation du commentaire depuis l'argument..."
+
 # Commit Handler
 commit:
   section: "Assistant de commit conventionnel"
@@ -246,6 +260,7 @@ help:
   command_commit: "Vous guide à travers la création d'un commit conventionnel."
   command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."
   command_submit: "Pousse la branche actuelle et crée une Pull Request."
+  command_pr_comment: "Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct."
   command_status: "Un tableau de bord rapide \"où suis-je ?\"."
   command_release: "Crée une nouvelle branche de release et incrémente la version."
   command_deploy: "Déploie la branche de release actuelle."
