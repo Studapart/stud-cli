@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Nota: Repository eienaar en naam sal outomaties vanaf jou git remote gedetecteer word."
       provider_prompt: "Kies jou Git verskaffer"
       token_prompt: "Voer jou Git verskaffer PAT in (laat leeg om bestaande te behou)"
+    jira_transition:
+      title: "Jira Oorgang Konfigurasie"
+      description: "Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word."
+      prompt: "Aktiveer outomatiese Jira oorgang na 'In Proses'?"
     success: "Konfigurasie suksesvol gestoor!"
     completion:
       title: "Shell Outo-voltooiing Opstelling"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Kry nuutste veranderinge van origin..."
     creating_branch: "Skep nuwe tak: %branch%"
     success: "Tak '%branch%' geskep vanaf '%base%'."
+    assigning: "Ken item %key% toe aan huidige gebruiker..."
+    assign_error: "Toekenning van item misluk: %error%"
+    no_transitions: "Geen 'In Proses' oorgange beskikbaar vir item %key%. Oorgang oorgeslaan."
+    select_transition: "Kies die oorgang na 'In Proses':"
+    invalid_selection: "Ongeldige oorgang keuse."
+    save_transition: "Wil jy hierdie oorgang keuse stoor vir projek '%project%'?"
+    transition_saved: "Oorgang keuse gestoor vir projek '%project%'."
+    using_cached_transition: "Gebruik gekasde oorgang ID: %id%"
+    transition_success: "✅ Item %key% oorgegaan na 'In Proses'"
+    transition_error: "Kry oorgange misluk: %error%"
+    transition_exec_error: "Uitvoer oorgang misluk: %error%. Gaan voort met tak skepping."
 
 # Item Show Handler
   show:

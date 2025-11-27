@@ -66,6 +66,14 @@ class InitHandler
         $gitProvider = $io->choice($this->translator->trans('config.init.git.provider_prompt'), ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
         $gitToken = $io->askHidden($this->translator->trans('config.init.git.token_prompt'));
 
+        // Jira Transition Configuration
+        $io->section($this->translator->trans('config.init.jira_transition.title'));
+        $io->text($this->translator->trans('config.init.jira_transition.description'));
+        $jiraTransitionEnabled = $io->confirm(
+            $this->translator->trans('config.init.jira_transition.prompt'),
+            $existingConfig['JIRA_TRANSITION_ENABLED'] ?? false
+        );
+
         $config = [
             'LANGUAGE' => $languageChoice,
             'JIRA_URL' => rtrim($jiraUrl, '/'),
@@ -73,6 +81,7 @@ class InitHandler
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
             'GIT_PROVIDER' => $gitProvider,
             'GIT_TOKEN' => $gitToken ?: ($existingConfig['GIT_TOKEN'] ?? null),
+            'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 
         $configDir = $this->fileSystem->dirname($this->configPath);

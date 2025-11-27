@@ -904,4 +904,189 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->assertNull($name);
     }
+
+    public function testGetProjectConfigPath(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('.git');
+
+        $path = $this->gitRepository->getProjectConfigPath();
+
+        $this->assertSame('.git/stud.config', $path);
+    }
+
+    public function testGetProjectConfigPathWithTrailingSlash(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('.git/');
+
+        $path = $this->gitRepository->getProjectConfigPath();
+
+        $this->assertSame('.git/stud.config', $path);
+    }
+
+    public function testGetProjectConfigPathThrowsExceptionIfNotGitRepo(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Not in a git repository.');
+
+        $this->gitRepository->getProjectConfigPath();
+    }
+
+    public function testReadProjectConfigReturnsEmptyArrayWhenFileDoesNotExist(): void
+    {
+        // Mock getProjectConfigPath to return a non-existent file path
+        $configPath = sys_get_temp_dir() . '/nonexistent-stud-config-' . uniqid() . '.yaml';
+        
+        // We need to mock the getProjectConfigPath call
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn(dirname($configPath));
+
+        $config = $this->gitRepository->readProjectConfig();
+
+        $this->assertIsArray($config);
+        $this->assertEmpty($config);
+    }
+
+    public function testReadProjectConfigReturnsParsedConfig(): void
+    {
+        $configPath = sys_get_temp_dir() . '/stud-config-' . uniqid() . '.yaml';
+        $configData = [
+            'projectKey' => 'TEST',
+            'transitionId' => 11,
+        ];
+        file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($configData));
+
+        try {
+            $process = $this->createMock(Process::class);
+            $this->processFactory->expects($this->once())
+                ->method('create')
+                ->with('git rev-parse --git-dir')
+                ->willReturn($process);
+
+            $process->expects($this->once())
+                ->method('run');
+            $process->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process->expects($this->once())
+                ->method('getOutput')
+                ->willReturn(dirname($configPath));
+
+            // Override the config path by creating a new file in the expected location
+            $expectedPath = dirname($configPath) . '/stud.config';
+            file_put_contents($expectedPath, \Symfony\Component\Yaml\Yaml::dump($configData));
+
+            $config = $this->gitRepository->readProjectConfig();
+
+            $this->assertIsArray($config);
+            $this->assertSame('TEST', $config['projectKey']);
+            $this->assertSame(11, $config['transitionId']);
+        } finally {
+            @unlink($configPath);
+            @unlink(dirname($configPath) . '/stud.config');
+        }
+    }
+
+    public function testWriteProjectConfig(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $process = $this->createMock(Process::class);
+            $this->processFactory->expects($this->once())
+                ->method('create')
+                ->with('git rev-parse --git-dir')
+                ->willReturn($process);
+
+            $process->expects($this->once())
+                ->method('run');
+            $process->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $config = [
+                'projectKey' => 'TEST',
+                'transitionId' => 11,
+            ];
+
+            $this->gitRepository->writeProjectConfig($config);
+
+            $this->assertFileExists($configPath);
+            $parsed = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+            $this->assertSame('TEST', $parsed['projectKey']);
+            $this->assertSame(11, $parsed['transitionId']);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetProjectKeyFromIssueKey(): void
+    {
+        $this->assertSame('TEST', $this->gitRepository->getProjectKeyFromIssueKey('TEST-123'));
+        $this->assertSame('PROJ', $this->gitRepository->getProjectKeyFromIssueKey('PROJ-456'));
+        $this->assertSame('ABC', $this->gitRepository->getProjectKeyFromIssueKey('abc-789'));
+    }
+
+    public function testGetProjectKeyFromIssueKeyThrowsExceptionForInvalidFormat(): void
+    {
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Invalid Jira issue key format: INVALID');
+
+        $this->gitRepository->getProjectKeyFromIssueKey('INVALID');
+    }
 }

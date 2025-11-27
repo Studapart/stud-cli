@@ -273,13 +273,18 @@ These commands help you browse and view your Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
         stud items:start PROJ-123
         stud start BUG-456
         ```
+    -   **Transition Behavior:**
+        -   On first run for a project, you'll be prompted to select the appropriate 'In Progress' transition from available options.
+        -   Your choice is saved to `.git/stud.config` for future use in the same project.
+        -   Subsequent runs will use the cached transition ID automatically.
+        -   If no 'In Progress' transitions are available, a warning is displayed and branch creation continues.
 
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.

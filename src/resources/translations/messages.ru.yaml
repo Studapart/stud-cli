@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Примечание: Владелец и имя репозитория будут автоматически определены из вашего git remote."
       provider_prompt: "Выберите ваш провайдер Git"
       token_prompt: "Введите ваш PAT провайдера Git (оставьте пустым, чтобы сохранить существующий)"
+    jira_transition:
+      title: "Настройка перехода Jira"
+      description: "Включить автоматический переход в 'В работе' при начале работы над задачей."
+      prompt: "Включить автоматический переход Jira в 'В работе'?"
     success: "Конфигурация успешно сохранена!"
     completion:
       title: "Настройка автодополнения оболочки"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Получение последних изменений из origin..."
     creating_branch: "Создание новой ветки: %branch%"
     success: "Ветка '%branch%' создана из '%base%'."
+    assigning: "Назначение задачи %key% текущему пользователю..."
+    assign_error: "Ошибка назначения задачи: %error%"
+    no_transitions: "Нет доступных переходов в 'В работе' для задачи %key%. Переход пропущен."
+    select_transition: "Выберите переход в 'В работе':"
+    invalid_selection: "Неверный выбор перехода."
+    save_transition: "Хотите ли вы сохранить этот выбор перехода для проекта '%project%'?"
+    transition_saved: "Выбор перехода сохранен для проекта '%project%'."
+    using_cached_transition: "Использование кэшированного ID перехода: %id%"
+    transition_success: "✅ Задача %key% переведена в 'В работе'"
+    transition_error: "Ошибка получения переходов: %error%"
+    transition_exec_error: "Ошибка выполнения перехода: %error%. Продолжение создания ветки."
 
 # Item Show Handler
   show:

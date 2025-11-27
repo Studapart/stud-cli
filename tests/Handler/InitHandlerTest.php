@@ -68,6 +68,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -178,6 +179,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -294,6 +296,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -345,6 +348,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -397,6 +401,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -441,6 +446,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
 
@@ -495,6 +501,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
 
@@ -549,6 +556,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         // No completion prompt expected for unsupported shell, but provide input as safeguard
         // in case environment variable wasn't properly reset from previous test
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
@@ -636,6 +644,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_token\n");
         fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
         fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 

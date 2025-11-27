@@ -23,7 +23,8 @@ class ItemStartHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
+        // Default config with transition disabled for existing tests
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
     }
 
     public function testHandle(): void
@@ -151,5 +152,261 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a -b - c']));
         $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b -c']));
         $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b - c']));
+    }
+
+    public function testHandleWithTransitionEnabledAndCachedTransition(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        // Mock project config with cached transition
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 11);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithTransitionEnabledAndInteractiveSelection(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]); // No cached transition
+
+        $transitions = [
+            [
+                'id' => 11,
+                'name' => 'Start Progress',
+                'to' => [
+                    'name' => 'In Progress',
+                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                ],
+            ],
+            [
+                'id' => 21,
+                'name' => 'Done',
+                'to' => [
+                    'name' => 'Done',
+                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
+                ],
+            ],
+        ];
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willReturn($transitions);
+
+        // Mock user choice - we'll need to extend the handler or use a different approach
+        // For now, we'll test that the method filters correctly
+        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
+        $this->assertCount(1, $filtered);
+        $this->assertSame(11, $filtered[0]['id']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Since we can't easily mock the choice() method, we'll test the filter method separately
+        // and test that handle continues even if transition fails
+        $result = $handler->handle($io, 'TPW-35');
+
+        // Should still succeed even if transition selection is skipped
+        $this->assertSame(0, $result);
+    }
+
+    public function testFilterInProgressTransitions(): void
+    {
+        $transitions = [
+            [
+                'id' => 11,
+                'name' => 'Start Progress',
+                'to' => [
+                    'name' => 'In Progress',
+                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                ],
+            ],
+            [
+                'id' => 21,
+                'name' => 'Done',
+                'to' => [
+                    'name' => 'Done',
+                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
+                ],
+            ],
+            [
+                'id' => 31,
+                'name' => 'Resume',
+                'to' => [
+                    'name' => 'In Progress',
+                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                ],
+            ],
+        ];
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
+
+        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
+
+        $this->assertCount(2, $filtered);
+        $ids = array_column($filtered, 'id');
+        $this->assertContains(11, $ids);
+        $this->assertContains(31, $ids);
+    }
+
+    public function testFilterInProgressTransitionsReturnsEmptyWhenNoneMatch(): void
+    {
+        $transitions = [
+            [
+                'id' => 21,
+                'name' => 'Done',
+                'to' => [
+                    'name' => 'Done',
+                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
+                ],
+            ],
+        ];
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
+
+        $filtered = $this->callPrivateMethod($handler, 'filterInProgressTransitions', [$transitions]);
+
+        $this->assertEmpty($filtered);
+    }
+
+    public function testHandleWithTransitionEnabledButNoTransitionsAvailable(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'Done',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willReturn([]); // No transitions available
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
     }
 }

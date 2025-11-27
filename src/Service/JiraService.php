@@ -119,6 +119,65 @@ class JiraService
     }
     
     /**
+     * Gets all available transitions for an issue.
+     * 
+     * @return array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}>
+     */
+    public function getTransitions(string $key): array
+    {
+        $url = "/rest/api/3/issue/{$key}/transitions";
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException("Could not fetch transitions for issue \"{$key}\".");
+        }
+
+        $data = $response->toArray();
+        return $data['transitions'] ?? [];
+    }
+
+    /**
+     * Executes a transition on an issue.
+     */
+    public function transitionIssue(string $key, int $transitionId): void
+    {
+        $url = "/rest/api/3/issue/{$key}/transitions";
+        $response = $this->client->request('POST', $url, [
+            'json' => [
+                'transition' => [
+                    'id' => $transitionId,
+                ],
+            ],
+        ]);
+
+        if ($response->getStatusCode() !== 204) {
+            throw new \RuntimeException("Could not execute transition {$transitionId} for issue \"{$key}\".");
+        }
+    }
+
+    /**
+     * Assigns an issue to a user.
+     * 
+     * @param string $key The issue key
+     * @param string $accountId The Jira account ID of the user (use 'currentUser()' for current user)
+     */
+    public function assignIssue(string $key, string $accountId = 'currentUser()'): void
+    {
+        $url = "/rest/api/3/issue/{$key}/assignee";
+        $payload = $accountId === 'currentUser()' 
+            ? ['accountId' => null] // null means assign to current user
+            : ['accountId' => $accountId];
+        
+        $response = $this->client->request('PUT', $url, [
+            'json' => $payload,
+        ]);
+
+        if ($response->getStatusCode() !== 204) {
+            throw new \RuntimeException("Could not assign issue \"{$key}\" to user.");
+        }
+    }
+
+    /**
      * Converts HTML content to plain text suitable for terminal display.
      * Uses Stevebauman\Hypertext library for robust conversion.
      * 

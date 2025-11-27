@@ -20,6 +20,10 @@ config:
       auto_detect_note: "Note: Repository owner and name will be automatically detected from your git remote."
       provider_prompt: "Select your Git provider"
       token_prompt: "Enter your Git provider PAT (leave blank to keep existing)"
+    jira_transition:
+      title: "Jira Transition Configuration"
+      description: "Enable automatic transition to 'In Progress' when starting work on an issue."
+      prompt: "Enable automatic Jira transition to 'In Progress'?"
     success: "Configuration saved successfully!"
     completion:
       title: "Shell Auto-Completion Setup"
@@ -46,6 +50,17 @@ item:
     fetching_changes: "Fetching latest changes from origin..."
     creating_branch: "Creating new branch: %branch%"
     success: "Branch '%branch%' created from '%base%'."
+    assigning: "Assigning issue %key% to current user..."
+    assign_error: "Failed to assign issue: %error%"
+    no_transitions: "No 'In Progress' transitions available for issue %key%. Skipping transition."
+    select_transition: "Select the transition to 'In Progress':"
+    invalid_selection: "Invalid transition selection."
+    save_transition: "Would you like to save this transition choice for project '%project%'?"
+    transition_saved: "Transition choice saved for project '%project%'."
+    using_cached_transition: "Using cached transition ID: %id%"
+    transition_success: "✅ Issue %key% transitioned to 'In Progress'"
+    transition_error: "Failed to fetch transitions: %error%"
+    transition_exec_error: "Failed to execute transition: %error%. Continuing with branch creation."
 
 # Item Show Handler
   show:
