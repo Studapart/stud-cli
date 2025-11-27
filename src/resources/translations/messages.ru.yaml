@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Обновление Pull Request до статуса черновика..."
   error_update_draft: "Ошибка при обновлении статуса черновика Pull Request.\nОшибка: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Публикация комментария в Pull Request"
+    error_no_provider: "Провайдер Git не настроен для этого проекта."
+    error_no_input: "Содержимое комментария не предоставлено.\nПожалуйста, предоставьте содержимое через STDIN (конвейер) или как прямой аргумент.\nПример: echo \"Текст комментария\" | stud pr:comment\nПример: stud pr:comment \"Текст комментария\""
+    error_no_pr: "Не удалось найти активный Pull Request для текущей ветки."
+    error_post: "Ошибка при публикации комментария в Pull Request.\nОшибка: %error%"
+    finding_pr: "Поиск Pull Request для ветки: %branch%"
+    posting: "Публикация комментария в Pull Request #%number%..."
+    success: "✅ Комментарий успешно опубликован в Pull Request #%number%"
+    using_stdin: "Чтение комментария из STDIN..."
+    using_argument: "Использование комментария из аргумента..."
+
 # Commit Handler
 commit:
   section: "Помощник обычных коммитов"
@@ -246,6 +260,7 @@ help:
   command_commit: "Проводит вас через создание обычного коммита."
   command_please: "Безопасный force-push для опытных пользователей (force-with-lease)."
   command_submit: "Отправляет текущую ветку и создает Pull Request."
+  command_pr_comment: "Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент."
   command_status: "Быстрая панель управления \"где я?\"."
   command_release: "Создает новую ветку релиза и увеличивает версию."
   command_deploy: "Развертывает текущую ветку релиза."

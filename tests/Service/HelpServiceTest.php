@@ -55,6 +55,7 @@ class HelpServiceTest extends TestCase
             'please',
             'status',
             'submit',
+            'pr:comment',
             'update',
             'release',
             'deploy',
@@ -389,6 +390,39 @@ class HelpServiceTest extends TestCase
         // Test intent: should include JIRA-33 example for key argument
         $this->assertStringContainsString('JIRA-33', $result);
         $this->assertStringContainsString('items:show', $result);
+    }
+
+    public function testDisplayCommandHelpWithPrCommentCommand(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test pr:comment command which has alias 'pc' and argument '<message>'
+        $this->helpService->displayCommandHelp($io, 'pr:comment');
+
+        $outputText = $output->fetch();
+        
+        // Test intent: should display help with alias and argument
+        $this->assertStringContainsString('Help:', $outputText);
+        $this->assertStringContainsString('pr:comment', $outputText);
+        $this->assertStringContainsString('pc', $outputText);
+        $this->assertStringContainsString('<message>', $outputText);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithPrComment(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with pr:comment
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+        
+        $result = $method->invoke($this->helpService, 'pr:comment');
+        
+        // Test intent: should include message argument example
+        $this->assertStringContainsString('pr:comment', $result);
+        $this->assertStringContainsString('pc', $result);
+        $this->assertStringContainsString('<message>', $result);
+        $this->assertStringContainsString('"Comment text"', $result);
     }
 }
 

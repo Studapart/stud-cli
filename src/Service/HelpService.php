@@ -21,6 +21,7 @@ class HelpService
         'please' => 'stud please',
         'status' => 'stud status',
         'submit' => 'stud submit',
+        'pr:comment' => 'stud pr:comment',
         'update' => 'stud update',
         'release' => 'stud release',
         'deploy' => 'stud deploy',
@@ -199,6 +200,12 @@ class HelpService
                 ],
                 'arguments' => [],
             ],
+            'pr:comment' => [
+                'alias' => 'pc',
+                'description_key' => 'help.command_pr_comment',
+                'options' => [],
+                'arguments' => ['<message>'],
+            ],
             'update' => [
                 'alias' => 'up',
                 'description_key' => 'help.command_update',
@@ -283,6 +290,8 @@ class HelpService
                 $exampleArgs[] = '"project = PROJ and status = Done"';
             } elseif ($arg === '<shell>') {
                 $exampleArgs[] = 'bash';
+            } elseif ($arg === '<message>') {
+                $exampleArgs[] = '"Comment text"';
             } else {
                 // Fallback for unknown argument types
                 // Currently all commands use known patterns, so this path is untestable

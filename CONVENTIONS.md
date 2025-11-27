@@ -44,9 +44,9 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 ### Goal: 100% Test Coverage
 
-100% test coverage is prioritized over architectural purity. Every line of code that can be tested should be tested. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (e.g., PHAR-specific code, edge cases that cannot be simulated).
+**Critical**: 100% test coverage is prioritized over architectural purity. Every line of code that can be tested must be tested. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (e.g., PHAR-specific code, edge cases that cannot be simulated).
 
-**Important**: When using `@codeCoverageIgnoreStart` and `@codeCoverageIgnoreEnd`, these annotations must be on their own lines. If you need to add an explanatory comment, place it on a separate line before the ignore tag:
+**Important**: When using `@codeCoverageIgnore`,  `@codeCoverageIgnoreStart` and `@codeCoverageIgnoreEnd`, these annotations must be on their own lines. If you need to add an explanatory comment, place it on a separate line before the ignore tag:
 
 ```php
 // Exception from rename() is extremely rare and hard to simulate

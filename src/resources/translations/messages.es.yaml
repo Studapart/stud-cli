@@ -132,6 +132,20 @@ submit:
   updating_to_draft: "Actualizando Pull Request a estado borrador..."
   error_update_draft: "Error al actualizar el estado borrador de la Pull Request.\nError: %error%"
 
+# PR Comment Handler
+pr:
+  comment:
+    section: "Publicar comentario en Pull Request"
+    error_no_provider: "No hay proveedor Git configurado para este proyecto."
+    error_no_input: "No se proporcionó contenido de comentario.\nPor favor proporcione contenido vía STDIN (tubería) o como argumento directo.\nEjemplo: echo \"Texto del comentario\" | stud pr:comment\nEjemplo: stud pr:comment \"Texto del comentario\""
+    error_no_pr: "No se pudo encontrar una Pull Request activa para la rama actual."
+    error_post: "Error al publicar comentario en Pull Request.\nError: %error%"
+    finding_pr: "Buscando Pull Request para la rama: %branch%"
+    posting: "Publicando comentario en Pull Request #%number%..."
+    success: "✅ Comentario publicado exitosamente en Pull Request #%number%"
+    using_stdin: "Leyendo comentario desde STDIN..."
+    using_argument: "Usando comentario desde argumento..."
+
 # Commit Handler
 commit:
   section: "Asistente de commit convencional"
@@ -246,6 +260,7 @@ help:
   command_commit: "Le guía a través de la creación de un commit convencional."
   command_please: "Un force-push seguro para usuario avanzado (force-with-lease)."
   command_submit: "Envía la rama actual y crea una Pull Request."
+  command_pr_comment: "Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo."
   command_status: "Un panel de control rápido \"¿dónde estoy?\"."
   command_release: "Crea una nueva rama de release y aumenta la versión."
   command_deploy: "Despliega la rama de release actual."
