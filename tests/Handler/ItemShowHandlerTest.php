@@ -336,4 +336,225 @@ class ItemShowHandlerTest extends CommandTestCase
 
         $this->handler->handle($io, 'TPW-35');
     }
+
+    public function testSanitizeContentWithConsecutiveEmptyLines(): void
+    {
+        $lines = ['Line 1', '', '', 'Line 2', '', '', '', 'Line 3'];
+        $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
+        
+        $this->assertSame(['Line 1', '', 'Line 2', '', 'Line 3'], $result);
+    }
+
+    public function testSanitizeContentWithNoConsecutiveEmptyLines(): void
+    {
+        $lines = ['Line 1', 'Line 2', 'Line 3'];
+        $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
+        
+        $this->assertSame($lines, $result);
+    }
+
+    public function testSanitizeContentWithSingleEmptyLine(): void
+    {
+        $lines = ['Line 1', '', 'Line 2'];
+        $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
+        
+        $this->assertSame($lines, $result);
+    }
+
+    public function testParseDescriptionSectionsWithNoDividers(): void
+    {
+        $description = "Title: Test\nContent line 1\nContent line 2";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('title', $result[0]);
+        $this->assertArrayHasKey('contentLines', $result[0]);
+    }
+
+    public function testParseDescriptionSectionsWithDividers(): void
+    {
+        $description = "Section 1\n---\nSection 2\n---\nSection 3";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(3, $result);
+    }
+
+    public function testParseDescriptionSectionsWithEmptyDescription(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', ['']);
+        
+        $this->assertIsArray($result);
+        $this->assertEmpty($result);
+    }
+
+    public function testParseDescriptionSectionsWithWhitespaceOnly(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', ['   ']);
+        
+        $this->assertIsArray($result);
+        $this->assertEmpty($result);
+    }
+
+    public function testParseDescriptionSectionsWithSingleLineNotHeader(): void
+    {
+        $description = "Just a regular line of text";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should use default title and put the line as content
+        $this->assertNotEmpty($result[0]['contentLines']);
+    }
+
+    public function testParseDescriptionSectionsWithSectionHeaderPattern(): void
+    {
+        $description = "Title: This is a title\nContent here";
+        $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
+        
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        // Should recognize "Title:" pattern as a header
+        $this->assertStringContainsString('Title', $result[0]['title']);
+    }
+
+    public function testDisplayContentWithCheckboxes(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Checkbox 1', '[x] Checkbox 2', '[ ] Checkbox 3'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 3;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithCheckboxesAndSubItems(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[ ] Main item', 'Sub-item 1', 'Sub-item 2', '[x] Another item'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 2;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithMixedContent(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Regular text', '[ ] Checkbox item', 'More text'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content);
+            }));
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithEmptyLines(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Line 1', '', 'Line 2'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content) && in_array('Line 1', $content) && in_array('Line 2', $content);
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithOnlyText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Text line 1', 'Text line 2', 'Text line 3'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content) && count($content) === 3;
+            }));
+        
+        $io->expects($this->never())
+            ->method('listing');
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithCheckboxAtEnd(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['Text before', '[ ] Final checkbox'];
+        
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($content) {
+                return is_array($content) && in_array('Text before', $content);
+            }));
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 1;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayContentWithCheckedCheckbox(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $lines = ['[X] Checked item', '[x] Also checked'];
+        
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 2;
+            }));
+        
+        $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
+    }
+
+    public function testDisplayDescriptionWithEmptyString(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->never())
+            ->method('section');
+        
+        $io->expects($this->never())
+            ->method('text');
+        
+        $this->callPrivateMethod($this->handler, 'displayDescription', [$io, '']);
+    }
+
+    public function testDisplayDescriptionWithWhitespaceOnly(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        
+        $io->expects($this->never())
+            ->method('section');
+        
+        $io->expects($this->never())
+            ->method('text');
+        
+        $this->callPrivateMethod($this->handler, 'displayDescription', [$io, '   ']);
+    }
 }
