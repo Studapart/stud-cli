@@ -121,19 +121,27 @@ class JiraService
     /**
      * Converts HTML content to plain text suitable for terminal display.
      * Uses Stevebauman\Hypertext library for robust conversion.
+     * 
+     * Note: This method converts HTML to plain text and handles <hr> tags by
+     * converting them to dividers. Any further formatting, sanitization, or
+     * section parsing should be done by the handler/display layer.
      */
     protected function _convertHtmlToPlainText(string $html): string
     {
+        // Convert <hr> tags to divider markers before transformer processes them
+        // The transformer's HtmlPurifier removes <hr> tags, so we need to convert them first
+        // We'll replace <hr> with a pattern that will become a divider line after transformation
+        // Using a pattern that will be preserved: newline + dashes + newline
+        $html = preg_replace('/<hr\s*\/?>/i', "\n---\n", $html);
+        $html = preg_replace('/<hr\s+[^>]*\/?>/i', "\n---\n", $html);
+
         $text = $this->transformer
             ->keepLinks()
             ->keepNewLines()
             ->toText($html);
 
-        // Replace any occurrence of 4 or more hyphens with a newline, ---, newline
-        $text = preg_replace('/\-{4,}/', "\n---\n", $text);
-
-
-
+        // Don't remove leading whitespace here - let the handler do it
+        // This prevents accidentally removing non-whitespace characters
         return $text;
     }
 }
