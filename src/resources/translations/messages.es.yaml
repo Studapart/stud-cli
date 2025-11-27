@@ -179,6 +179,12 @@ update:
   changelog_section: "Cambios en la versión %version%"
   breaking_changes_detected: "⚠️  Cambios incompatibles detectados en esta actualización:"
   changelog_error: "No se pudo obtener el changelog"
+  success_hash_verified: "✅ Verificación del hash exitosa. El binario es auténtico."
+  error_hash_not_found: "Error de verificación de seguridad: No se pudo encontrar el archivo de checksum en la release.\nEl binario no puede ser verificado. Actualización cancelada por razones de seguridad."
+  error_hash_calculation: "Error de verificación de seguridad: No se pudo calcular el hash del archivo descargado.\nActualización cancelada por razones de seguridad."
+  error_hash_mismatch: "Error de verificación de seguridad: ¡Inconsistencia de hash detectada!\n\nHash esperado: %expected%\nHash calculado: %calculated%\n\nEl binario descargado puede estar corrupto o haber sido modificado.\nActualización cancelada por razones de seguridad."
+  downloading_checksum: "Descargando archivo de checksum desde"
+  checksum_download_error: "Error al descargar el archivo de checksum"
 
 # Release Handler
 release:

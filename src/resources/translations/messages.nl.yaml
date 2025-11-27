@@ -179,6 +179,12 @@ update:
   changelog_section: "Wijzigingen in versie %version%"
   breaking_changes_detected: "⚠️  Breaking changes gedetecteerd in deze update:"
   changelog_error: "Kon changelog niet ophalen"
+  success_hash_verified: "✅ Hash-verificatie geslaagd. Het binaire bestand is authentiek."
+  error_hash_not_found: "Beveiligingsverificatiefout: Kon het checksumbestand niet vinden in de release.\nHet binaire bestand kan niet worden geverifieerd. Update geannuleerd om veiligheidsredenen."
+  error_hash_calculation: "Beveiligingsverificatiefout: Kon de hash van het gedownloade bestand niet berekenen.\nUpdate geannuleerd om veiligheidsredenen."
+  error_hash_mismatch: "Beveiligingsverificatiefout: Hash-inconsistentie gedetecteerd!\n\nVerwachte hash: %expected%\nBerekende hash: %calculated%\n\nHet gedownloade binaire bestand kan corrupt zijn of zijn gewijzigd.\nUpdate geannuleerd om veiligheidsredenen."
+  downloading_checksum: "Checksumbestand downloaden vanaf"
+  checksum_download_error: "Fout bij downloaden van checksumbestand"
 
 # Release Handler
 release:

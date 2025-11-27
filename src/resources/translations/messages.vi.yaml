@@ -179,6 +179,12 @@ update:
   changelog_section: "Thay đổi trong phiên bản %version%"
   breaking_changes_detected: "⚠️  Phát hiện thay đổi phá vỡ trong bản cập nhật này:"
   changelog_error: "Không thể lấy changelog"
+  success_hash_verified: "✅ Xác minh hash thành công. Tệp nhị phân là xác thực."
+  error_hash_not_found: "Lỗi xác minh bảo mật: Không tìm thấy tệp checksum trong bản phát hành.\nTệp nhị phân không thể được xác minh. Cập nhật đã bị hủy vì lý do bảo mật."
+  error_hash_calculation: "Lỗi xác minh bảo mật: Không thể tính toán hash của tệp đã tải xuống.\nCập nhật đã bị hủy vì lý do bảo mật."
+  error_hash_mismatch: "Lỗi xác minh bảo mật: Phát hiện không khớp hash!\n\nHash mong đợi: %expected%\nHash đã tính: %calculated%\n\nTệp nhị phân đã tải xuống có thể bị hỏng hoặc đã bị sửa đổi.\nCập nhật đã bị hủy vì lý do bảo mật."
+  downloading_checksum: "Đang tải xuống tệp checksum từ"
+  checksum_download_error: "Lỗi khi tải xuống tệp checksum"
 
 # Release Handler
 release:
