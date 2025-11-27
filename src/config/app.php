@@ -5,5 +5,5 @@
 return array (
   'repo_slug' => 'studapart/stud-cli',
   'description' => 'Stud Cli DX - Jira & Git Workflow Streamliner',
-  'version' => '2.4.1',
+  'version' => '2.5.0',
 );

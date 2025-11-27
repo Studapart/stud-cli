@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-11-27
+
 ### Added
 - Add `stud pr:comment` (alias `pc`) command to post comments to active Pull Requests with STDIN support for automation workflows [SCI-10]
 - Add dynamic 'In Progress' transition support to `stud items:start` command with project-specific caching [SCI-11]
