@@ -179,6 +179,12 @@ update:
   changelog_section: "Veranderinge in weergawe %version%"
   breaking_changes_detected: "⚠️  Breaking changes opgespoor in hierdie opdatering:"
   changelog_error: "Kon nie changelog kry nie"
+  success_hash_verified: "✅ Hash-verifikasie suksesvol. Die binêre is eg."
+  error_hash_not_found: "Sekuriteitsverifikasiefout: Kon nie die checksum-lêer in die release vind nie.\nDie binêre kan nie geverifieer word nie. Opdatering gekanselleer om veiligheidsredes."
+  error_hash_calculation: "Sekuriteitsverifikasiefout: Kon nie die hash van die afgelaaide lêer bereken nie.\nOpdatering gekanselleer om veiligheidsredes."
+  error_hash_mismatch: "Sekuriteitsverifikasiefout: Hash-onkonsekwentheid opgespoor!\n\nVerwagte hash: %expected%\nBerekende hash: %calculated%\n\nDie afgelaaide binêre lêer kan korrup wees of gewysig gewees het.\nOpdatering gekanselleer om veiligheidsredes."
+  downloading_checksum: "Laai checksum-lêer af vanaf"
+  checksum_download_error: "Fout met aflaai van checksum-lêer"
 
 # Release Handler
 release:

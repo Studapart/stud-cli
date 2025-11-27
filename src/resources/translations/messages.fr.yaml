@@ -179,6 +179,12 @@ update:
   changelog_section: "Modifications dans la version %version%"
   breaking_changes_detected: "⚠️  Changements cassants détectés dans cette mise à jour :"
   changelog_error: "Impossible de récupérer le changelog"
+  success_hash_verified: "✅ Vérification du hash réussie. Le binaire est authentique."
+  error_hash_not_found: "Échec de la vérification de sécurité : Impossible de trouver le fichier de checksum dans la release.\nLe binaire ne peut pas être vérifié. Mise à jour annulée pour des raisons de sécurité."
+  error_hash_calculation: "Échec de la vérification de sécurité : Impossible de calculer le hash du fichier téléchargé.\nMise à jour annulée pour des raisons de sécurité."
+  error_hash_mismatch: "Échec de la vérification de sécurité : Incohérence de hash détectée !\n\nHash attendu : %expected%\nHash calculé : %calculated%\n\nLe binaire téléchargé peut être corrompu ou avoir été modifié.\nMise à jour annulée pour des raisons de sécurité."
+  downloading_checksum: "Téléchargement du fichier de checksum depuis"
+  checksum_download_error: "Erreur lors du téléchargement du fichier de checksum"
 
 # Release Handler
 release:
