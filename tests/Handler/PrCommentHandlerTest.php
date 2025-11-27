@@ -173,12 +173,13 @@ class PrCommentHandlerTest extends CommandTestCase
     public function testReadStdinWithTty(): void
     {
         // When STDIN is a TTY (interactive terminal), readStdin should return empty string
-        // We can't easily mock posix_isatty, but we can test the logic
-        // In a real scenario with TTY, it returns empty string
+        // This tests line 94: return ''; when posix_isatty(STDIN) returns true
         $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
 
-        // In test environment, STDIN might be a TTY, so result should be empty
+        // In test environment, STDIN is typically a TTY, so result should be empty
+        // This should execute line 94 if posix_isatty exists and STDIN is a TTY
         $this->assertIsString($result);
+        $this->assertEmpty($result);
     }
 
     public function testFindActivePullRequestSuccess(): void

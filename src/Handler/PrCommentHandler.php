@@ -90,9 +90,12 @@ class PrCommentHandler
     {
         // Check if STDIN is a TTY (interactive terminal)
         // If it is, there's no piped input
+        // This path is only reachable when STDIN is actually a TTY, which cannot be simulated in unit tests
+        // @codeCoverageIgnoreStart
         if (function_exists('posix_isatty') && posix_isatty(STDIN)) {
             return '';
         }
+        // @codeCoverageIgnoreEnd
 
         // Try to read from STDIN non-blocking
         // Use stream_set_blocking to make it non-blocking
