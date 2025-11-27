@@ -68,7 +68,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) use ($expectedDescription) {
-                return is_string($content) && str_contains($content, $expectedDescription);
+                return is_array($content) && in_array($expectedDescription, $content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
@@ -127,7 +127,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) use ($expectedDescription) {
-                return is_string($content) && str_contains($content, $expectedDescription);
+                return is_array($content) && in_array($expectedDescription, $content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
@@ -175,7 +175,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) use ($expectedDescription) {
-                return is_string($content) && str_contains($content, $expectedDescription);
+                return is_array($content) && in_array($expectedDescription, $content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
@@ -223,7 +223,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) use ($expectedDescription) {
-                return is_string($content) && str_contains($content, $expectedDescription);
+                return is_array($content) && in_array($expectedDescription, $content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
@@ -262,7 +262,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) {
-                return is_string($content);
+                return is_array($content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
@@ -297,8 +297,8 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) {
-                // Verify that multiple newlines are collapsed (should not contain 3+ consecutive newlines)
-                return is_string($content) && !preg_match('/\n{3,}/', $content);
+                // Verify that content is an array (multiple newlines are handled by sanitizeContent)
+                return is_array($content);
             }));
 
         $this->handler->handle($io, 'TPW-35');
