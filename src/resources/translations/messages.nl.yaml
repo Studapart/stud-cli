@@ -113,6 +113,15 @@ please:
   error_no_upstream: "Uw huidige branch heeft geen upstream remote geconfigureerd.\nVoor de eerste push en om een Pull Request te maken, gebruik alstublieft \"stud submit\"."
   warning_force: "⚠️  Forceren met lease..."
 
+# Flatten Handler
+flatten:
+  section: "Fixup commits afvlakken"
+  error_dirty_working: "Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u afvlakt."
+  warning_rewrite: "⚠️  Dit zal uw commit geschiedenis herschrijven. U moet mogelijk 'stud please' uitvoeren om daarna force-push te doen."
+  success: "✅ Alle fixup! commits zijn samengevoegd in hun doelcommits."
+  error_rebase: "Rebase mislukt: %error%"
+  no_fixups: "Geen fixup! of squash! commits gevonden. Niets om af te vlaken."
+
 # Submit Handler
 submit:
   section: "Pull Request indienen"
@@ -276,6 +285,7 @@ help:
   command_items_start: "Maakt een nieuwe git tak van een Jira item."
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
+  command_flatten: "Automatisch alle fixup! commits samenvoegen in hun doelcommits."
   command_submit: "Pusht de huidige tak en maakt een Pull Request."
   command_pr_comment: "Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument."
   command_status: "Een snelle \"waar ben ik?\" dashboard."

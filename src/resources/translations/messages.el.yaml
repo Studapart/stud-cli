@@ -113,6 +113,15 @@ please:
   error_no_upstream: "Ο τρέχων κλάδος σας δεν έχει ρυθμισμένο upstream remote.\nΓια την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε \"stud submit\"."
   warning_force: "⚠️  Εξαναγκασμός με lease..."
 
+# Flatten Handler
+flatten:
+  section: "Εξομάλυνση fixup commits"
+  error_dirty_working: "Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την εξομάλυνση."
+  warning_rewrite: "⚠️  Αυτό θα ξαναγράψει το ιστορικό των commits σας. Μπορεί να χρειαστεί να εκτελέσετε 'stud please' για force-push μετά."
+  success: "✅ Όλα τα fixup! commits έχουν συγχωνευθεί στα commits στόχους τους."
+  error_rebase: "Αποτυχία rebase: %error%"
+  no_fixups: "Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση."
+
 # Submit Handler
 submit:
   section: "Υποβολή Pull Request"
@@ -276,6 +285,7 @@ help:
   command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
   command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
+  command_flatten: "Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους."
   command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
   command_pr_comment: "Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα."
   command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."

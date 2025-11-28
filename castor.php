@@ -31,6 +31,7 @@ use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
 use App\Handler\PleaseHandler;
+use App\Handler\FlattenHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\ProjectListHandler;
 use App\Handler\SearchHandler;
@@ -445,8 +446,14 @@ function please(
     $handler->handle(io());
 }
 
-
-
+#[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
+function flatten(
+    
+): void {
+    _load_constants();
+    $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    exit($handler->handle(io()));
+}
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 function submit(

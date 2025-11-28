@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `stud flatten` command (alias: `stud ft`) to automatically squash all `fixup!` and `squash!` commits into their target commits [SCI-16]
+  - Performs non-interactive rebase with autosquash, eliminating manual rebase editing
+  - Fails gracefully if working directory has uncommitted changes
+  - Warns user that history will be rewritten (requires `stud please` push afterward)
+
 ### Changed
 - Replace custom `slugify()` method in `ItemStartHandler` with Symfony's `AsciiSlugger` directly [SCI-12]
   - Uses the same underlying component that Castor's `slug()` function uses, providing consistency and simplicity
