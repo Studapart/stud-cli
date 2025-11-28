@@ -16,7 +16,7 @@ class ReleaseHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // ReleaseHandlerTest checks output text, so use real TranslationService
         // This is acceptable since ReleaseHandler is the class under test
         $translationsPath = __DIR__ . '/../../src/resources/translations';
@@ -261,5 +261,65 @@ class ReleaseHandlerTest extends CommandTestCase
         // Clean up
         unlink($changelogPath);
         unlink($composerJsonPath);
+    }
+
+    public function testUpdateComposerVersionWithFileReadError(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $version = '1.2.3';
+        $composerJsonPath = '/nonexistent/composer.json';
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, 'CHANGELOG.md');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read composer.json');
+
+        $this->callPrivateMethod($handler, 'updateComposerVersion', [$version]);
+    }
+
+    public function testUpdateComposerVersionWithInvalidJson(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $version = '1.2.3';
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, 'invalid json');
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, 'CHANGELOG.md');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid composer.json format');
+
+        try {
+            $this->callPrivateMethod($handler, 'updateComposerVersion', [$version]);
+        } finally {
+            unlink($composerJsonPath);
+        }
+    }
+
+    public function testUpdateChangelogWithFileReadError(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $version = '1.2.3';
+        $changelogPath = '/nonexistent/CHANGELOG.md';
+
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read CHANGELOG.md');
+
+        try {
+            $this->callPrivateMethod($handler, 'updateChangelog', [$version]);
+        } finally {
+            unlink($composerJsonPath);
+        }
     }
 }

@@ -2,15 +2,12 @@
 
 namespace App\Tests\Handler;
 
-use App\Handler\CommitHandler;
 use App\DTO\WorkItem;
-use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Handler\CommitHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class CommitHandlerTest extends CommandTestCase
@@ -80,8 +77,8 @@ class CommitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
         // Test intent: verbose output was shown (checking for logical commit message)
-        $this->assertNotEmpty(array_filter($writelnCalls, fn($call) => str_contains($call, 'Checking for previous logical commit')));
-        $this->assertNotEmpty(array_filter($writelnCalls, fn($call) => str_contains($call, 'Found logical commit SHA')));
+        $this->assertNotEmpty(array_filter($writelnCalls, fn ($call) => str_contains($call, 'Checking for previous logical commit')));
+        $this->assertNotEmpty(array_filter($writelnCalls, fn ($call) => str_contains($call, 'Found logical commit SHA')));
     }
 
     public function testHandleWithInteractivePrompter(): void
@@ -400,7 +397,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
     }
-    
+
     public function testgetCommitTypeFromIssueType(): void
     {
         $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);

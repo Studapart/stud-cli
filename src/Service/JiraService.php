@@ -6,8 +6,8 @@ namespace App\Service;
 
 use App\DTO\Project;
 use App\DTO\WorkItem;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Stevebauman\Hypertext\Transformer;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JiraService
 {
@@ -72,6 +72,9 @@ class JiraService
         return array_map(fn ($project) => $this->mapToProject($project), $projectsData);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     private function mapToProject(array $data): Project
     {
         return new Project(
@@ -80,6 +83,9 @@ class JiraService
         );
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     protected function mapToWorkItem(array $data): WorkItem
     {
         $fields = $data['fields'];
@@ -87,7 +93,7 @@ class JiraService
         $description = 'No description provided.';
         if (isset($data['renderedFields']['description'])) {
             $description = $this->_convertHtmlToPlainText($data['renderedFields']['description']);
-        } elseif (!empty($fields['description'])) {
+        } elseif (! empty($fields['description'])) {
             // Fallback to raw ADF if renderedFields is not available, but we won't parse it.
             // For now, we'll just use a placeholder or the raw content if it's not ADF.
             // Given the new strategy, this path should ideally not be taken if renderFields=true was used.
@@ -100,7 +106,7 @@ class JiraService
         }
 
         $components = [];
-        if (!empty($fields['components'])) {
+        if (! empty($fields['components'])) {
             $components = array_map(fn ($component) => $component['name'], $fields['components']);
         }
 
@@ -117,10 +123,10 @@ class JiraService
             renderedDescription: $renderedDescription,
         );
     }
-    
+
     /**
      * Gets all available transitions for an issue.
-     * 
+     *
      * @return array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}>
      */
     public function getTransitions(string $key): array
@@ -133,6 +139,7 @@ class JiraService
         }
 
         $data = $response->toArray();
+
         return $data['transitions'] ?? [];
     }
 
@@ -157,17 +164,17 @@ class JiraService
 
     /**
      * Assigns an issue to a user.
-     * 
+     *
      * @param string $key The issue key
      * @param string $accountId The Jira account ID of the user (use 'currentUser()' for current user)
      */
     public function assignIssue(string $key, string $accountId = 'currentUser()'): void
     {
         $url = "/rest/api/3/issue/{$key}/assignee";
-        $payload = $accountId === 'currentUser()' 
+        $payload = $accountId === 'currentUser()'
             ? ['accountId' => null] // null means assign to current user
             : ['accountId' => $accountId];
-        
+
         $response = $this->client->request('PUT', $url, [
             'json' => $payload,
         ]);
@@ -180,7 +187,7 @@ class JiraService
     /**
      * Converts HTML content to plain text suitable for terminal display.
      * Uses Stevebauman\Hypertext library for robust conversion.
-     * 
+     *
      * Note: This method converts HTML to plain text and handles <hr> tags by
      * converting them to dividers. Any further formatting, sanitization, or
      * section parsing should be done by the handler/display layer.

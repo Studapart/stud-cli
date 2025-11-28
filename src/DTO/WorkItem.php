@@ -6,6 +6,10 @@ namespace App\DTO;
 
 class WorkItem
 {
+    /**
+     * @param array<string> $labels
+     * @param array<string> $components
+     */
     public function __construct(
         public readonly string $id,
         public string $key,
@@ -17,5 +21,6 @@ class WorkItem
         public string $issueType,
         public array $components = [],
         public ?string $renderedDescription = null,
-    ) {}
+    ) {
+    }
 }

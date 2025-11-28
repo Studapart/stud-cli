@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
+use App\DTO\PullRequestData;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -22,15 +25,18 @@ class GithubProvider
         ]);
     }
 
-    public function createPullRequest(string $title, string $head, string $base, string $body, bool $draft = false): array
+    /**
+     * @return array<string, mixed>
+     */
+    public function createPullRequest(PullRequestData $prData): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
         $payload = [
-            'title' => $title,
-            'head' => $head,
-            'base' => $base,
-            'body' => $body,
-            'draft' => $draft,
+            'title' => $prData->title,
+            'head' => $prData->head,
+            'base' => $prData->base,
+            'body' => $prData->body,
+            'draft' => $prData->draft,
         ];
 
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
@@ -43,12 +49,16 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         return $response->toArray();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getLatestRelease(): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/releases/latest";
@@ -63,6 +73,7 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
@@ -85,19 +96,28 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         $content = $response->toArray();
-        
+
         // GitHub API returns base64 encoded content
         if (isset($content['content']) && isset($content['encoding']) && $content['encoding'] === 'base64') {
-            return base64_decode($content['content'], true);
+            $decoded = base64_decode($content['content'], true);
+            if ($decoded === false) {
+                throw new \RuntimeException('Unable to decode base64 content from GitHub API');
+            }
+
+            return $decoded;
         }
 
         throw new \RuntimeException('Unable to decode CHANGELOG.md content from GitHub API');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function getLabels(): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
@@ -112,12 +132,16 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         return $response->toArray();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function createLabel(string $name, string $color, ?string $description = null): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
@@ -140,12 +164,16 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         return $response->toArray();
     }
 
+    /**
+     * @param array<string> $labels
+     */
     public function addLabelsToPullRequest(int $issueNumber, array $labels): void
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/labels";
@@ -161,10 +189,14 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function findPullRequestByBranch(string $head): ?array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
@@ -181,15 +213,19 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         $pulls = $response->toArray();
-        
+
         // Return the first PR if any exist
-        return !empty($pulls) ? $pulls[0] : null;
+        return ! empty($pulls) ? $pulls[0] : null;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function updatePullRequest(int $pullNumber, bool $draft): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
@@ -207,12 +243,16 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 
         return $response->toArray();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function createComment(int $issueNumber, string $body): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
@@ -230,6 +270,7 @@ class GithubProvider
                 $fullUrl,
                 $response->getContent(false)
             );
+
             throw new \RuntimeException($errorMessage);
         }
 

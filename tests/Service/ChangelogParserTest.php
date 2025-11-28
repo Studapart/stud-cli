@@ -268,7 +268,7 @@ CHANGELOG;
     public function testExtractVersionFromLine(): void
     {
         $parser = new ChangelogParser();
-        
+
         $this->assertSame('1.0.0', $this->callPrivateMethod($parser, 'extractVersionFromLine', ['## [1.0.0] - 2025-01-01']));
         $this->assertNull($this->callPrivateMethod($parser, 'extractVersionFromLine', ['### Added']));
         $this->assertNull($this->callPrivateMethod($parser, 'extractVersionFromLine', ['- Feature']));
@@ -277,7 +277,7 @@ CHANGELOG;
     public function testIsInTargetVersion(): void
     {
         $parser = new ChangelogParser();
-        
+
         $this->assertTrue($this->callPrivateMethod($parser, 'isInTargetVersion', ['1.0.1', '1.0.0', '1.0.2']));
         $this->assertTrue($this->callPrivateMethod($parser, 'isInTargetVersion', ['1.0.2', '1.0.0', '1.0.2']));
         $this->assertFalse($this->callPrivateMethod($parser, 'isInTargetVersion', ['1.0.0', '1.0.0', '1.0.2']));
@@ -287,7 +287,7 @@ CHANGELOG;
     public function testExtractSectionFromLine(): void
     {
         $parser = new ChangelogParser();
-        
+
         $this->assertSame('added', $this->callPrivateMethod($parser, 'extractSectionFromLine', ['### Added']));
         $this->assertSame('breaking', $this->callPrivateMethod($parser, 'extractSectionFromLine', ['### Breaking']));
         $this->assertNull($this->callPrivateMethod($parser, 'extractSectionFromLine', ['## [1.0.0] - 2025-01-01']));
@@ -297,7 +297,7 @@ CHANGELOG;
     public function testExtractItemFromLine(): void
     {
         $parser = new ChangelogParser();
-        
+
         $this->assertSame('Feature added', $this->callPrivateMethod($parser, 'extractItemFromLine', ['- Feature added']));
         $this->assertSame('Bug fix', $this->callPrivateMethod($parser, 'extractItemFromLine', ['* Bug fix']));
         $this->assertNull($this->callPrivateMethod($parser, 'extractItemFromLine', ['### Added']));
@@ -308,7 +308,7 @@ CHANGELOG;
     public function testNormalizeVersion(): void
     {
         $parser = new ChangelogParser();
-        
+
         $this->assertSame('1.0.0', $this->callPrivateMethod($parser, 'normalizeVersion', ['1.0.0']));
         $this->assertSame('1.0.0', $this->callPrivateMethod($parser, 'normalizeVersion', ['v1.0.0']));
         $this->assertSame('1.0.0', $this->callPrivateMethod($parser, 'normalizeVersion', ['vv1.0.0']));
@@ -323,4 +323,3 @@ CHANGELOG;
         return $method->invokeArgs($object, $parameters);
     }
 }
-

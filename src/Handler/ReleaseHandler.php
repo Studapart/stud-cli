@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -60,23 +62,35 @@ class ReleaseHandler
 
     protected function updateComposerVersion(string $version): void
     {
-        $composerJson = json_decode(file_get_contents($this->composerJsonPath), true);
+        $content = @file_get_contents($this->composerJsonPath);
+        if ($content === false) {
+            throw new \RuntimeException('Unable to read composer.json');
+        }
+
+        $composerJson = json_decode($content, true);
+        if (! is_array($composerJson)) {
+            throw new \RuntimeException('Invalid composer.json format');
+        }
+
         $composerJson['version'] = $version;
         file_put_contents($this->composerJsonPath, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
     protected function updateChangelog(string $version): void
     {
-        $content = file_get_contents($this->changelogPath);
-        
+        $content = @file_get_contents($this->changelogPath);
+        if ($content === false) {
+            throw new \RuntimeException('Unable to read CHANGELOG.md');
+        }
+
         $currentDate = date('Y-m-d');
         $newVersionHeader = "## [{$version}] - {$currentDate}";
         $unreleasedHeader = '## [Unreleased]';
-        
+
         // Replace ## [Unreleased] with ## [Unreleased] followed by the new version header
         $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
-        
+
         file_put_contents($this->changelogPath, $updatedContent);
     }
 }

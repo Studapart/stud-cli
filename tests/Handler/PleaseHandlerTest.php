@@ -2,7 +2,6 @@
 
 namespace App\Tests\Handler;
 
-use App\Service\GitRepository;
 use App\Handler\PleaseHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;

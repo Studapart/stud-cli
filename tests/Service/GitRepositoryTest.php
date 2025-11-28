@@ -725,16 +725,17 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('setEnv')
             ->with($this->callback(function ($env) {
-                if (!isset($env['GIT_SEQUENCE_EDITOR'])) {
+                if (! isset($env['GIT_SEQUENCE_EDITOR'])) {
                     return false;
                 }
                 $scriptPath = $env['GIT_SEQUENCE_EDITOR'];
                 // Verify script exists and is executable
-                if (!file_exists($scriptPath) || !is_executable($scriptPath)) {
+                if (! file_exists($scriptPath) || ! is_executable($scriptPath)) {
                     return false;
                 }
                 // Verify script content
                 $content = file_get_contents($scriptPath);
+
                 return str_contains($content, 'fixup!') && str_contains($content, 'squash!');
             }));
 
@@ -763,6 +764,7 @@ class GitRepositoryTest extends CommandTestCase
                     $backupPath = $scriptPath . '.bak';
                     file_put_contents($backupPath, 'backup content');
                 }
+
                 return true;
             }));
 
@@ -1100,7 +1102,7 @@ class GitRepositoryTest extends CommandTestCase
     {
         // Mock getProjectConfigPath to return a non-existent file path
         $configPath = sys_get_temp_dir() . '/nonexistent-stud-config-' . uniqid() . '.yaml';
-        
+
         // We need to mock the getProjectConfigPath call
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())

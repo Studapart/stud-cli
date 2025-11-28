@@ -4,12 +4,11 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\ItemShowHandler;
-use App\Service\JiraService;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Console\Helper\TableSeparator;
 use RuntimeException;
+use Symfony\Component\Console\Helper\TableSeparator;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemShowHandlerTest extends CommandTestCase
 {
@@ -68,7 +67,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
-                return is_string($title) && !empty($title);
+                return is_string($title) && ! empty($title);
             }));
         $io->expects($this->atLeastOnce())
             ->method('text')
@@ -127,7 +126,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
-                return is_string($title) && !empty($title);
+                return is_string($title) && ! empty($title);
             }));
         $io->expects($this->atLeastOnce())
             ->method('text')
@@ -175,7 +174,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
-                return is_string($title) && !empty($title);
+                return is_string($title) && ! empty($title);
             }));
         $io->expects($this->atLeastOnce())
             ->method('text')
@@ -223,7 +222,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
-                return is_string($title) && !empty($title);
+                return is_string($title) && ! empty($title);
             }));
         $io->expects($this->atLeastOnce())
             ->method('text')
@@ -262,7 +261,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $io->expects($this->atLeast(2))
             ->method('section')
             ->with($this->callback(function ($title) {
-                return is_string($title) && !empty($title);
+                return is_string($title) && ! empty($title);
             }));
         $io->expects($this->atLeastOnce())
             ->method('text')
@@ -346,7 +345,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $lines = ['Line 1', '', '', 'Line 2', '', '', '', 'Line 3'];
         $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
-        
+
         $this->assertSame(['Line 1', '', 'Line 2', '', 'Line 3'], $result);
     }
 
@@ -354,7 +353,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $lines = ['Line 1', 'Line 2', 'Line 3'];
         $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
-        
+
         $this->assertSame($lines, $result);
     }
 
@@ -362,7 +361,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $lines = ['Line 1', '', 'Line 2'];
         $result = $this->callPrivateMethod($this->handler, 'sanitizeContent', [$lines]);
-        
+
         $this->assertSame($lines, $result);
     }
 
@@ -370,7 +369,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Title: Test\nContent line 1\nContent line 2";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         $this->assertArrayHasKey('title', $result[0]);
@@ -381,7 +380,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Section 1\n---\nSection 2\n---\nSection 3";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(3, $result);
     }
@@ -389,7 +388,7 @@ class ItemShowHandlerTest extends CommandTestCase
     public function testParseDescriptionSectionsWithEmptyDescription(): void
     {
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', ['']);
-        
+
         $this->assertIsArray($result);
         $this->assertEmpty($result);
     }
@@ -397,7 +396,7 @@ class ItemShowHandlerTest extends CommandTestCase
     public function testParseDescriptionSectionsWithWhitespaceOnly(): void
     {
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', ['   ']);
-        
+
         $this->assertIsArray($result);
         $this->assertEmpty($result);
     }
@@ -406,7 +405,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Just a regular line of text";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should use default title and put the line as content
@@ -417,7 +416,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Title: This is a title\nContent here";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should recognize "Title:" pattern as a header
@@ -428,13 +427,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Checkbox 1', '[x] Checkbox 2', '[ ] Checkbox 3'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 3;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -442,13 +441,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Main item', 'Sub-item 1', 'Sub-item 2', '[x] Another item'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 2;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -456,19 +455,19 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Regular text', '[ ] Checkbox item', 'More text'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content);
             }));
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -476,13 +475,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Line 1', '', 'Line 2'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content) && in_array('Line 1', $content) && in_array('Line 2', $content);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -490,16 +489,16 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Text line 1', 'Text line 2', 'Text line 3'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content) && count($content) === 3;
             }));
-        
+
         $io->expects($this->never())
             ->method('listing');
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -507,19 +506,19 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Text before', '[ ] Final checkbox'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content) && in_array('Text before', $content);
             }));
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 1;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -527,39 +526,39 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[X] Checked item', '[x] Also checked'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 2;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
     public function testDisplayDescriptionWithEmptyString(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->never())
             ->method('section');
-        
+
         $io->expects($this->never())
             ->method('text');
-        
+
         $this->callPrivateMethod($this->handler, 'displayDescription', [$io, '']);
     }
 
     public function testDisplayDescriptionWithWhitespaceOnly(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->never())
             ->method('section');
-        
+
         $io->expects($this->never())
             ->method('text');
-        
+
         $this->callPrivateMethod($this->handler, 'displayDescription', [$io, '   ']);
     }
 
@@ -567,7 +566,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Title\n\nContent line";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         $this->assertNotEmpty($result[0]['contentLines']);
@@ -579,7 +578,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "\n\n\n"; // Only empty lines
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         // Empty description should return empty array (trimmed to empty)
         $this->assertEmpty($result);
@@ -589,7 +588,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "---\n\n\n"; // Divider followed by only empty lines
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should use default title when no title found in section
@@ -600,7 +599,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "First section\n---\n\n\n"; // Section with content, then divider, then only empty lines
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         // Empty sections after divider are not added (empty currentSection check)
         // So we get only the first section
@@ -612,7 +611,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Description & Implementation Logic";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should recognize "Description & Implementation Logic" as a header
@@ -623,7 +622,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "---\nContent after divider";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // When divider is at start, empty currentSection is not added (line 96 check)
@@ -635,7 +634,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Section 1\n---\n---\nSection 3";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         // First section, then empty section between dividers (not added), then last section
         $this->assertCount(2, $result);
@@ -645,18 +644,17 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Section 1\n---\n"; // Divider at end, empty currentSection
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         // Empty currentSection at end is not added (line 106 check)
         $this->assertCount(1, $result);
     }
 
-
     public function testParseDescriptionSectionsWithSingleLineThatIsHeader(): void
     {
         $description = "Title: This is a title";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should recognize as header, not treat as content
@@ -669,7 +667,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "User Story";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should recognize "User Story" as a header
@@ -680,7 +678,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $description = "Acceptance Criteria:";
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should recognize "Acceptance Criteria" as a header
@@ -691,13 +689,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Main item', '', 'Sub-item'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 1;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -705,13 +703,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Text line 1', '', 'Text line 2'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content) && in_array('', $content);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -719,13 +717,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['', 'Text line'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
-                return is_array($content) && !in_array('', $content);
+                return is_array($content) && ! in_array('', $content);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -733,14 +731,14 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Text line 1', '', 'Text line 2'];
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->callback(function ($content) {
                 // Should preserve empty line between text lines
                 return is_array($content) && in_array('', $content);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -748,13 +746,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Item 1', '', '[ ] Item 2'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 2;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -762,20 +760,20 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['Text before', '[ ] Checkbox', 'Text after'];
-        
+
         // Text before checkbox is displayed, then checkbox, then text after is accumulated and displayed at end
         $io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content);
             }));
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list);
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -783,13 +781,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Item 1', 'Sub 1', 'Sub 2', '[ ] Item 2', 'Sub 3'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 2;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -797,13 +795,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Item', 'Sub-item'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 1 && str_contains($list[0], 'Sub-item');
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -811,13 +809,13 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         $io = $this->createMock(SymfonyStyle::class);
         $lines = ['[ ] Item'];
-        
+
         $io->expects($this->once())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list) && count($list) === 1;
             }));
-        
+
         $this->callPrivateMethod($this->handler, 'displayContent', [$io, $lines]);
     }
 
@@ -829,7 +827,7 @@ class ItemShowHandlerTest extends CommandTestCase
         // After processing, $title remains empty, so line 145 executes
         $description = "---\n\n\n"; // Divider with only empty lines in second section
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
         // Should use default title when no title found (line 145)
@@ -846,7 +844,7 @@ class ItemShowHandlerTest extends CommandTestCase
         // We need content before divider so first section is added, then whitespace-only section after
         $description = "Content\n---\n   \n\t\n   "; // Section after divider has only whitespace
         $result = $this->callPrivateMethod($this->handler, 'parseDescriptionSections', [$description]);
-        
+
         $this->assertIsArray($result);
         // First section has "Content", second section has only whitespace
         // The whitespace-only section should still be processed (whitespace lines are in array)
@@ -856,6 +854,7 @@ class ItemShowHandlerTest extends CommandTestCase
         foreach ($result as $section) {
             if (empty($section['contentLines']) || (count($section['contentLines']) === 1 && trim($section['contentLines'][0]) === '')) {
                 $whitespaceSection = $section;
+
                 break;
             }
         }
@@ -870,5 +869,4 @@ class ItemShowHandlerTest extends CommandTestCase
             $this->assertEmpty($result2);
         }
     }
-
 }

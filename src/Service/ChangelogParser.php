@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 class ChangelogParser
@@ -18,7 +20,7 @@ class ChangelogParser
     {
         $currentVersion = $this->normalizeVersion($currentVersion);
         $latestVersion = $this->normalizeVersion($latestVersion);
-        
+
         $result = [
             'sections' => [],
             'hasBreaking' => false,
@@ -28,23 +30,24 @@ class ChangelogParser
         $lines = explode("\n", $changelogContent);
         $inTargetVersion = false;
         $currentSection = null;
-        
+
         foreach ($lines as $line) {
             $versionInChangelog = $this->extractVersionFromLine($line);
-            
+
             if ($versionInChangelog !== null) {
                 // Check if we've reached a version older than current (stop parsing)
                 if (version_compare($versionInChangelog, $currentVersion, '<')) {
                     break;
                 }
-                
+
                 // Check if this version is in the target range
                 $inTargetVersion = $this->isInTargetVersion($versionInChangelog, $currentVersion, $latestVersion);
                 $currentSection = null; // Reset section when entering new version
+
                 continue;
             }
 
-            if (!$inTargetVersion) {
+            if (! $inTargetVersion) {
                 continue;
             }
 
@@ -54,6 +57,7 @@ class ChangelogParser
                 if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
                     $result['hasBreaking'] = true;
                 }
+
                 continue;
             }
 
@@ -63,7 +67,7 @@ class ChangelogParser
                     $result['hasBreaking'] = true;
                     $result['breakingChanges'][] = $item;
                 } else {
-                    if (!isset($result['sections'][$currentSection])) {
+                    if (! isset($result['sections'][$currentSection])) {
                         $result['sections'][$currentSection] = [];
                     }
                     $result['sections'][$currentSection][] = $item;
@@ -92,7 +96,7 @@ class ChangelogParser
         if (preg_match('/^##\s+\[(\d+\.\d+\.\d+)\]/', $line, $matches)) {
             return $matches[1];
         }
-        
+
         return null;
     }
 
@@ -101,7 +105,7 @@ class ChangelogParser
      */
     protected function isInTargetVersion(string $versionInChangelog, string $currentVersion, string $latestVersion): bool
     {
-        return version_compare($versionInChangelog, $latestVersion, '<=') && 
+        return version_compare($versionInChangelog, $latestVersion, '<=') &&
                version_compare($versionInChangelog, $currentVersion, '>');
     }
 
@@ -115,7 +119,7 @@ class ChangelogParser
         if (preg_match('/^###\s+(\w+)/', $line, $matches)) {
             return strtolower($matches[1]);
         }
-        
+
         return null;
     }
 
@@ -128,9 +132,10 @@ class ChangelogParser
     {
         if (preg_match('/^[\s*\-]+\s*(.+)$/', $line, $matches)) {
             $item = trim($matches[1]);
-            return !empty($item) ? $item : null;
+
+            return ! empty($item) ? $item : null;
         }
-        
+
         return null;
     }
 
@@ -151,4 +156,3 @@ class ChangelogParser
         };
     }
 }
-

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -10,6 +12,9 @@ use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class ItemStartHandler
 {
+    /**
+     * @param array<string, mixed> $jiraConfig
+     */
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
@@ -27,16 +32,17 @@ class ItemStartHandler
         if ($io->isVerbose()) {
             $io->writeln("  <fg=gray>{$this->translator->trans('item.start.fetching', ['key' => $key])}</>");
         }
-        
+
         try {
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
             $io->error($this->translator->trans('item.start.error_not_found', ['key' => $key]));
+
             return 1;
         }
 
         // Handle Jira transition if enabled
-        if (!empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
+        if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
             $this->handleTransition($io, $key, $issue);
             // All error handling is done inside handleTransition with warnings/errors
             // Branch creation continues regardless of transition success/failure
@@ -94,6 +100,7 @@ class ItemStartHandler
 
                 if (empty($transitions)) {
                     $io->warning($this->translator->trans('item.start.no_transitions', ['key' => $key]));
+
                     return 0; // Skip transition, continue with branch creation
                 }
 
@@ -112,6 +119,10 @@ class ItemStartHandler
                 // SymfonyStyle::choice() validates input and only returns one of the provided options,
                 // which all match our regex pattern, so this will always succeed
                 preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
+                if (! isset($matches[1])) {
+                    throw new \RuntimeException('Unable to extract transition ID from selection');
+                }
+
                 $transitionId = (int) $matches[1];
 
                 // Ask if user wants to save the choice
@@ -131,6 +142,7 @@ class ItemStartHandler
                 }
             } catch (\Exception $e) {
                 $io->warning($this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+
                 return 0; // Skip transition, continue with branch creation
             }
         } else {
@@ -152,7 +164,6 @@ class ItemStartHandler
 
         return 0;
     }
-
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
