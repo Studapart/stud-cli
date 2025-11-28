@@ -2,7 +2,6 @@
 
 namespace App\Tests\Handler;
 
-use App\Service\GitRepository;
 use App\Handler\FlattenHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -133,4 +132,3 @@ class FlattenHandlerTest extends CommandTestCase
         // Test intent: error() was called for rebase failure, verified by return value
     }
 }
-

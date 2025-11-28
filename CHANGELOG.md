@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.6.0] - 2025-11-28
 
 ### Added
+- Integrate PHP-CS-Fixer and PHPStan for automated code quality enforcement [SCI-18]
+  - PHP-CS-Fixer configuration (`.php-cs-fixer.dist.php`) enforces PSR-12 code style
+  - PHPStan configuration (`phpstan.neon.dist`) set to Level 7 minimum for strict type checking
+  - Both tools added as require-dev dependencies in `composer.json`
+- Add comprehensive Project Quality Metric Blueprint to CONVENTIONS.md [SCI-18]
+  - Complexity metrics: Cyclomatic Complexity ≤ 10, CRAP Index ≤ 10, NPath ≤ 200, Nesting Depth ≤ 3
+  - Cohesion metrics: LCOM4 ≤ 2
+  - Size metrics: Class ≤ 400 lines, Method ≤ 40 lines
+  - Signature metrics: Class Properties ≤ 10, Method Arguments ≤ 4
+  - Type safety rules: strict typing, explicit type hints, DocBlock requirements
 - Add `stud flatten` command (alias: `stud ft`) to automatically squash all `fixup!` and `squash!` commits into their target commits [SCI-16]
   - Performs non-interactive rebase with autosquash, eliminating manual rebase editing
   - Fails gracefully if working directory has uncommitted changes

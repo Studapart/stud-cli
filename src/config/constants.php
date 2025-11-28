@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 $config = require __DIR__ . '/app.php';
 
 define('APP_REPO_SLUG', $config['repo_slug']);

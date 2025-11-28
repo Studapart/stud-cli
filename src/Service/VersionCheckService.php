@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use Symfony\Component\HttpClient\HttpClient;
@@ -34,6 +36,7 @@ class VersionCheckService
         // If cache is fresh (less than 24 hours old), use cached data
         if ($cacheData !== null && $this->isCacheFresh($cacheData)) {
             $latestVersion = $cacheData['latest_version'] ?? null;
+
             return [
                 'latest_version' => $latestVersion,
                 'should_display' => $latestVersion !== null && $this->isNewerVersion($latestVersion),
@@ -59,7 +62,7 @@ class VersionCheckService
         $dir = dirname($path);
 
         // Ensure cache directory exists
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             @mkdir($dir, 0755, true);
         }
 
@@ -71,7 +74,7 @@ class VersionCheckService
      */
     protected function readCache(string $cachePath): ?array
     {
-        if (!file_exists($cachePath)) {
+        if (! file_exists($cachePath)) {
             return null;
         }
 
@@ -81,17 +84,22 @@ class VersionCheckService
         }
 
         $data = @json_decode($content, true);
-        if (!is_array($data) || !isset($data['timestamp'])) {
+        if (! is_array($data) || ! isset($data['timestamp'])) {
             return null;
         }
 
+        /** @var array{latest_version: string|null, timestamp: int} $data */
         return $data;
     }
 
+    /**
+     * @param array{latest_version: string|null, timestamp: int} $cacheData
+     */
     protected function isCacheFresh(array $cacheData): bool
     {
-        $cacheTimestamp = $cacheData['timestamp'] ?? 0;
+        $cacheTimestamp = $cacheData['timestamp'];
         $age = time() - $cacheTimestamp;
+
         return $age < self::CACHE_TTL_SECONDS;
     }
 
@@ -100,6 +108,7 @@ class VersionCheckService
         try {
             $githubProvider = $this->createGithubProvider();
             $release = $githubProvider->getLatestRelease();
+
             return ltrim($release['tag_name'] ?? '', 'v');
         } catch (\Exception $e) {
             // Fail silently - don't block the user's command
@@ -139,7 +148,7 @@ class VersionCheckService
     {
         $latest = ltrim($latestVersion, 'v');
         $current = ltrim($this->currentVersion, 'v');
+
         return version_compare($latest, $current, '>');
     }
 }
-

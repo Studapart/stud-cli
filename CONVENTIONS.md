@@ -42,9 +42,27 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 ### Code Quality and Complexity Standards
 
-To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds:
+To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds. These metrics are enforced through static analysis tools (PHPStan) and manual code review during the development process.
 
-#### Cyclomatic Complexity (CC)
+#### Project Quality Metric Blueprint
+
+The following table defines all quality thresholds that must be met:
+
+| Focus Area | Metric | Threshold | Enforcement |
+|------------|--------|-----------|-------------|
+| **COMPLEXITY** | Cyclomatic Complexity (CC) | Maximum 10 per method | PHPStan, Code Review |
+| | CRAP Index | Maximum 10 per class/method | PHPStan, Code Review |
+| | NPath Complexity | Maximum 200 | Static Analysis |
+| | Nesting Depth | Maximum 3 | Code Review |
+| **COHESION** | LCOM4 (Lack of Cohesion) | Maximum 2 | Static Analysis |
+| **SIZE** | Class Size (Lines) | Maximum 400 lines of code | Code Review |
+| | Method Size (Lines) | Maximum 40 lines of code | Code Review |
+| **SIGNATURES** | Class Properties | Maximum 10 properties | Code Review |
+| | Method Arguments | Maximum 4 arguments | Code Review |
+
+#### Complexity Metrics
+
+##### Cyclomatic Complexity (CC)
 
 **Rule**: Maximum Cyclomatic Complexity of **10** for any single method.
 
@@ -53,7 +71,7 @@ To maintain code quality and prevent technical debt, all code in `stud-cli` must
 **Enforcement**: 
 - During development (Phase 1 of the AI protocol), all methods that will be modified or created must be assessed for complexity.
 - If a method exceeds CC of 10, it MUST be refactored before proceeding with feature implementation.
-- Tools like PHPUnit's coverage reports or static analysis tools can help measure complexity.
+- Tools like PHPStan, PHPUnit's coverage reports, or static analysis tools can help measure complexity.
 
 **Example of refactoring high complexity:**
 ```php
@@ -86,21 +104,225 @@ protected function transformData($data) {
 }
 ```
 
-#### CRAP Index
+##### CRAP Index
 
-**Rule**: Maximum CRAP Index (Change Risk Analysis and Prediction) of **10** for any new or modified class.
+**Rule**: Maximum CRAP Index (Change Risk Analysis and Prediction) of **10** for any new or modified class or method.
 
 **What is CRAP Index?** CRAP Index combines Cyclomatic Complexity with test coverage to predict the risk of changing code. The formula is: `CC² × (1 - coverage/100)³ + CC`
 
 **Enforcement**:
-- All new classes must have CRAP Index ≤ 10.
-- All modified classes must maintain or improve their CRAP Index to stay ≤ 10.
-- If a class exceeds CRAP Index of 10, it MUST be refactored (by reducing complexity or increasing test coverage) before proceeding.
+- All new classes and methods must have CRAP Index ≤ 10.
+- All modified classes and methods must maintain or improve their CRAP Index to stay ≤ 10.
+- If a class or method exceeds CRAP Index of 10, it MUST be refactored (by reducing complexity or increasing test coverage) before proceeding.
 
 **How to reduce CRAP Index**:
 1. Reduce Cyclomatic Complexity (break down complex methods).
 2. Increase test coverage (write more tests).
 3. Extract complex logic into smaller, well-tested classes.
+
+##### NPath Complexity
+
+**Rule**: Maximum NPath Complexity of **200** for any single method.
+
+**What is NPath Complexity?** NPath Complexity measures the number of acyclic execution paths through a method. It provides a more detailed view than Cyclomatic Complexity by considering all possible combinations of decision outcomes.
+
+**Enforcement**:
+- Static analysis tools can help identify methods with high NPath Complexity.
+- Methods exceeding the threshold should be refactored into smaller, more focused methods.
+
+##### Nesting Depth
+
+**Rule**: Maximum nesting depth of **3** levels.
+
+**What is Nesting Depth?** Nesting depth measures how deeply control structures (if, for, while, switch, etc.) are nested within each other.
+
+**Enforcement**:
+- Code review and static analysis tools can identify excessive nesting.
+- Deeply nested code should be refactored using early returns, guard clauses, or method extraction.
+
+**Example:**
+```php
+// ❌ BAD: Nesting depth > 3
+public function process($data) {
+    if ($condition1) {
+        if ($condition2) {
+            if ($condition3) {
+                if ($condition4) { // Depth 4 - violates rule
+                    // ...
+                }
+            }
+        }
+    }
+}
+
+// ✅ GOOD: Reduced nesting using early returns
+public function process($data) {
+    if (!$condition1) {
+        return;
+    }
+    if (!$condition2) {
+        return;
+    }
+    if (!$condition3) {
+        return;
+    }
+    // Depth 1 - within threshold
+    // ...
+}
+```
+
+#### Cohesion Metrics
+
+##### LCOM4 (Lack of Cohesion of Methods)
+
+**Rule**: Maximum LCOM4 of **2** for any class.
+
+**What is LCOM4?** LCOM4 measures how well the methods of a class are related to each other through shared instance variables. Lower values indicate better cohesion.
+
+**Enforcement**:
+- Static analysis tools can calculate LCOM4.
+- Classes with high LCOM4 should be split into multiple, more cohesive classes.
+
+#### Size Metrics
+
+##### Class Size
+
+**Rule**: Maximum **400 lines of code** per class (excluding comments and blank lines).
+
+**Enforcement**:
+- Code review and static analysis tools can measure class size.
+- Large classes should be split into smaller, focused classes following the Single Responsibility Principle.
+
+##### Method Size
+
+**Rule**: Maximum **40 lines of code** per method (excluding comments and blank lines).
+
+**Enforcement**:
+- Code review and static analysis tools can measure method size.
+- Large methods should be refactored into smaller, focused methods.
+
+**Example:**
+```php
+// ❌ BAD: Method exceeds 40 lines
+public function processData($data) {
+    // ... 50+ lines of code
+}
+
+// ✅ GOOD: Split into smaller methods
+public function processData($data) {
+    $validated = $this->validateData($data);
+    $transformed = $this->transformData($validated);
+    return $this->saveData($transformed);
+}
+```
+
+#### Signature Metrics
+
+##### Class Properties
+
+**Rule**: Maximum **10 properties** per class.
+
+**Enforcement**:
+- Code review can identify classes with too many properties.
+- Classes with many properties may indicate violation of Single Responsibility Principle and should be refactored.
+
+##### Method Arguments
+
+**Rule**: Maximum **4 arguments** per method.
+
+**Enforcement**:
+- Code review and static analysis tools can identify methods with too many arguments.
+- Methods with many arguments should be refactored using:
+  - Parameter objects (DTOs)
+  - Builder pattern
+  - Method extraction
+
+**Example:**
+```php
+// ❌ BAD: Too many arguments (> 4)
+public function createUser($firstName, $lastName, $email, $phone, $address, $city) {
+    // ...
+}
+
+// ✅ GOOD: Use a parameter object (DTO)
+public function createUser(UserData $userData) {
+    // ...
+}
+```
+
+### Type Safety and Documentation
+
+#### Strict Typing
+
+**Rule**: All PHP files MUST declare `declare(strict_types=1);` at the top of the file.
+
+**Enforcement**: PHP-CS-Fixer and PHPStan can enforce this rule.
+
+#### Type Hints
+
+**Rule**: All method parameters and return types MUST have explicit type hints.
+
+**Enforcement**:
+- PHPStan Level 7+ enforces strict type checking.
+- Missing type hints will be flagged by static analysis.
+
+**Example:**
+```php
+// ❌ BAD: Missing type hints
+public function processData($data) {
+    return $result;
+}
+
+// ✅ GOOD: Explicit type hints
+public function processData(array $data): array {
+    return $result;
+}
+```
+
+#### Property Type Hints
+
+**Rule**: All class properties MUST have explicit type hints.
+
+**Enforcement**:
+- PHPStan Level 7+ enforces property type hints.
+- Missing property type hints will be flagged by static analysis.
+
+**Example:**
+```php
+// ❌ BAD: Missing property type hint
+class MyClass {
+    private $value;
+}
+
+// ✅ GOOD: Explicit property type hint
+class MyClass {
+    private string $value;
+}
+```
+
+#### DocBlocks
+
+**Rule**: DocBlocks are required for:
+- Public and protected methods (especially those part of the public API)
+- Complex methods where the type hint alone doesn't fully explain the behavior
+- Methods that throw exceptions
+
+**Enforcement**: Code review and PHPStan can help identify missing DocBlocks.
+
+**Example:**
+```php
+// ✅ GOOD: DocBlock for complex method
+/**
+ * Processes user data and returns validation results.
+ *
+ * @param array<string, mixed> $userData The user data to process
+ * @return array{valid: bool, errors: array<string>} Validation results
+ * @throws \InvalidArgumentException When user data is malformed
+ */
+protected function processUserData(array $userData): array {
+    // ...
+}
+```
 
 ## Testing & Assertions
 
@@ -252,11 +474,55 @@ The `CHANGELOG.md` file follows the [Keep a Changelog](https://keepachangelog.co
 
 **Important**: Breaking changes must be placed in the `### Breaking` section. Do not use markers like `[BREAKING CHANGE]`, `[BREAKING]`, or `[REMOVED]` within other sections. Breaking changes should be clearly separated into their own section.
 
+## Static Analysis Tools
+
+### PHP-CS-Fixer
+
+**Purpose**: Automatically enforces PSR-12 code style and consistent formatting.
+
+**Configuration**: `.php-cs-fixer.dist.php`
+
+**Usage**:
+```bash
+# Check for style violations
+vendor/bin/php-cs-fixer fix --dry-run --diff
+
+# Fix style violations automatically
+vendor/bin/php-cs-fixer fix
+```
+
+**Enforcement**: Run PHP-CS-Fixer before committing code. The tool will automatically correct style violations according to PSR-12 standards.
+
+### PHPStan
+
+**Purpose**: Performs static analysis to catch type errors, identify complex code structures, and enforce type safety.
+
+**Configuration**: `phpstan.neon.dist` (configured to Level 7 minimum)
+
+**Usage**:
+```bash
+# Run static analysis
+vendor/bin/phpstan analyse
+```
+
+**Enforcement**: PHPStan must pass at Level 7 or higher before code can be merged. The tool helps identify:
+- Type errors and missing type hints
+- Complex code structures that may violate complexity thresholds
+- Potential bugs and code smells
+
+**AI Agent Tooling**: During Phase 1 (Planning) and Phase 3 (Integrity), the AI Agent must use PHPStan and other static analysis techniques to calculate and enforce all quality metrics listed in the Project Quality Metric Blueprint.
+
 ## Summary
 
 - **Code Architecture**: Follow PSR-12 and SOLID principles. Use `protected` for testable helper methods, avoid `final` on injectable services.
-- **Code Quality**: Maximum Cyclomatic Complexity of 10 per method, maximum CRAP Index of 10 per class. Violations must be refactored before feature implementation.
+- **Code Quality**: All code must adhere to the Project Quality Metric Blueprint:
+  - **Complexity**: CC ≤ 10, CRAP Index ≤ 10, NPath ≤ 200, Nesting Depth ≤ 3
+  - **Cohesion**: LCOM4 ≤ 2
+  - **Size**: Class ≤ 400 lines, Method ≤ 40 lines
+  - **Signatures**: Class Properties ≤ 10, Method Arguments ≤ 4
+- **Type Safety**: All files must use `declare(strict_types=1);`. All methods and properties must have explicit type hints. DocBlocks required for public/protected methods and complex logic.
 - **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text. All service dependencies must be mocked in unit tests.
+- **Static Analysis**: PHP-CS-Fixer enforces PSR-12 style. PHPStan (Level 7+) enforces type safety and helps identify complexity violations.
 - **Output**: Use the standardized output methods consistently to provide a uniform user experience.
 - **CHANGELOG**: Use `### Breaking` section for breaking changes, not inline markers.
 

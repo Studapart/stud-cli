@@ -3,8 +3,6 @@
 namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
-use App\Service\GitRepository;
-use App\Service\JiraService;
 use App\Handler\StatusHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;

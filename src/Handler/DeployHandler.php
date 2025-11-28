@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -19,8 +21,9 @@ class DeployHandler
         $io->section($this->translator->trans('deploy.section'));
 
         $currentBranch = $this->gitRepository->getCurrentBranchName();
-        if (!str_starts_with($currentBranch, 'release/v')) {
+        if (! str_starts_with($currentBranch, 'release/v')) {
             $io->error($this->translator->trans('deploy.error_not_release'));
+
             return;
         }
 

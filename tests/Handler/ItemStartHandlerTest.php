@@ -4,8 +4,6 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
-use App\Service\GitRepository;
-use App\Service\JiraService;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -335,7 +333,6 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
     }
-
 
     public function testHandleWithTransitionEnabledAndUserDeclinesToSave(): void
     {
@@ -1035,6 +1032,77 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $result = $handler->handle($io, 'TPW-35');
 
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleTransitionWithInvalidTransitionSelection(): void
+    {
+        // Test the error path when preg_match fails to extract transition ID
+        // The exception is caught and a warning is shown, then the method returns 0
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $transitions = [
+            [
+                'id' => 11,
+                'name' => 'Start Progress',
+                'to' => [
+                    'name' => 'In Progress',
+                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                ],
+            ],
+        ];
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willReturn($transitions);
+
+        $io = $this->createMock(SymfonyStyle::class);
+
+        // Mock choice to return a string that doesn't match our regex pattern
+        // This simulates an edge case where the regex fails (shouldn't happen in practice)
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn('Invalid Selection Without ID Pattern');
+
+        $io->expects($this->any())
+            ->method('isVerbose')
+            ->willReturn(false);
+
+        // The exception is caught and a warning is shown
+        $io->expects($this->once())
+            ->method('warning')
+            ->with($this->stringContains('item.start.transition_error'));
+
+        $result = $this->callPrivateMethod($handler, 'handleTransition', [$io, 'TPW-35', $workItem]);
+
+        // Method returns 0 even when exception occurs (error handling)
         $this->assertSame(0, $result);
     }
 }

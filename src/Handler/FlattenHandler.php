@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -21,17 +23,19 @@ class FlattenHandler
 
         // 1. Check for clean working directory
         $gitStatus = $this->gitRepository->getPorcelainStatus();
-        if (!empty($gitStatus)) {
+        if (! empty($gitStatus)) {
             $io->error($this->translator->trans('flatten.error_dirty_working'));
+
             return 1;
         }
 
         // 2. Check if there are any fixup commits
         $baseSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
         $hasFixups = $this->gitRepository->hasFixupCommits($baseSha);
-        
-        if (!$hasFixups) {
+
+        if (! $hasFixups) {
             $io->note($this->translator->trans('flatten.no_fixups'));
+
             return 0;
         }
 
@@ -42,11 +46,12 @@ class FlattenHandler
         try {
             $this->gitRepository->rebaseAutosquash($baseSha);
             $io->success($this->translator->trans('flatten.success'));
+
             return 0;
         } catch (\Exception $e) {
             $io->error($this->translator->trans('flatten.error_rebase', ['error' => $e->getMessage()]));
+
             return 1;
         }
     }
 }
-

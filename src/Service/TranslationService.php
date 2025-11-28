@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use Symfony\Component\Translation\Loader\YamlFileLoader;
@@ -13,11 +15,11 @@ class TranslationService
     {
         $this->translator = new Translator($locale);
         $this->translator->addLoader('yaml', new YamlFileLoader());
-        
+
         // Load translation files from the specified path
         // Use opendir/readdir for PHAR compatibility (glob doesn't always work with phar://)
         $supportedLocales = ['en', 'fr', 'es', 'nl', 'ru', 'el', 'af', 'vi'];
-        
+
         foreach ($supportedLocales as $fileLocale) {
             $file = $translationsPath . '/messages.' . $fileLocale . '.yaml';
             if (file_exists($file)) {
@@ -26,21 +28,24 @@ class TranslationService
         }
     }
 
+    /**
+     * @param array<string, mixed> $parameters
+     */
     public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
     {
         // Symfony Translator expects parameter keys to include % signs
         $formattedParameters = [];
         foreach ($parameters as $key => $value) {
             $formattedKey = $key;
-            if (!str_starts_with($formattedKey, '%')) {
+            if (! str_starts_with($formattedKey, '%')) {
                 $formattedKey = '%' . $formattedKey;
             }
-            if (!str_ends_with($formattedKey, '%')) {
+            if (! str_ends_with($formattedKey, '%')) {
                 $formattedKey = $formattedKey . '%';
             }
             $formattedParameters[$formattedKey] = $value;
         }
-        
+
         return $this->translator->trans($id, $formattedParameters, $domain, $locale);
     }
 
@@ -49,4 +54,3 @@ class TranslationService
         return $this->translator->getLocale();
     }
 }
-

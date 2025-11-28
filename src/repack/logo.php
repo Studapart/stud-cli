@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return function (string $appName, string $appVersion): string {
 
     return '

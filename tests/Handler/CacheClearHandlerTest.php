@@ -101,6 +101,4 @@ class CacheClearHandlerTest extends CommandTestCase
             }
         }
     }
-
 }
-

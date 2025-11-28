@@ -26,7 +26,7 @@ class HelpServiceTest extends TestCase
     public function testGetCommandHelpForExistingCommand(): void
     {
         $helpText = $this->helpService->getCommandHelp('commit');
-        
+
         $this->assertNotNull($helpText);
         $this->assertIsString($helpText);
         $this->assertNotEmpty($helpText);
@@ -37,7 +37,7 @@ class HelpServiceTest extends TestCase
     public function testGetCommandHelpForNonExistentCommand(): void
     {
         $helpText = $this->helpService->getCommandHelp('nonexistent');
-        
+
         $this->assertNull($helpText);
     }
 
@@ -80,7 +80,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'commit');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: section() should be called with command help title
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('commit', $outputText);
@@ -94,7 +94,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'nonexistent');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show error message for unknown command
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('nonexistent', $outputText);
@@ -157,7 +157,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'nonexistentcommand12345');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should display help with "not found" message
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('nonexistentcommand12345', $outputText);
@@ -175,7 +175,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'completion');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should still display help (either from README or translation)
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('completion', $outputText);
@@ -191,7 +191,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'release');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should display help with alias and arguments
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('release', $outputText);
@@ -209,7 +209,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'release');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with version
         $this->assertStringContainsString('1.2.0', $outputText);
     }
@@ -224,7 +224,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'items:search');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with jql
         $this->assertStringContainsString('project = PROJ', $outputText);
     }
@@ -239,7 +239,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'completion');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with shell
         $this->assertStringContainsString('bash', $outputText);
     }
@@ -254,7 +254,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'submit');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with labels option
         $this->assertStringContainsString('submit', $outputText);
         $this->assertStringContainsString('--labels', $outputText);
@@ -271,7 +271,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'commit');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with message option
         $this->assertStringContainsString('commit', $outputText);
         $this->assertStringContainsString('--message', $outputText);
@@ -288,7 +288,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'items:list');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show example with key option
         $this->assertStringContainsString('items:list', $outputText);
         $this->assertStringContainsString('--project', $outputText);
@@ -305,7 +305,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'submit');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show examples with both options
         $this->assertStringContainsString('submit', $outputText);
         $this->assertStringContainsString('--draft', $outputText);
@@ -322,7 +322,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'commit');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should show examples with both options
         $this->assertStringContainsString('commit', $outputText);
         $this->assertStringContainsString('--new', $outputText);
@@ -336,9 +336,9 @@ class HelpServiceTest extends TestCase
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
-        
+
         $result = $method->invoke($this->helpService, 'release');
-        
+
         // Test intent: should include version example
         $this->assertStringContainsString('1.2.0', $result);
         $this->assertStringContainsString('release', $result);
@@ -352,9 +352,9 @@ class HelpServiceTest extends TestCase
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
-        
+
         $result = $method->invoke($this->helpService, 'items:list');
-        
+
         // Test intent: should show --project option with PROJ example
         $this->assertStringContainsString('--project', $result);
         $this->assertStringContainsString('PROJ', $result);
@@ -368,9 +368,9 @@ class HelpServiceTest extends TestCase
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
-        
+
         $result = $method->invoke($this->helpService, 'submit');
-        
+
         // Test intent: should show --labels option with bug,enhancement example
         $this->assertStringContainsString('--labels', $result);
         $this->assertStringContainsString('bug,enhancement', $result);
@@ -384,9 +384,9 @@ class HelpServiceTest extends TestCase
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
-        
+
         $result = $method->invoke($this->helpService, 'items:show');
-        
+
         // Test intent: should include JIRA-33 example for key argument
         $this->assertStringContainsString('JIRA-33', $result);
         $this->assertStringContainsString('items:show', $result);
@@ -401,7 +401,7 @@ class HelpServiceTest extends TestCase
         $this->helpService->displayCommandHelp($io, 'pr:comment');
 
         $outputText = $output->fetch();
-        
+
         // Test intent: should display help with alias and argument
         $this->assertStringContainsString('Help:', $outputText);
         $this->assertStringContainsString('pr:comment', $outputText);
@@ -415,9 +415,9 @@ class HelpServiceTest extends TestCase
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
-        
+
         $result = $method->invoke($this->helpService, 'pr:comment');
-        
+
         // Test intent: should include message argument example
         $this->assertStringContainsString('pr:comment', $result);
         $this->assertStringContainsString('pc', $result);
@@ -425,4 +425,3 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('"Comment text"', $result);
     }
 }
-

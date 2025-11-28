@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\TranslationService;
@@ -20,19 +22,22 @@ class CacheClearHandler
 
         $cachePath = $this->getCachePath();
 
-        if (!file_exists($cachePath)) {
+        if (! file_exists($cachePath)) {
             $io->note($this->translator->trans('cache.clear.already_clear'));
+
             return 0;
         }
 
         if (@unlink($cachePath)) {
             $io->success($this->translator->trans('cache.clear.success'));
+
             return 0;
         }
 
         // @codeCoverageIgnoreStart
         // unlink() failure is extremely rare and difficult to simulate in tests
         $io->error($this->translator->trans('cache.clear.error_delete'));
+
         return 1;
         // @codeCoverageIgnoreEnd
     }
@@ -40,7 +45,7 @@ class CacheClearHandler
     protected function getCachePath(): string
     {
         $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
+
         return str_replace('~', $home, self::CACHE_FILE_PATH);
     }
 }
-
