@@ -20,6 +20,7 @@ class HelpService
         'commit' => 'stud commit',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
+        'cache:clear' => 'stud cache:clear',
         'status' => 'stud status',
         'submit' => 'stud submit',
         'pr:comment' => 'stud pr:comment',
@@ -189,6 +190,12 @@ class HelpService
             'flatten' => [
                 'alias' => 'ft',
                 'description_key' => 'help.command_flatten',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'cache:clear' => [
+                'alias' => 'cc',
+                'description_key' => 'help.command_cache_clear',
                 'options' => [],
                 'arguments' => [],
             ],

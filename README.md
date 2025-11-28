@@ -369,6 +369,15 @@ These commands integrate directly with your local Git repository to streamline y
         ```
     -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
 
+-   **`stud cache:clear`** (Alias: `stud cc`)
+    -   **Description:** Clears the update check cache file to force a version check on the next command execution. This is useful for maintainers and developers testing the update workflow without waiting 24 hours for the cache to expire.
+    -   **Usage:**
+        ```bash
+        stud cache:clear
+        stud cc
+        ```
+    -   **Note:** The cache file is located at `~/.cache/stud/last_update_check.json`. If the file doesn't exist, the command will report that the cache was already clear.
+
 #### Release Commands
 
 These commands help you manage the release process.

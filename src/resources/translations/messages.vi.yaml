@@ -122,6 +122,14 @@ flatten:
   error_rebase: "Rebase thất bại: %error%"
   no_fixups: "Không tìm thấy commit fixup! hoặc squash!. Không có gì để làm phẳng."
 
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Xóa bộ nhớ cache kiểm tra cập nhật"
+    success: "✅ Bộ nhớ cache kiểm tra cập nhật đã được xóa thành công."
+    already_clear: "Bộ nhớ cache đã trống."
+    error_delete: "Lỗi khi xóa tệp cache."
+
 # Submit Handler
 submit:
   section: "Gửi Pull Request"
@@ -286,6 +294,7 @@ help:
   command_commit: "Hướng dẫn bạn tạo một commit thông thường."
   command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
   command_flatten: "Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng."
+  command_cache_clear: "Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo."
   command_submit: "Đẩy nhánh hiện tại và tạo Pull Request."
   command_pr_comment: "Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp."
   command_status: "Bảng điều khiển \"tôi đang ở đâu?\" nhanh."

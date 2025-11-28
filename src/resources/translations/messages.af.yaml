@@ -122,6 +122,14 @@ flatten:
   error_rebase: "Rebase het misluk: %error%"
   no_fixups: "Geen fixup! of squash! commits gevind nie. Niks om plat te maak nie."
 
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Maak opdatering kontrole kas skoon"
+    success: "✅ Opdatering kontrole kas suksesvol skoongemaak."
+    already_clear: "Kas was reeds leeg."
+    error_delete: "Fout by verwydering van kas lêer."
+
 # Submit Handler
 submit:
   section: "Dien Pull Request in"
@@ -286,6 +294,7 @@ help:
   command_commit: "Lei jou deur die maak van 'n konvensionele commit."
   command_please: "'n Veilige force-push vir gevorderde gebruikers (force-with-lease)."
   command_flatten: "Voeg outomaties alle fixup! commits saam in hul teiken commits."
+  command_cache_clear: "Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing."
   command_submit: "Stuur die huidige tak en skep 'n Pull Request."
   command_pr_comment: "Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument."
   command_status: "'n Vinnige \"waar is ek?\" dashboard."
