@@ -40,6 +40,68 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 **Rationale**: By making complex methods `protected` instead of `private`, we enable direct unit testing of these methods without requiring complex mocking or integration tests. This aligns with our goal of 100% test coverage.
 
+### Code Quality and Complexity Standards
+
+To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds:
+
+#### Cyclomatic Complexity (CC)
+
+**Rule**: Maximum Cyclomatic Complexity of **10** for any single method.
+
+**What is Cyclomatic Complexity?** Cyclomatic Complexity measures the number of linearly independent paths through a program's source code. It's calculated by counting decision points (if statements, loops, switch cases, etc.) plus 1.
+
+**Enforcement**: 
+- During development (Phase 1 of the AI protocol), all methods that will be modified or created must be assessed for complexity.
+- If a method exceeds CC of 10, it MUST be refactored before proceeding with feature implementation.
+- Tools like PHPUnit's coverage reports or static analysis tools can help measure complexity.
+
+**Example of refactoring high complexity:**
+```php
+// ❌ BAD: High complexity (CC > 10)
+public function processData($data) {
+    if ($condition1) {
+        if ($condition2) {
+            if ($condition3) {
+                // ... many nested conditions
+            }
+        }
+    }
+    // ... more conditions
+}
+
+// ✅ GOOD: Refactored into smaller methods (each CC ≤ 10)
+public function processData($data) {
+    if (!$this->validateData($data)) {
+        return false;
+    }
+    return $this->transformData($data);
+}
+
+protected function validateData($data): bool {
+    // Simple validation logic (CC ≤ 10)
+}
+
+protected function transformData($data) {
+    // Simple transformation logic (CC ≤ 10)
+}
+```
+
+#### CRAP Index
+
+**Rule**: Maximum CRAP Index (Change Risk Analysis and Prediction) of **10** for any new or modified class.
+
+**What is CRAP Index?** CRAP Index combines Cyclomatic Complexity with test coverage to predict the risk of changing code. The formula is: `CC² × (1 - coverage/100)³ + CC`
+
+**Enforcement**:
+- All new classes must have CRAP Index ≤ 10.
+- All modified classes must maintain or improve their CRAP Index to stay ≤ 10.
+- If a class exceeds CRAP Index of 10, it MUST be refactored (by reducing complexity or increasing test coverage) before proceeding.
+
+**How to reduce CRAP Index**:
+1. Reduce Cyclomatic Complexity (break down complex methods).
+2. Increase test coverage (write more tests).
+3. Extract complex logic into smaller, well-tested classes.
+
 ## Testing & Assertions
 
 ### Goal: 100% Test Coverage
@@ -64,6 +126,45 @@ try {
 // ❌ BAD: Comment and annotation on same line
 // @codeCoverageIgnoreStart - Exception from rename() is extremely rare
 ```
+
+### Dependency Isolation in Unit Tests
+
+**Critical Rule**: The use of real service instances (Handlers, Providers, Repositories) in unit tests is **forbidden**. All service dependencies MUST be mocked.
+
+**Why this matters:**
+- Unit tests should test a single unit of code in isolation.
+- Real service instances can introduce side effects, network calls, file system operations, etc.
+- Mocking ensures tests are fast, predictable, and isolated.
+- Mocking allows you to control the behavior of dependencies and test edge cases.
+
+**DO NOT use real service instances:**
+```php
+// ❌ BAD: Using real service instances
+public function testHandler() {
+    $gitRepository = new GitRepository(); // Real instance
+    $jiraService = new JiraService(); // Real instance
+    $handler = new UpdateHandler($gitRepository, $jiraService);
+    // This test may make real API calls or modify the file system!
+}
+
+// ✅ GOOD: Using mocks
+public function testHandler() {
+    $gitRepository = $this->createMock(GitRepository::class);
+    $jiraService = $this->createMock(JiraService::class);
+    $handler = new UpdateHandler($gitRepository, $jiraService);
+    // This test is isolated and predictable
+}
+```
+
+**What to mock:**
+- Handler classes (e.g., `UpdateHandler`, `CommitHandler`)
+- Service classes (e.g., `GitRepository`, `JiraService`, `GithubProvider`)
+- Any class that is injected via dependency injection
+
+**What NOT to mock (acceptable to use real instances):**
+- Simple value objects (DTOs, Enums)
+- Standard library classes (e.g., `DateTime`, `stdClass`)
+- Simple utility classes with no external dependencies
 
 ### Core Principle: "Test the Intent, Not the Text"
 
@@ -154,7 +255,8 @@ The `CHANGELOG.md` file follows the [Keep a Changelog](https://keepachangelog.co
 ## Summary
 
 - **Code Architecture**: Follow PSR-12 and SOLID principles. Use `protected` for testable helper methods, avoid `final` on injectable services.
-- **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text.
+- **Code Quality**: Maximum Cyclomatic Complexity of 10 per method, maximum CRAP Index of 10 per class. Violations must be refactored before feature implementation.
+- **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text. All service dependencies must be mocked in unit tests.
 - **Output**: Use the standardized output methods consistently to provide a uniform user experience.
 - **CHANGELOG**: Use `### Breaking` section for breaking changes, not inline markers.
 

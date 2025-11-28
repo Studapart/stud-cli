@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Refactor AI.md into four-phase development protocol (Investigate and Plan, Execution and Documentation, Project Integrity and Commit, Summarize and Conclude) with enforced planning, complexity assessment, and 100% code coverage verification [SCI-15]
+- Update CONVENTIONS.md with measurable code quality thresholds: maximum Cyclomatic Complexity of 10 per method and maximum CRAP Index of 10 per class [SCI-15]
+- Add dependency isolation rules to CONVENTIONS.md: all service dependencies (Handlers, Providers, Repositories) must be mocked in unit tests; real service instances are forbidden [SCI-15]
 - Refactor `stud update` verification to use GitHub API digest property instead of external checksum files [SCI-14]
   - Removed logic for fetching external `.sha256`, `.sha256sum`, and `checksums.txt` files
   - Now extracts digest directly from the PHAR asset's JSON object in GitHub API response
