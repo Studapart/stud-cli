@@ -21,9 +21,19 @@ abstract class CommandTestCase extends TestCase
         $this->gitRepository = $this->createMock(GitRepository::class);
         $this->jiraService = $this->createMock(JiraService::class);
         
-        // Create a real TranslationService with English translations for tests
-        $translationsPath = __DIR__ . '/../src/resources/translations';
-        $this->translationService = new TranslationService('en', $translationsPath);
+        // Mock TranslationService to avoid file system dependencies in unit tests
+        // Note: TranslationServiceTest uses real instances for integration testing
+        $this->translationService = $this->createMock(TranslationService::class);
+        
+        // Set up default mock behavior: return the key as the value for simple testing
+        $this->translationService->method('trans')
+            ->willReturnCallback(function ($id, $parameters = []) {
+                // Return a simple representation for testing
+                return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
+            });
+        
+        $this->translationService->method('getLocale')
+            ->willReturn('en');
     }
     protected function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {

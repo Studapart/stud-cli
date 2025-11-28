@@ -21,6 +21,11 @@ class CommitHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        // CommitHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since CommitHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;

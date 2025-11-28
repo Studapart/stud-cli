@@ -18,6 +18,11 @@ class ProjectListHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        // ProjectListHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since ProjectListHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
         $this->handler = new ProjectListHandler($this->jiraService, $this->translationService);
