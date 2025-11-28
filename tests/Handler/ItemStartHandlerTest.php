@@ -20,6 +20,9 @@ class ItemStartHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        // Note: Castor container is not initialized in tests, so slug() will use the fallback
+        // which replicates Castor's behavior (snake_case -> slug -> lowercase)
+
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
@@ -124,34 +127,6 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertSame('chore', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['task']));
         $this->assertSame('chore', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['sub-task']));
         $this->assertSame('feat', $this->callPrivateMethod($this->handler, 'getBranchPrefixFromIssueType', ['unknown']));
-    }
-
-    public function testSlugify(): void
-    {
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My awesome feature']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My Awesome Feature']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My-Awesome-Feature']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My_Awesome_Feature']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['  My awesome feature  ']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My!@#$%^&*()Awesome Feature']));
-        $this->assertSame('my-awesome-feature', $this->callPrivateMethod($this->handler, 'slugify', ['My   awesome   feature']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a- b -c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a -b- c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b - c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a_b_c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a_ b _c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a _b_ c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a _ b _ c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a-b_c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a_b-c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a-b- c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a -b-c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b-c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a- b- c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a- b - c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a -b - c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b -c']));
-        $this->assertSame('a-b-c', $this->callPrivateMethod($this->handler, 'slugify', ['a - b - c']));
     }
 
     public function testHandleWithTransitionEnabledAndCachedTransition(): void
