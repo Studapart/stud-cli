@@ -12,6 +12,16 @@ class DeployHandlerTest extends CommandTestCase
 {
     use ProphecyTrait;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        // DeployHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since DeployHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+    }
+
     public function testHandle(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);

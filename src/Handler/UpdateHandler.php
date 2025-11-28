@@ -70,7 +70,8 @@ class UpdateHandler
         }
 
         // Verify the downloaded file's hash before proceeding
-        if (!$this->verifyHash($io, $tempFile, $release, $pharAsset)) {
+        $verificationResult = $this->verifyHash($io, $tempFile, $pharAsset);
+        if ($verificationResult === false) {
             @unlink($tempFile);
             return 1;
         }
@@ -335,170 +336,60 @@ class UpdateHandler
     }
 
     /**
-     * Verifies the hash of the downloaded file against the expected hash from GitHub release.
-     * Returns true if verification succeeds, false otherwise.
+     * Verifies the hash of the downloaded file against the digest from GitHub API.
+     * Returns true if verification succeeds or user overrides, false if user aborts.
      */
-    protected function verifyHash(SymfonyStyle $io, string $tempFile, array $release, array $pharAsset): bool
+    protected function verifyHash(SymfonyStyle $io, string $tempFile, array $pharAsset): bool
     {
-        $expectedHash = $this->getExpectedHash($io, $release, $pharAsset);
-        if ($expectedHash === null) {
-            // If we can't get the expected hash, we should fail for security
-            $io->error(explode("\n", $this->translator->trans('update.error_hash_not_found')));
-            return false;
-        }
-
-        // Suppress warnings from hash_file() when file doesn't exist or can't be read
-        // We handle the false return value explicitly below
+        // Extract digest from the asset's JSON object (format: "sha256:...")
+        $digest = $pharAsset['digest'] ?? null;
+        
+        // Calculate the local file's SHA-256 hash
         $calculatedHash = @hash_file('sha256', $tempFile);
         if ($calculatedHash === false) {
             $io->error(explode("\n", $this->translator->trans('update.error_hash_calculation')));
             return false;
         }
 
-        if (strtolower($calculatedHash) !== strtolower($expectedHash)) {
-            $io->error(explode("\n", $this->translator->trans('update.error_hash_mismatch', [
-                'expected' => $expectedHash,
+        // Case A: Match (Verified) - proceed automatically
+        if ($digest !== null) {
+            // Extract hash from digest format "sha256:hash"
+            $expectedHash = null;
+            if (str_starts_with($digest, 'sha256:')) {
+                $expectedHash = substr($digest, 7); // Remove "sha256:" prefix
+            } else {
+                // If digest doesn't have prefix, assume it's the hash itself
+                $expectedHash = $digest;
+            }
+
+            if (strtolower($calculatedHash) === strtolower($expectedHash)) {
+                $io->text($this->translator->trans('update.success_hash_verified'));
+                return true;
+            }
+        }
+
+        // Case B: Mismatch or Missing Digest (Failed) - prompt user for override
+        $errorMessage = $digest === null 
+            ? $this->translator->trans('update.error_digest_not_found')
+            : $this->translator->trans('update.error_hash_mismatch', [
+                'expected' => $digest,
                 'calculated' => $calculatedHash,
-            ])));
+            ]);
+        
+        $io->warning(explode("\n", $errorMessage));
+        
+        $continue = $io->confirm(
+            $this->translator->trans('update.prompt_continue_on_verification_failure'),
+            false
+        );
+
+        if (!$continue) {
+            // User aborted - stop process, delete temp file, exit with error code 1
             return false;
         }
 
-        $io->text($this->translator->trans('update.success_hash_verified'));
+        // User overrode - proceed to file replacement
         return true;
-    }
-
-    /**
-     * Retrieves the expected SHA-256 hash from the GitHub release.
-     * Looks for checksum files like stud.phar.sha256, stud.phar.sha256sum, or checksums.txt.
-     * Returns the hash string or null if not found.
-     */
-    protected function getExpectedHash(SymfonyStyle $io, array $release, array $pharAsset): ?string
-    {
-        $pharAssetName = $pharAsset['name'] ?? 'stud.phar';
-        
-        // Try to find a checksum file in the release assets
-        $checksumAsset = $this->findChecksumAsset($release, $pharAssetName);
-        if ($checksumAsset === null) {
-            return null;
-        }
-
-        try {
-            $checksumContent = $this->downloadChecksumFile($io, $checksumAsset, $this->repoOwner, $this->repoName);
-            return $this->parseChecksumFile($checksumContent, $pharAssetName);
-        } catch (\Exception $e) {
-            $this->logVerbose($io, $this->translator->trans('update.checksum_download_error'), $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Finds a checksum file asset in the release that matches the PHAR file.
-     * Looks for files like: stud.phar.sha256, stud.phar.sha256sum, checksums.txt, etc.
-     */
-    protected function findChecksumAsset(array $release, string $pharAssetName): ?array
-    {
-        $baseName = pathinfo($pharAssetName, PATHINFO_FILENAME); // e.g., "stud" or "stud-1.0.0"
-        $extension = pathinfo($pharAssetName, PATHINFO_EXTENSION); // "phar"
-        
-        // Common checksum file patterns
-        $patterns = [
-            $baseName . '.' . $extension . '.sha256',      // stud.phar.sha256
-            $baseName . '.' . $extension . '.sha256sum',    // stud.phar.sha256sum
-            $baseName . '-sha256.txt',                       // stud-sha256.txt
-            'checksums.txt',                                 // checksums.txt
-            'checksums.sha256',                             // checksums.sha256
-        ];
-
-        foreach ($release['assets'] ?? [] as $asset) {
-            $assetName = $asset['name'] ?? null;
-            if ($assetName === null) {
-                continue; // Skip assets without a name
-            }
-            foreach ($patterns as $pattern) {
-                if ($assetName === $pattern) {
-                    return $asset;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Downloads the checksum file from GitHub.
-     */
-    protected function downloadChecksumFile(SymfonyStyle $io, array $checksumAsset, string $repoOwner, string $repoName): string
-    {
-        $assetId = $checksumAsset['id'] ?? null;
-        if (!$assetId) {
-            throw new \RuntimeException('Checksum asset ID not found');
-        }
-
-        $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
-        $this->logVerbose($io, $this->translator->trans('update.downloading_checksum'), $apiUrl);
-
-        $headers = [
-            'User-Agent' => 'stud-cli',
-            'Accept' => 'application/octet-stream',
-        ];
-        
-        if ($this->gitToken) {
-            $headers['Authorization'] = 'Bearer ' . $this->gitToken;
-        }
-
-        $downloadClient = $this->httpClient ?? HttpClient::create([
-            'headers' => $headers,
-        ]);
-
-        $response = $downloadClient->request('GET', $apiUrl);
-        return $response->getContent();
-    }
-
-    /**
-     * Parses the checksum file content to extract the hash for the PHAR file.
-     * Supports formats like:
-     * - "hash  filename" (standard checksum format)
-     * - "hash" (single line with just the hash)
-     * - "filename: hash" (alternative format)
-     */
-    protected function parseChecksumFile(string $checksumContent, string $pharAssetName): ?string
-    {
-        $lines = explode("\n", trim($checksumContent));
-        
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line) || str_starts_with($line, '#')) {
-                continue; // Skip empty lines and comments
-            }
-
-            // Try to match standard format: "hash  filename" or "hash *filename" or "hash filename"
-            if (preg_match('/^([a-f0-9]{64})\s+[*\s]?(.+)$/i', $line, $matches)) {
-                $hash = $matches[1];
-                $filename = trim($matches[2]);
-                
-                // Check if this line matches our PHAR file
-                if ($filename === $pharAssetName || basename($filename) === $pharAssetName) {
-                    return $hash;
-                }
-            }
-            
-            // Try alternative format: "filename: hash" or "filename hash"
-            if (preg_match('/^(.+?)[:\s]+([a-f0-9]{64})$/i', $line, $matches)) {
-                $filename = trim($matches[1]);
-                $hash = $matches[2];
-                
-                if ($filename === $pharAssetName || basename($filename) === $pharAssetName) {
-                    return $hash;
-                }
-            }
-            
-            // If it's just a 64-character hex string, assume it's the hash for our file
-            if (preg_match('/^[a-f0-9]{64}$/i', $line) && count($lines) === 1) {
-                return $line;
-            }
-        }
-
-        return null;
     }
 
 }

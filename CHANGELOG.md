@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refactor `stud update` verification to use GitHub API digest property instead of external checksum files [SCI-14]
+  - Removed logic for fetching external `.sha256`, `.sha256sum`, and `checksums.txt` files
+  - Now extracts digest directly from the PHAR asset's JSON object in GitHub API response
+  - Calculates SHA-256 hash of downloaded file and compares against API digest
+
+### Added
+- Add user override option for `stud update` verification failures [SCI-14]
+  - When hash mismatch or missing digest is detected, user is prompted to continue or abort
+  - User can override verification failure to proceed with installation (useful for hotfix/dev scenarios)
+  - Default behavior is to abort on verification failure for security
+
 ## [2.5.0] - 2025-11-27
 
 ### Added

@@ -23,6 +23,11 @@ class InitHandlerTest extends CommandTestCase
         // Save original SHELL to restore in tearDown
         $this->originalShell = getenv('SHELL') ?: null;
 
+        // InitHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since InitHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+
         $this->fileSystem = $this->createMock(FileSystem::class);
         $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService);
     }

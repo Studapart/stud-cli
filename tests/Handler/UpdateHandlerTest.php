@@ -16,6 +16,7 @@ class UpdateHandlerTest extends CommandTestCase
 {
     private UpdateHandler $handler;
     private HttpClientInterface&MockObject $httpClient;
+    private ChangelogParser&MockObject $changelogParser;
     private string $tempBinaryPath;
 
     protected function setUp(): void
@@ -23,11 +24,20 @@ class UpdateHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->changelogParser = $this->createMock(ChangelogParser::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
         
         // Create a temporary writable file for testing
         touch($this->tempBinaryPath);
         chmod($this->tempBinaryPath, 0644);
+
+        // UpdateHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since UpdateHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $realTranslationService = new \App\Service\TranslationService('en', $translationsPath);
+        
+        // Override the mocked translationService from CommandTestCase for this test
+        $this->translationService = $realTranslationService;
 
         $this->handler = new UpdateHandler(
             'studapart', // repoOwner
@@ -35,7 +45,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',     // currentVersion
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $this->changelogParser,
             null,        // gitToken
             $this->httpClient
         );
@@ -46,6 +56,22 @@ class UpdateHandlerTest extends CommandTestCase
         @unlink($this->tempBinaryPath);
         @unlink(sys_get_temp_dir() . '/stud.phar.new');
         parent::tearDown();
+    }
+
+    /**
+     * Helper method to set up ChangelogParser mock to use real parser for integration tests.
+     */
+    private function setupRealChangelogParser(): void
+    {
+        $realParser = new ChangelogParser();
+        $this->changelogParser->method('parse')
+            ->willReturnCallback(function ($content, $currentVersion, $latestVersion) use ($realParser) {
+                return $realParser->parse($content, $currentVersion, $latestVersion);
+            });
+        $this->changelogParser->method('getSectionTitle')
+            ->willReturnCallback(function ($sectionType) use ($realParser) {
+                return $realParser->getSectionTitle($sectionType);
+            });
     }
 
     public function testHandleAlreadyOnLatestVersion(): void
@@ -66,7 +92,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -76,7 +104,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithNewerVersionAvailable(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -84,12 +113,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar.sha256',
                 ],
             ],
         ];
@@ -99,26 +124,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -126,7 +145,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -135,7 +156,7 @@ class UpdateHandlerTest extends CommandTestCase
         // Success is indicated by exit code 0
         
         // Verify the binary was updated
-        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         
         // Verify backup file was created (versioned backup)
         $backupPath = $this->tempBinaryPath . '-1.0.0.bak';
@@ -147,7 +168,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithNonWritableBinary(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
         
         // Make file non-writable
         chmod($this->tempBinaryPath, 0444);
@@ -158,12 +180,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar.sha256',
                 ],
             ],
         ];
@@ -173,26 +191,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -200,7 +212,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -242,7 +256,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -262,7 +278,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -271,7 +289,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutput(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -279,12 +298,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud-1.0.1.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar.sha256',
                 ],
             ],
         ];
@@ -294,26 +309,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud-1.0.1.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -321,7 +330,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io);
@@ -331,7 +342,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithVersionedAssetName(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -339,12 +351,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud-1.0.1.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar.sha256',
                 ],
             ],
         ];
@@ -354,26 +362,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud-1.0.1.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -381,7 +383,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -389,7 +393,7 @@ class UpdateHandlerTest extends CommandTestCase
         $outputText = $output->fetch();
         // Note: Success message removed to avoid zlib error after PHAR replacement
         // Success is indicated by exit code 0
-        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         
         // Clean up backup file
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -397,7 +401,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithMultipleAssetsPicksCorrectOne(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -410,12 +415,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud-1.0.1.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud-1.0.1.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud-1.0.1.phar.sha256',
                 ],
                 [
                     'id' => 22222222,
@@ -430,26 +431,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud-1.0.1.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint with the correct asset ID
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -458,12 +453,14 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
         $this->assertSame(0, $result);
-        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         
         // Clean up backup file
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -498,7 +495,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -510,18 +509,20 @@ class UpdateHandlerTest extends CommandTestCase
     {
 
         // Current version has 'v' prefix, latest doesn't
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             'v1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
 
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => '1.0.1', // No 'v' prefix
@@ -529,12 +530,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/1.0.1/stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/1.0.1/stud.phar.sha256',
                 ],
             ],
         ];
@@ -544,26 +541,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
         
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // Verify it's using the API asset endpoint, not browser_download_url
                 $this->assertStringContainsString('/repos/studapart/stud-cli/releases/assets/', $url);
@@ -571,7 +562,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -598,7 +591,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -641,7 +636,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -657,13 +654,14 @@ class UpdateHandlerTest extends CommandTestCase
         touch($badBinaryPath);
         chmod($badBinaryPath, 0444); // Read-only
 
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -705,7 +703,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -729,7 +729,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($errorResponse);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -750,7 +752,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -759,13 +763,14 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenProvided(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient
         );
@@ -786,7 +791,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -811,7 +818,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -822,13 +831,14 @@ class UpdateHandlerTest extends CommandTestCase
     public function testGetBinaryPathUsesProvidedPath(): void
     {
         $testPath = '/test/path/to/binary.phar';
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -846,13 +856,14 @@ class UpdateHandlerTest extends CommandTestCase
         // Since we can't easily mock Phar in tests, we test that the fallback works
         // The actual Phar path would be tested in integration tests
         $testPath = '/test/phar/path.phar';
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -865,19 +876,21 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenUsesAuthForDownload(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient
         );
 
 
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -885,12 +898,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar.sha256',
                 ],
             ],
         ];
@@ -900,10 +909,7 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
@@ -913,17 +919,14 @@ class UpdateHandlerTest extends CommandTestCase
         // but download creates a new client with auth headers)
         // Since we can't easily verify headers on a new HttpClient instance,
         // we verify the download succeeds when token is provided
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 // For download URL, return success - the auth header will be included
                 // by the new HttpClient created in downloadPhar
@@ -931,7 +934,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -941,7 +946,7 @@ class UpdateHandlerTest extends CommandTestCase
         // Success is indicated by exit code 0
         
         // Verify the binary was updated
-        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         
         // Clean up backup file
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -955,7 +960,8 @@ class UpdateHandlerTest extends CommandTestCase
         file_put_contents($this->tempBinaryPath, $originalContent);
         chmod($this->tempBinaryPath, 0755);
 
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -963,12 +969,8 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
                     'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                    'browser_download_url' => 'https://github.com/studapart/stud-cli/releases/download/v1.0.1/stud.phar.sha256',
                 ],
             ],
         ];
@@ -978,26 +980,20 @@ class UpdateHandlerTest extends CommandTestCase
         $releaseResponse->method('toArray')->willReturn($releaseData);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(404);
         $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
 
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
                 }
                 return $downloadResponse;
             });
@@ -1018,7 +1014,9 @@ class UpdateHandlerTest extends CommandTestCase
         // The rollback logic is tested by the code structure itself
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1032,7 +1030,7 @@ class UpdateHandlerTest extends CommandTestCase
         $this->assertStringEqualsFile($backupPath, $originalContent);
         
         // Verify new content is in binary
-        $this->assertStringEqualsFile($this->tempBinaryPath, 'phar binary content');
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
         
         // Clean up backup
         @unlink($backupPath);
@@ -1073,7 +1071,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1082,7 +1082,8 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testDisplayChangelogWithBreakingChanges(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1090,10 +1091,7 @@ class UpdateHandlerTest extends CommandTestCase
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1109,6 +1107,9 @@ class UpdateHandlerTest extends CommandTestCase
 
 CHANGELOG;
 
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseResponse = $this->createMock(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
@@ -1121,28 +1122,24 @@ CHANGELOG;
         ]);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1156,7 +1153,11 @@ CHANGELOG;
 
     public function testDisplayChangelogWithRegularSections(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1164,10 +1165,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1195,28 +1193,24 @@ CHANGELOG;
         ]);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1230,7 +1224,8 @@ CHANGELOG;
 
     public function testDisplayChangelogWhenFetchFails(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1238,10 +1233,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1255,28 +1247,24 @@ CHANGELOG;
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1390,7 +1378,11 @@ CHANGELOG;
 
     public function testDisplayChangelogWithEmptyChanges(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1398,10 +1390,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1426,28 +1415,24 @@ CHANGELOG;
         ]);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1460,7 +1445,11 @@ CHANGELOG;
 
     public function testDisplayChangelogWithNoChangesReturnsEarly(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1468,10 +1457,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1496,28 +1482,24 @@ CHANGELOG;
         ]);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1531,7 +1513,11 @@ CHANGELOG;
 
     public function testDisplayChangelogWithEmptyItemsInSection(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1539,10 +1525,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1573,28 +1556,24 @@ CHANGELOG;
         ]);
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1609,7 +1588,8 @@ CHANGELOG;
 
     public function testDisplayChangelogWithVerboseErrorLogging(): void
     {
-        $pharHash = hash('sha256', 'phar binary content');
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
 
         $releaseData = [
             'tag_name' => 'v1.0.1',
@@ -1617,10 +1597,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $pharHash,
                 ],
             ],
         ];
@@ -1634,28 +1611,24 @@ CHANGELOG;
         $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn('phar binary content');
+        $downloadResponse->method('getContent')->willReturn($pharContent);
 
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-
-        $this->httpClient->expects($this->exactly(4))
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse, $checksumResponse) {
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
                 if (str_contains($url, '/releases/latest')) {
                     return $releaseResponse;
                 }
                 if (str_contains($url, '/contents/CHANGELOG.md')) {
                     return $changelogErrorResponse;
                 }
-                if (str_contains($url, '/releases/assets/12345679')) {
-                    return $checksumResponse;
-                }
                 return $downloadResponse;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io);
@@ -1745,6 +1718,9 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagDisplaysChangelogAndExits(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseData = [
             'tag_name' => 'v1.0.1',
             'assets' => [
@@ -1792,7 +1768,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1807,6 +1785,9 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagAndBreakingChanges(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseData = [
             'tag_name' => 'v1.0.1',
             'assets' => [
@@ -1853,7 +1834,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1883,7 +1866,9 @@ CHANGELOG;
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1927,7 +1912,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1949,132 +1936,7 @@ CHANGELOG;
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 87654321,
-                    'name' => 'stud.phar.sha256',
-                ],
-            ],
-        ];
-
-        $releaseResponse = $this->createMock(ResponseInterface::class);
-        $releaseResponse->method('getStatusCode')->willReturn(200);
-        $releaseResponse->method('toArray')->willReturn($releaseData);
-
-        $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn($pharContent);
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn("{$expectedHash}  stud.phar\n");
-
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
-        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
-        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
-
-        $this->httpClient->expects($this->exactly(4))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/87654321')) {
-                    return $checksumResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-                return $releaseResponse;
-            });
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
-        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
-        
-        @unlink($this->tempBinaryPath . '-1.0.0.bak');
-    }
-
-    public function testHandleWithHashVerificationFailure(): void
-    {
-        $pharContent = 'phar binary content';
-        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
-
-        $releaseData = [
-            'tag_name' => 'v1.0.1',
-            'assets' => [
-                [
-                    'id' => 12345678,
-                    'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 87654321,
-                    'name' => 'stud.phar.sha256',
-                ],
-            ],
-        ];
-
-        $releaseResponse = $this->createMock(ResponseInterface::class);
-        $releaseResponse->method('getStatusCode')->willReturn(200);
-        $releaseResponse->method('toArray')->willReturn($releaseData);
-
-        $downloadResponse = $this->createMock(ResponseInterface::class);
-        $downloadResponse->method('getContent')->willReturn($pharContent);
-
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn("{$wrongHash}  stud.phar\n");
-
-        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
-        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
-        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
-
-        $this->httpClient->expects($this->exactly(4))
-            ->method('request')
-            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $checksumResponse, $changelogErrorResponse) {
-                if (str_contains($url, '/releases/latest')) {
-                    return $releaseResponse;
-                }
-                if (str_contains($url, '/contents/CHANGELOG.md')) {
-                    return $changelogErrorResponse;
-                }
-                if (str_contains($url, '/releases/assets/87654321')) {
-                    return $checksumResponse;
-                }
-                if (str_contains($url, '/releases/assets/12345678')) {
-                    return $downloadResponse;
-                }
-                return $releaseResponse;
-            });
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(1, $result);
-        
-        // Verify temp file was deleted
-        $this->assertFileDoesNotExist(sys_get_temp_dir() . '/stud.phar.new');
-        
-        // Verify binary was NOT updated
-        $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
-    }
-
-    public function testHandleWithMissingChecksumFile(): void
-    {
-        $pharContent = 'phar binary content';
-
-        $releaseData = [
-            'tag_name' => 'v1.0.1',
-            'assets' => [
-                [
-                    'id' => 12345678,
-                    'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $expectedHash,
                 ],
             ],
         ];
@@ -2106,7 +1968,73 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
+        
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithHashVerificationFailureUserAborts(): void
+    {
+        $pharContent = 'phar binary content';
+        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $wrongHash,
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                if (str_contains($url, '/releases/assets/12345678')) {
+                    return $downloadResponse;
+                }
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
 
         $result = $this->handler->handle($io);
 
@@ -2119,317 +2047,231 @@ CHANGELOG;
         $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
     }
 
-    public function testParseChecksumFileWithStandardFormat(): void
+    public function testHandleWithHashVerificationFailureUserOverrides(): void
     {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "{$expectedHash}  stud.phar\n";
+        $pharContent = 'phar binary content';
+        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
 
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileWithAlternativeFormat(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "stud.phar: {$expectedHash}\n";
-
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileWithSingleHash(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$expectedHash, 'stud.phar']);
-
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileWithMultipleFiles(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $otherHash = '1111111111111111111111111111111111111111111111111111111111111111';
-        $checksumContent = "{$otherHash}  other.phar\n{$expectedHash}  stud.phar\n";
-
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testFindChecksumAssetWithVariousPatterns(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'stud.phar.sha256'],
-                ['id' => 3, 'name' => 'other.txt'],
-            ],
-        ];
-
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('stud.phar.sha256', $asset['name']);
-    }
-
-    public function testFindChecksumAssetWithChecksumsTxt(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'checksums.txt'],
-            ],
-        ];
-
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('checksums.txt', $asset['name']);
-    }
-
-    public function testFindChecksumAssetReturnsNullWhenNotFound(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'readme.txt'],
-            ],
-        ];
-
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-
-        $this->assertNull($asset);
-    }
-
-    public function testParseChecksumFileWithCommentsAndEmptyLines(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "# This is a comment\n\n{$expectedHash}  stud.phar\n# Another comment\n";
-        
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-        
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileWithBasenameMatching(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "{$expectedHash}  /path/to/stud.phar\n";
-        
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-        
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileWithAlternativeFormatBasename(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "/path/to/stud.phar: {$expectedHash}\n";
-        
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-        
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testDownloadChecksumFileWithMissingAssetId(): void
-    {
-        $checksumAsset = [
-            'name' => 'stud.phar.sha256',
-            // Missing 'id' field
-        ];
-        
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Checksum asset ID not found');
-        
-        $this->callPrivateMethod($this->handler, 'downloadChecksumFile', [$io, $checksumAsset, 'studapart', 'stud-cli']);
-    }
-
-    public function testGetExpectedHashWithDownloadException(): void
-    {
-        $releaseData = [
-            'assets' => [
-                [
-                    'id' => 12345678,
-                    'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
-                ],
-            ],
-        ];
-        
-        $pharAsset = [
-            'id' => 12345678,
-            'name' => 'stud.phar',
-        ];
-        
-        // Mock HTTP client to throw exception
-        $this->httpClient->expects($this->once())
-            ->method('request')
-            ->willThrowException(new \Exception('Network error'));
-        
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
-        
-        $hash = $this->callPrivateMethod($this->handler, 'getExpectedHash', [$io, $releaseData, $pharAsset]);
-        
-        $this->assertNull($hash);
-    }
-
-    public function testVerifyHashWithHashCalculationFailure(): void
-    {
-        $pharHash = hash('sha256', 'phar binary content');
-        
         $releaseData = [
             'tag_name' => 'v1.0.1',
             'assets' => [
                 [
                     'id' => 12345678,
                     'name' => 'stud.phar',
-                ],
-                [
-                    'id' => 12345679,
-                    'name' => 'stud.phar.sha256',
+                    'digest' => 'sha256:' . $wrongHash,
                 ],
             ],
         ];
-        
-        $pharAsset = [
-            'id' => 12345678,
-            'name' => 'stud.phar',
-        ];
-        
+
         $releaseResponse = $this->createMock(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
-        
-        $checksumResponse = $this->createMock(ResponseInterface::class);
-        $checksumResponse->method('getContent')->willReturn($pharHash . '  stud.phar');
-        
-        $this->httpClient->expects($this->once())
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
             ->method('request')
-            ->willReturn($checksumResponse);
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                if (str_contains($url, '/releases/assets/12345678')) {
+                    return $downloadResponse;
+                }
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(true); // User overrides
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
+        
+        // Clean up backup file
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithMissingDigestUserAborts(): void
+    {
+        $pharContent = 'phar binary content';
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                    // Missing 'digest' field
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                if (str_contains($url, '/releases/assets/12345678')) {
+                    return $downloadResponse;
+                }
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(1, $result);
+        
+        // Verify temp file was deleted
+        $this->assertFileDoesNotExist(sys_get_temp_dir() . '/stud.phar.new');
+        
+        // Verify binary was NOT updated
+        $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithMissingDigestUserOverrides(): void
+    {
+        $pharContent = 'phar binary content';
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                    // Missing 'digest' field
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(404);
+        $changelogErrorResponse->method('getContent')->willReturn('{"message":"Not Found"}');
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogErrorResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+                if (str_contains($url, '/releases/assets/12345678')) {
+                    return $downloadResponse;
+                }
+                return $releaseResponse;
+            });
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(true); // User overrides
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+        $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
+        
+        // Clean up backup file
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testVerifyHashWithHashCalculationFailure(): void
+    {
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => 'sha256:' . hash('sha256', 'phar binary content'),
+        ];
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         
         // Use a non-existent file to trigger hash_file failure
         // hash_file returns false for non-existent files without causing notices
         $nonExistentFile = sys_get_temp_dir() . '/non-existent-file-' . uniqid() . '.phar';
         
-        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $nonExistentFile, $releaseData, $pharAsset]);
+        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $nonExistentFile, $pharAsset]);
         
         $this->assertFalse($result);
         $outputText = $output->fetch();
         $this->assertStringContainsString('Could not calculate hash', $outputText);
     }
 
-    public function testFindChecksumAssetWithVersionedPharName(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud-1.0.1.phar'],
-                ['id' => 2, 'name' => 'stud-1.0.1.phar.sha256'],
-            ],
-        ];
-        
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud-1.0.1.phar']);
-        
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('stud-1.0.1.phar.sha256', $asset['name']);
-    }
-
-    public function testParseChecksumFileWithAsteriskFormat(): void
-    {
-        $pharContent = 'test content';
-        $expectedHash = hash('sha256', $pharContent);
-        $checksumContent = "{$expectedHash} * stud.phar\n";
-        
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-        
-        $this->assertSame($expectedHash, $hash);
-    }
-
-    public function testParseChecksumFileReturnsNullWhenNoMatch(): void
-    {
-        $otherHash = '1111111111111111111111111111111111111111111111111111111111111111';
-        $checksumContent = "{$otherHash}  other.phar\n";
-        
-        $hash = $this->callPrivateMethod($this->handler, 'parseChecksumFile', [$checksumContent, 'stud.phar']);
-        
-        $this->assertNull($hash);
-    }
-
-    public function testFindChecksumAssetWithSha256SumFormat(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'stud.phar.sha256sum'],
-            ],
-        ];
-        
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-        
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('stud.phar.sha256sum', $asset['name']);
-    }
-
-    public function testFindChecksumAssetWithSha256TxtFormat(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'stud-sha256.txt'],
-            ],
-        ];
-        
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-        
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('stud-sha256.txt', $asset['name']);
-    }
-
-    public function testFindChecksumAssetWithChecksumsSha256Format(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1, 'name' => 'stud.phar'],
-                ['id' => 2, 'name' => 'checksums.sha256'],
-            ],
-        ];
-        
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-        
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-        $this->assertSame('checksums.sha256', $asset['name']);
-    }
-
     public function testLogVerboseWhenVerbose(): void
     {
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
         
         $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
@@ -2441,7 +2283,9 @@ CHANGELOG;
     public function testLogVerboseWhenNotVerbose(): void
     {
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         // Not setting verbose mode
         
         $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
@@ -2450,48 +2294,83 @@ CHANGELOG;
         $this->assertStringNotContainsString('Test Label: Test Value', $outputText);
     }
 
-    public function testFindChecksumAssetWithNoAssetsArray(): void
+    public function testVerifyHashWithDigestWithoutPrefix(): void
     {
-        $releaseData = [
-            // No 'assets' key
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
+        
+        // Create a temporary file with the content
+        $tempFile = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
+        file_put_contents($tempFile, $pharContent);
+        
+        // Digest without "sha256:" prefix (just the hash)
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => $pharHash, // No "sha256:" prefix
         ];
         
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         
-        $this->assertNull($asset);
+        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $tempFile, $pharAsset]);
+        
+        $this->assertTrue($result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Hash verification successful', $outputText);
+        
+        @unlink($tempFile);
     }
 
-    public function testFindChecksumAssetWithEmptyAssetsArray(): void
+    public function testVerifyHashWithDigestWithoutPrefixMismatch(): void
     {
-        $releaseData = [
-            'assets' => [],
+        $pharContent = 'phar binary content';
+        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
+        
+        // Create a temporary file with the content
+        $tempFile = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
+        file_put_contents($tempFile, $pharContent);
+        
+        // Digest without "sha256:" prefix but wrong hash
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => $wrongHash, // No "sha256:" prefix, but wrong hash
         ];
         
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
         
-        $this->assertNull($asset);
-    }
-
-    public function testFindChecksumAssetWithNullAssets(): void
-    {
-        $releaseData = [
-            'assets' => null,
-        ];
+        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $tempFile, $pharAsset]);
         
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
+        $this->assertFalse($result);
         
-        $this->assertNull($asset);
+        @unlink($tempFile);
     }
 
     public function testCreateGithubProviderWithoutHttpClient(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             null // No httpClient provided
         );
@@ -2503,13 +2382,14 @@ CHANGELOG;
 
     public function testCreateGithubProviderWithGitToken(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             null // No httpClient provided
         );
@@ -2529,13 +2409,14 @@ CHANGELOG;
 
     public function testCreateGithubProviderWithGitTokenAndHttpClient(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient // httpClient provided
         );
@@ -2545,21 +2426,6 @@ CHANGELOG;
         $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
     }
 
-    public function testFindChecksumAssetWithAssetMissingNameKey(): void
-    {
-        $releaseData = [
-            'assets' => [
-                ['id' => 1], // Missing 'name' key
-                ['id' => 2, 'name' => 'stud.phar.sha256'],
-            ],
-        ];
-        
-        // This should not throw an error, but should skip the asset without 'name'
-        $asset = $this->callPrivateMethod($this->handler, 'findChecksumAsset', [$releaseData, 'stud.phar']);
-        
-        $this->assertNotNull($asset);
-        $this->assertSame(2, $asset['id']);
-    }
 
     public function testFindPharAssetWithAssetMissingNameKey(): void
     {
@@ -2572,7 +2438,9 @@ CHANGELOG;
         ];
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         
         // This should not throw an error, but should skip the asset without 'name'
         $asset = $this->callPrivateMethod($this->handler, 'findPharAsset', [$io, $releaseData]);

@@ -31,7 +31,7 @@ For your task, you MUST follow these steps:
 
 -   **Language**: PHP (use `php -v` to determine which version is installed)
 -   **Framework**: `jolicode/castor` is used for task running.
--   **Build**: `repack` is used for PHAR compilation (the command to build the application is `PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file repack/logo.php stud.phar`).
+-   **Build**: `repack` is used for PHAR compilation (the command to build the application is `PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar`).
 -   **Dependencies**: See `composer.json` for a full list of dependencies.
 -   **Debugging**: When implementing new features, add contextual debug logs accessible via the `-v`, `-vv`, and `-vvv` verbosity flags.
 
