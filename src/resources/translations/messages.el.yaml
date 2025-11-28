@@ -122,6 +122,14 @@ flatten:
   error_rebase: "Αποτυχία rebase: %error%"
   no_fixups: "Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση."
 
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Εκκαθάριση cache ελέγχου ενημέρωσης"
+    success: "✅ Cache ελέγχου ενημέρωσης εκκαθαρίστηκε με επιτυχία."
+    already_clear: "Το cache ήταν ήδη άδειο."
+    error_delete: "Σφάλμα κατά τη διαγραφή του αρχείου cache."
+
 # Submit Handler
 submit:
   section: "Υποβολή Pull Request"
@@ -286,6 +294,7 @@ help:
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
   command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
   command_flatten: "Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους."
+  command_cache_clear: "Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή."
   command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
   command_pr_comment: "Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα."
   command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."

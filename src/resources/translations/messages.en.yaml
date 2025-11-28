@@ -122,6 +122,14 @@ flatten:
   error_rebase: "Failed to rebase: %error%"
   no_fixups: "No fixup! or squash! commits found. Nothing to flatten."
 
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Clearing update check cache"
+    success: "✅ Update check cache cleared successfully."
+    already_clear: "Cache was already clear."
+    error_delete: "Failed to delete cache file."
+
 # Submit Handler
 submit:
   section: "Submitting Pull Request"
@@ -286,6 +294,7 @@ help:
   command_commit: "Guides you through making a conventional commit."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
+  command_cache_clear: "Clear the update check cache to force a version check on next command."
   command_submit: "Pushes the current branch and creates a Pull Request."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_status: "A quick \"where am I?\" dashboard."

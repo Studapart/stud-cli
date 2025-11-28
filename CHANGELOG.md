@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Performs non-interactive rebase with autosquash, eliminating manual rebase editing
   - Fails gracefully if working directory has uncommitted changes
   - Warns user that history will be rewritten (requires `stud please` push afterward)
+- Add `stud cache:clear` command (alias: `stud cc`) to clear the update check cache file [SCI-17]
+  - Forces a version check on the next command execution without waiting 24 hours
+  - Useful for maintainers and developers testing the update workflow
+  - Reports success if cache file is deleted or already clear
 
 ### Changed
 - Replace custom `slugify()` method in `ItemStartHandler` with Symfony's `AsciiSlugger` directly [SCI-12]

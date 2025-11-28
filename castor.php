@@ -32,6 +32,7 @@ use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\FlattenHandler;
+use App\Handler\CacheClearHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\ProjectListHandler;
 use App\Handler\SearchHandler;
@@ -452,6 +453,15 @@ function flatten(
 ): void {
     _load_constants();
     $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    exit($handler->handle(io()));
+}
+
+#[AsTask(name: 'cache:clear', aliases: ['cc'], description: 'Clear the update check cache to force a version check on next command')]
+function cache_clear(
+    
+): void {
+    _load_constants();
+    $handler = new CacheClearHandler(_get_translation_service());
     exit($handler->handle(io()));
 }
 
