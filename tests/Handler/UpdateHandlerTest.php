@@ -66,7 +66,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -117,7 +119,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -182,7 +186,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -224,7 +230,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -244,7 +252,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -294,7 +304,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io);
@@ -345,7 +357,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -413,7 +427,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -453,7 +469,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -517,7 +535,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -544,7 +564,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -587,7 +609,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -651,7 +675,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -675,7 +701,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($errorResponse);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -696,7 +724,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -732,7 +762,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -757,7 +789,9 @@ class UpdateHandlerTest extends CommandTestCase
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -868,7 +902,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $handler->handle($io);
 
@@ -946,7 +982,9 @@ class UpdateHandlerTest extends CommandTestCase
         // The rollback logic is tested by the code structure itself
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1001,7 +1039,9 @@ class UpdateHandlerTest extends CommandTestCase
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1062,7 +1102,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1128,7 +1170,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1180,7 +1224,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1343,7 +1389,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1405,7 +1453,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1474,7 +1524,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -1527,7 +1579,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io);
@@ -1664,7 +1718,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1725,7 +1781,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1755,7 +1813,9 @@ CHANGELOG;
             ->willReturn($response);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1799,7 +1859,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io, true);
 
@@ -1853,7 +1915,9 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
 
         $result = $this->handler->handle($io);
 
@@ -2134,7 +2198,9 @@ CHANGELOG;
         ];
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         
         // Use a non-existent file to trigger hash_file failure
         // hash_file returns false for non-existent files without causing notices
@@ -2150,7 +2216,9 @@ CHANGELOG;
     public function testLogVerboseWhenVerbose(): void
     {
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
         
         $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
@@ -2162,7 +2230,9 @@ CHANGELOG;
     public function testLogVerboseWhenNotVerbose(): void
     {
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         // Not setting verbose mode
         
         $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
@@ -2246,7 +2316,9 @@ CHANGELOG;
         ];
         
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         
         // This should not throw an error, but should skip the asset without 'name'
         $asset = $this->callPrivateMethod($this->handler, 'findPharAsset', [$io, $releaseData]);
