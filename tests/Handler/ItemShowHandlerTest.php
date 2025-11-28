@@ -19,6 +19,11 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        // ItemShowHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since ItemShowHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
+
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
         $this->handler = new ItemShowHandler($this->jiraService, [

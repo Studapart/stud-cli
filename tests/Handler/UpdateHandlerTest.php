@@ -16,6 +16,7 @@ class UpdateHandlerTest extends CommandTestCase
 {
     private UpdateHandler $handler;
     private HttpClientInterface&MockObject $httpClient;
+    private ChangelogParser&MockObject $changelogParser;
     private string $tempBinaryPath;
 
     protected function setUp(): void
@@ -23,11 +24,20 @@ class UpdateHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
+        $this->changelogParser = $this->createMock(ChangelogParser::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
         
         // Create a temporary writable file for testing
         touch($this->tempBinaryPath);
         chmod($this->tempBinaryPath, 0644);
+
+        // UpdateHandlerTest checks output text, so use real TranslationService
+        // This is acceptable since UpdateHandler is the class under test
+        $translationsPath = __DIR__ . '/../../src/resources/translations';
+        $realTranslationService = new \App\Service\TranslationService('en', $translationsPath);
+        
+        // Override the mocked translationService from CommandTestCase for this test
+        $this->translationService = $realTranslationService;
 
         $this->handler = new UpdateHandler(
             'studapart', // repoOwner
@@ -35,7 +45,7 @@ class UpdateHandlerTest extends CommandTestCase
             '1.0.0',     // currentVersion
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $this->changelogParser,
             null,        // gitToken
             $this->httpClient
         );
@@ -46,6 +56,22 @@ class UpdateHandlerTest extends CommandTestCase
         @unlink($this->tempBinaryPath);
         @unlink(sys_get_temp_dir() . '/stud.phar.new');
         parent::tearDown();
+    }
+
+    /**
+     * Helper method to set up ChangelogParser mock to use real parser for integration tests.
+     */
+    private function setupRealChangelogParser(): void
+    {
+        $realParser = new ChangelogParser();
+        $this->changelogParser->method('parse')
+            ->willReturnCallback(function ($content, $currentVersion, $latestVersion) use ($realParser) {
+                return $realParser->parse($content, $currentVersion, $latestVersion);
+            });
+        $this->changelogParser->method('getSectionTitle')
+            ->willReturnCallback(function ($sectionType) use ($realParser) {
+                return $realParser->getSectionTitle($sectionType);
+            });
     }
 
     public function testHandleAlreadyOnLatestVersion(): void
@@ -483,13 +509,14 @@ class UpdateHandlerTest extends CommandTestCase
     {
 
         // Current version has 'v' prefix, latest doesn't
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             'v1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -627,13 +654,14 @@ class UpdateHandlerTest extends CommandTestCase
         touch($badBinaryPath);
         chmod($badBinaryPath, 0444); // Read-only
 
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -735,13 +763,14 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenProvided(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient
         );
@@ -802,13 +831,14 @@ class UpdateHandlerTest extends CommandTestCase
     public function testGetBinaryPathUsesProvidedPath(): void
     {
         $testPath = '/test/path/to/binary.phar';
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -826,13 +856,14 @@ class UpdateHandlerTest extends CommandTestCase
         // Since we can't easily mock Phar in tests, we test that the fallback works
         // The actual Phar path would be tested in integration tests
         $testPath = '/test/phar/path.phar';
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             $this->httpClient
         );
@@ -845,13 +876,14 @@ class UpdateHandlerTest extends CommandTestCase
 
     public function testHandleWithGitTokenUsesAuthForDownload(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient
         );
@@ -1075,6 +1107,9 @@ class UpdateHandlerTest extends CommandTestCase
 
 CHANGELOG;
 
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseResponse = $this->createMock(ResponseInterface::class);
         $releaseResponse->method('getStatusCode')->willReturn(200);
         $releaseResponse->method('toArray')->willReturn($releaseData);
@@ -1118,6 +1153,9 @@ CHANGELOG;
 
     public function testDisplayChangelogWithRegularSections(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $pharContent = 'phar binary content';
         $pharHash = hash('sha256', $pharContent);
 
@@ -1340,6 +1378,9 @@ CHANGELOG;
 
     public function testDisplayChangelogWithEmptyChanges(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $pharContent = 'phar binary content';
         $pharHash = hash('sha256', $pharContent);
 
@@ -1404,6 +1445,9 @@ CHANGELOG;
 
     public function testDisplayChangelogWithNoChangesReturnsEarly(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $pharContent = 'phar binary content';
         $pharHash = hash('sha256', $pharContent);
 
@@ -1469,6 +1513,9 @@ CHANGELOG;
 
     public function testDisplayChangelogWithEmptyItemsInSection(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $pharContent = 'phar binary content';
         $pharHash = hash('sha256', $pharContent);
 
@@ -1671,6 +1718,9 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagDisplaysChangelogAndExits(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseData = [
             'tag_name' => 'v1.0.1',
             'assets' => [
@@ -1735,6 +1785,9 @@ CHANGELOG;
 
     public function testHandleWithInfoFlagAndBreakingChanges(): void
     {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
         $releaseData = [
             'tag_name' => 'v1.0.1',
             'assets' => [
@@ -2241,16 +2294,83 @@ CHANGELOG;
         $this->assertStringNotContainsString('Test Label: Test Value', $outputText);
     }
 
+    public function testVerifyHashWithDigestWithoutPrefix(): void
+    {
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
+        
+        // Create a temporary file with the content
+        $tempFile = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
+        file_put_contents($tempFile, $pharContent);
+        
+        // Digest without "sha256:" prefix (just the hash)
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => $pharHash, // No "sha256:" prefix
+        ];
+        
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+        
+        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $tempFile, $pharAsset]);
+        
+        $this->assertTrue($result);
+        $outputText = $output->fetch();
+        $this->assertStringContainsString('Hash verification successful', $outputText);
+        
+        @unlink($tempFile);
+    }
+
+    public function testVerifyHashWithDigestWithoutPrefixMismatch(): void
+    {
+        $pharContent = 'phar binary content';
+        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
+        
+        // Create a temporary file with the content
+        $tempFile = sys_get_temp_dir() . '/stud-test-' . uniqid() . '.phar';
+        file_put_contents($tempFile, $pharContent);
+        
+        // Digest without "sha256:" prefix but wrong hash
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => $wrongHash, // No "sha256:" prefix, but wrong hash
+        ];
+        
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
+        
+        $result = $this->callPrivateMethod($this->handler, 'verifyHash', [$io, $tempFile, $pharAsset]);
+        
+        $this->assertFalse($result);
+        
+        @unlink($tempFile);
+    }
 
     public function testCreateGithubProviderWithoutHttpClient(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             null,
             null // No httpClient provided
         );
@@ -2262,13 +2382,14 @@ CHANGELOG;
 
     public function testCreateGithubProviderWithGitToken(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             null // No httpClient provided
         );
@@ -2288,13 +2409,14 @@ CHANGELOG;
 
     public function testCreateGithubProviderWithGitTokenAndHttpClient(): void
     {
+        $changelogParser = $this->createMock(ChangelogParser::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
-            new ChangelogParser(),
+            $changelogParser,
             'test-token-123',
             $this->httpClient // httpClient provided
         );
