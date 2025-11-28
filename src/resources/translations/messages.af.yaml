@@ -113,6 +113,23 @@ please:
   error_no_upstream: "Jou huidige tak het nie 'n upstream remote gekonfigureer nie.\nVir die aanvanklike push en om 'n Pull Request te skep, gebruik asseblief \"stud submit\"."
   warning_force: "⚠️  Dwing met lease..."
 
+# Flatten Handler
+flatten:
+  section: "Maak fixup commits plat"
+  error_dirty_working: "Jou werk gids is nie skoon nie. Commit asseblief jou veranderinge met 'stud commit' voordat jy plat maak."
+  warning_rewrite: "⚠️  Dit sal jou commit geskiedenis herskryf. Jy sal moontlik 'stud please' moet uitvoer om daarna force-push te doen."
+  success: "✅ Alle fixup! commits is saamgevoeg in hul teiken commits."
+  error_rebase: "Rebase het misluk: %error%"
+  no_fixups: "Geen fixup! of squash! commits gevind nie. Niks om plat te maak nie."
+
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Maak opdatering kontrole kas skoon"
+    success: "✅ Opdatering kontrole kas suksesvol skoongemaak."
+    already_clear: "Kas was reeds leeg."
+    error_delete: "Fout by verwydering van kas lêer."
+
 # Submit Handler
 submit:
   section: "Dien Pull Request in"
@@ -276,6 +293,8 @@ help:
   command_items_start: "Skep 'n nuwe git tak van 'n Jira item."
   command_commit: "Lei jou deur die maak van 'n konvensionele commit."
   command_please: "'n Veilige force-push vir gevorderde gebruikers (force-with-lease)."
+  command_flatten: "Voeg outomaties alle fixup! commits saam in hul teiken commits."
+  command_cache_clear: "Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing."
   command_submit: "Stuur die huidige tak en skep 'n Pull Request."
   command_pr_comment: "Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument."
   command_status: "'n Vinnige \"waar is ek?\" dashboard."

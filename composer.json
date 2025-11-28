@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "2.5.1",
+    "version": "2.6.0",
     "authors": [
         {
             "name": "Pierre-Emmanuel Manteau",
@@ -27,6 +27,7 @@
         "symfony/http-client": "^7.3",
         "symfony/process": "^7.3",
         "symfony/console": "^7.3,<7.4",
+        "symfony/string": "^7.3",
         "jolicode/castor": "^1.1.0",
         "symfony/yaml": "^7.3",
         "symfony/translation": "^7.3",

@@ -306,6 +306,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud pl
         ```
 
+-   **`stud flatten`** (Alias: `stud ft`)
+    -   **Description:** Automatically squash all `fixup!` and `squash!` commits into their target commits. This command performs a non-interactive rebase with autosquash, eliminating the need to manually edit the interactive rebase file. The command will fail if there are uncommitted changes in the working directory, and will warn that history will be rewritten (requiring a `stud please` push afterward).
+    -   **Usage:**
+        ```bash
+        stud flatten
+        stud ft
+        ```
+    -   **Note:** This command rewrites commit history. After running `stud flatten`, you will need to use `stud please` to force-push your changes.
+
 -   **`stud status`** (Alias: `stud ss`)
     -   **Description:** A quick "where am I?" dashboard, showing your current Jira and Git status.
     -   **Usage:**
@@ -359,6 +368,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud up -i
         ```
     -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
+
+-   **`stud cache:clear`** (Alias: `stud cc`)
+    -   **Description:** Clears the update check cache file to force a version check on the next command execution. This is useful for maintainers and developers testing the update workflow without waiting 24 hours for the cache to expire.
+    -   **Usage:**
+        ```bash
+        stud cache:clear
+        stud cc
+        ```
+    -   **Note:** The cache file is located at `~/.cache/stud/last_update_check.json`. If the file doesn't exist, the command will report that the cache was already clear.
 
 #### Release Commands
 

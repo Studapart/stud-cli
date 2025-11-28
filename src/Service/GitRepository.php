@@ -79,6 +79,67 @@ class GitRepository
         $this->run("git rebase {$branch}");
     }
 
+    public function hasFixupCommits(string $baseSha): bool
+    {
+        $process = $this->runQuietly(
+            "git log {$baseSha}..HEAD --format=%s --grep='^fixup!' --grep='^squash!'"
+        );
+
+        if (!$process->isSuccessful()) {
+            return false;
+        }
+
+        $output = trim($process->getOutput());
+        return !empty($output);
+    }
+
+    public function rebaseAutosquash(string $baseSha): void
+    {
+        // Create a temporary script that processes the rebase plan
+        // Since --autosquash already reorders commits, we just need to change
+        // 'pick' to 'fixup' or 'squash' for commits with those prefixes
+        $scriptContent = <<<'SCRIPT'
+#!/bin/sh
+# Process the rebase plan file passed as $1
+# Change 'pick' to 'fixup' for fixup! commits and 'squash' for squash! commits
+sed -i.bak -E '
+    /^pick [a-f0-9]+ fixup!/ {
+        s/^pick/fixup/
+    }
+    /^pick [a-f0-9]+ squash!/ {
+        s/^pick/squash/
+    }
+' "$1"
+SCRIPT;
+
+        $tempScript = tempnam(sys_get_temp_dir(), 'stud-rebase-');
+        // @codeCoverageIgnoreStart
+        // tempnam() failure is extremely rare and difficult to simulate in tests
+        if ($tempScript === false) {
+            throw new \RuntimeException('Failed to create temporary script file');
+        }
+        // @codeCoverageIgnoreEnd
+
+        file_put_contents($tempScript, $scriptContent);
+        chmod($tempScript, 0755);
+
+        try {
+            // Set GIT_SEQUENCE_EDITOR to our script and run rebase
+            $env = $_ENV;
+            $env['GIT_SEQUENCE_EDITOR'] = $tempScript;
+            
+            $process = $this->processFactory->create("git rebase -i --autosquash {$baseSha}");
+            $process->setEnv($env);
+            $process->mustRun();
+        } finally {
+            @unlink($tempScript);
+            $backupFile = $tempScript . '.bak';
+            if (file_exists($backupFile)) {
+                @unlink($backupFile);
+            }
+        }
+    }
+
     public function deleteBranch(string $branch): void
     {
         $this->run("git branch -d {$branch}");
@@ -157,39 +218,23 @@ class GitRepository
         return trim($this->run("git merge-base {$baseBranch} {$head}")->getOutput());
     }
 
-        public function findFirstLogicalSha(string $ancestorSha): ?string
+    public function findFirstLogicalSha(string $ancestorSha): ?string
+    {
+        $process = $this->runQuietly(
+            "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1"
+        );
 
-        {
-
-            $process = $this->runQuietly(
-
-                "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1"
-
-            );
-
-    
-
-            if (!$process->isSuccessful()) {
-
-                return null;
-
-            }
-
-    
-
-            $output = trim($process->getOutput());
-
-            if (empty($output)) {
-
-                return null;
-
-            }
-
-    
-
-            return $output;
-
+        if (!$process->isSuccessful()) {
+            return null;
         }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return null;
+        }
+
+        return $output;
+    }
 
     public function getCommitMessage(string $sha): string
     {
@@ -212,38 +257,41 @@ class GitRepository
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
-        $remoteUrl = $this->getRemoteUrl($remote);
-
-        if (!$remoteUrl) {
-            return null;
-        }
-
-        // Parse owner from different Git URL formats
-        // SSH format: git@github.com:owner/repo.git
-        // HTTPS format: https://github.com/owner/repo.git
-        if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
-            return $matches[1];
-        }
-
-        return null;
+        $parsed = $this->parseGithubUrl($remote);
+        return $parsed['owner'] ?? null;
     }
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
+        $parsed = $this->parseGithubUrl($remote);
+        return $parsed['name'] ?? null;
+    }
+
+    /**
+     * Parses GitHub repository owner and name from a remote URL.
+     * 
+     * @param string $remote The remote name (default: 'origin')
+     * @return array{owner?: string, name?: string} Array with 'owner' and 'name' keys, or empty array if parsing fails
+     */
+    protected function parseGithubUrl(string $remote = 'origin'): array
+    {
         $remoteUrl = $this->getRemoteUrl($remote);
 
         if (!$remoteUrl) {
-            return null;
+            return [];
         }
 
-        // Parse repository name from different Git URL formats
+        // Parse owner and name from different Git URL formats
         // SSH format: git@github.com:owner/repo.git
         // HTTPS format: https://github.com/owner/repo.git
         if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
-            return $matches[2];
+            return [
+                'owner' => $matches[1],
+                'name' => $matches[2],
+            ];
         }
 
-        return null;
+        return [];
     }
 
     protected function getRemoteUrl(string $remote = 'origin'): ?string

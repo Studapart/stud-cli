@@ -113,6 +113,23 @@ please:
   error_no_upstream: "У вашей текущей ветки нет настроенного upstream remote.\nДля первоначальной отправки и создания Pull Request, пожалуйста, используйте \"stud submit\"."
   warning_force: "⚠️  Принудительная отправка с lease..."
 
+# Flatten Handler
+flatten:
+  section: "Сжатие fixup коммитов"
+  error_dirty_working: "Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед сжатием."
+  warning_rewrite: "⚠️  Это перепишет историю ваших коммитов. Возможно, вам потребуется выполнить 'stud please' для force-push после этого."
+  success: "✅ Все fixup! коммиты были объединены в их целевые коммиты."
+  error_rebase: "Ошибка rebase: %error%"
+  no_fixups: "Не найдено fixup! или squash! коммитов. Нечего сжимать."
+
+# Cache Clear Handler
+cache:
+  clear:
+    section: "Очистка кэша проверки обновлений"
+    success: "✅ Кэш проверки обновлений успешно очищен."
+    already_clear: "Кэш уже был пуст."
+    error_delete: "Ошибка при удалении файла кэша."
+
 # Submit Handler
 submit:
   section: "Отправка Pull Request"
@@ -276,6 +293,8 @@ help:
   command_items_start: "Создает новую ветку git из элемента Jira."
   command_commit: "Проводит вас через создание обычного коммита."
   command_please: "Безопасный force-push для опытных пользователей (force-with-lease)."
+  command_flatten: "Автоматически объединить все fixup! коммиты в их целевые коммиты."
+  command_cache_clear: "Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде."
   command_submit: "Отправляет текущую ветку и создает Pull Request."
   command_pr_comment: "Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент."
   command_status: "Быстрая панель управления \"где я?\"."
