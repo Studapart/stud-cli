@@ -6,8 +6,6 @@ use App\DTO\WorkItem;
 use App\Handler\ItemListHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListHandlerTest extends CommandTestCase

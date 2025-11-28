@@ -466,7 +466,7 @@ class VersionCheckServiceTest extends TestCase
         // Create a file first, then remove read permissions to force file_get_contents to return false
         $testFile = sys_get_temp_dir() . '/stud-test-no-read-' . uniqid() . '.json';
         file_put_contents($testFile, 'test content');
-        
+
         // Remove read permissions from the file itself
         @chmod($testFile, 0000);
 
@@ -687,4 +687,3 @@ class VersionCheckServiceTest extends TestCase
         }
     }
 }
-

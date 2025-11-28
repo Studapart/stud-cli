@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\FileSystem;
@@ -27,7 +29,7 @@ class InitHandler
         $io->section($this->translator->trans('config.init.language.title'));
         $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
         $defaultLanguage = $existingConfig['LANGUAGE'] ?? 'en';
-        
+
         // Create display options with format "English (en)"
         $languageOptions = [];
         $languageMap = []; // Maps display string to code
@@ -36,16 +38,16 @@ class InitHandler
             $languageOptions[] = $display;
             $languageMap[$display] = $code;
         }
-        
+
         // Find the default display option
         $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
-        
+
         $languageChoiceDisplay = $io->choice(
             $this->translator->trans('config.init.language.prompt'),
             $languageOptions,
             $defaultDisplay
         );
-        
+
         // Map back to the short code
         $languageChoice = $languageMap[$languageChoiceDisplay];
 
@@ -85,7 +87,7 @@ class InitHandler
         ];
 
         $configDir = $this->fileSystem->dirname($this->configPath);
-        if (!$this->fileSystem->isDir($configDir)) {
+        if (! $this->fileSystem->isDir($configDir)) {
             $this->fileSystem->mkdir($configDir, 0700, true);
         }
 
@@ -104,7 +106,7 @@ class InitHandler
         }
 
         $io->section($this->translator->trans('config.init.completion.title'));
-        
+
         $choice = $io->choice(
             $this->translator->trans('config.init.completion.prompt', ['shell' => $shell]),
             [
@@ -115,12 +117,12 @@ class InitHandler
         );
 
         if ($choice === $this->translator->trans('config.init.completion.yes')) {
-            $command = $shell === 'bash' 
+            $command = $shell === 'bash'
                 ? $this->translator->trans('config.init.completion.bash_command')
                 : $this->translator->trans('config.init.completion.zsh_command');
-            
+
             $shellrc = $shell === 'bash' ? 'bashrc' : 'zshrc';
-            
+
             $io->success($this->translator->trans('config.init.completion.success_message'));
             $io->writeln('  <info>' . $command . '</info>');
             $io->text($this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
@@ -139,7 +141,7 @@ class InitHandler
         }
 
         $shellName = basename($shellEnv);
-        
+
         return match (strtolower($shellName)) {
             'bash' => 'bash',
             'zsh' => 'zsh',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -22,7 +24,7 @@ class CommitHandler
         $io->section($this->translator->trans('commit.section'));
 
         // If a message is provided via the -m flag, use it directly.
-        if (!empty($message)) {
+        if (! empty($message)) {
             $io->text($this->translator->trans('commit.staging'));
             $this->gitRepository->stageAllChanges();
 
@@ -30,12 +32,13 @@ class CommitHandler
             $this->gitRepository->commit($message);
 
             $io->success($this->translator->trans('commit.success'));
+
             return 0;
         }
 
         // 1. Auto-Fixup Strategy: Find the latest logical commit
         $latestLogicalSha = null;
-        if (!$isNew) {
+        if (! $isNew) {
             if ($io->isVerbose()) {
                 $io->writeln('  <fg=gray>' . $this->translator->trans('commit.checking_logical') . '</>');
             }
@@ -54,6 +57,7 @@ class CommitHandler
             $this->gitRepository->commitFixup($latestLogicalSha);
 
             $io->success($this->translator->trans('commit.fixup_success', ['sha' => $latestLogicalSha]));
+
             return 0;
         }
 
@@ -61,8 +65,9 @@ class CommitHandler
         $io->note($this->translator->trans('commit.note_no_logical'));
 
         $key = $this->gitRepository->getJiraKeyFromBranchName();
-        if (!$key) {
+        if (! $key) {
             $io->error(explode("\n", $this->translator->trans('commit.error_no_key')));
+
             return 1;
         }
 
@@ -74,6 +79,7 @@ class CommitHandler
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
             $io->error($this->translator->trans('commit.error_not_found', ['key' => $key]));
+
             return 1;
         }
 
@@ -91,7 +97,7 @@ class CommitHandler
         // IMPORTANT: Prompts are translated, but commit message itself stays in English
         $scopePrompt = $this->translator->trans('commit.scope_prompt');
         $defaultScope = null;
-        if (!empty($issue->components)) {
+        if (! empty($issue->components)) {
             $defaultScope = $issue->components[0]; // Use the first component name
             $scopePrompt = $this->translator->trans('commit.scope_auto', ['scope' => $defaultScope]);
         }
@@ -115,7 +121,7 @@ class CommitHandler
         $this->gitRepository->commit($commitMessage);
 
         $io->success($this->translator->trans('commit.success'));
-        
+
         return 0;
     }
 

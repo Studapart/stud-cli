@@ -3,7 +3,6 @@
 namespace App\Tests\Handler;
 
 use App\Handler\PrCommentHandler;
-use App\Service\GitRepository;
 use App\Service\GithubProvider;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -34,7 +33,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -98,7 +97,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -117,7 +116,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -186,7 +185,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -205,7 +204,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -224,7 +223,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -243,7 +242,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -262,7 +261,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -299,7 +298,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -319,7 +318,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -361,7 +360,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -380,7 +379,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        
+
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
@@ -400,10 +399,10 @@ class PrCommentHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        
+
         // Test verbose output path when using argument (STDIN is empty in test env)
         $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
-        
+
         $this->assertSame('My message', $result);
     }
 
@@ -412,7 +411,7 @@ class PrCommentHandlerTest extends CommandTestCase
         // This tests the fallback path when STDIN is not a resource
         // In normal execution, STDIN is always a resource, but we test the code path
         $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-        
+
         // Should return empty string when STDIN is TTY or not available
         $this->assertIsString($result);
         $this->assertEmpty($result);
@@ -423,7 +422,7 @@ class PrCommentHandlerTest extends CommandTestCase
         // Test the fallback path when posix_isatty doesn't exist
         // This is hard to test directly, but we can verify the method handles it
         $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-        
+
         // Should return empty string in test environment (TTY check returns early)
         $this->assertIsString($result);
         $this->assertEmpty($result);
@@ -434,7 +433,7 @@ class PrCommentHandlerTest extends CommandTestCase
         // Test that readStdin returns empty when STDIN is a TTY
         // In test environment, STDIN is typically a TTY
         $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-        
+
         $this->assertSame('', $result);
     }
 
@@ -446,10 +445,10 @@ class PrCommentHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        
+
         // In test environment, STDIN is TTY, so argument is used
         $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
-        
+
         $this->assertSame('My message', $result);
     }
 
@@ -457,7 +456,7 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         // Test that STDIN content takes precedence over argument
         // We create a test handler that overrides readStdin to simulate STDIN input
-        $testHandler = new class($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
             protected function readStdin(): string
             {
                 return 'STDIN content';
@@ -476,7 +475,7 @@ class PrCommentHandlerTest extends CommandTestCase
     public function testGetCommentBodyWithStdinContentAndVerbose(): void
     {
         // Test verbose output path when STDIN has content
-        $testHandler = new class($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
             protected function readStdin(): string
             {
                 return 'STDIN content';
@@ -496,4 +495,3 @@ class PrCommentHandlerTest extends CommandTestCase
         $this->assertSame('STDIN content', $result);
     }
 }
-

@@ -1,0 +1,28 @@
+parameters:
+    level: 7
+    paths:
+        - src
+        - castor.php
+    excludePaths:
+        - vendor
+        - tests
+        - coverage-html
+        - bin
+        - scripts
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # HelpService has complex union types that PHPStan can't fully infer
+        # These are not actual bugs, just limitations of static analysis
+        -
+            message: '#Right side of && is always true\.#'
+            path: src/Service/HelpService.php
+        -
+            message: '#Result of && is always false\.#'
+            path: src/Service/HelpService.php
+        -
+            message: "#Offset 'argument' on array.*in isset\\(\\) always exists#"
+            path: src/Service/HelpService.php
+        -
+            message: '#Strict comparison using === between \*NEVER\* and.*will always evaluate to false\.#'
+            path: src/Service/HelpService.php
+

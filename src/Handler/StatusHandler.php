@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\GitRepository;
@@ -27,6 +29,7 @@ class StatusHandler
             if ($io->isVerbose()) {
                 $io->writeln("  <fg=gray>{$this->translator->trans('status.fetching', ['key' => $key])}</>");
             }
+
             try {
                 $issue = $this->jiraService->getIssue($key);
                 $statusText = $this->translator->trans('status.jira_status', ['status' => $issue->status, 'key' => $issue->key, 'title' => $issue->title]);
@@ -51,7 +54,7 @@ class StatusHandler
         } else {
             $io->writeln("Local:  <fg=green>{$this->translator->trans('status.local_clean')}</>");
         }
-        
+
         return 0;
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
-use App\Service\ProcessFactory;
 use Symfony\Component\Process\Process;
 
 class GitRepository
@@ -16,7 +17,7 @@ class GitRepository
         $process = $this->processFactory->create('git rev-parse --abbrev-ref HEAD');
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -30,7 +31,7 @@ class GitRepository
     {
         $process = $this->runQuietly('git rev-parse --abbrev-ref @{u} 2>/dev/null');
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -85,12 +86,13 @@ class GitRepository
             "git log {$baseSha}..HEAD --format=%s --grep='^fixup!' --grep='^squash!'"
         );
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return false;
         }
 
         $output = trim($process->getOutput());
-        return !empty($output);
+
+        return ! empty($output);
     }
 
     public function rebaseAutosquash(string $baseSha): void
@@ -127,7 +129,7 @@ SCRIPT;
             // Set GIT_SEQUENCE_EDITOR to our script and run rebase
             $env = $_ENV;
             $env['GIT_SEQUENCE_EDITOR'] = $tempScript;
-            
+
             $process = $this->processFactory->create("git rebase -i --autosquash {$baseSha}");
             $process->setEnv($env);
             $process->mustRun();
@@ -156,7 +158,7 @@ SCRIPT;
             'git log ' . $baseBranch . '..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1'
         );
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -193,6 +195,9 @@ SCRIPT;
         $this->run("git switch -c {$branchName} " . $baseBranch);
     }
 
+    /**
+     * @param array<string> $files
+     */
     public function add(array $files): void
     {
         $this->run('git add ' . implode(' ', $files));
@@ -224,7 +229,7 @@ SCRIPT;
             "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1"
         );
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -252,24 +257,26 @@ SCRIPT;
     {
         $process = $this->runQuietly("git ls-remote --heads {$remote} {$branchName}");
 
-        return !empty(trim($process->getOutput()));
+        return ! empty(trim($process->getOutput()));
     }
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
         $parsed = $this->parseGithubUrl($remote);
+
         return $parsed['owner'] ?? null;
     }
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
         $parsed = $this->parseGithubUrl($remote);
+
         return $parsed['name'] ?? null;
     }
 
     /**
      * Parses GitHub repository owner and name from a remote URL.
-     * 
+     *
      * @param string $remote The remote name (default: 'origin')
      * @return array{owner?: string, name?: string} Array with 'owner' and 'name' keys, or empty array if parsing fails
      */
@@ -277,7 +284,7 @@ SCRIPT;
     {
         $remoteUrl = $this->getRemoteUrl($remote);
 
-        if (!$remoteUrl) {
+        if (! $remoteUrl) {
             return [];
         }
 
@@ -298,7 +305,7 @@ SCRIPT;
     {
         $process = $this->runQuietly("git config --get remote.{$remote}.url");
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             return null;
         }
 
@@ -308,7 +315,7 @@ SCRIPT;
 
         return empty($remoteUrl) ? null : $remoteUrl;
     }
-    
+
     public function run(string $command): Process
     {
         $process = $this->processFactory->create($command);
@@ -331,23 +338,24 @@ SCRIPT;
     public function getProjectConfigPath(): string
     {
         $process = $this->runQuietly('git rev-parse --git-dir');
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             throw new \RuntimeException('Not in a git repository.');
         }
         $gitDir = trim($process->getOutput());
+
         return rtrim($gitDir, '/') . '/stud.config';
     }
 
     /**
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
-     * 
+     *
      * @return array{projectKey?: string, transitionId?: int}
      */
     public function readProjectConfig(): array
     {
         $configPath = $this->getProjectConfigPath();
-        if (!file_exists($configPath)) {
+        if (! file_exists($configPath)) {
             return [];
         }
 
@@ -357,20 +365,21 @@ SCRIPT;
         }
 
         $config = \Symfony\Component\Yaml\Yaml::parse($content);
+
         return is_array($config) ? $config : [];
     }
 
     /**
      * Writes the project-specific config file.
-     * 
+     *
      * @param array{projectKey?: string, transitionId?: int} $config
      */
     public function writeProjectConfig(array $config): void
     {
         $configPath = $this->getProjectConfigPath();
         $configDir = dirname($configPath);
-        
-        if (!is_dir($configDir)) {
+
+        if (! is_dir($configDir)) {
             throw new \RuntimeException("Git directory not found: {$configDir}");
         }
 
@@ -386,6 +395,7 @@ SCRIPT;
         if (preg_match('/^([A-Z]+)-\d+$/', strtoupper($issueKey), $matches)) {
             return $matches[1];
         }
+
         throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
     }
 }

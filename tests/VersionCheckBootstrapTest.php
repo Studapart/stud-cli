@@ -51,7 +51,7 @@ class VersionCheckBootstrapTest extends TestCase
         );
 
         // Test the listener logic directly (simulating what the listener does)
-        if (!isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
+        if (! isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
             $this->fail('Message should be set');
         }
 
@@ -87,7 +87,7 @@ class VersionCheckBootstrapTest extends TestCase
         );
 
         // Test the listener logic directly
-        if (!isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
+        if (! isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
             // Should return early, no output
             $outputContent = $output->fetch();
             $this->assertEmpty($outputContent);
@@ -113,7 +113,7 @@ class VersionCheckBootstrapTest extends TestCase
         );
 
         // Test the listener logic directly
-        if (!isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
+        if (! isset($GLOBALS['_version_check_message']) || $GLOBALS['_version_check_message'] === null) {
             $this->fail('Message should be set');
         }
 
@@ -136,10 +136,10 @@ class VersionCheckBootstrapTest extends TestCase
         $_SERVER['HOME'] = $this->tempCacheDir;
 
         // Define constants temporarily for this test
-        if (!defined('APP_VERSION')) {
+        if (! defined('APP_VERSION')) {
             define('APP_VERSION', '1.1.0');
         }
-        if (!defined('APP_REPO_SLUG')) {
+        if (! defined('APP_REPO_SLUG')) {
             define('APP_REPO_SLUG', 'test/owner');
         }
 
@@ -176,4 +176,3 @@ class VersionCheckBootstrapTest extends TestCase
         $this->assertTrue(true);
     }
 }
-

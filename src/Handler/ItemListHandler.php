@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\Service\JiraService;
@@ -19,7 +21,7 @@ class ItemListHandler
         $io->section($this->translator->trans('item.list.section'));
 
         $jqlParts = [];
-        if (!$all) {
+        if (! $all) {
             $jqlParts[] = 'assignee = currentUser()';
         }
         $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
@@ -37,11 +39,13 @@ class ItemListHandler
             $issues = $this->jiraService->searchIssues($jql);
         } catch (\Exception $e) {
             $io->error($this->translator->trans('item.list.error_fetch', ['error' => $e->getMessage()]));
+
             return 1;
         }
 
         if (empty($issues)) {
             $io->note($this->translator->trans('item.list.no_items'));
+
             return 0;
         }
 
@@ -49,9 +53,9 @@ class ItemListHandler
         $io->table([
             $this->translator->trans('table.key'),
             $this->translator->trans('table.status'),
-            $this->translator->trans('table.summary')
+            $this->translator->trans('table.summary'),
         ], $table);
-        
+
         return 0;
     }
 }

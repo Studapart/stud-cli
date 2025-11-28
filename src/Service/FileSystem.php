@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 /**
@@ -12,11 +14,17 @@ class FileSystem
         return file_exists($path);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function parseFile(string $path): array
     {
         return \Symfony\Component\Yaml\Yaml::parseFile($path);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function dumpFile(string $path, array $data): void
     {
         file_put_contents($path, \Symfony\Component\Yaml\Yaml::dump($data));

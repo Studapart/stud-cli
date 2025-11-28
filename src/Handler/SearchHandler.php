@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
 use App\DTO\WorkItem;
@@ -21,15 +23,18 @@ class SearchHandler
         if ($io->isVerbose()) {
             $io->writeln("  <fg=gray>{$this->translator->trans('search.jql_query', ['jql' => $jql])}</>");
         }
+
         try {
             $issues = $this->jiraService->searchIssues($jql);
         } catch (\Exception $e) {
             $io->error($this->translator->trans('search.error_search', ['error' => $e->getMessage()]));
+
             return;
         }
 
         if (empty($issues)) {
             $io->note($this->translator->trans('search.no_results'));
+
             return;
         }
 
@@ -37,7 +42,7 @@ class SearchHandler
         $io->table([
             $this->translator->trans('table.key'),
             $this->translator->trans('table.status'),
-            $this->translator->trans('table.summary')
+            $this->translator->trans('table.summary'),
         ], $table);
     }
 }

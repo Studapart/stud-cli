@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Handler;
 
-use App\Service\GitRepository;
 use App\Service\GithubProvider;
+use App\Service\GitRepository;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -21,8 +23,9 @@ class PrCommentHandler
         $io->section($this->translator->trans('pr.comment.section'));
 
         // Check if GitHub provider is available
-        if (!$this->githubProvider) {
+        if (! $this->githubProvider) {
             $io->error($this->translator->trans('pr.comment.error_no_provider'));
+
             return 1;
         }
 
@@ -31,6 +34,7 @@ class PrCommentHandler
 
         if (empty($commentBody)) {
             $io->error($this->translator->trans('pr.comment.error_no_input'));
+
             return 1;
         }
 
@@ -38,6 +42,7 @@ class PrCommentHandler
         $prNumber = $this->findActivePullRequest($io);
         if ($prNumber === null) {
             $io->error($this->translator->trans('pr.comment.error_no_pr'));
+
             return 1;
         }
 
@@ -50,6 +55,7 @@ class PrCommentHandler
             $io->success($this->translator->trans('pr.comment.success', ['number' => $prNumber]));
         } catch (\Exception $e) {
             $io->error(explode("\n", $this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()])));
+
             return 1;
         }
 
@@ -64,18 +70,20 @@ class PrCommentHandler
     {
         // 1st priority: Check for STDIN input (piped content)
         $stdinContent = $this->readStdin();
-        if (!empty($stdinContent)) {
+        if (! empty($stdinContent)) {
             if ($io->isVerbose()) {
                 $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.using_stdin')}</>");
             }
+
             return $stdinContent;
         }
 
         // 2nd priority: Use direct argument if provided
-        if ($message !== null && !empty(trim($message))) {
+        if ($message !== null && ! empty(trim($message))) {
             if ($io->isVerbose()) {
                 $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.using_argument')}</>");
             }
+
             return trim($message);
         }
 
@@ -103,11 +111,16 @@ class PrCommentHandler
         // This path is tested via integration tests when the command is executed with piped input
         // @codeCoverageIgnoreStart
         if (is_resource(STDIN)) {
-            $wasBlocking = stream_get_meta_data(STDIN)['blocked'] ?? true;
+            $metaData = stream_get_meta_data(STDIN);
+            $wasBlocking = $metaData['blocked'];
             stream_set_blocking(STDIN, false);
             $content = stream_get_contents(STDIN);
             stream_set_blocking(STDIN, $wasBlocking);
-            
+
+            if ($content === false) {
+                return '';
+            }
+
             return trim($content);
         }
         // @codeCoverageIgnoreEnd
@@ -115,8 +128,9 @@ class PrCommentHandler
         // Fallback: try file_get_contents on php://stdin
         // Reading from php://stdin in unit tests is not feasible as it requires actual process execution
         // @codeCoverageIgnoreStart
-        if (!function_exists('posix_isatty') || !posix_isatty(STDIN)) {
+        if (! function_exists('posix_isatty') || ! posix_isatty(STDIN)) {
             $content = @file_get_contents('php://stdin');
+
             return $content !== false ? trim($content) : '';
         }
         // @codeCoverageIgnoreEnd
@@ -135,7 +149,7 @@ class PrCommentHandler
     protected function findActivePullRequest(SymfonyStyle $io): ?int
     {
         $branch = $this->gitRepository->getCurrentBranchName();
-        
+
         // Format the head parameter for GitHub API
         // GitHub requires "owner:branch" format when creating PR from a fork
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
@@ -161,4 +175,3 @@ class PrCommentHandler
         return null;
     }
 }
-

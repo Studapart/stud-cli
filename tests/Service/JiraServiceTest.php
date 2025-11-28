@@ -7,9 +7,9 @@ use App\DTO\WorkItem;
 use App\Service\JiraService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Stevebauman\Hypertext\Transformer as RealTransformer;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
-use Stevebauman\Hypertext\Transformer as RealTransformer;
 
 class JiraServiceTest extends TestCase
 {

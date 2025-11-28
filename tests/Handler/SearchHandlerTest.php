@@ -4,7 +4,6 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\SearchHandler;
-use App\Service\JiraService;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;

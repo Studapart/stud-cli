@@ -2,11 +2,10 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\PullRequestData;
 use App\DTO\WorkItem;
-use App\Service\GitRepository;
-use App\Service\GithubProvider;
-use App\Service\JiraService;
 use App\Handler\SubmitHandler;
+use App\Service\GithubProvider;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -69,13 +68,14 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                'studapart:feat/TPW-35-my-feature',
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
-                false
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->head === 'studapart:feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->draft === false;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -115,13 +115,14 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                'studapart:feat/TPW-35-my-feature',
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
-                true
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->head === 'studapart:feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->draft === true;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -226,13 +227,13 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                $this->anything(),
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35",
-                false
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                    && $prData->draft === false;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -272,13 +273,13 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                $this->anything(),
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35",
-                false
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                    && $prData->draft === false;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -396,7 +397,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
         $this->githubProvider->method('createPullRequest')->willThrowException(
-            new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+            new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                           'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
         );
 
@@ -476,13 +477,14 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                'feat/TPW-35-my-feature',
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
-                false
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->head === 'feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->draft === false;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -516,7 +518,6 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(['bug', 'enhancement'], $result);
     }
-
 
     public function testValidateAndProcessLabelsEmptyInput(): void
     {
@@ -610,13 +611,14 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
-            ->with(
-                'feat(my-scope): My feature [TPW-35]',
-                'studapart:feat/TPW-35-my-feature',
-                'develop',
-                "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description",
-                false
-            )
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && $prData->head === 'studapart:feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->draft === false;
+            }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
 
         $this->githubProvider
@@ -702,20 +704,20 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         // Mock the methods that will be called
         $io->expects($this->exactly(2))
             ->method('text')
             ->with($this->anything());
-        
+
         $io->expects($this->once())
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_create_option'));
-        
+
         $io->expects($this->once())
             ->method('success')
             ->with($this->anything());
-        
+
         $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
@@ -746,15 +748,15 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->anything());
-        
+
         $io->expects($this->once())
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
-        
+
         $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
@@ -783,15 +785,15 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->anything());
-        
+
         $io->expects($this->once())
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_retry_option'));
-        
+
         $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
@@ -821,19 +823,19 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->exactly(2))
             ->method('text')
             ->with($this->anything());
-        
+
         $io->expects($this->once())
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_create_option'));
-        
+
         $io->expects($this->once())
             ->method('error')
             ->with($this->anything());
-        
+
         $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
@@ -858,17 +860,17 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
-        
+
         $io->expects($this->once())
             ->method('text')
             ->with($this->anything());
-        
+
         $io->expects($this->once())
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
-        
+
         $io->method('isVerbose')->willReturn(true);
-        
+
         $io->expects($this->once())
             ->method('writeln')
             ->with($this->stringContains('ignored'));
@@ -1032,7 +1034,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1100,7 +1102,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1171,7 +1173,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1245,7 +1247,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1306,7 +1308,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1372,7 +1374,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 
@@ -1439,7 +1441,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" . 
+                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
                               'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
             );
 

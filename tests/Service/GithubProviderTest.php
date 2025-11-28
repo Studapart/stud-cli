@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\PullRequestData;
 use App\Service\GithubProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -57,7 +58,8 @@ class GithubProviderTest extends TestCase
             )
             ->willReturn($responseMock);
 
-        $result = $this->githubProvider->createPullRequest($title, $head, $base, $body);
+        $prData = new PullRequestData($title, $head, $base, $body);
+        $result = $this->githubProvider->createPullRequest($prData);
 
         $this->assertSame($expectedResponse, $result);
     }
@@ -91,7 +93,8 @@ class GithubProviderTest extends TestCase
             )
             ->willReturn($responseMock);
 
-        $result = $this->githubProvider->createPullRequest($title, $head, $base, $body, true);
+        $prData = new PullRequestData($title, $head, $base, $body, true);
+        $result = $this->githubProvider->createPullRequest($prData);
 
         $this->assertSame($expectedResponse, $result);
     }
@@ -115,7 +118,8 @@ class GithubProviderTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
 
-        $this->githubProvider->createPullRequest($title, $head, $base, $body);
+        $prData = new PullRequestData($title, $head, $base, $body);
+        $this->githubProvider->createPullRequest($prData);
     }
 
     public function testGetLatestReleaseSuccess(): void
@@ -243,6 +247,29 @@ class GithubProviderTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to decode CHANGELOG.md content from GitHub API');
+
+        $this->githubProvider->getChangelogContent($tag);
+    }
+
+    public function testGetChangelogContentBase64DecodeFailure(): void
+    {
+        $tag = 'v1.0.0';
+        // Invalid base64 that will cause base64_decode to return false
+        $invalidBase64 = '!!!invalid-base64!!!';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'content' => $invalidBase64,
+            'encoding' => 'base64',
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to decode base64 content from GitHub API');
 
         $this->githubProvider->getChangelogContent($tag);
     }

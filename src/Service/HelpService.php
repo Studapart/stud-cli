@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Service;
+declare(strict_types=1);
 
-use App\Service\TranslationService;
+namespace App\Service;
 
 class HelpService
 {
     private const README_PATH = __DIR__ . '/../../README.md';
-    
+
     // Map of command names to their README section patterns
     private const COMMAND_PATTERNS = [
         'config:init' => 'stud config:init',
@@ -39,7 +39,7 @@ class HelpService
      */
     public function getCommandHelp(string $commandName): ?string
     {
-        if (!isset(self::COMMAND_PATTERNS[$commandName])) {
+        if (! isset(self::COMMAND_PATTERNS[$commandName])) {
             return null;
         }
 
@@ -53,21 +53,22 @@ class HelpService
 
         $pattern = self::COMMAND_PATTERNS[$commandName];
         $lines = explode("\n", $readmeContent);
-        
+
         $helpLines = [];
         $inSection = false;
         $foundCommand = false;
-        
+
         foreach ($lines as $line) {
             // Look for the command section (starts with -   **`stud ...`)
-            if (!$foundCommand && preg_match('/^-\s+\*\*`' . preg_quote($pattern, '/') . '/', $line)) {
+            if (! $foundCommand && preg_match('/^-\s+\*\*`' . preg_quote($pattern, '/') . '/', $line)) {
                 $foundCommand = true;
                 $inSection = true;
                 // Extract the command line itself
                 $helpLines[] = $line;
+
                 continue;
             }
-            
+
             if ($inSection) {
                 // Stop at next command (starts with -   **`stud) or section header (####)
                 if (preg_match('/^#### |^-\s+\*\*`stud /', $line)) {
@@ -81,18 +82,18 @@ class HelpService
                         break;
                     }
                 }
-                
+
                 // Collect help text lines (skip empty lines at start)
-                if (!empty($helpLines) || trim($line) !== '') {
+                if (! empty($helpLines) || trim($line) !== '') {
                     $helpLines[] = $line;
                 }
             }
         }
-        
+
         if (empty($helpLines)) {
             return null;
         }
-        
+
         // Clean up and format the help text
         $helpText = implode("\n", $helpLines);
         // Remove markdown formatting but keep structure
@@ -102,7 +103,7 @@ class HelpService
         $helpText = preg_replace('/^-\s+/m', '', $helpText); // Remove list markers
         $helpText = preg_replace('/^    /m', '', $helpText); // Remove indentation
         $helpText = trim($helpText);
-        
+
         return $helpText ?: null;
     }
 
@@ -113,7 +114,7 @@ class HelpService
     {
         // Always use translation-based help for consistent formatting with aliases and options
         $helpText = $this->formatCommandHelpFromTranslation($commandName);
-        
+
         $io->section($this->translator->trans('help.command_help_title', ['command' => $commandName]));
         $io->writeln($helpText);
         $io->newLine();
@@ -244,7 +245,7 @@ class HelpService
             ],
         ];
 
-        if (!isset($commandMap[$commandName])) {
+        if (! isset($commandMap[$commandName])) {
             return $this->translator->trans('help.command_not_found', ['command' => $commandName]);
         }
 
@@ -253,12 +254,12 @@ class HelpService
 
         // Command name with alias
         $commandLine = "stud {$commandName}";
-        if (!empty($command['arguments'])) {
+        if (! empty($command['arguments'])) {
             $commandLine .= ' ' . implode(' ', $command['arguments']);
         }
         if ($command['alias']) {
             $commandLine .= " (Alias: stud {$command['alias']}";
-            if (!empty($command['arguments'])) {
+            if (! empty($command['arguments'])) {
                 $commandLine .= ' ' . implode(' ', $command['arguments']);
             }
             $commandLine .= ')';
@@ -270,7 +271,7 @@ class HelpService
         $lines[] = "-   Description: {$description}";
 
         // Options
-        if (!empty($command['options'])) {
+        if (! empty($command['options'])) {
             $lines[] = "-   Options:";
             foreach ($command['options'] as $option) {
                 $optionName = $option['name'];
@@ -292,7 +293,7 @@ class HelpService
         // Usage examples
         $lines[] = "-   Usage:";
         $lines[] = "    ``bash";
-        
+
         // Build example values for arguments
         $exampleArgs = [];
         foreach ($command['arguments'] as $arg) {
@@ -314,18 +315,18 @@ class HelpService
                 // @codeCoverageIgnoreEnd
             }
         }
-        $argsString = !empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : '';
-        
+        $argsString = ! empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : '';
+
         // Basic usage with command name
         $lines[] = "    stud {$commandName}{$argsString}";
-        
+
         // Basic usage with alias
         if ($command['alias']) {
             $lines[] = "    stud {$command['alias']}{$argsString}";
         }
-        
+
         // Usage with options
-        if (!empty($command['options'])) {
+        if (! empty($command['options'])) {
             // Show example with first option
             $firstOption = $command['options'][0];
             $optionExample = $firstOption['shortcut'] ?: $firstOption['name'];
@@ -348,7 +349,7 @@ class HelpService
             if ($command['alias']) {
                 $lines[] = "    stud {$command['alias']}{$argsString} {$optionExample}";
             }
-            
+
             // If there's a second option, show it too
             if (count($command['options']) > 1) {
                 $secondOption = $command['options'][1];
@@ -375,4 +376,3 @@ class HelpService
         return implode("\n", $lines);
     }
 }
-
