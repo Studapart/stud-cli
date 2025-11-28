@@ -1906,13 +1906,18 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(true);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "n\n"); // User aborts (selects 'n')
-        rewind($inputStream);
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
 
         $result = $this->handler->handle($io);
 
@@ -1968,13 +1973,18 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(true);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "y\n"); // User overrides (selects 'y')
-        rewind($inputStream);
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(true); // User overrides
 
         $result = $this->handler->handle($io);
 
@@ -2027,13 +2037,18 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(true);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "n\n"); // User aborts (selects 'n')
-        rewind($inputStream);
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false); // User aborts
 
         $result = $this->handler->handle($io);
 
@@ -2088,13 +2103,18 @@ CHANGELOG;
             });
 
         $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $input->setInteractive(true);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "y\n"); // User overrides (selects 'y')
-        rewind($inputStream);
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('section')->willReturnSelf();
+        $io->method('text')->willReturnSelf();
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->method('writeln')->willReturnSelf();
+        $io->method('newLine')->willReturnSelf();
+        $io->method('success')->willReturnSelf();
+        $io->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(true); // User overrides
 
         $result = $this->handler->handle($io);
 
