@@ -306,6 +306,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud pl
         ```
 
+-   **`stud flatten`** (Alias: `stud ft`)
+    -   **Description:** Automatically squash all `fixup!` and `squash!` commits into their target commits. This command performs a non-interactive rebase with autosquash, eliminating the need to manually edit the interactive rebase file. The command will fail if there are uncommitted changes in the working directory, and will warn that history will be rewritten (requiring a `stud please` push afterward).
+    -   **Usage:**
+        ```bash
+        stud flatten
+        stud ft
+        ```
+    -   **Note:** This command rewrites commit history. After running `stud flatten`, you will need to use `stud please` to force-push your changes.
+
 -   **`stud status`** (Alias: `stud ss`)
     -   **Description:** A quick "where am I?" dashboard, showing your current Jira and Git status.
     -   **Usage:**

@@ -113,6 +113,15 @@ please:
   error_no_upstream: "Votre branche actuelle n'a pas de remote upstream configuré.\nPour le push initial et pour créer une Pull Request, veuillez utiliser \"stud submit\"."
   warning_force: "⚠️  Forçage avec lease..."
 
+# Flatten Handler
+flatten:
+  section: "Aplatissement des commits fixup"
+  error_dirty_working: "Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant d'aplatir."
+  warning_rewrite: "⚠️  Ceci va réécrire l'historique de vos commits. Vous devrez peut-être exécuter 'stud please' pour force-push par la suite."
+  success: "✅ Tous les commits fixup! ont été fusionnés dans leurs commits cibles."
+  error_rebase: "Échec du rebase : %error%"
+  no_fixups: "Aucun commit fixup! ou squash! trouvé. Rien à aplatir."
+
 # Submit Handler
 submit:
   section: "Soumission de Pull Request"
@@ -276,6 +285,7 @@ help:
   command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."
   command_commit: "Vous guide à travers la création d'un commit conventionnel."
   command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."
+  command_flatten: "Fusionner automatiquement tous les commits fixup! dans leurs commits cibles."
   command_submit: "Pousse la branche actuelle et crée une Pull Request."
   command_pr_comment: "Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct."
   command_status: "Un tableau de bord rapide \"où suis-je ?\"."

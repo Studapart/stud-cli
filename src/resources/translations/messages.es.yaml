@@ -113,6 +113,15 @@ please:
   error_no_upstream: "Su rama actual no tiene un remote upstream configurado.\nPara el push inicial y para crear una Pull Request, por favor use \"stud submit\"."
   warning_force: "⚠️  Forzando con lease..."
 
+# Flatten Handler
+flatten:
+  section: "Aplanando commits fixup"
+  error_dirty_working: "Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de aplanar."
+  warning_rewrite: "⚠️  Esto reescribirá el historial de sus commits. Es posible que necesite ejecutar 'stud please' para force-push después."
+  success: "✅ Todos los commits fixup! han sido fusionados en sus commits objetivo."
+  error_rebase: "Error en el rebase: %error%"
+  no_fixups: "No se encontraron commits fixup! o squash!. Nada que aplanar."
+
 # Submit Handler
 submit:
   section: "Enviando Pull Request"
@@ -276,6 +285,7 @@ help:
   command_items_start: "Crea una nueva rama git desde un elemento de Jira."
   command_commit: "Le guía a través de la creación de un commit convencional."
   command_please: "Un force-push seguro para usuario avanzado (force-with-lease)."
+  command_flatten: "Fusionar automáticamente todos los commits fixup! en sus commits objetivo."
   command_submit: "Envía la rama actual y crea una Pull Request."
   command_pr_comment: "Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo."
   command_status: "Un panel de control rápido \"¿dónde estoy?\"."
