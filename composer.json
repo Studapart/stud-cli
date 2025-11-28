@@ -27,7 +27,7 @@
         "symfony/http-client": "^7.3",
         "symfony/process": "^7.3",
         "symfony/console": "^7.3",
-        "jolicode/castor": "^1.0.0",
+        "jolicode/castor": "1.0.0",
         "symfony/yaml": "^7.3",
         "symfony/translation": "^7.3",
         "stevebauman/hypertext": "^1.1"

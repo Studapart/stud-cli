@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-// Suppress deprecation warnings from Castor/Symfony Console during build and runtime
-// These warnings come from Castor's internal use of Application::add() which is deprecated
-// in Symfony 7.4 in favor of Application::addCommand(). This will be fixed when Castor
-// updates to use the new method. Suppressing these warnings prevents noise in the output.
-$currentErrorReporting = error_reporting();
-error_reporting($currentErrorReporting & ~E_USER_DEPRECATED);
-
 // =================================================================================
 // Constants & Configuration
 // =================================================================================
