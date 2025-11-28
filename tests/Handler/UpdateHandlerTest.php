@@ -1907,6 +1907,7 @@ CHANGELOG;
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
+        $input->setInteractive(true);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "n\n"); // User aborts (selects 'n')
         rewind($inputStream);
@@ -1968,6 +1969,7 @@ CHANGELOG;
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
+        $input->setInteractive(true);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "y\n"); // User overrides (selects 'y')
         rewind($inputStream);
@@ -2026,6 +2028,7 @@ CHANGELOG;
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
+        $input->setInteractive(true);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "n\n"); // User aborts (selects 'n')
         rewind($inputStream);
@@ -2086,6 +2089,7 @@ CHANGELOG;
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
+        $input->setInteractive(true);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "y\n"); // User overrides (selects 'y')
         rewind($inputStream);
