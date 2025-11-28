@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.1] - 2025-11-28
+
 ### Changed
 - Refactor AI.md into four-phase development protocol (Investigate and Plan, Execution and Documentation, Project Integrity and Commit, Summarize and Conclude) with enforced planning, complexity assessment, and 100% code coverage verification [SCI-15]
 - Update CONVENTIONS.md with measurable code quality thresholds: maximum Cyclomatic Complexity of 10 per method and maximum CRAP Index of 10 per class [SCI-15]
