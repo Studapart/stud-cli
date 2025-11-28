@@ -69,7 +69,11 @@ This project is configured to be compiled into a single, executable PHAR file us
 
 2.  **Compile:**
     ```bash
-    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
+    # Suppress deprecation warnings from Castor/Symfony Console during build
+    # These warnings come from Castor's internal use of Application::add() which is deprecated
+    # in Symfony 7.4 in favor of Application::addCommand(). This will be fixed when Castor
+    # updates to use the new method. The grep filter removes deprecation warnings from output.
+    PATH="~/.config/composer/vendor/bin:$PATH" SYMFONY_DEPRECATIONS_HELPER=disabled vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 2>&1 | grep -v "User Deprecated" || true; mv stud.linux.phar stud.phar
     ```
     This will generate an executable `stud.phar` file in the project's root directory.
 
