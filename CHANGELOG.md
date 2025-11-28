@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replace custom `slugify()` method in `ItemStartHandler` with Symfony's `AsciiSlugger` directly [SCI-12]
+  - Uses the same underlying component that Castor's `slug()` function uses, providing consistency and simplicity
+  - Removes dependency on Castor container initialization
+
 ## [2.5.1] - 2025-11-28
 
 ### Changed

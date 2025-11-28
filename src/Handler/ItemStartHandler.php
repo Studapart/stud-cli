@@ -6,6 +6,7 @@ use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class ItemStartHandler
 {
@@ -42,8 +43,10 @@ class ItemStartHandler
         }
 
         $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
-        $slug = $this->slugify($issue->title);
-        $branchName = "{$prefix}/{$key}-{$slug}";
+        // Use Symfony's AsciiSlugger to create a clean, lowercase slug for the branch name
+        $slugger = new AsciiSlugger();
+        $slugValue = $slugger->slug($issue->title)->lower()->toString();
+        $branchName = "{$prefix}/{$key}-{$slugValue}";
 
         if ($io->isVerbose()) {
             $io->writeln("  <fg=gray>{$this->translator->trans('item.start.generated_branch', ['branch' => $branchName])}</>");
@@ -159,14 +162,5 @@ class ItemStartHandler
             'task', 'sub-task' => 'chore',
             default => 'feat',
         };
-    }
-
-    protected function slugify(string $string): string
-    {
-        // Lowercase, remove accents, remove non-word chars, and replace spaces with hyphens.
-        $string = strtolower(trim($string));
-        $string = preg_replace('/[^a-z0-9-]+/', '-', $string); // Replace non-alphanumeric characters (except hyphens) with a single hyphen
-        $string = preg_replace('/-+/', '-', $string); // Replace multiple hyphens with a single hyphen
-        return trim($string, '-');
     }
 }

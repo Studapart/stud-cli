@@ -14,6 +14,7 @@ Your objective is to automate the maintenance and feature development of the `st
 ## 3. Four-Phase Development Protocol
 
 The development process is structured into four distinct phases, each with specific deliverables and quality gates. You MUST complete all phases in order before proceeding to the next.
+You must always prefer stud cli commands over equivalent git manual commands. Only fallback to git manual commands if Stud-Cli does not provide one.
 
 ### Phase 1: Investigate and Plan
 
