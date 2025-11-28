@@ -211,7 +211,9 @@ update:
   success_hash_verified: "✅ Hash verification successful. Binary is authentic."
   error_hash_not_found: "Security verification failed: Could not find checksum file in the release.\nThe binary cannot be verified. Update aborted for security reasons."
   error_hash_calculation: "Security verification failed: Could not calculate hash of downloaded file.\nUpdate aborted for security reasons."
-  error_hash_mismatch: "Security verification failed: Hash mismatch detected!\n\nExpected hash: %expected%\nCalculated hash: %calculated%\n\nThe downloaded binary may be corrupted or has been tampered with.\nUpdate aborted for security reasons."
+  error_hash_mismatch: "Security verification failed: Hash mismatch detected!\n\nExpected hash: %expected%\nCalculated hash: %calculated%\n\nThe downloaded binary may be corrupted or has been tampered with."
+  error_digest_not_found: "Security verification failed: No digest found in GitHub API response.\nThe binary cannot be verified."
+  prompt_continue_on_verification_failure: "⚠️ Warning: Checksum verification failed.\nDo you want to continue with the installation anyway?"
   downloading_checksum: "Downloading checksum file from"
   checksum_download_error: "Error downloading checksum file"
 
