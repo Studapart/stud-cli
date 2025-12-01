@@ -314,5 +314,8 @@ help:
   option_submit_draft: "Créer une Pull Request en brouillon (marquée comme \"Draft\" sur GitHub)"
   option_submit_labels: "Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée"
   option_update_info: "Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour"
+  option_release_major: "Incrémenter la version majeure (X.0.0)"
+  option_release_minor: "Incrémenter la version mineure (X.Y.0)"
+  option_release_patch: "Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni"
   option_release_publish: "Publier la branche de release sur le dépôt distant"
 

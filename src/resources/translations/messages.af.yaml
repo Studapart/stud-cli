@@ -314,5 +314,8 @@ help:
   option_submit_draft: "Skep 'n Draft Pull Request (gemerk as \"Draft\" op GitHub)"
   option_submit_labels: "Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys"
   option_update_info: "Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer"
+  option_release_major: "Verhoog hoof weergawe (X.0.0)"
+  option_release_minor: "Verhoog klein weergawe (X.Y.0)"
+  option_release_patch: "Verhoog patch weergawe (X.Y.Z). Dit is die verstek as geen vlae verskaf word nie"
   option_release_publish: "Publiseer die vrystelling tak na die afgeleë repository"
 

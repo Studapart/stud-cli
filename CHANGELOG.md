@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Implement automatic Semantic Versioning (SemVer) bumping in 'stud release' [SCI-21]
+  - Added `--major` (`-M`), `--minor` (`-m`), and `--patch` (`-p`) flags for automatic version bumping
+  - Version argument is now optional when using SemVer flags
+  - Default behavior: patch increment when no flags or version provided
+  - Mutually exclusive flag validation to prevent conflicts
+  - Version calculation based on current version from `composer.json`
+
 ## [2.6.2] - 2025-12-01
 
 ### Fixed
