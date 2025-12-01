@@ -190,6 +190,7 @@ commit:
   creating_fixup: "Création d'un commit fixup pour %sha%..."
   fixup_success: "✅ Modifications enregistrées comme fixup pour le commit %sha%."
   note_no_logical: "Aucun commit logique précédent trouvé ou flag --new utilisé. Démarrage de l'assistant interactif..."
+  note_clean_working_tree: "L'arbre de travail est propre. Abandon du commit."
   error_no_key: "Impossible de trouver une clé Jira dans le nom de votre branche actuelle.\nVeuillez utiliser \"stud start <key>\" pour créer une branche."
   fetching_jira: "Récupération du ticket Jira : %key%"
   error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."

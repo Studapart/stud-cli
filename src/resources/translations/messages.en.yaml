@@ -190,6 +190,7 @@ commit:
   creating_fixup: "Creating fixup commit for %sha%..."
   fixup_success: "✅ Changes saved as a fixup for commit %sha%."
   note_no_logical: "No previous logical commit found or --new flag used. Starting interactive prompter..."
+  note_clean_working_tree: "Working tree is clean. Aborting commit."
   error_no_key: "Could not find a Jira key in your current branch name.\nPlease use \"stud start <key>\" to create a branch."
   fetching_jira: "Fetching Jira issue: %key%"
   error_not_found: "Could not find Jira issue with key \"%key%\"."

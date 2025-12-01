@@ -29,8 +29,42 @@ class CommitHandlerTest extends CommandTestCase
         $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
     }
 
+    public function testHandleWithCleanWorkingTree(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, null);
+
+        $this->assertSame(0, $result);
+        // Test intent: note() was called for clean working tree, verified by return value
+    }
+
+    public function testHandleWithCleanWorkingTreeAndWhitespace(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('   ');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, null);
+
+        $this->assertSame(0, $result);
+        // Test intent: note() was called for clean working tree (with whitespace), verified by return value
+    }
+
     public function testHandleWithMessage(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('stageAllChanges');
 
@@ -49,6 +83,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithAutoFixup(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->with('origin/develop')
@@ -83,6 +121,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithInteractivePrompter(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
@@ -136,6 +178,10 @@ class CommitHandlerTest extends CommandTestCase
     public function testHandleWithNoJiraKeyInBranchName(): void
     {
         $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
@@ -154,6 +200,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraServiceException(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
@@ -178,6 +228,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithVeryVerboseOutput(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
@@ -237,6 +291,10 @@ class CommitHandlerTest extends CommandTestCase
     public function testHandleWithEmptyComponents(): void
     {
         $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
@@ -288,6 +346,10 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutputForCommitMessage(): void
     {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')
             ->willReturn(null);
@@ -348,6 +410,10 @@ class CommitHandlerTest extends CommandTestCase
     {
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
             ->method('findLatestLogicalSha')

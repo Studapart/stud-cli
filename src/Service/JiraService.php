@@ -11,6 +11,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JiraService
 {
+    private ?string $currentUserAccountId = null;
+
     public function __construct(
         private HttpClientInterface $client,
         private ?Transformer $transformer = null,
@@ -163,6 +165,37 @@ class JiraService
     }
 
     /**
+     * Gets the current authenticated user's account ID.
+     * The result is cached to avoid repeated API calls.
+     *
+     * @return string The account ID of the current user
+     * @throws \RuntimeException If the API call fails
+     */
+    protected function getCurrentUserAccountId(): string
+    {
+        if ($this->currentUserAccountId !== null) {
+            return $this->currentUserAccountId;
+        }
+
+        $response = $this->client->request('GET', '/rest/api/3/myself');
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException('Could not retrieve current user information.');
+        }
+
+        $data = $response->toArray();
+        $accountId = $data['accountId'] ?? null;
+
+        if ($accountId === null) {
+            throw new \RuntimeException('Could not find accountId in current user information.');
+        }
+
+        $this->currentUserAccountId = $accountId;
+
+        return $this->currentUserAccountId;
+    }
+
+    /**
      * Assigns an issue to a user.
      *
      * @param string $key The issue key
@@ -171,12 +204,12 @@ class JiraService
     public function assignIssue(string $key, string $accountId = 'currentUser()'): void
     {
         $url = "/rest/api/3/issue/{$key}/assignee";
-        $payload = $accountId === 'currentUser()'
-            ? ['accountId' => null] // null means assign to current user
-            : ['accountId' => $accountId];
+        $actualAccountId = $accountId === 'currentUser()'
+            ? $this->getCurrentUserAccountId()
+            : $accountId;
 
         $response = $this->client->request('PUT', $url, [
-            'json' => $payload,
+            'json' => ['accountId' => $actualAccountId],
         ]);
 
         if ($response->getStatusCode() !== 204) {

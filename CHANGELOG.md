@@ -7,15 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.2] - 2025-12-01
+
+### Fixed
+- Fix `JiraService::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
+  - Added `getCurrentUserAccountId()` method that calls `/rest/api/3/myself` endpoint to retrieve the authenticated user's accountId
+  - Updated `assignIssue()` to use the retrieved accountId instead of passing `null` when assigning to current user
+  - Implemented caching to ensure the `/myself` API call is executed only once per application lifecycle
+
 ## [2.6.1] - 2025-11-28
-
-## [2.6.0] - 2025-11-28
-
 ### Added
 - Integrate PHP-CS-Fixer and PHPStan for automated code quality enforcement [SCI-18]
   - PHP-CS-Fixer configuration (`.php-cs-fixer.dist.php`) enforces PSR-12 code style
   - PHPStan configuration (`phpstan.neon.dist`) set to Level 7 minimum for strict type checking
   - Both tools added as require-dev dependencies in `composer.json`
+
+## [2.6.0] - 2025-11-28
+
+### Added
 - Add comprehensive Project Quality Metric Blueprint to CONVENTIONS.md [SCI-18]
   - Complexity metrics: Cyclomatic Complexity ≤ 10, CRAP Index ≤ 10, NPath ≤ 200, Nesting Depth ≤ 3
   - Cohesion metrics: LCOM4 ≤ 2

@@ -190,6 +190,7 @@ commit:
   creating_fixup: "Đang tạo commit fixup cho %sha%..."
   fixup_success: "✅ Các thay đổi đã được lưu dưới dạng fixup cho commit %sha%."
   note_no_logical: "Không tìm thấy commit logic trước đó hoặc đã sử dụng cờ --new. Đang bắt đầu trình nhắc tương tác..."
+  note_clean_working_tree: "Cây làm việc sạch. Hủy commit."
   error_no_key: "Không tìm thấy khóa Jira trong tên nhánh hiện tại của bạn.\nVui lòng sử dụng \"stud start <key>\" để tạo nhánh."
   fetching_jira: "Đang lấy issue Jira: %key%"
   error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
