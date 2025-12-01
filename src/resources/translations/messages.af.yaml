@@ -190,6 +190,7 @@ commit:
   creating_fixup: "Skep fixup commit vir %sha%..."
   fixup_success: "✅ Veranderinge gestoor as fixup vir commit %sha%."
   note_no_logical: "Geen vorige logiese commit gevind of --new vlag gebruik. Begin interaktiewe prompter..."
+  note_clean_working_tree: "Werksboom is skoon. Breek commit af."
   error_no_key: "Kon nie 'n Jira sleutel in jou huidige tak naam vind nie.\nGebruik asseblief \"stud start <key>\" om 'n tak te skep."
   fetching_jira: "Kry Jira item: %key%"
   error_not_found: "Kon nie Jira item met sleutel \"%key%\" vind nie."
