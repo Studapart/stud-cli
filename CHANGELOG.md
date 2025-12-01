@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2025-12-01
+
 ### Added
 - Implement automatic Semantic Versioning (SemVer) bumping in 'stud release' [SCI-21]
   - Added `--major` (`-M`), `--minor` (`-m`), and `--patch` (`-p`) flags for automatic version bumping
