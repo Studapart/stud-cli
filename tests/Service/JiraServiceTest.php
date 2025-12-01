@@ -533,19 +533,120 @@ Line 3";
         $this->jiraService->transitionIssue($key, $transitionId);
     }
 
-    public function testAssignIssueToCurrentUser(): void
+    public function testGetCurrentUserAccountId(): void
     {
-        $key = 'TEST-123';
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
+        $mockResponseData = [
+            'accountId' => $accountId,
+            'displayName' => 'Test User',
+        ];
 
         $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(204);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('PUT', "/rest/api/3/issue/{$key}/assignee", [
-                'json' => ['accountId' => null],
-            ])
+            ->with('GET', '/rest/api/3/myself')
             ->willReturn($responseMock);
+
+        $result = $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
+
+        $this->assertSame($accountId, $result);
+    }
+
+    public function testGetCurrentUserAccountIdCaching(): void
+    {
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
+        $mockResponseData = [
+            'accountId' => $accountId,
+            'displayName' => 'Test User',
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        // Expect only one call to /myself even though we call getCurrentUserAccountId twice
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/myself')
+            ->willReturn($responseMock);
+
+        $result1 = $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
+        $result2 = $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
+
+        $this->assertSame($accountId, $result1);
+        $this->assertSame($accountId, $result2);
+    }
+
+    public function testGetCurrentUserAccountIdFailure(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(401);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/myself')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Could not retrieve current user information.');
+
+        $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
+    }
+
+    public function testGetCurrentUserAccountIdMissingAccountId(): void
+    {
+        $mockResponseData = [
+            'displayName' => 'Test User',
+            // Missing accountId
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/myself')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Could not find accountId in current user information.');
+
+        $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
+    }
+
+    public function testAssignIssueToCurrentUser(): void
+    {
+        $key = 'TEST-123';
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
+
+        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock->method('getStatusCode')->willReturn(200);
+        $myselfResponseMock->method('toArray')->willReturn([
+            'accountId' => $accountId,
+            'displayName' => 'Test User',
+        ]);
+
+        $assignResponseMock = $this->createMock(ResponseInterface::class);
+        $assignResponseMock->method('getStatusCode')->willReturn(204);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($myselfResponseMock, $assignResponseMock, $key, $accountId) {
+                if ($method === 'GET' && $url === '/rest/api/3/myself') {
+                    return $myselfResponseMock;
+                }
+                if ($method === 'PUT' && $url === "/rest/api/3/issue/{$key}/assignee") {
+                    $this->assertSame(['accountId' => $accountId], $options['json'] ?? []);
+
+                    return $assignResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected request: {$method} {$url}");
+            });
 
         $this->jiraService->assignIssue($key);
         // No exception means success
@@ -575,18 +676,74 @@ Line 3";
     public function testAssignIssueFailure(): void
     {
         $key = 'TEST-123';
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
 
-        $responseMock = $this->createMock(ResponseInterface::class);
-        $responseMock->method('getStatusCode')->willReturn(403);
+        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock->method('getStatusCode')->willReturn(200);
+        $myselfResponseMock->method('toArray')->willReturn([
+            'accountId' => $accountId,
+            'displayName' => 'Test User',
+        ]);
 
-        $this->httpClientMock->expects($this->once())
+        $assignResponseMock = $this->createMock(ResponseInterface::class);
+        $assignResponseMock->method('getStatusCode')->willReturn(403);
+
+        $this->httpClientMock->expects($this->exactly(2))
             ->method('request')
-            ->willReturn($responseMock);
+            ->willReturnCallback(function ($method, $url) use ($myselfResponseMock, $assignResponseMock) {
+                if ($method === 'GET' && $url === '/rest/api/3/myself') {
+                    return $myselfResponseMock;
+                }
+
+                return $assignResponseMock;
+            });
 
         $this->expectException("RuntimeException"::class);
         $this->expectExceptionMessage("Could not assign issue \"{$key}\" to user.");
 
         $this->jiraService->assignIssue($key);
+    }
+
+    public function testAssignIssueToCurrentUserUsesCache(): void
+    {
+        $key1 = 'TEST-123';
+        $key2 = 'TEST-456';
+        $accountId = '5d5b5c5e5f5a5b5c5d5e5f5a';
+
+        $myselfResponseMock = $this->createMock(ResponseInterface::class);
+        $myselfResponseMock->method('getStatusCode')->willReturn(200);
+        $myselfResponseMock->method('toArray')->willReturn([
+            'accountId' => $accountId,
+            'displayName' => 'Test User',
+        ]);
+
+        $assignResponseMock1 = $this->createMock(ResponseInterface::class);
+        $assignResponseMock1->method('getStatusCode')->willReturn(204);
+
+        $assignResponseMock2 = $this->createMock(ResponseInterface::class);
+        $assignResponseMock2->method('getStatusCode')->willReturn(204);
+
+        // /myself should only be called once, even though we assign two issues
+        $this->httpClientMock->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($myselfResponseMock, $assignResponseMock1, $assignResponseMock2, $key1, $key2, $accountId) {
+                if ($method === 'GET' && $url === '/rest/api/3/myself') {
+                    return $myselfResponseMock;
+                }
+                if ($method === 'PUT' && $url === "/rest/api/3/issue/{$key1}/assignee") {
+                    return $assignResponseMock1;
+                }
+                if ($method === 'PUT' && $url === "/rest/api/3/issue/{$key2}/assignee") {
+                    return $assignResponseMock2;
+                }
+
+                throw new \RuntimeException("Unexpected request: {$method} {$url}");
+            });
+
+        $this->jiraService->assignIssue($key1);
+        $this->jiraService->assignIssue($key2);
+        // No exception means success
+        $this->assertTrue(true);
     }
 
     // Helper to call private methods for testing
