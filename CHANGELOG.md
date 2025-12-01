@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix `JiraService::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
+  - Added `getCurrentUserAccountId()` method that calls `/rest/api/3/myself` endpoint to retrieve the authenticated user's accountId
+  - Updated `assignIssue()` to use the retrieved accountId instead of passing `null` when assigning to current user
+  - Implemented caching to ensure the `/myself` API call is executed only once per application lifecycle
+
 ## [2.6.1] - 2025-11-28
 
 ## [2.6.0] - 2025-11-28
