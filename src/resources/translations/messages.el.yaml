@@ -190,6 +190,7 @@ commit:
   creating_fixup: "Δημιουργία fixup commit για %sha%..."
   fixup_success: "✅ Οι αλλαγές αποθηκεύτηκαν ως fixup για το commit %sha%."
   note_no_logical: "Δεν βρέθηκε προηγούμενο λογικό commit ή χρησιμοποιήθηκε το flag --new. Έναρξη διαδραστικού βοηθού..."
+  note_clean_working_tree: "Το δέντρο εργασίας είναι καθαρό. Ακύρωση commit."
   error_no_key: "Δεν ήταν δυνατή η εύρεση κλειδιού Jira στο όνομα του τρέχοντος κλάδου σας.\nΠαρακαλώ χρησιμοποιήστε \"stud start <key>\" για να δημιουργήσετε έναν κλάδο."
   fetching_jira: "Λήψη θέματος Jira: %key%"
   error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."

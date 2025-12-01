@@ -23,6 +23,14 @@ class CommitHandler
     {
         $io->section($this->translator->trans('commit.section'));
 
+        // Check for clean working tree before proceeding
+        $gitStatus = $this->gitRepository->getPorcelainStatus();
+        if (empty(trim($gitStatus))) {
+            $io->note($this->translator->trans('commit.note_clean_working_tree'));
+
+            return 0;
+        }
+
         // If a message is provided via the -m flag, use it directly.
         if (! empty($message)) {
             $io->text($this->translator->trans('commit.staging'));
