@@ -233,9 +233,12 @@ class HelpService
                 'alias' => 'rl',
                 'description_key' => 'help.command_release',
                 'options' => [
+                    ['name' => '--major', 'shortcut' => '-M', 'description_key' => 'help.option_release_major', 'argument' => null],
+                    ['name' => '--minor', 'shortcut' => '-m', 'description_key' => 'help.option_release_minor', 'argument' => null],
+                    ['name' => '--patch', 'shortcut' => '-b', 'description_key' => 'help.option_release_patch', 'argument' => null],
                     ['name' => '--publish', 'shortcut' => '-p', 'description_key' => 'help.option_release_publish', 'argument' => null],
                 ],
-                'arguments' => ['<version>'],
+                'arguments' => ['[<version>]'],
             ],
             'deploy' => [
                 'alias' => 'mep',
@@ -278,7 +281,7 @@ class HelpService
                 if (isset($option['argument']) && $option['argument']) {
                     $optionName .= ' ' . $option['argument'];
                 }
-                if ($option['shortcut']) {
+                if (isset($option['shortcut']) && $option['shortcut']) {
                     $shortcutName = $option['shortcut'];
                     if (isset($option['argument']) && $option['argument']) {
                         $shortcutName .= ' ' . $option['argument'];
@@ -299,7 +302,7 @@ class HelpService
         foreach ($command['arguments'] as $arg) {
             if ($arg === '<key>') {
                 $exampleArgs[] = 'JIRA-33';
-            } elseif ($arg === '<version>') {
+            } elseif (str_contains($arg, '<version>')) {
                 $exampleArgs[] = '1.2.0';
             } elseif ($arg === '<jql>') {
                 $exampleArgs[] = '"project = PROJ and status = Done"';

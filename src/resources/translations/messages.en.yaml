@@ -314,5 +314,8 @@ help:
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
   option_update_info: "Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating"
+  option_release_major: "Increment major version (X.0.0)"
+  option_release_minor: "Increment minor version (X.Y.0)"
+  option_release_patch: "Increment patch version (X.Y.Z). This is the default if no flags are provided"
   option_release_publish: "Publish the release branch to the remote"
 

@@ -775,14 +775,47 @@ function status(
 
 #[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
 function release(
-    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0)')]
-    string $version,
+    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0). Optional if using --major, --minor, or --patch flags')]
+    ?string $version = null,
+    #[AsOption(name: 'major', shortcut: 'M', description: 'Increment major version (X.0.0)')]
+    bool $major = false,
+    #[AsOption(name: 'minor', shortcut: 'm', description: 'Increment minor version (X.Y.0)')]
+    bool $minor = false,
+    #[AsOption(name: 'patch', shortcut: 'b', description: 'Increment patch version (X.Y.Z). This is the default if no flags are provided')]
+    bool $patch = false,
     #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')]
     bool $publish = false,
 ): void {
     _load_constants();
+
+    // Validate mutually exclusive flags
+    $flagCount = ($major ? 1 : 0) + ($minor ? 1 : 0) + ($patch ? 1 : 0);
+    if ($flagCount > 1) {
+        io()->error('Only one of --major, --minor, or --patch can be specified at a time.');
+        exit(1);
+    }
+
+    // Determine bump type
+    $bumpType = null;
+    if ($major) {
+        $bumpType = 'major';
+    } elseif ($minor) {
+        $bumpType = 'minor';
+    } elseif ($patch) {
+        $bumpType = 'patch';
+    } elseif ($version === null) {
+        // Default to patch if no version and no flags
+        $bumpType = 'patch';
+    }
+
+    // If version is provided, flags should not be used
+    if ($version !== null && $bumpType !== null) {
+        io()->error('Cannot specify both a version and a bump flag (--major, --minor, --patch).');
+        exit(1);
+    }
+
     $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service());
-    $handler->handle(io(), $version, $publish);
+    $handler->handle(io(), $version, $publish, $bumpType);
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]

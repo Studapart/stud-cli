@@ -59,7 +59,7 @@ class ReleaseHandlerTest extends CommandTestCase
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false);
+        $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -106,7 +106,7 @@ class ReleaseHandlerTest extends CommandTestCase
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, true);
+        $handler->handle($io->reveal(), $version, true, null);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -153,7 +153,7 @@ class ReleaseHandlerTest extends CommandTestCase
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false);
+        $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -199,7 +199,7 @@ class ReleaseHandlerTest extends CommandTestCase
         file_put_contents($composerJsonPath, json_encode(['version' => '1.0.0']));
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false);
+        $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode(file_get_contents($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -247,7 +247,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $io->success('Release ' . $version . ' is ready to be deployed.')->shouldBeCalled();
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false);
+        $handler->handle($io->reveal(), $version, false, null);
 
         // Verify CHANGELOG.md was updated correctly
         $updatedContent = file_get_contents($changelogPath);
@@ -321,5 +321,303 @@ class ReleaseHandlerTest extends CommandTestCase
         } finally {
             unlink($composerJsonPath);
         }
+    }
+
+    public function testCalculateNextVersionPatch(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'patch']);
+        $this->assertSame('2.6.3', $result);
+    }
+
+    public function testCalculateNextVersionMinor(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'minor']);
+        $this->assertSame('2.7.0', $result);
+    }
+
+    public function testCalculateNextVersionMajor(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'major']);
+        $this->assertSame('3.0.0', $result);
+    }
+
+    public function testCalculateNextVersionInvalidFormat(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Invalid version format: invalid. Expected format: X.Y.Z");
+
+        $this->callPrivateMethod($handler, 'calculateNextVersion', ['invalid', 'patch']);
+    }
+
+    public function testCalculateNextVersionInvalidBumpType(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Invalid bump type: invalid. Must be 'major', 'minor', or 'patch'");
+
+        $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'invalid']);
+    }
+
+    public function testHandleWithPatchBump(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $currentVersion = '2.6.2';
+        $targetVersion = '2.6.3';
+        $releaseBranch = 'release/v' . $targetVersion;
+
+        // Create a dummy composer.json with current version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => $currentVersion]));
+
+        // Create a temporary CHANGELOG.md file
+        $changelogPath = sys_get_temp_dir() . '/CHANGELOG_' . uniqid() . '.md';
+        file_put_contents($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+
+        $io->section('Starting release process for version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->fetch()->shouldBeCalled();
+        $io->text('Fetched latest changes from origin.')->shouldBeCalled();
+        $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
+        $io->text('Created release branch: ' . $releaseBranch)->shouldBeCalled();
+        $io->text('Updated version in composer.json to ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->run('composer update --lock')->shouldBeCalled();
+        $io->text('Updated composer.lock')->shouldBeCalled();
+        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $io->text('Dumped config to config/app.php')->shouldBeCalled();
+        $io->text('Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->stageAllChanges()->shouldBeCalled();
+        $io->text('Staged changes.')->shouldBeCalled();
+        $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
+        $io->text('Committed version bump.')->shouldBeCalled();
+        $io->confirm(Argument::any(), false)->willReturn(false);
+        $io->success('Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+        $handler->handle($io->reveal(), null, false, 'patch');
+
+        $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+        $this->assertSame($targetVersion, $composerJson['version']);
+
+        // Clean up
+        unlink($composerJsonPath);
+        unlink($changelogPath);
+    }
+
+    public function testHandleWithMinorBump(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $currentVersion = '2.6.2';
+        $targetVersion = '2.7.0';
+        $releaseBranch = 'release/v' . $targetVersion;
+
+        // Create a dummy composer.json with current version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => $currentVersion]));
+
+        // Create a temporary CHANGELOG.md file
+        $changelogPath = sys_get_temp_dir() . '/CHANGELOG_' . uniqid() . '.md';
+        file_put_contents($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+
+        $io->section('Starting release process for version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->fetch()->shouldBeCalled();
+        $io->text('Fetched latest changes from origin.')->shouldBeCalled();
+        $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
+        $io->text('Created release branch: ' . $releaseBranch)->shouldBeCalled();
+        $io->text('Updated version in composer.json to ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->run('composer update --lock')->shouldBeCalled();
+        $io->text('Updated composer.lock')->shouldBeCalled();
+        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $io->text('Dumped config to config/app.php')->shouldBeCalled();
+        $io->text('Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->stageAllChanges()->shouldBeCalled();
+        $io->text('Staged changes.')->shouldBeCalled();
+        $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
+        $io->text('Committed version bump.')->shouldBeCalled();
+        $io->confirm(Argument::any(), false)->willReturn(false);
+        $io->success('Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+        $handler->handle($io->reveal(), null, false, 'minor');
+
+        $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+        $this->assertSame($targetVersion, $composerJson['version']);
+
+        // Clean up
+        unlink($composerJsonPath);
+        unlink($changelogPath);
+    }
+
+    public function testHandleWithMajorBump(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $currentVersion = '2.6.2';
+        $targetVersion = '3.0.0';
+        $releaseBranch = 'release/v' . $targetVersion;
+
+        // Create a dummy composer.json with current version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => $currentVersion]));
+
+        // Create a temporary CHANGELOG.md file
+        $changelogPath = sys_get_temp_dir() . '/CHANGELOG_' . uniqid() . '.md';
+        file_put_contents($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+
+        $io->section('Starting release process for version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->fetch()->shouldBeCalled();
+        $io->text('Fetched latest changes from origin.')->shouldBeCalled();
+        $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
+        $io->text('Created release branch: ' . $releaseBranch)->shouldBeCalled();
+        $io->text('Updated version in composer.json to ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->run('composer update --lock')->shouldBeCalled();
+        $io->text('Updated composer.lock')->shouldBeCalled();
+        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $io->text('Dumped config to config/app.php')->shouldBeCalled();
+        $io->text('Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->stageAllChanges()->shouldBeCalled();
+        $io->text('Staged changes.')->shouldBeCalled();
+        $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
+        $io->text('Committed version bump.')->shouldBeCalled();
+        $io->confirm(Argument::any(), false)->willReturn(false);
+        $io->success('Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+        $handler->handle($io->reveal(), null, false, 'major');
+
+        $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+        $this->assertSame($targetVersion, $composerJson['version']);
+
+        // Clean up
+        unlink($composerJsonPath);
+        unlink($changelogPath);
+    }
+
+    public function testHandleWithDefaultPatchBump(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $io = $this->prophesize(SymfonyStyle::class);
+
+        $currentVersion = '2.6.2';
+        $targetVersion = '2.6.3';
+        $releaseBranch = 'release/v' . $targetVersion;
+
+        // Create a dummy composer.json with current version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => $currentVersion]));
+
+        // Create a temporary CHANGELOG.md file
+        $changelogPath = sys_get_temp_dir() . '/CHANGELOG_' . uniqid() . '.md';
+        file_put_contents($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+
+        $io->section('Starting release process for version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->fetch()->shouldBeCalled();
+        $io->text('Fetched latest changes from origin.')->shouldBeCalled();
+        $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
+        $io->text('Created release branch: ' . $releaseBranch)->shouldBeCalled();
+        $io->text('Updated version in composer.json to ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->run('composer update --lock')->shouldBeCalled();
+        $io->text('Updated composer.lock')->shouldBeCalled();
+        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $io->text('Dumped config to config/app.php')->shouldBeCalled();
+        $io->text('Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $gitRepository->stageAllChanges()->shouldBeCalled();
+        $io->text('Staged changes.')->shouldBeCalled();
+        $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
+        $io->text('Committed version bump.')->shouldBeCalled();
+        $io->confirm(Argument::any(), false)->willReturn(false);
+        $io->success('Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+        // No version and no bump type - should default to patch
+        $handler->handle($io->reveal(), null, false, null);
+
+        $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+        $this->assertSame($targetVersion, $composerJson['version']);
+
+        // Clean up
+        unlink($composerJsonPath);
+        unlink($changelogPath);
+    }
+
+    public function testGetCurrentVersion(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $currentVersion = '2.6.2';
+
+        // Create a dummy composer.json with current version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['version' => $currentVersion]));
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, 'CHANGELOG.md');
+        $result = $this->callPrivateMethod($handler, 'getCurrentVersion');
+
+        $this->assertSame($currentVersion, $result);
+
+        // Clean up
+        unlink($composerJsonPath);
+    }
+
+    public function testGetCurrentVersionWithFileReadError(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+
+        // Use a non-existent file path to trigger file_get_contents failure
+        $composerJsonPath = '/nonexistent/composer_' . uniqid() . '.json';
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, 'CHANGELOG.md');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read composer.json');
+
+        $this->callPrivateMethod($handler, 'getCurrentVersion');
+    }
+
+    public function testGetCurrentVersionWithMissingVersion(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+
+        // Create a dummy composer.json without version
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        file_put_contents($composerJsonPath, json_encode(['name' => 'test/package']));
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, 'CHANGELOG.md');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid composer.json format or missing version field');
+
+        try {
+            $this->callPrivateMethod($handler, 'getCurrentVersion');
+        } finally {
+            unlink($composerJsonPath);
+        }
+    }
+
+    public function testConstructor(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $composerJsonPath = sys_get_temp_dir() . '/composer_' . uniqid() . '.json';
+        $changelogPath = sys_get_temp_dir() . '/CHANGELOG_' . uniqid() . '.md';
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $composerJsonPath, $changelogPath);
+
+        $this->assertInstanceOf(ReleaseHandler::class, $handler);
     }
 }

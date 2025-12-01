@@ -314,5 +314,8 @@ help:
   option_submit_draft: "Crear una Pull Request en borrador (marcada como \"Draft\" en GitHub)"
   option_submit_labels: "Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida"
   option_update_info: "Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar"
+  option_release_major: "Incrementar versión mayor (X.0.0)"
+  option_release_minor: "Incrementar versión menor (X.Y.0)"
+  option_release_patch: "Incrementar versión de parche (X.Y.Z). Este es el valor por defecto si no se proporcionan banderas"
   option_release_publish: "Publicar la rama de release en el repositorio remoto"
 

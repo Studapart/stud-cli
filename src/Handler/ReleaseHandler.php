@@ -10,6 +10,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandler
 {
+    // @codeCoverageIgnoreStart
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly TranslationService $translator,
@@ -17,20 +18,80 @@ class ReleaseHandler
         private readonly string $changelogPath = 'CHANGELOG.md',
     ) {
     }
+    // @codeCoverageIgnoreEnd
 
-    public function handle(SymfonyStyle $io, string $version, bool $publish = false): void
+    /**
+     * Calculates the next version based on SemVer rules.
+     *
+     * @param string $currentVersion The current version (e.g., '2.6.2')
+     * @param string $bumpType The type of bump: 'major', 'minor', or 'patch'
+     * @return string The next version
+     */
+    protected function calculateNextVersion(string $currentVersion, string $bumpType): string
     {
-        $io->section($this->translator->trans('release.section', ['version' => $version]));
+        if (! preg_match('/^(\d+)\.(\d+)\.(\d+)$/', $currentVersion, $matches)) {
+            throw new \RuntimeException("Invalid version format: {$currentVersion}. Expected format: X.Y.Z");
+        }
+
+        $major = (int) $matches[1];
+        $minor = (int) $matches[2];
+        $patch = (int) $matches[3];
+
+        return match ($bumpType) {
+            'major' => ($major + 1) . '.0.0',
+            'minor' => $major . '.' . ($minor + 1) . '.0',
+            'patch' => $major . '.' . $minor . '.' . ($patch + 1),
+            default => throw new \RuntimeException("Invalid bump type: {$bumpType}. Must be 'major', 'minor', or 'patch'"),
+        };
+    }
+
+    /**
+     * Gets the current version from composer.json.
+     *
+     * @return string The current version
+     */
+    protected function getCurrentVersion(): string
+    {
+        $content = @file_get_contents($this->composerJsonPath);
+        if ($content === false) {
+            throw new \RuntimeException('Unable to read composer.json');
+        }
+
+        $composerJson = json_decode($content, true);
+        if (! is_array($composerJson) || ! isset($composerJson['version'])) {
+            throw new \RuntimeException('Invalid composer.json format or missing version field');
+        }
+
+        return $composerJson['version'];
+    }
+
+    public function handle(SymfonyStyle $io, ?string $version = null, bool $publish = false, ?string $bumpType = null): void
+    {
+        // Determine the target version
+        if ($version !== null) {
+            // Explicit version provided, use it
+            $targetVersion = $version;
+        } elseif ($bumpType !== null) {
+            // Bump type provided, calculate from current version
+            $currentVersion = $this->getCurrentVersion();
+            $targetVersion = $this->calculateNextVersion($currentVersion, $bumpType);
+        } else {
+            // Default to patch bump
+            $currentVersion = $this->getCurrentVersion();
+            $targetVersion = $this->calculateNextVersion($currentVersion, 'patch');
+        }
+
+        $io->section($this->translator->trans('release.section', ['version' => $targetVersion]));
 
         $this->gitRepository->fetch();
         $io->text($this->translator->trans('release.fetched'));
 
-        $releaseBranch = 'release/v' . $version;
+        $releaseBranch = 'release/v' . $targetVersion;
         $this->gitRepository->createBranch($releaseBranch, 'origin/develop');
         $io->text($this->translator->trans('release.created_branch', ['branch' => $releaseBranch]));
 
-        $this->updateComposerVersion($version);
-        $io->text($this->translator->trans('release.updated_composer', ['version' => $version]));
+        $this->updateComposerVersion($targetVersion);
+        $io->text($this->translator->trans('release.updated_composer', ['version' => $targetVersion]));
 
         $this->gitRepository->run('composer update --lock');
         $io->text($this->translator->trans('release.updated_lock'));
@@ -38,13 +99,13 @@ class ReleaseHandler
         $this->gitRepository->run('composer dump-config');
         $io->text($this->translator->trans('release.dumped_config'));
 
-        $this->updateChangelog($version);
-        $io->text($this->translator->trans('release.updated_changelog', ['version' => $version]));
+        $this->updateChangelog($targetVersion);
+        $io->text($this->translator->trans('release.updated_changelog', ['version' => $targetVersion]));
 
         $this->gitRepository->stageAllChanges();
         $io->text($this->translator->trans('release.staged'));
 
-        $this->gitRepository->commit('chore(Version): Bump version to ' . $version);
+        $this->gitRepository->commit('chore(Version): Bump version to ' . $targetVersion);
         $io->text($this->translator->trans('release.committed'));
 
         if ($publish) {
@@ -57,7 +118,7 @@ class ReleaseHandler
             }
         }
 
-        $io->success($this->translator->trans('release.success', ['version' => $version]));
+        $io->success($this->translator->trans('release.success', ['version' => $targetVersion]));
     }
 
     protected function updateComposerVersion(string $version): void
