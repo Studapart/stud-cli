@@ -382,13 +382,31 @@ These commands integrate directly with your local Git repository to streamline y
 
 These commands help you manage the release process.
 
--   **`stud release <version>`** (Alias: `stud rl <version>`)
-    -   **Description:** Creates a new release branch and bumps the version in `composer.json`.
-    -   **Argument:** `<version>` (e.g., `1.2.0`)
+-   **`stud release [<version>]`** (Alias: `stud rl [<version>]`)
+    -   **Description:** Creates a new release branch and bumps the version in `composer.json`. Supports automatic Semantic Versioning (SemVer) bumping via flags.
+    -   **Argument:** `<version>` (optional): The new version (e.g., `1.2.0`). If not provided, version is calculated automatically based on flags.
+    -   **Options:**
+        -   `--major` or `-M`: Increment major version (X.0.0)
+        -   `--minor` or `-m`: Increment minor version (X.Y.0)
+        -   `--patch` or `-b`: Increment patch version (X.Y.Z). This is the default if no flags are provided.
+        -   `--publish` or `-p`: Publish the release branch to the remote
     -   **Usage:**
         ```bash
+        # Automatic patch bump (default)
+        stud release
+        stud rl
+        
+        # Explicit version
         stud release 1.2.0
         stud rl 1.2.0
+        
+        # SemVer flags
+        stud release --patch    # or -b
+        stud release --minor     # or -m
+        stud release --major     # or -M
+        
+        # With publish flag
+        stud release --minor --publish
         ```
 
 -   **`stud deploy`** (Alias: `stud mep`)

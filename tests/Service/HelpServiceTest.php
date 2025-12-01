@@ -204,14 +204,16 @@ class HelpServiceTest extends TestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        // Test release command with <version> argument
+        // Test release command with optional [<version>] argument
         // This covers line 281: version argument type
         $this->helpService->displayCommandHelp($io, 'release');
 
         $outputText = $output->fetch();
 
-        // Test intent: should show example with version
-        $this->assertStringContainsString('1.2.0', $outputText);
+        // Test intent: should show SemVer flags (--major, --minor, --patch)
+        $this->assertStringContainsString('--major', $outputText);
+        $this->assertStringContainsString('--minor', $outputText);
+        $this->assertStringContainsString('--patch', $outputText);
     }
 
     public function testDisplayCommandHelpWithJqlArgument(): void
@@ -339,8 +341,10 @@ class HelpServiceTest extends TestCase
 
         $result = $method->invoke($this->helpService, 'release');
 
-        // Test intent: should include version example
-        $this->assertStringContainsString('1.2.0', $result);
+        // Test intent: should include SemVer flags
+        $this->assertStringContainsString('--major', $result);
+        $this->assertStringContainsString('--minor', $result);
+        $this->assertStringContainsString('--patch', $result);
         $this->assertStringContainsString('release', $result);
     }
 
