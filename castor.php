@@ -50,6 +50,7 @@ use Castor\Attribute\AsTask;
 use function Castor\io;
 
 use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\Console\Event\ConsoleCommandEvent;
 use Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
@@ -344,6 +345,71 @@ function _version_check_bootstrap(): void
         // Fail silently - don't block the user's command or build process
         // Catch Throwable (not just Exception) to catch all errors including fatal ones
     }
+}
+
+/**
+ * Checks if configuration file exists before command execution.
+ * Aborts non-whitelisted commands if config is missing.
+ */
+#[AsListener(event: ConsoleEvents::COMMAND)]
+function _config_check_listener(ConsoleCommandEvent $event): void
+{
+    // Skip config check during PHAR compilation/build process
+    // During castor repack, the execution context is not suitable for this check
+    $constantsPath = __DIR__ . '/src/config/constants.php';
+    if (! file_exists($constantsPath)) {
+        // Constants file doesn't exist (likely during build), skip check
+        return;
+    }
+
+    $command = $event->getCommand();
+    if ($command === null) {
+        return;
+    }
+
+    // Only check config for stud-cli task commands, not Castor internal commands (e.g., repack)
+    // Castor internal commands are not instances of TaskCommand
+    if (! $command instanceof \Castor\Console\Command\TaskCommand) {
+        // This is a Castor internal command, skip config check
+        return;
+    }
+
+    $commandName = $command->getName();
+
+    // Whitelist: Commands that should work without config
+    $whitelistedCommands = [
+        'config:init',
+        'init', // alias
+        'help',
+        'main', // default command
+        'cache:clear',
+        'cc', // alias
+    ];
+
+    // Skip check for whitelisted commands
+    if (in_array($commandName, $whitelistedCommands, true)) {
+        return;
+    }
+
+    // Check if config file exists
+    $configPath = _get_config_path();
+    if (file_exists($configPath)) {
+        return;
+    }
+
+    // Config file is missing and command is not whitelisted
+    // Get translation service (works without config, defaults to 'en')
+    $translator = _get_translation_service();
+    $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+
+    $io->warning($translator->trans('config.error.missing_setup'));
+    $io->text($translator->trans('config.error.run_init_instruction'));
+
+    // Prevent command execution and set exit code to 1
+    $event->disableCommand();
+    $command->setCode(function () {
+        return 1;
+    });
 }
 
 /**

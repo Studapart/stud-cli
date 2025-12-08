@@ -39,6 +39,8 @@ config:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
     missing_git_keys: "Your configuration file is missing required Git provider keys: %keys%\nPlease run \"stud config:init\" again."
+    missing_setup: "Configuration file not found. Please set up stud-cli before using this command."
+    run_init_instruction: "Run 'stud config:init' to create your configuration file."
 
 # Item Start Handler
 item:

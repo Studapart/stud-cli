@@ -39,6 +39,8 @@ config:
     not_found: "Fichier de configuration introuvable à : %path%\nVeuillez exécuter \"stud config:init\" pour en créer un."
     missing_jira_keys: "Votre fichier de configuration manque des clés Jira requises : %keys%\nVeuillez exécuter \"stud config:init\" à nouveau."
     missing_git_keys: "Votre fichier de configuration manque des clés du fournisseur Git requises : %keys%\nVeuillez exécuter \"stud config:init\" à nouveau."
+    missing_setup: "Fichier de configuration introuvable. Veuillez configurer stud-cli avant d'utiliser cette commande."
+    run_init_instruction: "Exécutez 'stud config:init' pour créer votre fichier de configuration."
 
 # Item Start Handler
 item:

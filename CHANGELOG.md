@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Implement mandatory config check on command execution [SCI-23]
+  - Added global pre-execution check that aborts non-whitelisted commands when config file is missing
+  - Commands `config:init`, `help`, `main`, `update`, and `cache:clear` are whitelisted and work without config
+  - Displays clear warning message instructing users to run `stud config:init` when config is missing
+  - Commands exit with error code 1 when config is required but missing
+
 ### Fixed
 - Resolve infinite loop/segfault on first run by fixing circular dependency in config initialization [SCI-22]
   - Updated `_get_translation_service()` to check config file existence before calling `_get_config()`
