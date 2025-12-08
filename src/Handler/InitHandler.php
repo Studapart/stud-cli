@@ -28,7 +28,7 @@ class InitHandler
         // Language Configuration
         $io->section($this->translator->trans('config.init.language.title'));
         $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
-        $defaultLanguage = $existingConfig['LANGUAGE'] ?? 'en';
+        $defaultLanguage = $existingConfig['LANGUAGE'] ?? $this->detectSystemLocale() ?? 'en';
 
         // Create display options with format "English (en)"
         $languageOptions = [];
@@ -147,5 +147,39 @@ class InitHandler
             'zsh' => 'zsh',
             default => null,
         };
+    }
+
+    /**
+     * Attempts to detect system locale from environment variables.
+     * Checks LC_ALL first, then LANG, and extracts the language code.
+     * Returns null if detection fails or language is not supported.
+     *
+     * @return string|null The detected language code (e.g., 'fr', 'es') or null if not detected/unsupported
+     */
+    protected function detectSystemLocale(): ?string
+    {
+        // Supported languages in stud-cli
+        $supportedLanguages = ['en', 'fr', 'es', 'nl', 'ru', 'el', 'af', 'vi'];
+
+        // Check LC_ALL first, then LANG
+        $locale = getenv('LC_ALL') ?: getenv('LANG');
+        if ($locale === false || $locale === '') {
+            return null;
+        }
+
+        // Extract language code from locale string (e.g., "fr_FR.UTF-8" -> "fr", "es_ES" -> "es")
+        // Locale format is typically: language[_territory][.codeset][@modifier]
+        $parts = explode('.', $locale);
+        $languagePart = $parts[0];
+        $languageCode = explode('_', $languagePart)[0];
+        $languageCode = strtolower($languageCode);
+
+        // Validate against supported languages
+        if (in_array($languageCode, $supportedLanguages, true)) {
+            return $languageCode;
+        }
+
+        // Language not supported, return null to fallback to 'en'
+        return null;
     }
 }
