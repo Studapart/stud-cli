@@ -670,4 +670,135 @@ class InitHandlerTest extends CommandTestCase
         $outputContent = $output->fetch();
         $this->assertStringContainsString('Shell auto-completion setup skipped', $outputContent);
     }
+
+    public function testDetectSystemLocaleFromLcAll(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+        $originalLang = getenv('LANG');
+
+        try {
+            putenv('LC_ALL=fr_FR.UTF-8');
+            putenv('LANG=en_US.UTF-8'); // Should be ignored when LC_ALL is set
+
+            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $this->assertSame('fr', $detected);
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+            if ($originalLang !== false) {
+                putenv('LANG=' . $originalLang);
+            } else {
+                putenv('LANG');
+            }
+        }
+    }
+
+    public function testDetectSystemLocaleFromLang(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+        $originalLang = getenv('LANG');
+
+        try {
+            putenv('LC_ALL='); // Clear LC_ALL
+            putenv('LANG=es_ES.UTF-8');
+
+            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $this->assertSame('es', $detected);
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+            if ($originalLang !== false) {
+                putenv('LANG=' . $originalLang);
+            } else {
+                putenv('LANG');
+            }
+        }
+    }
+
+    public function testDetectSystemLocaleExtractsLanguageCode(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+
+        try {
+            putenv('LC_ALL=nl_NL.UTF-8');
+
+            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $this->assertSame('nl', $detected);
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+        }
+    }
+
+    public function testDetectSystemLocaleReturnsNullForUnsupportedLanguage(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+
+        try {
+            putenv('LC_ALL=de_DE.UTF-8'); // German is not supported
+
+            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $this->assertNull($detected);
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+        }
+    }
+
+    public function testDetectSystemLocaleReturnsNullWhenNoLocaleSet(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+        $originalLang = getenv('LANG');
+
+        try {
+            putenv('LC_ALL=');
+            putenv('LANG=');
+
+            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $this->assertNull($detected);
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+            if ($originalLang !== false) {
+                putenv('LANG=' . $originalLang);
+            } else {
+                putenv('LANG');
+            }
+        }
+    }
+
+    public function testDetectSystemLocaleHandlesAllSupportedLanguages(): void
+    {
+        $originalLcAll = getenv('LC_ALL');
+        $supportedLanguages = ['en', 'fr', 'es', 'nl', 'ru', 'el', 'af', 'vi'];
+
+        try {
+            foreach ($supportedLanguages as $lang) {
+                putenv('LC_ALL=' . $lang . '_XX.UTF-8');
+                $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+                $this->assertSame($lang, $detected, "Failed to detect language: {$lang}");
+            }
+        } finally {
+            if ($originalLcAll !== false) {
+                putenv('LC_ALL=' . $originalLcAll);
+            } else {
+                putenv('LC_ALL');
+            }
+        }
+    }
 }

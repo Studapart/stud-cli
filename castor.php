@@ -272,6 +272,17 @@ function _version_check_bootstrap(): void
     // During castor repack, the execution context is not suitable for this check
     // We use multiple checks to detect if we're in a safe execution context
 
+    // Check 0: Skip version check for config:init command to avoid delays during initialization
+    if (isset($_SERVER['argv'])) {
+        $argv = $_SERVER['argv'];
+        foreach ($argv as $arg) {
+            if ($arg === 'config:init' || $arg === 'init') {
+                // Running config:init, skip update check to avoid network delays
+                return;
+            }
+        }
+    }
+
     // Check 1: Ensure we're in CLI mode (not during compilation analysis)
     if (php_sapi_name() !== 'cli') {
         return;
