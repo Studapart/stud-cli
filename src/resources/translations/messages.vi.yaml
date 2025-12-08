@@ -39,6 +39,8 @@ config:
     not_found: "Không tìm thấy tệp cấu hình tại: %path%\nVui lòng chạy \"stud config:init\" để tạo một tệp."
     missing_jira_keys: "Tệp cấu hình của bạn thiếu các khóa Jira bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
     missing_git_keys: "Tệp cấu hình của bạn thiếu các khóa nhà cung cấp Git bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
+    missing_setup: "Không tìm thấy tệp cấu hình. Vui lòng thiết lập stud-cli trước khi sử dụng lệnh này."
+    run_init_instruction: "Chạy 'stud config:init' để tạo tệp cấu hình của bạn."
 
 # Item Start Handler
 item:

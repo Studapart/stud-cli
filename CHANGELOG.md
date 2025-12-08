@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.1] - 2025-12-08
+
+### Added
+- Implement mandatory config check on command execution [SCI-23]
+  - Added global pre-execution check that aborts non-whitelisted commands when config file is missing
+  - Commands `config:init`, `help`, `main`, `update`, and `cache:clear` are whitelisted and work without config
+  - Displays clear warning message instructing users to run `stud config:init` when config is missing
+  - Commands exit with error code 1 when config is required but missing
+- Harden stud config:init by disabling external checks and adding system locale detection [SCI-24]
+  - Excluded config:init command from global update checking mechanism to prevent network delays
+  - Added system locale detection from LC_ALL and LANG environment variables
+  - Falls back to 'en' if locale detection fails or language is not supported
+  - Ensures config:init completes quickly without external network calls
+
+### Fixed
+- Resolve infinite loop/segfault on first run by fixing circular dependency in config initialization [SCI-22]
+  - Updated `_get_translation_service()` to check config file existence before calling `_get_config()`
+  - Prevents circular dependency when config file doesn't exist during first run
+  - Defaults to 'en' locale when config file is missing, avoiding infinite recursion
+
 ## [2.7.0] - 2025-12-01
 
 ### Added
