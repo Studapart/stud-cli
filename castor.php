@@ -225,14 +225,24 @@ function _get_translation_service(): TranslationService
     }
 
     // Get locale from config, default to 'en'
+    // Check if config file exists before calling _get_config() to avoid circular dependency
+    // when config file doesn't exist (e.g., during first run/config:init)
     $locale = 'en';
+    $configPath = _get_config_path();
 
-    try {
-        $config = _get_config();
-        $locale = $config['LANGUAGE'] ?? 'en';
-    } catch (\Exception $e) {
-        // Config might not exist yet (e.g., during config:init), use default
+    if (file_exists($configPath)) {
+        try {
+            // Config file exists, safe to call _get_config()
+            $config = _get_config();
+            $locale = $config['LANGUAGE'] ?? 'en';
+        } catch (\Exception $e) {
+            // Config file exists but is unreadable or contains invalid YAML.
+            // Silently fall back to default 'en' locale to avoid blocking initialization.
+            // This is intentional: translation service must be available even if config is corrupted.
+            // The error will be surfaced when _get_config() is called elsewhere (e.g., by commands that require config).
+        }
     }
+    // If config file doesn't exist, use default 'en' locale (no need to call _get_config())
 
     // Determine translations path - works both in PHAR and development
     $translationsPath = __DIR__ . '/src/resources/translations';
