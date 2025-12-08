@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Resolve infinite loop/segfault on first run by fixing circular dependency in config initialization [SCI-22]
+  - Updated `_get_translation_service()` to check config file existence before calling `_get_config()`
+  - Prevents circular dependency when config file doesn't exist during first run
+  - Defaults to 'en' locale when config file is missing, avoiding infinite recursion
+
 ## [2.7.0] - 2025-12-01
 
 ### Added
