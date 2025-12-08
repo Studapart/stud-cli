@@ -39,6 +39,8 @@ config:
     not_found: "Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%\nΠαρακαλώ εκτελέστε \"stud config:init\" για να δημιουργήσετε ένα."
     missing_jira_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά Jira: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
     missing_git_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά παροχέα Git: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
+    missing_setup: "Το αρχείο ρύθμισης δεν βρέθηκε. Παρακαλώ ρυθμίστε το stud-cli πριν χρησιμοποιήσετε αυτή την εντολή."
+    run_init_instruction: "Εκτελέστε 'stud config:init' για να δημιουργήσετε το αρχείο ρύθμισης."
 
 # Item Start Handler
 item:

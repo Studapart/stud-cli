@@ -39,6 +39,8 @@ config:
     not_found: "Konfigurasielêer nie gevind by: %path%\nVoer asseblief \"stud config:init\" uit om een te skep."
     missing_jira_keys: "Jou konfigurasielêer ontbreek vereiste Jira sleutels: %keys%\nVoer asseblief \"stud config:init\" weer uit."
     missing_git_keys: "Jou konfigurasielêer ontbreek vereiste Git verskaffer sleutels: %keys%\nVoer asseblief \"stud config:init\" weer uit."
+    missing_setup: "Konfigurasielêer nie gevind nie. Stel asseblief stud-cli op voordat u hierdie opdrag gebruik."
+    run_init_instruction: "Voer 'stud config:init' uit om jou konfigurasielêer te skep."
 
 # Item Start Handler
 item:
