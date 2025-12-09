@@ -17,6 +17,7 @@ class HelpService
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',
         'items:start' => 'stud items:start',
+        'filters:show' => 'stud filters:show',
         'commit' => 'stud commit',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
@@ -160,6 +161,12 @@ class HelpService
                 'description_key' => 'help.command_items_search',
                 'options' => [],
                 'arguments' => ['<jql>'],
+            ],
+            'filters:show' => [
+                'alias' => 'fs',
+                'description_key' => 'help.command_filters_show',
+                'options' => [],
+                'arguments' => ['<filterName>'],
             ],
             'items:show' => [
                 'alias' => 'sh',
@@ -310,6 +317,8 @@ class HelpService
                 $exampleArgs[] = 'bash';
             } elseif ($arg === '<message>') {
                 $exampleArgs[] = '"Comment text"';
+            } elseif ($arg === '<filterName>') {
+                $exampleArgs[] = '"My Filter"';
             } else {
                 // Fallback for unknown argument types
                 // Currently all commands use known patterns, so this path is untestable

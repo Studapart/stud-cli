@@ -99,6 +99,14 @@ search:
   error_search: "Fout bij zoeken naar tickets: %error%"
   no_results: "Geen tickets gevonden die overeenkomen met uw JQL-query."
 
+# Filter Show Handler
+filter:
+  show:
+    section: "Tickets ophalen uit filter '%filterName%'"
+    jql_query: "JQL Query: %jql%"
+    error_fetch: "Fout bij ophalen van tickets uit filter: %error%"
+    no_results: "Geen tickets gevonden in filter '%filterName%'."
+
 # Status Handler
 status:
   section: "Huidige Status"
@@ -293,6 +301,7 @@ help:
   command_items_list: "Lijst actieve werkitems (uw dashboard)."
   command_items_show: "Toon gedetailleerde informatie voor één werkitem."
   command_items_search: "Zoek issues met JQL."
+  command_filters_show: "Haal issues op uit een opgeslagen Jira filter."
   command_items_start: "Maakt een nieuwe git tak van een Jira item."
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."

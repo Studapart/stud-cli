@@ -268,6 +268,15 @@ These commands help you browse and view your Jira work items.
         stud search "assignee = currentUser()"
         ```
 
+-   **`stud filters:show <filterName>`** (Alias: `stud fs <filterName>`)
+    -   **Description:** Retrieve issues from a saved Jira filter by filter name.
+    -   **Argument:** `<filterName>` (e.g., `"My Filter"`). Filter names with spaces should be quoted.
+    -   **Usage:**
+        ```bash
+        stud filters:show "My Filter"
+        stud fs "My Filter"
+        ```
+
 #### Git Workflow Commands
 
 These commands integrate directly with your local Git repository to streamline your development workflow.

@@ -3,16 +3,16 @@
 namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
-use App\Handler\SearchHandler;
+use App\Handler\FilterShowHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-class SearchHandlerTest extends CommandTestCase
+class FilterShowHandlerTest extends CommandTestCase
 {
-    private SearchHandler $handler;
+    private FilterShowHandler $handler;
 
     protected function setUp(): void
     {
@@ -20,7 +20,7 @@ class SearchHandlerTest extends CommandTestCase
 
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new SearchHandler($this->jiraService, $this->translationService);
+        $this->handler = new FilterShowHandler($this->jiraService, $this->translationService);
     }
 
     public function testHandle(): void
@@ -38,13 +38,13 @@ class SearchHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('project = TPW')
+            ->with('filter = "My Filter"')
             ->willReturn([$issue]);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'My Filter');
 
         $this->assertSame(0, $result);
     }
@@ -53,13 +53,13 @@ class SearchHandlerTest extends CommandTestCase
     {
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('project = TPW')
+            ->with('filter = "My Filter"')
             ->willReturn([]);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'My Filter');
 
         $this->assertSame(0, $result);
     }
@@ -68,13 +68,13 @@ class SearchHandlerTest extends CommandTestCase
     {
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('project = TPW')
+            ->with('filter = "My Filter"')
             ->willThrowException(new \Exception('Jira API error'));
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'My Filter');
 
         $this->assertSame(1, $result);
     }
@@ -94,14 +94,14 @@ class SearchHandlerTest extends CommandTestCase
 
         $this->jiraService->expects($this->once())
             ->method('searchIssues')
-            ->with('project = TPW')
+            ->with('filter = "My Filter"')
             ->willReturn([$issue]);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'My Filter');
 
         $this->assertSame(0, $result);
     }

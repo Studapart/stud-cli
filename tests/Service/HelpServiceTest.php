@@ -428,4 +428,49 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('<message>', $result);
         $this->assertStringContainsString('"Comment text"', $result);
     }
+
+    public function testDisplayCommandHelpWithFiltersShow(): void
+    {
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        // Test filters:show command which has alias 'fs' and argument '<filterName>'
+        $this->helpService->displayCommandHelp($io, 'filters:show');
+
+        $outputText = $output->fetch();
+
+        // Test intent: should display help with alias and argument
+        $this->assertStringContainsString('Help:', $outputText);
+        $this->assertStringContainsString('filters:show', $outputText);
+        $this->assertStringContainsString('fs', $outputText);
+        $this->assertStringContainsString('<filterName>', $outputText);
+        $this->assertStringContainsString('"My Filter"', $outputText);
+    }
+
+    public function testFormatCommandHelpFromTranslationWithFiltersShow(): void
+    {
+        // Test formatCommandHelpFromTranslation directly with filters:show
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->helpService, 'filters:show');
+
+        // Test intent: should include filterName argument example
+        $this->assertStringContainsString('filters:show', $result);
+        $this->assertStringContainsString('fs', $result);
+        $this->assertStringContainsString('<filterName>', $result);
+        $this->assertStringContainsString('"My Filter"', $result);
+    }
+
+    public function testGetCommandHelpForFiltersShow(): void
+    {
+        $helpText = $this->helpService->getCommandHelp('filters:show');
+
+        // Test intent: help text should contain information about the command
+        $this->assertNotNull($helpText);
+        $this->assertIsString($helpText);
+        $this->assertNotEmpty($helpText);
+        $this->assertStringContainsString('filters:show', $helpText);
+    }
 }

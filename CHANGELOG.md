@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add filters:show command to retrieve Jira issues by filter name [SCI-25]
+  - New command `stud filters:show <filterName>` (alias: `stud fs`) to retrieve issues from saved Jira filters
+  - Generates JQL query `filter = "<filterName>"` and reuses existing search infrastructure
+  - Updated SearchHandler to return int (0 for success, 1 for error) for consistency with other handlers
+  - Added translation keys for filter show handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+
 ## [2.7.1] - 2025-12-08
 
 ### Added
