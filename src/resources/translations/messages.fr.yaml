@@ -99,6 +99,14 @@ search:
   error_search: "Échec de la recherche de tickets : %error%"
   no_results: "Aucun ticket trouvé correspondant à votre requête JQL."
 
+# Filter Show Handler
+filter:
+  show:
+    section: "Récupération des tickets depuis le filtre '%filterName%'"
+    jql_query: "Requête JQL : %jql%"
+    error_fetch: "Échec de la récupération des tickets depuis le filtre : %error%"
+    no_results: "Aucun ticket trouvé dans le filtre '%filterName%'."
+
 # Status Handler
 status:
   section: "Statut actuel"
@@ -293,6 +301,7 @@ help:
   command_items_list: "Liste les éléments de travail actifs (votre tableau de bord)."
   command_items_show: "Affiche des informations détaillées pour un élément de travail."
   command_items_search: "Rechercher des issues avec JQL."
+  command_filters_show: "Récupérer les issues depuis un filtre Jira enregistré."
   command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."
   command_commit: "Vous guide à travers la création d'un commit conventionnel."
   command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."

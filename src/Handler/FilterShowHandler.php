@@ -9,7 +9,7 @@ use App\Service\JiraService;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-class SearchHandler
+class FilterShowHandler
 {
     public function __construct(
         private readonly JiraService $jiraService,
@@ -17,23 +17,26 @@ class SearchHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, string $jql): int
+    public function handle(SymfonyStyle $io, string $filterName): int
     {
-        $io->section($this->translator->trans('search.section'));
+        $io->section($this->translator->trans('filter.show.section', ['filterName' => $filterName]));
+
+        $jql = 'filter = "' . $filterName . '"';
+
         if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('search.jql_query', ['jql' => $jql])}</>");
+            $io->writeln("  <fg=gray>{$this->translator->trans('filter.show.jql_query', ['jql' => $jql])}</>");
         }
 
         try {
             $issues = $this->jiraService->searchIssues($jql);
         } catch (\Exception $e) {
-            $io->error($this->translator->trans('search.error_search', ['error' => $e->getMessage()]));
+            $io->error($this->translator->trans('filter.show.error_fetch', ['error' => $e->getMessage()]));
 
             return 1;
         }
 
         if (empty($issues)) {
-            $io->note($this->translator->trans('search.no_results'));
+            $io->note($this->translator->trans('filter.show.no_results', ['filterName' => $filterName]));
 
             return 0;
         }

@@ -20,6 +20,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\DeployHandler;
+use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
@@ -499,6 +500,15 @@ function items_search(
     $handler->handle(io(), $jql);
 }
 
+#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
+function filters_show(
+    #[AsArgument(name: 'filterName', description: 'The name of the saved Jira filter')]
+    string $filterName,
+): void {
+    _load_constants();
+    $handler = new FilterShowHandler(_get_jira_service(), _get_translation_service());
+    $handler->handle(io(), $filterName);
+}
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
 function items_show(
@@ -692,6 +702,7 @@ function help(
             'pj' => 'projects:list',
             'ls' => 'items:list',
             'search' => 'items:search',
+            'fs' => 'filters:show',
             'sh' => 'items:show',
             'start' => 'items:start',
             'co' => 'commit',

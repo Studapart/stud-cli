@@ -99,6 +99,14 @@ search:
   error_search: "Kon nie items soek nie: %error%"
   no_results: "Geen items gevind wat by jou JQL navraag pas nie."
 
+# Filter Show Handler
+filter:
+  show:
+    section: "Kry items uit filter '%filterName%'"
+    jql_query: "JQL Navraag: %jql%"
+    error_fetch: "Kon nie items uit filter kry nie: %error%"
+    no_results: "Geen items gevind in filter '%filterName%'."
+
 # Status Handler
 status:
   section: "Huidige Status"
@@ -293,6 +301,7 @@ help:
   command_items_list: "Lys aktiewe werkitems (jou dashboard)."
   command_items_show: "Toon gedetailleerde inligting vir een werkitem."
   command_items_search: "Soek issues met JQL."
+  command_filters_show: "Kry issues uit 'n gestoor Jira filter."
   command_items_start: "Skep 'n nuwe git tak van 'n Jira item."
   command_commit: "Lei jou deur die maak van 'n konvensionele commit."
   command_please: "'n Veilige force-push vir gevorderde gebruikers (force-with-lease)."

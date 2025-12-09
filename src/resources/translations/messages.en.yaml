@@ -99,6 +99,14 @@ search:
   error_search: "Failed to search for issues: %error%"
   no_results: "No issues found matching your JQL query."
 
+# Filter Show Handler
+filter:
+  show:
+    section: "Fetching issues from filter '%filterName%'"
+    jql_query: "JQL Query: %jql%"
+    error_fetch: "Failed to fetch issues from filter: %error%"
+    no_results: "No issues found in filter '%filterName%'."
+
 # Status Handler
 status:
   section: "Current Status"
@@ -293,6 +301,7 @@ help:
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_search: "Search for issues using JQL."
+  command_filters_show: "Retrieve issues from a saved Jira filter."
   command_items_start: "Creates a new git branch from a Jira item."
   command_commit: "Guides you through making a conventional commit."
   command_please: "A power-user, safe force-push (force-with-lease)."
