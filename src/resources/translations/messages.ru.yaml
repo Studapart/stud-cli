@@ -78,6 +78,19 @@ item:
     label_description: "Описание"
     label_link: "Ссылка"
     label_none: "Нет"
+# Item Transition Handler
+  transition:
+    section: "Переход задачи Jira"
+    detected_key: "Обнаружен ключ Jira '%key%' из текущей ветки. Использовать этот ключ?"
+    prompt_key: "Введите ключ задачи Jira"
+    error_not_found: "Не удалось найти задачу Jira с ключом \"%key%\"."
+    error_invalid_key: "Неверный формат ключа Jira. Ожидаемый формат: PROJ-123"
+    fetching: "Получение доступных переходов для задачи: %key%"
+    no_transitions: "Нет доступных переходов для задачи %key%."
+    select_transition: "Выберите переход для применения:"
+    error_fetch: "Ошибка при получении переходов: %error%"
+    error_execute: "Ошибка при выполнении перехода: %error%"
+    success: "✅ Задача %key% успешно переведена"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Список активных элементов работы (ваша панель управления)."
   command_items_show: "Показать подробную информацию об одном элементе работы."
   command_items_search: "Поиск issues с помощью JQL."
+  command_items_transition: "Переводит задачу Jira в другой статус. Если ключ не указан, пытается определить из текущей ветки."
   command_filters_list: "Список всех доступных фильтров Jira."
   command_filters_show: "Получить issues из сохраненного фильтра Jira."
   command_items_start: "Создает новую ветку git из элемента Jira."

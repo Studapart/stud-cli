@@ -78,6 +78,19 @@ item:
     label_description: "Περιγραφή"
     label_link: "Σύνδεσμος"
     label_none: "Κανένα"
+# Item Transition Handler
+  transition:
+    section: "Μετάβαση θέματος Jira"
+    detected_key: "Εντοπισμένο κλειδί Jira '%key%' από τον τρέχοντα κλάδο. Χρήση αυτού του κλειδιού;"
+    prompt_key: "Εισαγάγετε το κλειδί θέματος Jira"
+    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
+    error_invalid_key: "Μη έγκυρη μορφή κλειδιού Jira. Αναμενόμενη μορφή: PROJ-123"
+    fetching: "Λήψη διαθέσιμων μεταβάσεων για το θέμα: %key%"
+    no_transitions: "Δεν υπάρχουν διαθέσιμες μεταβάσεις για το θέμα %key%."
+    select_transition: "Επιλέξτε τη μετάβαση προς εφαρμογή:"
+    error_fetch: "Αποτυχία λήψης μεταβάσεων: %error%"
+    error_execute: "Αποτυχία εκτέλεσης μετάβασης: %error%"
+    success: "✅ Το θέμα %key% μεταφέρθηκε με επιτυχία"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
   command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."
   command_items_search: "Αναζήτηση issues με JQL."
+  command_items_transition: "Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο."
   command_filters_list: "Λίστα όλων των διαθέσιμων φίλτρων Jira."
   command_filters_show: "Λήψη issues από ένα αποθηκευμένο φίλτρο Jira."
   command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."

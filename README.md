@@ -272,6 +272,24 @@ These commands help you browse and view your Jira work items.
         stud search "assignee = currentUser()"
         ```
 
+-   **`stud items:transition [<key>]`** (Alias: `stud tx [<key>]`)
+    -   **Description:** Transitions a Jira work item to a different status. If the key is not provided, the command attempts to detect it from the current Git branch name.
+    -   **Argument:** `<key>` (optional, e.g., `PROJ-123`)
+    -   **Usage:**
+        ```bash
+        stud items:transition PROJ-123
+        stud tx BUG-456
+        stud tx  # Will detect key from current branch
+        ```
+    -   **Behavior:**
+        -   If a key is provided, it will be used directly (converted to uppercase).
+        -   If no key is provided, the command will attempt to detect the Jira key from the current Git branch name.
+        -   If a key is detected from the branch, you will be asked to confirm before proceeding.
+        -   If no key is detected or you reject the detected key, you will be prompted to enter a Jira work item key.
+        -   The command validates the key format (must match pattern like `PROJ-123`).
+        -   All available transitions for the issue are displayed, and you can select one to apply.
+        -   The command does NOT auto-assign the issue (only transitions).
+
 -   **`stud filters:list`** (Alias: `stud fl`)
     -   **Description:** Lists all available Jira filters with their names and descriptions, sorted by name in ascending order.
     -   **Usage:**

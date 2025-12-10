@@ -78,6 +78,19 @@ item:
     label_description: "Description"
     label_link: "Lien"
     label_none: "Aucun"
+# Item Transition Handler
+  transition:
+    section: "Transition d'un ticket Jira"
+    detected_key: "Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?"
+    prompt_key: "Entrez la clé du ticket Jira"
+    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
+    error_invalid_key: "Format de clé Jira invalide. Format attendu : PROJ-123"
+    fetching: "Récupération des transitions disponibles pour le ticket : %key%"
+    no_transitions: "Aucune transition disponible pour le ticket %key%."
+    select_transition: "Sélectionnez la transition à appliquer :"
+    error_fetch: "Échec de la récupération des transitions : %error%"
+    error_execute: "Échec de l'exécution de la transition : %error%"
+    success: "✅ Ticket %key% transitionné avec succès"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Liste les éléments de travail actifs (votre tableau de bord)."
   command_items_show: "Affiche des informations détaillées pour un élément de travail."
   command_items_search: "Rechercher des issues avec JQL."
+  command_items_transition: "Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle."
   command_filters_list: "Liste tous les filtres Jira disponibles."
   command_filters_show: "Récupérer les issues depuis un filtre Jira enregistré."
   command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."

@@ -27,6 +27,7 @@ use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
+use App\Handler\ItemTransitionHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\ProjectListHandler;
@@ -542,6 +543,16 @@ function items_show(
     $handler->handle(io(), $key);
 }
 
+#[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
+function items_transition(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123). Optional - will detect from branch if not provided')]
+    ?string $key = null,
+): void {
+    _load_constants();
+    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    exit($handler->handle(io(), $key));
+}
+
 // =================================================================================
 // "Verb" Commands (Git Workflow)
 // =================================================================================
@@ -727,6 +738,7 @@ function help(
             'fl' => 'filters:list',
             'fs' => 'filters:show',
             'sh' => 'items:show',
+            'tx' => 'items:transition',
             'start' => 'items:start',
             'co' => 'commit',
             'pl' => 'please',
@@ -804,6 +816,13 @@ function help(
                 'args' => '<jql>',
                 'description' => $translator->trans('help.command_items_search'),
                 'example' => 'stud search "project = PROJ and status = Done"',
+            ],
+            [
+                'name' => 'items:transition',
+                'alias' => 'tx',
+                'args' => '[<key>]',
+                'description' => $translator->trans('help.command_items_transition'),
+                'example' => 'stud tx PROJ-123',
             ],
             [
                 'name' => 'filters:list',
