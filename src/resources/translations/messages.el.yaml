@@ -106,6 +106,10 @@ filter:
     jql_query: "JQL Query: %jql%"
     error_fetch: "Αποτυχία λήψης θεμάτων από το φίλτρο: %error%"
     no_results: "Δεν βρέθηκαν θέματα στο φίλτρο '%filterName%'."
+  list:
+    section: "Λήψη φίλτρων Jira"
+    error_fetch: "Αποτυχία λήψης φίλτρων: %error%"
+    no_filters: "Δεν βρέθηκαν φίλτρα."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
   command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."
   command_items_search: "Αναζήτηση issues με JQL."
+  command_filters_list: "Λίστα όλων των διαθέσιμων φίλτρων Jira."
   command_filters_show: "Λήψη issues από ένα αποθηκευμένο φίλτρο Jira."
   command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."
   command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."

@@ -106,6 +106,10 @@ filter:
     jql_query: "Consulta JQL: %jql%"
     error_fetch: "Error al obtener tickets del filtro: %error%"
     no_results: "No se encontraron tickets en el filtro '%filterName%'."
+  list:
+    section: "Obteniendo filtros de Jira"
+    error_fetch: "Error al obtener filtros: %error%"
+    no_filters: "No se encontraron filtros."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Lista elementos de trabajo activos (su panel de control)."
   command_items_show: "Muestra información detallada para un elemento de trabajo."
   command_items_search: "Buscar issues usando JQL."
+  command_filters_list: "Lista todos los filtros de Jira disponibles."
   command_filters_show: "Obtener issues de un filtro de Jira guardado."
   command_items_start: "Crea una nueva rama git desde un elemento de Jira."
   command_commit: "Le guía a través de la creación de un commit convencional."

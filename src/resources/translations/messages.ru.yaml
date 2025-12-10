@@ -106,6 +106,10 @@ filter:
     jql_query: "JQL Запрос: %jql%"
     error_fetch: "Ошибка при получении задач из фильтра: %error%"
     no_results: "Не найдено задач в фильтре '%filterName%'."
+  list:
+    section: "Получение фильтров Jira"
+    error_fetch: "Ошибка при получении фильтров: %error%"
+    no_filters: "Фильтры не найдены."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Список активных элементов работы (ваша панель управления)."
   command_items_show: "Показать подробную информацию об одном элементе работы."
   command_items_search: "Поиск issues с помощью JQL."
+  command_filters_list: "Список всех доступных фильтров Jira."
   command_filters_show: "Получить issues из сохраненного фильтра Jira."
   command_items_start: "Создает новую ветку git из элемента Jira."
   command_commit: "Проводит вас через создание обычного коммита."

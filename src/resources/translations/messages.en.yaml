@@ -106,6 +106,10 @@ filter:
     jql_query: "JQL Query: %jql%"
     error_fetch: "Failed to fetch issues from filter: %error%"
     no_results: "No issues found in filter '%filterName%'."
+  list:
+    section: "Fetching Jira Filters"
+    error_fetch: "Failed to fetch filters: %error%"
+    no_filters: "No filters found."
 
 # Status Handler
 status:
@@ -275,9 +279,9 @@ table:
   status: "Status"
   summary: "Summary"
   name: "Name"
+  description: "Description"
   command: "Command"
   alias: "Alias"
-  description: "Description"
 
 # Help Command
 help:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_search: "Search for issues using JQL."
+  command_filters_list: "Lists all available Jira filters."
   command_filters_show: "Retrieve issues from a saved Jira filter."
   command_items_start: "Creates a new git branch from a Jira item."
   command_commit: "Guides you through making a conventional commit."

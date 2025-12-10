@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add filters:list command to display Jira filters [SCI-26]
+  - New command `stud filters:list` (alias: `stud fl`) to list all available Jira filters
+  - Displays filters in a table format with Name and Description columns
+  - Filters are sorted by name in ascending order (case-insensitive)
+  - Handles empty results and API errors gracefully
+  - Added translation keys for filter list handler in all supported languages
+  - Full test coverage with unit tests following project conventions
 - Add filters:show command to retrieve Jira issues by filter name [SCI-25]
   - New command `stud filters:show <filterName>` (alias: `stud fs`) to retrieve issues from saved Jira filters
   - Generates JQL query `filter = "<filterName>"` and reuses existing search infrastructure

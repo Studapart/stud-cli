@@ -162,6 +162,12 @@ class HelpService
                 'options' => [],
                 'arguments' => ['<jql>'],
             ],
+            'filters:list' => [
+                'alias' => 'fl',
+                'description_key' => 'help.command_filters_list',
+                'options' => [],
+                'arguments' => [],
+            ],
             'filters:show' => [
                 'alias' => 'fs',
                 'description_key' => 'help.command_filters_show',
