@@ -106,6 +106,10 @@ filter:
     jql_query: "Truy vấn JQL: %jql%"
     error_fetch: "Không thể lấy các issue từ bộ lọc: %error%"
     no_results: "Không tìm thấy issue nào trong bộ lọc '%filterName%'."
+  list:
+    section: "Lấy các bộ lọc Jira"
+    error_fetch: "Không thể lấy các bộ lọc: %error%"
+    no_filters: "Không tìm thấy bộ lọc nào."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
   command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
   command_items_search: "Tìm kiếm các issue bằng JQL."
+  command_filters_list: "Liệt kê tất cả các bộ lọc Jira có sẵn."
   command_filters_show: "Lấy các issue từ bộ lọc Jira đã lưu."
   command_items_start: "Tạo một nhánh git mới từ một mục Jira."
   command_commit: "Hướng dẫn bạn tạo một commit thông thường."

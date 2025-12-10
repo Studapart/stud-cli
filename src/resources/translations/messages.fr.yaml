@@ -106,6 +106,10 @@ filter:
     jql_query: "Requête JQL : %jql%"
     error_fetch: "Échec de la récupération des tickets depuis le filtre : %error%"
     no_results: "Aucun ticket trouvé dans le filtre '%filterName%'."
+  list:
+    section: "Récupération des filtres Jira"
+    error_fetch: "Échec de la récupération des filtres : %error%"
+    no_filters: "Aucun filtre trouvé."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Liste les éléments de travail actifs (votre tableau de bord)."
   command_items_show: "Affiche des informations détaillées pour un élément de travail."
   command_items_search: "Rechercher des issues avec JQL."
+  command_filters_list: "Liste tous les filtres Jira disponibles."
   command_filters_show: "Récupérer les issues depuis un filtre Jira enregistré."
   command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."
   command_commit: "Vous guide à travers la création d'un commit conventionnel."

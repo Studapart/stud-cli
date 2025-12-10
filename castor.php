@@ -20,6 +20,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\DeployHandler;
+use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
@@ -478,6 +479,14 @@ function projects_list(
     $handler->handle(io());
 }
 
+#[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
+function filters_list(): void
+{
+    _load_constants();
+    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $handler->handle(io());
+}
+
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
 function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')]
@@ -702,6 +711,7 @@ function help(
             'pj' => 'projects:list',
             'ls' => 'items:list',
             'search' => 'items:search',
+            'fl' => 'filters:list',
             'fs' => 'filters:show',
             'sh' => 'items:show',
             'start' => 'items:start',
@@ -781,6 +791,18 @@ function help(
                 'args' => '<jql>',
                 'description' => $translator->trans('help.command_items_search'),
                 'example' => 'stud search "project = PROJ and status = Done"',
+            ],
+            [
+                'name' => 'filters:list',
+                'alias' => 'fl',
+                'description' => $translator->trans('help.command_filters_list'),
+            ],
+            [
+                'name' => 'filters:show',
+                'alias' => 'fs',
+                'args' => '<filterName>',
+                'description' => $translator->trans('help.command_filters_show'),
+                'example' => 'stud fs "My Filter"',
             ],
         ],
         $translator->trans('help.category_git_workflow') => [

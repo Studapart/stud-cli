@@ -106,6 +106,10 @@ filter:
     jql_query: "JQL Navraag: %jql%"
     error_fetch: "Kon nie items uit filter kry nie: %error%"
     no_results: "Geen items gevind in filter '%filterName%'."
+  list:
+    section: "Kry Jira-filters"
+    error_fetch: "Kon nie filters kry nie: %error%"
+    no_filters: "Geen filters gevind."
 
 # Status Handler
 status:
@@ -301,6 +305,7 @@ help:
   command_items_list: "Lys aktiewe werkitems (jou dashboard)."
   command_items_show: "Toon gedetailleerde inligting vir een werkitem."
   command_items_search: "Soek issues met JQL."
+  command_filters_list: "Lys alle beskikbare Jira-filters."
   command_filters_show: "Kry issues uit 'n gestoor Jira filter."
   command_items_start: "Skep 'n nuwe git tak van 'n Jira item."
   command_commit: "Lei jou deur die maak van 'n konvensionele commit."

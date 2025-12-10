@@ -268,6 +268,14 @@ These commands help you browse and view your Jira work items.
         stud search "assignee = currentUser()"
         ```
 
+-   **`stud filters:list`** (Alias: `stud fl`)
+    -   **Description:** Lists all available Jira filters with their names and descriptions, sorted by name in ascending order.
+    -   **Usage:**
+        ```bash
+        stud filters:list
+        stud fl
+        ```
+
 -   **`stud filters:show <filterName>`** (Alias: `stud fs <filterName>`)
     -   **Description:** Retrieve issues from a saved Jira filter by filter name.
     -   **Argument:** `<filterName>` (e.g., `"My Filter"`). Filter names with spaces should be quoted.

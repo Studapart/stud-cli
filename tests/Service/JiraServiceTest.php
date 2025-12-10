@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
 use App\Service\JiraService;
@@ -286,6 +287,95 @@ class JiraServiceTest extends TestCase
         $this->expectExceptionMessage('Failed to fetch projects.');
 
         $this->jiraService->getProjects();
+    }
+
+    public function testGetFiltersSuccess(): void
+    {
+        $mockResponseData = [
+            'values' => [
+                ['name' => 'Filter One', 'description' => 'Description One'],
+                ['name' => 'Filter Two', 'description' => 'Description Two'],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/filter/search')
+            ->willReturn($responseMock);
+
+        $filters = $this->jiraService->getFilters();
+
+        $this->assertIsArray($filters);
+        $this->assertCount(2, $filters);
+        $this->assertInstanceOf(Filter::class, $filters[0]);
+        $this->assertSame('Filter One', $filters[0]->name);
+        $this->assertSame('Description One', $filters[0]->description);
+        $this->assertSame('Filter Two', $filters[1]->name);
+        $this->assertSame('Description Two', $filters[1]->description);
+    }
+
+    public function testGetFiltersEmptyResult(): void
+    {
+        $mockResponseData = [
+            'values' => [],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $filters = $this->jiraService->getFilters();
+
+        $this->assertIsArray($filters);
+        $this->assertEmpty($filters);
+    }
+
+    public function testGetFiltersWithNullDescription(): void
+    {
+        $mockResponseData = [
+            'values' => [
+                ['name' => 'Filter Without Description'],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $filters = $this->jiraService->getFilters();
+
+        $this->assertIsArray($filters);
+        $this->assertCount(1, $filters);
+        $this->assertInstanceOf(Filter::class, $filters[0]);
+        $this->assertSame('Filter Without Description', $filters[0]->name);
+        $this->assertNull($filters[0]->description);
+    }
+
+    public function testGetFiltersFailure(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(500);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException("RuntimeException"::class);
+        $this->expectExceptionMessage('Failed to fetch filters.');
+
+        $this->jiraService->getFilters();
     }
 
     public function testMapToWorkItemWithHtmlDescription(): void

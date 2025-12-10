@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
 use Stevebauman\Hypertext\Transformer;
@@ -75,6 +76,23 @@ class JiraService
     }
 
     /**
+     * @return Filter[]
+     */
+    public function getFilters(): array
+    {
+        $response = $this->client->request('GET', '/rest/api/3/filter/search');
+
+        if ($response->getStatusCode() !== 200) {
+            throw new \RuntimeException('Failed to fetch filters.');
+        }
+
+        $paginatedResponse = $response->toArray(false);
+        $filtersData = $paginatedResponse['values'] ?? [];
+
+        return array_map(fn ($filter) => $this->mapToFilter($filter), $filtersData);
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     private function mapToProject(array $data): Project
@@ -82,6 +100,17 @@ class JiraService
         return new Project(
             key: $data['key'],
             name: $data['name'],
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function mapToFilter(array $data): Filter
+    {
+        return new Filter(
+            name: $data['name'],
+            description: $data['description'] ?? null,
         );
     }
 
