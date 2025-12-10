@@ -282,6 +282,8 @@ table:
   command: "Lệnh"
   alias: "Bí danh"
   description: "Mô tả"
+  priority: "Ưu tiên"
+  jira_url: "URL Jira"
 
 # Help Command
 help:

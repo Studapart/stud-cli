@@ -282,6 +282,8 @@ table:
   command: "Εντολή"
   alias: "Ψευδώνυμο"
   description: "Περιγραφή"
+  priority: "Προτεραιότητα"
+  jira_url: "URL Jira"
 
 # Help Command
 help:

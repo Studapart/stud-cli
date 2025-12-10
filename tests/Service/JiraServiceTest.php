@@ -175,7 +175,7 @@ class JiraServiceTest extends TestCase
             ->with('POST', '/rest/api/3/search/jql', [
                 'json' => [
                     'jql' => $jql,
-                    'fields' => ['key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components'],
+                    'fields' => ['key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components', 'priority'],
                 ],
             ])
             ->willReturn($responseMock);
@@ -519,6 +519,71 @@ Line 3";
 
         $expectedDescription = 'ADF content not rendered: {"type":"doc","version":1,"content":[]}';
         $this->assertSame($expectedDescription, $workItem->description);
+    }
+
+    public function testMapToWorkItemWithPriority(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with Priority',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null,
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+                'priority' => ['name' => 'High'],
+            ],
+        ];
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $this->assertSame('High', $workItem->priority);
+    }
+
+    public function testMapToWorkItemWithNullPriority(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue without Priority',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null,
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+            ],
+        ];
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $this->assertNull($workItem->priority);
+    }
+
+    public function testMapToWorkItemWithPriorityMissingName(): void
+    {
+        $data = [
+            'id' => '10001',
+            'key' => 'TEST-1',
+            'fields' => [
+                'summary' => 'Issue with Priority Missing Name',
+                'status' => ['name' => 'To Do'],
+                'assignee' => ['displayName' => 'John Doe'],
+                'description' => null,
+                'labels' => [],
+                'issuetype' => ['name' => 'Task'],
+                'components' => [],
+                'priority' => [],
+            ],
+        ];
+
+        $workItem = $this->callPrivateMethod($this->jiraService, 'mapToWorkItem', [$data]);
+
+        $this->assertNull($workItem->priority);
     }
 
     public function testGetTransitionsSuccess(): void

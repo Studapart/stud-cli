@@ -282,6 +282,8 @@ table:
   command: "Commande"
   alias: "Alias"
   description: "Description"
+  priority: "Priorité"
+  jira_url: "URL Jira"
 
 # Help Command
 help:

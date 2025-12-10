@@ -20,6 +20,7 @@ class WorkItem
         public array $labels,
         public string $issueType,
         public array $components = [],
+        public ?string $priority = null,
         public ?string $renderedDescription = null,
     ) {
     }
