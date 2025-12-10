@@ -78,6 +78,19 @@ item:
     label_description: "Mô tả"
     label_link: "Liên kết"
     label_none: "Không có"
+# Item Transition Handler
+  transition:
+    section: "Chuyển đổi issue Jira"
+    detected_key: "Phát hiện khóa Jira '%key%' từ nhánh hiện tại. Sử dụng khóa này?"
+    prompt_key: "Nhập khóa issue Jira"
+    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
+    error_invalid_key: "Định dạng khóa Jira không hợp lệ. Định dạng mong đợi: PROJ-123"
+    fetching: "Đang lấy các chuyển đổi có sẵn cho issue: %key%"
+    no_transitions: "Không có chuyển đổi nào có sẵn cho issue %key%."
+    select_transition: "Chọn chuyển đổi để áp dụng:"
+    error_fetch: "Lỗi khi lấy chuyển đổi: %error%"
+    error_execute: "Lỗi khi thực thi chuyển đổi: %error%"
+    success: "✅ Issue %key% đã được chuyển đổi thành công"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
   command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
   command_items_search: "Tìm kiếm các issue bằng JQL."
+  command_items_transition: "Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại."
   command_filters_list: "Liệt kê tất cả các bộ lọc Jira có sẵn."
   command_filters_show: "Lấy các issue từ bộ lọc Jira đã lưu."
   command_items_start: "Tạo một nhánh git mới từ một mục Jira."

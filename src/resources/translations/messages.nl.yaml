@@ -78,6 +78,19 @@ item:
     label_description: "Beschrijving"
     label_link: "Link"
     label_none: "Geen"
+# Item Transition Handler
+  transition:
+    section: "Jira werkitem overgang"
+    detected_key: "Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?"
+    prompt_key: "Voer Jira werkitem sleutel in"
+    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
+    error_invalid_key: "Ongeldig Jira sleutelformaat. Verwacht formaat: PROJ-123"
+    fetching: "Beschikbare overgangen ophalen voor ticket: %key%"
+    no_transitions: "Geen overgangen beschikbaar voor ticket %key%."
+    select_transition: "Selecteer de overgang om toe te passen:"
+    error_fetch: "Fout bij ophalen van overgangen: %error%"
+    error_execute: "Fout bij uitvoeren van overgang: %error%"
+    success: "✅ Ticket %key% succesvol overgezet"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Lijst actieve werkitems (uw dashboard)."
   command_items_show: "Toon gedetailleerde informatie voor één werkitem."
   command_items_search: "Zoek issues met JQL."
+  command_items_transition: "Zet een Jira werkitem over naar een andere status. Als sleutel niet wordt opgegeven, wordt geprobeerd te detecteren vanuit huidige branch."
   command_filters_list: "Lijst alle beschikbare Jira-filters."
   command_filters_show: "Haal issues op uit een opgeslagen Jira filter."
   command_items_start: "Maakt een nieuwe git tak van een Jira item."

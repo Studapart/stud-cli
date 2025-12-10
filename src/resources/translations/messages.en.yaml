@@ -78,6 +78,19 @@ item:
     label_description: "Description"
     label_link: "Link"
     label_none: "None"
+# Item Transition Handler
+  transition:
+    section: "Transitioning Jira work item"
+    detected_key: "Detected Jira key '%key%' from current branch. Use this key?"
+    prompt_key: "Enter Jira work item key"
+    error_not_found: "Could not find Jira issue with key \"%key%\"."
+    error_invalid_key: "Invalid Jira key format. Expected format: PROJ-123"
+    fetching: "Fetching available transitions for issue: %key%"
+    no_transitions: "No transitions available for issue %key%."
+    select_transition: "Select the transition to apply:"
+    error_fetch: "Failed to fetch transitions: %error%"
+    error_execute: "Failed to execute transition: %error%"
+    success: "✅ Issue %key% transitioned successfully"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_search: "Search for issues using JQL."
+  command_items_transition: "Transitions a Jira work item to a different status. If key is not provided, attempts to detect from current branch."
   command_filters_list: "Lists all available Jira filters."
   command_filters_show: "Retrieve issues from a saved Jira filter."
   command_items_start: "Creates a new git branch from a Jira item."

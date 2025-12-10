@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud items:transition` command to transition Jira work items [SCI-27]
+  - New command `stud items:transition` (alias: `stud tx`) to transition a Jira work item to a different status
+  - Command accepts optional `<workItemKey>` argument
+  - When key is not provided, command attempts to detect from current Git branch name
+  - When key is detected from branch, command asks for user confirmation before proceeding
+  - When key is not detected, command prompts user to enter a Jira work item key
+  - Command validates key format and shows error for invalid format
+  - Command fetches and displays all available transitions for the issue (no filtering)
+  - Command allows user to select a transition from available options
+  - Command applies the selected transition to the issue
+  - Command does NOT auto-assign the issue (only transitions)
+  - Command does NOT cache transition IDs (always shows all available transitions)
+  - Command handles errors gracefully (issue not found, no transitions, API errors)
+  - Added translation keys for transition handler in all supported languages
+  - Full test coverage with unit tests following project conventions
 - Added `--sort` option (alias `-s`) to `stud items:list` command to sort results by Key or Status (case-insensitive)
 
 ### Added

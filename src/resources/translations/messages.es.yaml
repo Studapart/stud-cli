@@ -78,6 +78,19 @@ item:
     label_description: "Descripción"
     label_link: "Enlace"
     label_none: "Ninguno"
+# Item Transition Handler
+  transition:
+    section: "Transición de ticket Jira"
+    detected_key: "Clave Jira detectada '%key%' desde la rama actual. ¿Usar esta clave?"
+    prompt_key: "Ingrese la clave del ticket Jira"
+    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
+    error_invalid_key: "Formato de clave Jira inválido. Formato esperado: PROJ-123"
+    fetching: "Obteniendo transiciones disponibles para el ticket: %key%"
+    no_transitions: "No hay transiciones disponibles para el ticket %key%."
+    select_transition: "Seleccione la transición a aplicar:"
+    error_fetch: "Error al obtener transiciones: %error%"
+    error_execute: "Error al ejecutar transición: %error%"
+    success: "✅ Ticket %key% transitado exitosamente"
 
 # Item List Handler
   list:
@@ -308,6 +321,7 @@ help:
   command_items_list: "Lista elementos de trabajo activos (su panel de control)."
   command_items_show: "Muestra información detallada para un elemento de trabajo."
   command_items_search: "Buscar issues usando JQL."
+  command_items_transition: "Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual."
   command_filters_list: "Lista todos los filtros de Jira disponibles."
   command_filters_show: "Obtener issues de un filtro de Jira guardado."
   command_items_start: "Crea una nueva rama git desde un elemento de Jira."
