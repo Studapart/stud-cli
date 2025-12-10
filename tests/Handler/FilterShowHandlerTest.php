@@ -201,7 +201,7 @@ class FilterShowHandlerTest extends CommandTestCase
                 $this->callback(function ($headers) {
                     return in_array('table.key', $headers) &&
                         in_array('table.status', $headers) &&
-                        !in_array('table.priority', $headers) &&
+                        ! in_array('table.priority', $headers) &&
                         in_array('table.description', $headers) &&
                         in_array('table.jira_url', $headers);
                 }),
