@@ -84,6 +84,7 @@ item:
     section: "Λήψη Θεμάτων Jira"
     error_fetch: "Αποτυχία λήψης θεμάτων: %error%"
     no_items: "Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας."
+    error_invalid_sort: "Μη έγκυρη τιμή ταξινόμησης '%value%'. Επιτρεπόμενες τιμές: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Κείμενο βοήθειας δεν είναι διαθέσιμο για την εντολή: %command%"
   option_all: "Λίστα στοιχείων για όλους τους χρήστες (παρακάμπτει το προεπιλεγμένο φίλτρο αναθέτη)"
   option_project: "Φιλτράρισμα στοιχείων με συγκεκριμένο κλειδί έργου (π.χ., PROJ)"
+  option_items_list_sort: "Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)"
   option_commit_new: "Δημιουργία νέου λογικού commit αντί για fixup"
   option_commit_message: "Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit"
   option_submit_draft: "Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως \"Draft\" στο GitHub)"

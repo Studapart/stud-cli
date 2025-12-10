@@ -84,6 +84,7 @@ item:
     section: "Fetching Jira Items"
     error_fetch: "Failed to fetch items: %error%"
     no_items: "No items found matching your criteria."
+    error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Help text not available for command: %command%"
   option_all: "List items for all users (overrides default assignee filter)"
   option_project: "Filter items by a specific project key (e.g., PROJ)"
+  option_items_list_sort: "Sort results by Key or Status (use --sort or -s)"
   option_commit_new: "Create a new logical commit instead of a fixup"
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"

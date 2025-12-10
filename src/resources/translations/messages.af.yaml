@@ -84,6 +84,7 @@ item:
     section: "Kry Jira Items"
     error_fetch: "Kon nie items kry nie: %error%"
     no_items: "Geen items gevind wat by jou kriteria pas nie."
+    error_invalid_sort: "Ongeldige sorteerwaarde '%value%'. Toegestane waardes: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Hulpteks nie beskikbaar vir opdrag: %command%"
   option_all: "Lys items vir alle gebruikers (oorskry standaard toekenning filter)"
   option_project: "Filter items volgens 'n spesifieke projek sleutel (bv., PROJ)"
+  option_items_list_sort: "Sorteer resultate volgens Key of Status (gebruik --sort of -s)"
   option_commit_new: "Skep 'n nuwe logiese commit in plaas van 'n fixup"
   option_commit_message: "Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit"
   option_submit_draft: "Skep 'n Draft Pull Request (gemerk as \"Draft\" op GitHub)"

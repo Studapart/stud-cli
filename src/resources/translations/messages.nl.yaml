@@ -84,6 +84,7 @@ item:
     section: "Jira Tickets ophalen"
     error_fetch: "Fout bij ophalen van tickets: %error%"
     no_items: "Geen tickets gevonden die overeenkomen met uw criteria."
+    error_invalid_sort: "Ongeldige sorteerwaarde '%value%'. Toegestane waarden: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Helptekst niet beschikbaar voor commando: %command%"
   option_all: "Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)"
   option_project: "Filter items op een specifieke projectcode (bijv. PROJ)"
+  option_items_list_sort: "Sorteer resultaten op Key of Status (gebruik --sort of -s)"
   option_commit_new: "Maak een nieuwe logische commit in plaats van een fixup"
   option_commit_message: "Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit"
   option_submit_draft: "Maak een Draft Pull Request (gemarkeerd als \"Draft\" op GitHub)"

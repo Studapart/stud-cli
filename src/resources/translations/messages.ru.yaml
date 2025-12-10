@@ -84,6 +84,7 @@ item:
     section: "Получение задач Jira"
     error_fetch: "Ошибка при получении задач: %error%"
     no_items: "Не найдено задач, соответствующих вашим критериям."
+    error_invalid_sort: "Неверное значение сортировки '%value%'. Допустимые значения: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Текст справки недоступен для команды: %command%"
   option_all: "Список элементов для всех пользователей (переопределяет фильтр назначенного по умолчанию)"
   option_project: "Фильтровать элементы по конкретному ключу проекта (например, PROJ)"
+  option_items_list_sort: "Сортировать результаты по Key или Status (используйте --sort или -s)"
   option_commit_new: "Создать новый логический коммит вместо fixup"
   option_commit_message: "Обойти интерактивный промптер и использовать предоставленное сообщение для коммита"
   option_submit_draft: "Создать черновик Pull Request (помечен как \"Draft\" на GitHub)"
