@@ -52,7 +52,7 @@ class ItemListHandlerTest extends CommandTestCase
                 [['TPW-35', 'In Progress', 'My awesome feature']]
             );
 
-        $this->handler->handle($io, false, null);
+        $this->handler->handle($io, false, null, null);
     }
 
     public function testHandleAll(): void
@@ -81,7 +81,7 @@ class ItemListHandlerTest extends CommandTestCase
                 [['TPW-35', 'In Progress', 'My awesome feature']]
             );
 
-        $this->handler->handle($io, true, null);
+        $this->handler->handle($io, true, null, null);
     }
 
     public function testHandleProject(): void
@@ -110,7 +110,7 @@ class ItemListHandlerTest extends CommandTestCase
                 [['TPW-35', 'In Progress', 'My awesome feature']]
             );
 
-        $this->handler->handle($io, false, 'MYPROJ');
+        $this->handler->handle($io, false, 'MYPROJ', null);
     }
 
     public function testHandleAllAndProject(): void
@@ -139,7 +139,7 @@ class ItemListHandlerTest extends CommandTestCase
                 [['TPW-35', 'In Progress', 'My awesome feature']]
             );
 
-        $this->handler->handle($io, true, 'MYPROJ');
+        $this->handler->handle($io, true, 'MYPROJ', null);
     }
 
     public function testHandleWithNoItemsFound(): void
@@ -153,7 +153,7 @@ class ItemListHandlerTest extends CommandTestCase
             ->method('note')
             ->with('No items found matching your criteria.');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, null);
 
         $this->assertSame(0, $result);
     }
@@ -169,7 +169,7 @@ class ItemListHandlerTest extends CommandTestCase
             ->method('error')
             ->with('Failed to fetch items: Jira API error');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, null);
 
         $this->assertSame(1, $result);
     }
@@ -192,8 +192,199 @@ class ItemListHandlerTest extends CommandTestCase
             ->method('note')
             ->with('No items found matching your criteria.');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, null);
 
         $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithSortByKey(): void
+    {
+        $issue1 = new WorkItem(
+            '1000',
+            'TPW-100',
+            'Feature A',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue2 = new WorkItem(
+            '1001',
+            'TPW-10',
+            'Feature B',
+            'To Do',
+            'Jane Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue3 = new WorkItem(
+            '1002',
+            'TPW-35',
+            'Feature C',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('searchIssues')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->willReturn([$issue1, $issue2, $issue3]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('table')
+            ->with(
+                ['Key', 'Status', 'Summary'],
+                [
+                    ['TPW-10', 'To Do', 'Feature B'],
+                    ['TPW-100', 'In Progress', 'Feature A'],
+                    ['TPW-35', 'In Progress', 'Feature C'],
+                ]
+            );
+
+        $this->handler->handle($io, false, null, 'Key');
+    }
+
+    public function testHandleWithSortByStatus(): void
+    {
+        $issue1 = new WorkItem(
+            '1000',
+            'TPW-35',
+            'Feature A',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue2 = new WorkItem(
+            '1001',
+            'TPW-10',
+            'Feature B',
+            'To Do',
+            'Jane Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue3 = new WorkItem(
+            '1002',
+            'TPW-100',
+            'Feature C',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('searchIssues')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->willReturn([$issue1, $issue2, $issue3]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('table')
+            ->with(
+                ['Key', 'Status', 'Summary'],
+                [
+                    ['TPW-35', 'In Progress', 'Feature A'],
+                    ['TPW-100', 'In Progress', 'Feature C'],
+                    ['TPW-10', 'To Do', 'Feature B'],
+                ]
+            );
+
+        $this->handler->handle($io, false, null, 'Status');
+    }
+
+    public function testHandleWithSortCaseInsensitive(): void
+    {
+        $issue1 = new WorkItem(
+            '1000',
+            'TPW-100',
+            'Feature A',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue2 = new WorkItem(
+            '1001',
+            'TPW-10',
+            'Feature B',
+            'To Do',
+            'Jane Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+
+        $this->jiraService->expects($this->exactly(2))
+            ->method('searchIssues')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->willReturn([$issue1, $issue2]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->exactly(2))
+            ->method('table')
+            ->with(
+                ['Key', 'Status', 'Summary'],
+                [
+                    ['TPW-10', 'To Do', 'Feature B'],
+                    ['TPW-100', 'In Progress', 'Feature A'],
+                ]
+            );
+
+        $this->handler->handle($io, false, null, 'key');
+        $this->handler->handle($io, false, null, 'KEY');
+    }
+
+    public function testHandleWithSortNull(): void
+    {
+        $issue1 = new WorkItem(
+            '1000',
+            'TPW-100',
+            'Feature A',
+            'In Progress',
+            'John Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+        $issue2 = new WorkItem(
+            '1001',
+            'TPW-10',
+            'Feature B',
+            'To Do',
+            'Jane Doe',
+            'description',
+            ['tests'],
+            'Task'
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('searchIssues')
+            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+            ->willReturn([$issue1, $issue2]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('table')
+            ->with(
+                ['Key', 'Status', 'Summary'],
+                [
+                    ['TPW-100', 'In Progress', 'Feature A'],
+                    ['TPW-10', 'To Do', 'Feature B'],
+                ]
+            );
+
+        $this->handler->handle($io, false, null, null);
     }
 }

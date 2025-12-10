@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added `--sort` option (alias `-s`) to `stud items:list` command to sort results by Key or Status (case-insensitive)
+
+### Added
 - Add Priority and Jira URL columns to stud filters:show command [SCI-28]
   - Enhanced `stud filters:show` command to display Priority and Jira URL columns
   - Priority column is conditionally displayed only when at least one issue has a priority assigned

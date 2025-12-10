@@ -84,6 +84,7 @@ item:
     section: "Récupération des tickets Jira"
     error_fetch: "Échec de la récupération des tickets : %error%"
     no_items: "Aucun ticket trouvé correspondant à vos critères."
+    error_invalid_sort: "Valeur de tri invalide '%value%'. Valeurs acceptées : Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Texte d'aide non disponible pour la commande : %command%"
   option_all: "Lister les éléments pour tous les utilisateurs (remplace le filtre d'assigné par défaut)"
   option_project: "Filtrer les éléments par une clé de projet spécifique (par ex., PROJ)"
+  option_items_list_sort: "Trier les résultats par Key ou Status (utilisez --sort ou -s)"
   option_commit_new: "Créer un nouveau commit logique au lieu d'un fixup"
   option_commit_message: "Contourner le prompteur interactif et utiliser le message fourni pour le commit"
   option_submit_draft: "Créer une Pull Request en brouillon (marquée comme \"Draft\" sur GitHub)"

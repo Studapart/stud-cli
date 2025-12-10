@@ -84,6 +84,7 @@ item:
     section: "Obteniendo tickets de Jira"
     error_fetch: "Error al obtener tickets: %error%"
     no_items: "No se encontraron tickets que coincidan con sus criterios."
+    error_invalid_sort: "Valor de ordenación inválido '%value%'. Valores aceptados: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Texto de ayuda no disponible para el comando: %command%"
   option_all: "Listar elementos para todos los usuarios (anula el filtro de asignado por defecto)"
   option_project: "Filtrar elementos por una clave de proyecto específica (por ej., PROJ)"
+  option_items_list_sort: "Ordenar resultados por Key o Status (use --sort o -s)"
   option_commit_new: "Crear un nuevo commit lógico en lugar de un fixup"
   option_commit_message: "Omitir el prompt interactivo y usar el mensaje proporcionado para el commit"
   option_submit_draft: "Crear una Pull Request en borrador (marcada como \"Draft\" en GitHub)"

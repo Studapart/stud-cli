@@ -242,12 +242,16 @@ These commands help you browse and view your Jira work items.
     -   **Options:**
         -   `--all` or `-a`: List items for all users (overrides default assignee filter).
         -   `--project <key>` or `-p <key>`: Filter items by a specific project key (e.g., `PROJ`).
+        -   `--sort <value>` or `-s <value>`: Sort results by Key or Status (case-insensitive). When not provided, items are sorted by updated DESC from Jira.
     -   **Usage:**
         ```bash
         stud items:list
         stud ls -a
         stud items:list --project PROJ
         stud ls -p MYPROJ -a
+        stud ls --sort Key
+        stud ls -s Status
+        stud ls -a -s Key
         ```
 
 -   **`stud items:show <key>`** (Alias: `stud sh <key>`)

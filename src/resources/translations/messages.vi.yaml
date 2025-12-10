@@ -84,6 +84,7 @@ item:
     section: "Đang lấy các mục Jira"
     error_fetch: "Không thể lấy các mục: %error%"
     no_items: "Không tìm thấy mục nào phù hợp với tiêu chí của bạn."
+    error_invalid_sort: "Giá trị sắp xếp không hợp lệ '%value%'. Giá trị được chấp nhận: Key, Status"
 
 # Project List Handler
 project:
@@ -327,6 +328,7 @@ help:
   command_not_found: "Văn bản trợ giúp không có sẵn cho lệnh: %command%"
   option_all: "Liệt kê các mục cho tất cả người dùng (ghi đè bộ lọc người được gán mặc định)"
   option_project: "Lọc các mục theo khóa dự án cụ thể (ví dụ: PROJ)"
+  option_items_list_sort: "Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)"
   option_commit_new: "Tạo một commit logic mới thay vì fixup"
   option_commit_message: "Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit"
   option_submit_draft: "Tạo Pull Request ở chế độ nháp (được đánh dấu là \"Draft\" trên GitHub)"

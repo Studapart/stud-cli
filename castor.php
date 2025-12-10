@@ -493,10 +493,23 @@ function items_list(
     bool $all = false,
     #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')]
     ?string $project = null,
+    #[AsOption(name: 'sort', shortcut: 's', description: 'Sort results by Key or Status')]
+    ?string $sort = null,
 ): void {
     _load_constants();
-    $handler = new ItemListHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io(), $all, $project);
+    $translator = _get_translation_service();
+
+    if ($sort !== null) {
+        $normalizedSort = strtolower($sort);
+        if (! in_array($normalizedSort, ['key', 'status'], true)) {
+            io()->error($translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
+            exit(1);
+        }
+        $sort = ucfirst($normalizedSort);
+    }
+
+    $handler = new ItemListHandler(_get_jira_service(), $translator);
+    $handler->handle(io(), $all, $project, $sort);
 }
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
@@ -776,7 +789,7 @@ function help(
                 'name' => 'items:list',
                 'alias' => 'ls',
                 'description' => $translator->trans('help.command_items_list'),
-                'example' => 'stud ls -p PROJ',
+                'example' => 'stud ls -p PROJ -s Key',
             ],
             [
                 'name' => 'items:show',
