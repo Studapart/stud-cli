@@ -44,7 +44,7 @@ class JiraService
         $response = $this->client->request('POST', '/rest/api/3/search/jql', [
             'json' => [
                 'jql' => $jql,
-                'fields' => ['key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components'],
+                'fields' => ['key', 'summary', 'status', 'description', 'assignee', 'labels', 'issuetype', 'components', 'priority'],
             ],
         ]);
 
@@ -141,6 +141,11 @@ class JiraService
             $components = array_map(fn ($component) => $component['name'], $fields['components']);
         }
 
+        $priority = null;
+        if (isset($fields['priority']) && isset($fields['priority']['name'])) {
+            $priority = $fields['priority']['name'];
+        }
+
         return new WorkItem(
             id: $data['id'],
             key: $data['key'],
@@ -151,6 +156,7 @@ class JiraService
             labels: $fields['labels'] ?? [],
             issueType: $fields['issuetype']['name'],
             components: $components,
+            priority: $priority,
             renderedDescription: $renderedDescription,
         );
     }

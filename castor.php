@@ -515,7 +515,7 @@ function filters_show(
     string $filterName,
 ): void {
     _load_constants();
-    $handler = new FilterShowHandler(_get_jira_service(), _get_translation_service());
+    $handler = new FilterShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
     $handler->handle(io(), $filterName);
 }
 

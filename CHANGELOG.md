@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add Priority and Jira URL columns to stud filters:show command [SCI-28]
+  - Enhanced `stud filters:show` command to display Priority and Jira URL columns
+  - Priority column is conditionally displayed only when at least one issue has a priority assigned
+  - Column order: Key, Status, Priority (conditional), Description, Jira URL
+  - Priority column shows priority name (e.g., "High", "Medium", "Low") when available, empty string when not available (when column is visible)
+  - Jira URL column displays full URL in format: {JIRA_URL}/browse/{key}
+  - Added priority field to WorkItem DTO
+  - Updated JiraService to fetch and map priority field from Jira API
+  - Added translation keys for priority, description, and jira_url in all supported languages
+  - Full test coverage with unit tests following project conventions
 - Add filters:list command to display Jira filters [SCI-26]
   - New command `stud filters:list` (alias: `stud fl`) to list all available Jira filters
   - Displays filters in a table format with Name and Description columns

@@ -277,7 +277,7 @@ These commands help you browse and view your Jira work items.
         ```
 
 -   **`stud filters:show <filterName>`** (Alias: `stud fs <filterName>`)
-    -   **Description:** Retrieve issues from a saved Jira filter by filter name.
+    -   **Description:** Retrieve issues from a saved Jira filter by filter name. Displays issues in a table with Key, Status, Priority (conditional), Description, and Jira URL columns. The Priority column is only shown when at least one issue has a priority assigned.
     -   **Argument:** `<filterName>` (e.g., `"My Filter"`). Filter names with spaces should be quoted.
     -   **Usage:**
         ```bash
