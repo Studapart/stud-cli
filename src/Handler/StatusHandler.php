@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -14,7 +15,8 @@ class StatusHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -26,9 +28,7 @@ class StatusHandler
 
         // Jira Status
         if ($key) {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('status.fetching', ['key' => $key])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('status.fetching', ['key' => $key])}");
 
             try {
                 $issue = $this->jiraService->getIssue($key);

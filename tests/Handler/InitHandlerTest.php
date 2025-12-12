@@ -15,6 +15,7 @@ class InitHandlerTest extends CommandTestCase
     private InitHandler $handler;
     private FileSystem $fileSystem;
     private ?string $originalShell = null;
+    private \App\Service\Logger $logger;
 
     protected function setUp(): void
     {
@@ -29,7 +30,9 @@ class InitHandlerTest extends CommandTestCase
         $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService);
+        // Use real Logger for tests that check output, mock for others
+        $this->logger = $this->createMock(\App\Service\Logger::class);
+        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->logger);
     }
 
     protected function tearDown(): void
@@ -657,7 +660,11 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $this->handler->handle($io);
+        // Use real Logger for this test so output is actually written
+        $realLogger = new \App\Service\Logger($io, ['text' => 'white', 'muted' => 'gray']);
+        $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger);
+
+        $handlerWithRealLogger->handle($io);
 
         // Restore original SHELL
         if ($originalShell !== false) {

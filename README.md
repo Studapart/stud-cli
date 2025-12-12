@@ -63,6 +63,7 @@ The Responder pattern separates concerns between business logic (Handlers) and p
 - Available Responder classes:
   - `FilterShowResponder`: Renders filter show results with Priority and Jira URL columns
   - `ItemListResponder`: Renders item list results (Key, Status, Summary columns)
+  - `ItemShowResponder`: Renders item show results with definition lists and formatted description sections
   - `ProjectListResponder`: Renders project list results (Key, Name columns)
   - `SearchResponder`: Renders search results with Priority and Jira URL columns
 
@@ -93,6 +94,9 @@ exit($responder->respond($io, $response));
 // Handler contains pure domain logic (no IO)
 // Responder handles all presentation (sections, errors, tables)
 ```
+
+**Note on StatusHandler:**
+The `StatusHandler` is kept as-is and does not follow the Responder pattern. It's a simple dashboard view (~60 lines) that combines Jira status, Git branch, and local changes in a unique format. Refactoring it would add complexity without architectural benefit, as it doesn't fit the standard table/page pattern used by other handlers.
 
 This architecture enables:
 - Separation of concerns (business logic vs. presentation)

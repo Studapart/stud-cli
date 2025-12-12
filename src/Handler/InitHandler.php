@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Service\FileSystem;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
@@ -14,7 +15,8 @@ class InitHandler
     public function __construct(
         private readonly FileSystem $fileSystem,
         private readonly string $configPath,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -127,9 +129,7 @@ class InitHandler
             $io->writeln('  <info>' . $command . '</info>');
             $io->text($this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
         } else {
-            if ($io->isVerbose()) {
-                $io->text($this->translator->trans('config.init.completion.skipped'));
-            }
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('config.init.completion.skipped'));
         }
     }
 

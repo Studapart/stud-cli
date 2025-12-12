@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\String\Slugger\AsciiSlugger;
@@ -20,7 +21,8 @@ class ItemStartHandler
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
-        private readonly array $jiraConfig
+        private readonly array $jiraConfig,
+        private readonly Logger $logger
     ) {
     }
 
@@ -29,9 +31,7 @@ class ItemStartHandler
         $key = strtoupper($key);
         $io->section($this->translator->trans('item.start.section', ['key' => $key]));
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('item.start.fetching', ['key' => $key])}</>");
-        }
+        $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.fetching', ['key' => $key])}");
 
         try {
             $issue = $this->jiraService->getIssue($key);
@@ -54,9 +54,7 @@ class ItemStartHandler
         $slugValue = $slugger->slug($issue->title)->lower()->toString();
         $branchName = "{$prefix}/{$key}-{$slugValue}";
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('item.start.generated_branch', ['branch' => $branchName])}</>");
-        }
+        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.generated_branch', ['branch' => $branchName])}");
 
         $io->text($this->translator->trans('item.start.fetching_changes'));
         $this->gitRepository->fetch();
@@ -73,9 +71,7 @@ class ItemStartHandler
     {
         // Step 1: Assign issue to current user
         try {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('item.start.assigning', ['key' => $key])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.assigning', ['key' => $key])}");
             $this->jiraService->assignIssue($key);
         } catch (\Exception $e) {
             $io->warning($this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
@@ -136,9 +132,7 @@ class ItemStartHandler
                         'projectKey' => $projectKey,
                         'transitionId' => $transitionId,
                     ]);
-                    if ($io->isVerbose()) {
-                        $io->writeln("  <fg=gray>{$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}</>");
-                    }
+                    $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}");
                 }
             } catch (\Exception $e) {
                 $io->warning($this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
@@ -146,9 +140,7 @@ class ItemStartHandler
                 return 0; // Skip transition, continue with branch creation
             }
         } else {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('item.start.using_cached_transition', ['id' => $transitionId])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_cached_transition', ['id' => $transitionId])}");
         }
 
         // Step 4: Execute transition

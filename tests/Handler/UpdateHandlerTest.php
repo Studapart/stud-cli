@@ -34,6 +34,7 @@ class UpdateHandlerTest extends CommandTestCase
 
         // Use mocked TranslationService from CommandTestCase
 
+        $logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new UpdateHandler(
             'studapart', // repoOwner
             'stud-cli',  // repoName
@@ -42,6 +43,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $this->changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,        // gitToken
             $this->httpClient
         );
@@ -509,6 +511,7 @@ class UpdateHandlerTest extends CommandTestCase
 
         // Current version has 'v' prefix, latest doesn't
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -517,6 +520,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,
             $this->httpClient
         );
@@ -657,6 +661,7 @@ class UpdateHandlerTest extends CommandTestCase
         chmod($badBinaryPath, 0444); // Read-only
 
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -665,6 +670,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,
             $this->httpClient
         );
@@ -768,6 +774,7 @@ class UpdateHandlerTest extends CommandTestCase
     public function testHandleWithGitTokenProvided(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -776,6 +783,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             'test-token-123',
             $this->httpClient
         );
@@ -836,6 +844,7 @@ class UpdateHandlerTest extends CommandTestCase
     {
         $testPath = '/test/path/to/binary.phar';
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -844,6 +853,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,
             $this->httpClient
         );
@@ -863,6 +873,7 @@ class UpdateHandlerTest extends CommandTestCase
         // The actual Phar path would be tested in integration tests
         $testPath = '/test/phar/path.phar';
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -871,6 +882,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,
             $this->httpClient
         );
@@ -885,6 +897,7 @@ class UpdateHandlerTest extends CommandTestCase
     public function testHandleWithGitTokenUsesAuthForDownload(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -893,6 +906,7 @@ class UpdateHandlerTest extends CommandTestCase
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             'test-token-123',
             $this->httpClient
         );
@@ -2281,7 +2295,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
+        $this->callPrivateMethod($this->handler, 'logVerbose', ['Test Label', 'Test Value']);
 
         // Test intent: logVerbose should complete without error when verbose
         $this->assertTrue(true);
@@ -2295,7 +2309,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         // Not setting verbose mode
 
-        $this->callPrivateMethod($this->handler, 'logVerbose', [$io, 'Test Label', 'Test Value']);
+        $this->callPrivateMethod($this->handler, 'logVerbose', ['Test Label', 'Test Value']);
 
         // Test intent: logVerbose should complete without error when not verbose
         $this->assertTrue(true);
@@ -2372,6 +2386,7 @@ CHANGELOG;
     public function testCreateGithubProviderWithoutHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -2380,6 +2395,7 @@ CHANGELOG;
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             null,
             null // No httpClient provided
         );
@@ -2392,6 +2408,7 @@ CHANGELOG;
     public function testCreateGithubProviderWithGitToken(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -2400,6 +2417,7 @@ CHANGELOG;
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             'test-token-123',
             null // No httpClient provided
         );
@@ -2420,6 +2438,7 @@ CHANGELOG;
     public function testCreateGithubProviderWithGitTokenAndHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new UpdateHandler(
             'studapart',
             'stud-cli',
@@ -2428,6 +2447,7 @@ CHANGELOG;
             $this->translationService,
             $changelogParser,
             new UpdateFileService($this->translationService),
+            $logger,
             'test-token-123',
             $this->httpClient // httpClient provided
         );
