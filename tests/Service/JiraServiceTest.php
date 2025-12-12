@@ -126,7 +126,7 @@ class JiraServiceTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
 
         $this->jiraService->getIssue($key);
@@ -221,7 +221,7 @@ class JiraServiceTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to search for issues.');
 
         $this->jiraService->searchIssues($jql);
@@ -283,7 +283,7 @@ class JiraServiceTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to fetch projects.');
 
         $this->jiraService->getProjects();
@@ -372,7 +372,7 @@ class JiraServiceTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to fetch filters.');
 
         $this->jiraService->getFilters();
@@ -640,7 +640,7 @@ Line 3";
             ->with('GET', "/rest/api/3/issue/{$key}/transitions")
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Could not fetch transitions for issue \"{$key}\".");
 
         $this->jiraService->getTransitions($key);
@@ -682,7 +682,7 @@ Line 3";
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Could not execute transition {$transitionId} for issue \"{$key}\".");
 
         $this->jiraService->transitionIssue($key, $transitionId);
@@ -745,7 +745,7 @@ Line 3";
             ->with('GET', '/rest/api/3/myself')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Could not retrieve current user information.');
 
         $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
@@ -767,7 +767,7 @@ Line 3";
             ->with('GET', '/rest/api/3/myself')
             ->willReturn($responseMock);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Could not find accountId in current user information.');
 
         $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
@@ -853,7 +853,7 @@ Line 3";
                 return $assignResponseMock;
             });
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Could not assign issue \"{$key}\" to user.");
 
         $this->jiraService->assignIssue($key);

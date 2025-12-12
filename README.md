@@ -56,6 +56,16 @@ The Responder pattern separates concerns between business logic (Handlers) and p
   - `ProjectListResponse`: For project list operations
   - `SearchResponse`: For search operations
 
+**Responder Classes** (`src/Responder/`):
+- Responder classes handle all presentation logic and render Response objects to console output
+- Responders use `ViewConfig` instances (typically `TableViewConfig` or `PageViewConfig`) to render data
+- Responders handle error messages, empty states, section headers, and verbose output
+- Available Responder classes:
+  - `FilterShowResponder`: Renders filter show results with Priority and Jira URL columns
+  - `ItemListResponder`: Renders item list results (Key, Status, Summary columns)
+  - `ProjectListResponder`: Renders project list results (Key, Name columns)
+  - `SearchResponder`: Renders search results with Priority and Jira URL columns
+
 **ViewConfig Infrastructure** (`src/View/`):
 - `ViewConfigInterface`: Defines the contract for rendering DTOs to console output
 - `TableViewConfig`: Renders data in table format with support for:
@@ -73,12 +83,15 @@ The Responder pattern separates concerns between business logic (Handlers) and p
 
 **Usage Example:**
 ```php
-// Handler returns a Response
-$response = FilterShowResponse::success($issues, $filterName);
+// In castor.php task function:
+$handler = new FilterShowHandler($jiraService);
+$response = $handler->handle($filterName);
 
-// Responder uses ViewConfig to render
-$viewConfig = new TableViewConfig($columns, $translator);
-$viewConfig->render($response->issues, $io);
+$responder = new FilterShowResponder($translator, $jiraConfig);
+exit($responder->respond($io, $response));
+
+// Handler contains pure domain logic (no IO)
+// Responder handles all presentation (sections, errors, tables)
 ```
 
 This architecture enables:

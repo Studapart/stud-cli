@@ -1092,7 +1092,7 @@ class GitRepositoryTest extends CommandTestCase
             ->method('isSuccessful')
             ->willReturn(false);
 
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Not in a git repository.');
 
         $this->gitRepository->getProjectConfigPath();
@@ -1285,7 +1285,7 @@ class GitRepositoryTest extends CommandTestCase
 
     public function testGetProjectKeyFromIssueKeyThrowsExceptionForInvalidFormat(): void
     {
-        $this->expectException("RuntimeException"::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid Jira issue key format: INVALID');
 
         $this->gitRepository->getProjectKeyFromIssueKey('INVALID');

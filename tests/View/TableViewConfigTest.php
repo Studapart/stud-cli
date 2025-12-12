@@ -246,4 +246,100 @@ class TableViewConfigTest extends CommandTestCase
         $this->assertCount(1, $result);
         $this->assertSame('key', $result[0]->property);
     }
+
+    public function testExtractValueWithTwoParameterFormatter(): void
+    {
+        $formatter = fn ($item, array $context) => $context['prefix'] . $item->key;
+        $column = new Column('key', 'table.key', $formatter);
+        $dto = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+        $context = ['prefix' => 'KEY-'];
+        $result = $this->callPrivateMethod($this->config, 'extractValue', [$dto, $column, $context]);
+
+        $this->assertSame('KEY-TPW-1', $result);
+    }
+
+    public function testExtractValueWithOneParameterFormatterThatThrows(): void
+    {
+        $formatter = function ($item) {
+            // Throw when called with DTO object, but work when called with string value
+            if (is_object($item)) {
+                throw new \RuntimeException('Cannot process object');
+            }
+
+            return 'Formatted: ' . (string) $item;
+        };
+        $column = new Column('key', 'table.key', $formatter);
+        $dto = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+        $result = $this->callPrivateMethod($this->config, 'extractValue', [$dto, $column, []]);
+
+        // Should fall back to property value formatter
+        $this->assertSame('Formatted: TPW-1', $result);
+    }
+
+    public function testExtractValueWithOneParameterFormatterThatReturnsNull(): void
+    {
+        $formatter = function ($item) {
+            // Return null when called with DTO object, but work when called with string value
+            if (is_object($item)) {
+                return null;
+            }
+
+            return 'Formatted: ' . (string) $item;
+        };
+        $column = new Column('key', 'table.key', $formatter);
+        $dto = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+        $result = $this->callPrivateMethod($this->config, 'extractValue', [$dto, $column, []]);
+
+        // Should fall back to property value formatter (formatter is called with property value)
+        $this->assertSame('Formatted: TPW-1', $result);
+    }
+
+    public function testGetFormatterParameterCountWithClosure(): void
+    {
+        $formatter = fn ($item) => $item->key;
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', [$formatter]);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testGetFormatterParameterCountWithStringFunction(): void
+    {
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', ['strlen']);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testGetFormatterParameterCountWithArrayMethod(): void
+    {
+        $formatter = [$this->config, 'getType'];
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', [$formatter]);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testGetFormatterParameterCountWithUnknownType(): void
+    {
+        $formatter = new \stdClass();
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', [$formatter]);
+
+        // Should default to 2 parameters
+        $this->assertSame(2, $result);
+    }
+
+    public function testGetFormatterParameterCountWithNonExistentStringFunction(): void
+    {
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', ['nonexistent_function_12345']);
+
+        // Should default to 2 parameters when function doesn't exist
+        $this->assertSame(2, $result);
+    }
+
+    public function testGetFormatterParameterCountWithInvalidArray(): void
+    {
+        $formatter = ['not', 'valid', 'array'];
+        $result = $this->callPrivateMethod($this->config, 'getFormatterParameterCount', [$formatter]);
+
+        // Should default to 2 parameters for invalid array
+        $this->assertSame(2, $result);
+    }
 }
