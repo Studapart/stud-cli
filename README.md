@@ -36,6 +36,56 @@ The purpose of `stud-cli` is to streamline a developer's daily workflow by tight
 -   **Modern Git Practices:** Employs modern, unambiguous Git commands like `git switch -c`.
 -   **User-Centric Defaults:** Commands like `items list` prioritize showing relevant information to the current user by default.
 -   **Command Syntax:** Follows an `object:verb` pattern (e.g., `stud items:list`).
+-   **Responder Pattern:** The application follows the Responder pattern (ADR - Action Domain Responder) to separate domain logic from presentation logic:
+    - **Action (Task):** Orchestrates the use case in `castor.php`
+    - **Domain (Handler):** Contains pure business logic and returns `Response` objects
+    - **Responder:** Contains `ViewConfig` and renders `Response` objects to console output
+
+#### Responder Pattern Architecture
+
+The Responder pattern separates concerns between business logic (Handlers) and presentation logic (Responders):
+
+**Response Classes** (`src/Response/`):
+- Response classes are DTOs (Data Transfer Objects) that encapsulate the result of a Handler operation
+- All Response classes extend `AbstractResponse` and implement `ResponseInterface`
+- Response classes use static factory methods (`success()` and `error()`) for creation
+- Available Response classes:
+  - `FilterShowResponse`: For filter show operations
+  - `ItemListResponse`: For item list operations
+  - `ItemShowResponse`: For item show operations
+  - `ProjectListResponse`: For project list operations
+  - `SearchResponse`: For search operations
+
+**ViewConfig Infrastructure** (`src/View/`):
+- `ViewConfigInterface`: Defines the contract for rendering DTOs to console output
+- `TableViewConfig`: Renders data in table format with support for:
+  - Conditional column visibility (e.g., Priority column only shown when at least one item has a priority)
+  - Column formatters (callables for value transformation)
+- `PageViewConfig`: Renders data in page format with support for:
+  - Sections with titles
+  - Definition lists (key-value pairs)
+  - Content blocks (text, listings, etc.)
+- Supporting value objects:
+  - `Column`: Defines table column structure (property, translation key, formatter, condition)
+  - `DefinitionItem`: Defines definition list items (translation key, value extractor)
+  - `Section`: Groups definition items and content blocks
+  - `Content`: Defines content blocks with optional formatters
+
+**Usage Example:**
+```php
+// Handler returns a Response
+$response = FilterShowResponse::success($issues, $filterName);
+
+// Responder uses ViewConfig to render
+$viewConfig = new TableViewConfig($columns, $translator);
+$viewConfig->render($response->issues, $io);
+```
+
+This architecture enables:
+- Separation of concerns (business logic vs. presentation)
+- Testability (Handlers return data, Responders handle output)
+- Extensibility (new view types can be added without modifying Handlers)
+- Reusability (ViewConfigs can be reused across different Handlers)
 
 ### Developer Setup
 

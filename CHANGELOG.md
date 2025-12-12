@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Create Response classes and ViewConfig infrastructure for Responder pattern [SCI-30]
+  - Created Response base classes: `ResponseInterface` and `AbstractResponse`
+  - Created specific Response classes: `FilterShowResponse`, `ItemListResponse`, `ItemShowResponse`, `ProjectListResponse`, `SearchResponse`
+  - All Response classes use static factory methods (`success()` and `error()`) and are final (DTOs)
+  - Created ViewConfig infrastructure: `ViewConfigInterface`, `TableViewConfig`, `PageViewConfig`
+  - Created supporting value objects: `Column`, `DefinitionItem`, `Section`, `Content`
+  - `TableViewConfig` supports conditional column visibility (e.g., Priority column) and column formatters
+  - `PageViewConfig` supports sections with definition lists and content blocks
+  - All classes include `declare(strict_types=1);` and explicit type hints
+  - Comprehensive unit tests with 100% coverage
+  - Updated README.md with Responder pattern architecture documentation
+
 ## [2.8.0] - 2025-12-12
 
 ### Added
