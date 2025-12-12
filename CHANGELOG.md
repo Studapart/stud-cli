@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive unit tests with 100% coverage
   - Updated README.md with Responder pattern architecture documentation
 
+### Changed
+- Refactor simple table-based handlers to use Responder pattern [SCI-31]
+  - Refactored `FilterShowHandler`, `SearchHandler`, `ItemListHandler`, and `ProjectListHandler` to return Response objects instead of handling IO directly
+  - Created corresponding Responder classes: `FilterShowResponder`, `SearchResponder`, `ItemListResponder`, `ProjectListResponder`
+  - All Responders use `TableViewConfig` for consistent table rendering with conditional column visibility
+  - Updated `castor.php` task functions to orchestrate Handler → Responder flow
+  - Handlers now contain pure domain logic (no IO dependencies)
+  - Responders handle all presentation logic (sections, error messages, table rendering)
+  - All handler tests refactored to test pure domain logic (no IO mocking)
+  - Comprehensive responder tests with 100% coverage
+  - Maintains existing behavior: error handling, empty state handling, verbose output, priority column conditional display
+
 ## [2.8.0] - 2025-12-12
 
 ### Added

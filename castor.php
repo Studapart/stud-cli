@@ -36,6 +36,10 @@ use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\FilterShowResponder;
+use App\Responder\ItemListResponder;
+use App\Responder\ProjectListResponder;
+use App\Responder\SearchResponder;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
@@ -476,8 +480,10 @@ function projects_list(
 
 ): void {
     _load_constants();
-    $handler = new ProjectListHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io());
+    $handler = new ProjectListHandler(_get_jira_service());
+    $response = $handler->handle();
+    $responder = new ProjectListResponder(_get_translation_service());
+    exit($responder->respond(io(), $response));
 }
 
 #[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
@@ -509,8 +515,10 @@ function items_list(
         $sort = ucfirst($normalizedSort);
     }
 
-    $handler = new ItemListHandler(_get_jira_service(), $translator);
-    $handler->handle(io(), $all, $project, $sort);
+    $handler = new ItemListHandler(_get_jira_service());
+    $response = $handler->handle($all, $project, $sort);
+    $responder = new ItemListResponder($translator);
+    exit($responder->respond(io(), $response));
 }
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
@@ -519,8 +527,10 @@ function items_search(
     string $jql,
 ): void {
     _load_constants();
-    $handler = new SearchHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io(), $jql);
+    $handler = new SearchHandler(_get_jira_service());
+    $response = $handler->handle($jql);
+    $responder = new SearchResponder(_get_translation_service(), _get_jira_config());
+    exit($responder->respond(io(), $response));
 }
 
 #[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
@@ -529,8 +539,10 @@ function filters_show(
     string $filterName,
 ): void {
     _load_constants();
-    $handler = new FilterShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
-    $handler->handle(io(), $filterName);
+    $handler = new FilterShowHandler(_get_jira_service());
+    $response = $handler->handle($filterName);
+    $responder = new FilterShowResponder(_get_translation_service(), _get_jira_config());
+    exit($responder->respond(io(), $response));
 }
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
