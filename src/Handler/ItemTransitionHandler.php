@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -14,7 +15,8 @@ class ItemTransitionHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -29,9 +31,7 @@ class ItemTransitionHandler
 
         // Verify issue exists
         try {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('item.transition.fetching', ['key' => $resolvedKey])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.transition.fetching', ['key' => $resolvedKey])}");
             $this->jiraService->getIssue($resolvedKey);
         } catch (\Exception $e) {
             $io->error($this->translator->trans('item.transition.error_not_found', ['key' => $resolvedKey]));

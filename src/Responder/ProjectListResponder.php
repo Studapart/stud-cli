@@ -5,42 +5,53 @@ declare(strict_types=1);
 namespace App\Responder;
 
 use App\Response\ProjectListResponse;
+use App\Service\ColorHelper;
 use App\Service\TranslationService;
 use App\View\Column;
-use App\View\TableViewConfig;
+use App\View\PageViewConfig;
+use App\View\Section;
+use App\View\TableBlock;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectListResponder
 {
-    private readonly TableViewConfig $viewConfig;
-
     public function __construct(
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly ?ColorHelper $colorHelper = null
     ) {
-        $this->viewConfig = new TableViewConfig([
-            new Column('key', 'table.key', fn ($item) => $item->key),
-            new Column('name', 'table.name', fn ($item) => $item->name),
-        ], $this->translator);
     }
 
-    public function respond(SymfonyStyle $io, ProjectListResponse $response): int
+    public function respond(SymfonyStyle $io, ProjectListResponse $response): void
     {
-        $io->section($this->translator->trans('project.list.section'));
-
-        if (! $response->isSuccess()) {
-            $io->error($this->translator->trans('project.list.error_fetch', ['error' => $response->getError() ?? 'Unknown error']));
-
-            return 1;
+        // Register color styles before rendering
+        if ($this->colorHelper !== null) {
+            $this->colorHelper->registerStyles($io);
         }
+
+        $sectionTitle = $this->translator->trans('project.list.section');
+        if ($this->colorHelper !== null) {
+            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
+        }
+        $io->section($sectionTitle);
 
         if (empty($response->projects)) {
             $io->note($this->translator->trans('project.list.no_projects'));
 
-            return 0;
+            return;
         }
 
-        $this->viewConfig->render($response->projects, $io);
+        $viewConfig = new PageViewConfig([
+            new Section(
+                '', // Section already created by responder
+                [
+                    new TableBlock([
+                        new Column('key', 'table.key', fn ($item) => $item->key),
+                        new Column('name', 'table.name', fn ($item) => $item->name),
+                    ]),
+                ]
+            ),
+        ], $this->translator, $this->colorHelper);
 
-        return 0;
+        $viewConfig->render($response->projects, $io);
     }
 }

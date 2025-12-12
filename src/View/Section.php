@@ -7,7 +7,7 @@ namespace App\View;
 final class Section
 {
     /**
-     * @param array<DefinitionItem|Content> $items
+     * @param array<DefinitionItem|Content|TableBlock> $items
      */
     public function __construct(
         public readonly string $title,

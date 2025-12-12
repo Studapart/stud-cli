@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\CommitHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -17,7 +18,8 @@ class CommitHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $logger);
     }
 
     public function testHandleWithCleanWorkingTree(): void
@@ -92,10 +94,19 @@ class CommitHandlerTest extends CommandTestCase
 
         $io = $this->createMock(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(true);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
 
-        $writelnCalls = [];
-        $io->method('writeln')->willReturnCallback(function (string $message) use (&$writelnCalls) {
-            $writelnCalls[] = $message;
+        // Get the Logger mock from the handler and set expectations
+        $reflection = new \ReflectionClass($this->handler);
+        $loggerProperty = $reflection->getProperty('logger');
+        $loggerProperty->setAccessible(true);
+        $logger = $loggerProperty->getValue($this->handler);
+
+        $loggerCalls = [];
+        $logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+            $loggerCalls[] = $message;
         });
 
         $io->method('section');
@@ -105,8 +116,8 @@ class CommitHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io, false, null);
 
         $this->assertSame(0, $result);
-        // Test intent: verbose output was shown (writeln was called)
-        $this->assertNotEmpty($writelnCalls);
+        // Test intent: verbose output was shown (Logger was called)
+        $this->assertNotEmpty($loggerCalls);
     }
 
     public function testHandleWithInteractivePrompter(): void
@@ -461,7 +472,8 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testgetCommitTypeFromIssueType(): void
     {
-        $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $logger);
 
         $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
         $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));

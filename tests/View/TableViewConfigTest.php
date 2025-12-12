@@ -3,14 +3,17 @@
 namespace App\Tests\View;
 
 use App\DTO\WorkItem;
+use App\Service\ColorHelper;
 use App\Tests\CommandTestCase;
 use App\View\Column;
-use App\View\TableViewConfig;
+use App\View\PageViewConfig;
+use App\View\Section;
+use App\View\TableBlock;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class TableViewConfigTest extends CommandTestCase
 {
-    private TableViewConfig $config;
+    private PageViewConfig $config;
 
     protected function setUp(): void
     {
@@ -22,12 +25,14 @@ class TableViewConfigTest extends CommandTestCase
             new Column('priority', 'table.priority', null, 'priority'),
         ];
 
-        $this->config = new TableViewConfig($columns, $this->translationService);
+        $this->config = new PageViewConfig([
+            new Section('', [new TableBlock($columns)]),
+        ], $this->translationService, null);
     }
 
-    public function testGetTypeReturnsTable(): void
+    public function testGetTypeReturnsPage(): void
     {
-        $this->assertSame('table', $this->config->getType());
+        $this->assertSame('page', $this->config->getType());
     }
 
     public function testRenderCallsTableWithCorrectHeadersAndRows(): void
@@ -108,7 +113,9 @@ class TableViewConfigTest extends CommandTestCase
         $columns = [
             new Column('key', 'table.key', $formatter),
         ];
-        $config = new TableViewConfig($columns, $this->translationService);
+        $config = new PageViewConfig([
+            new Section('', [new TableBlock($columns)]),
+        ], $this->translationService, null);
 
         $issues = [
             new WorkItem('1', 'TPW-1', 'Title 1', 'To Do', 'User', 'desc', [], 'Task'),
@@ -236,12 +243,14 @@ class TableViewConfigTest extends CommandTestCase
             new Column('key', 'table.key'),
             new Column('priority', 'table.priority', null, 'priority'),
         ];
-        $config = new TableViewConfig($columns, $this->translationService);
+        $config = new PageViewConfig([
+            new Section('', [new TableBlock($columns)]),
+        ], $this->translationService, null);
         $issues = [
             new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task'),
         ];
 
-        $result = $this->callPrivateMethod($config, 'getVisibleColumns', [$issues]);
+        $result = $this->callPrivateMethod($config, 'getVisibleColumns', [$columns, $issues]);
 
         $this->assertCount(1, $result);
         $this->assertSame('key', $result[0]->property);
@@ -341,5 +350,47 @@ class TableViewConfigTest extends CommandTestCase
 
         // Should default to 2 parameters for invalid array
         $this->assertSame(2, $result);
+    }
+
+    public function testRenderTableWithColorHelperAppliesColorsToHeaders(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $columns = [
+            new Column('key', 'table.key'),
+        ];
+        $config = new PageViewConfig([
+            new Section('', [new TableBlock($columns)]),
+        ], $this->translationService, $colorHelper);
+
+        $issues = [
+            new WorkItem('1', 'TPW-1', 'Title 1', 'To Do', 'User', 'desc', [], 'Task'),
+        ];
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $this->translationService->expects($this->once())
+            ->method('trans')
+            ->with('table.key')
+            ->willReturn('Key');
+
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->once())
+            ->method('format')
+            ->with('table_header', $this->anything())
+            ->willReturnCallback(function ($color, $text) {
+                return "<{$color}>{$text}</>";
+            });
+
+        $io->expects($this->once())
+            ->method('table')
+            ->with(
+                $this->callback(function ($headers) {
+                    return is_array($headers) && count($headers) === 1 && str_contains($headers[0], 'table_header');
+                }),
+                $this->anything()
+            );
+
+        $config->render($issues, $io);
     }
 }

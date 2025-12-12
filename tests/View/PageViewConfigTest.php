@@ -3,6 +3,7 @@
 namespace App\Tests\View;
 
 use App\DTO\WorkItem;
+use App\Service\ColorHelper;
 use App\Tests\CommandTestCase;
 use App\View\Content;
 use App\View\DefinitionItem;
@@ -28,7 +29,7 @@ class PageViewConfigTest extends CommandTestCase
             ),
         ];
 
-        $this->config = new PageViewConfig($sections, $this->translationService);
+        $this->config = new PageViewConfig($sections, $this->translationService, null);
     }
 
     public function testGetTypeReturnsPage(): void
@@ -85,7 +86,7 @@ class PageViewConfigTest extends CommandTestCase
             'listing'
         );
         $section = new Section('Content Section', [$content]);
-        $config = new PageViewConfig([$section], $this->translationService);
+        $config = new PageViewConfig([$section], $this->translationService, null);
 
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
@@ -107,7 +108,7 @@ class PageViewConfigTest extends CommandTestCase
             'text'
         );
         $section = new Section('Content Section', [$content]);
-        $config = new PageViewConfig([$section], $this->translationService);
+        $config = new PageViewConfig([$section], $this->translationService, null);
 
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
@@ -129,7 +130,7 @@ class PageViewConfigTest extends CommandTestCase
             null
         );
         $section = new Section('Content Section', [$content]);
-        $config = new PageViewConfig([$section], $this->translationService);
+        $config = new PageViewConfig([$section], $this->translationService, null);
 
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
@@ -151,7 +152,7 @@ class PageViewConfigTest extends CommandTestCase
             null
         );
         $section = new Section('Content Section', [$content]);
-        $config = new PageViewConfig([$section], $this->translationService);
+        $config = new PageViewConfig([$section], $this->translationService, null);
 
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
@@ -176,7 +177,7 @@ class PageViewConfigTest extends CommandTestCase
                 new Content(fn ($dto) => 'Content text', null),
             ]
         );
-        $config = new PageViewConfig([$section], $this->translationService);
+        $config = new PageViewConfig([$section], $this->translationService, null);
 
         $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
 
@@ -190,6 +191,197 @@ class PageViewConfigTest extends CommandTestCase
         $io->expects($this->once())
             ->method('text')
             ->with('Content text');
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderWithColorHelperRegistersStyles(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $sections = [
+            new Section(
+                'Details',
+                [
+                    new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
+                ]
+            ),
+        ];
+        $config = new PageViewConfig($sections, $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $this->translationService->expects($this->once())
+            ->method('trans')
+            ->willReturn('Key');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->atLeastOnce())
+            ->method('format')
+            ->willReturnCallback(fn ($color, $text) => "<{$color}>{$text}</>");
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->stringContains('Details'));
+        $io->expects($this->once())
+            ->method('definitionList');
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderSectionWithColorHelperAppliesColorsToSectionTitle(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $section = new Section('Test Section', []);
+        $config = new PageViewConfig([$section], $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->once())
+            ->method('format')
+            ->with('section_title', 'Test Section')
+            ->willReturn('<section_title>Test Section</>');
+        $io->expects($this->once())
+            ->method('section')
+            ->with('<section_title>Test Section</>');
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderDefinitionListWithColorHelperAppliesColors(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $section = new Section('Details', [
+            new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
+        ]);
+        $config = new PageViewConfig([$section], $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $this->translationService->expects($this->once())
+            ->method('trans')
+            ->with('item.show.label_key')
+            ->willReturn('Key');
+
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->atLeast(2))
+            ->method('format')
+            ->willReturnCallback(function ($colorName, $text) {
+                return "<{$colorName}>{$text}</>";
+            });
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->stringContains('Details'));
+        $io->expects($this->once())
+            ->method('definitionList')
+            ->with($this->anything());
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderContentWithColorHelperAppliesColorsToListing(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $content = new Content(
+            fn ($dto) => ['Item 1', 'Item 2'],
+            'listing'
+        );
+        $section = new Section('Content Section', [$content]);
+        $config = new PageViewConfig([$section], $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->atLeast(2))
+            ->method('format')
+            ->willReturnCallback(function ($colorName, $text) {
+                if ($colorName === 'section_title') {
+                    return "<{$colorName}>{$text}</>";
+                }
+
+                return "<{$colorName}>{$text}</>";
+            });
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->stringContains('Content Section'));
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($this->callback(function ($list) {
+                return is_array($list) && count($list) === 2;
+            }));
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderContentWithColorHelperAppliesColorsToText(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $content = new Content(
+            fn ($dto) => 'Simple text',
+            null
+        );
+        $section = new Section('Content Section', [$content]);
+        $config = new PageViewConfig([$section], $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->atLeast(1))
+            ->method('format')
+            ->willReturnCallback(function ($colorName, $text) {
+                return "<{$colorName}>{$text}</>";
+            });
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->stringContains('Content Section'));
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->stringContains('Simple text'));
+
+        $config->render([$issue], $io);
+    }
+
+    public function testRenderContentWithColorHelperAppliesColorsToTextArray(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $content = new Content(
+            fn ($dto) => ['Line 1', 'Line 2'],
+            'text'
+        );
+        $section = new Section('Content Section', [$content]);
+        $config = new PageViewConfig([$section], $this->translationService, $colorHelper);
+        $issue = new WorkItem('1', 'TPW-1', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->atLeast(2))
+            ->method('format')
+            ->willReturnCallback(function ($colorName, $text) {
+                return "<{$colorName}>{$text}</>";
+            });
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->stringContains('Content Section'));
+        $io->expects($this->once())
+            ->method('text')
+            ->with($this->callback(function ($data) {
+                return is_array($data) && count($data) === 2;
+            }));
 
         $config->render([$issue], $io);
     }
