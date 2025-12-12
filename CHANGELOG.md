@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2025-12-12
+
 ### Added
 - Add `stud items:transition` command to transition Jira work items [SCI-27]
   - New command `stud items:transition` (alias: `stud tx`) to transition a Jira work item to a different status
