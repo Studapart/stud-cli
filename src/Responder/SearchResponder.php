@@ -37,7 +37,7 @@ class SearchResponder
             $io->writeln("  <fg=gray>{$this->translator->trans('search.jql_query', ['jql' => $response->jql])}</>");
         }
 
-        if (!$response->isSuccess()) {
+        if (! $response->isSuccess()) {
             $io->error($this->translator->trans('search.error_search', ['error' => $response->getError() ?? 'Unknown error']));
 
             return 1;
@@ -54,4 +54,3 @@ class SearchResponder
         return 0;
     }
 }
-

@@ -42,7 +42,7 @@ class ItemListResponder
             $io->writeln("  <fg=gray>JQL Query: {$jql}</>");
         }
 
-        if (!$response->isSuccess()) {
+        if (! $response->isSuccess()) {
             $io->error($this->translator->trans('item.list.error_fetch', ['error' => $response->getError() ?? 'Unknown error']));
 
             return 1;
@@ -59,4 +59,3 @@ class ItemListResponder
         return 0;
     }
 }
-

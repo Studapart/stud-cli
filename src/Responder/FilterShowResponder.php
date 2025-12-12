@@ -39,7 +39,7 @@ class FilterShowResponder
             $io->writeln("  <fg=gray>{$this->translator->trans('filter.show.jql_query', ['jql' => $jql])}</>");
         }
 
-        if (!$response->isSuccess()) {
+        if (! $response->isSuccess()) {
             $io->error($this->translator->trans('filter.show.error_fetch', ['error' => $response->getError() ?? 'Unknown error']));
 
             return 1;
@@ -56,4 +56,3 @@ class FilterShowResponder
         return 0;
     }
 }
-

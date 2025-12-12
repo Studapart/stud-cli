@@ -27,7 +27,7 @@ class ProjectListResponder
     {
         $io->section($this->translator->trans('project.list.section'));
 
-        if (!$response->isSuccess()) {
+        if (! $response->isSuccess()) {
             $io->error($this->translator->trans('project.list.error_fetch', ['error' => $response->getError() ?? 'Unknown error']));
 
             return 1;
@@ -44,4 +44,3 @@ class ProjectListResponder
         return 0;
     }
 }
-

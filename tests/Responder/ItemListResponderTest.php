@@ -3,8 +3,8 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
-use App\Response\ItemListResponse;
 use App\Responder\ItemListResponder;
+use App\Response\ItemListResponse;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -130,4 +130,3 @@ class ItemListResponderTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 }
-

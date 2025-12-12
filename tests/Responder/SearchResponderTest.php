@@ -3,8 +3,8 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
-use App\Response\SearchResponse;
 use App\Responder\SearchResponder;
+use App\Response\SearchResponse;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -108,4 +108,3 @@ class SearchResponderTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 }
-

@@ -3,8 +3,8 @@
 namespace App\Tests\Responder;
 
 use App\DTO\Project;
-use App\Response\ProjectListResponse;
 use App\Responder\ProjectListResponder;
+use App\Response\ProjectListResponse;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -73,4 +73,3 @@ class ProjectListResponderTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 }
-

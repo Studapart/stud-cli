@@ -110,17 +110,73 @@ class TableViewConfig implements ViewConfigInterface
      */
     protected function extractValue(mixed $dto, Column $column, array $context): ?string
     {
-        $value = $this->getPropertyValue($dto, $column->property);
-
         if ($column->formatter !== null) {
-            return ($column->formatter)($value, $context);
+            // Determine parameter count safely
+            $paramCount = $this->getFormatterParameterCount($column->formatter);
+
+            // Formatters expect (dto, context) - pass DTO as first parameter
+            // For backward compatibility with 1-parameter formatters that expect property value,
+            // we extract the value first, but this is deprecated
+            if ($paramCount === 1) {
+                // Try passing DTO first (new standard for Responder formatters)
+                /** @var callable(mixed): string|null $formatter */
+                $formatter = $column->formatter;
+
+                try {
+                    $result = $formatter($dto);
+                    if ($result !== null) {
+                        return $result;
+                    }
+                } catch (\Throwable $e) {
+                    // If that fails, fall back to passing property value (old test formatters)
+                }
+                // If result is null or exception occurred, try with property value
+                $value = $this->getPropertyValue($dto, $column->property);
+
+                return $formatter($value);
+            }
+
+            // Formatter expects (dto, context) - the standard
+            /** @var callable(mixed, array<string, mixed>): string|null $formatter */
+            $formatter = $column->formatter;
+
+            return $formatter($dto, $context);
         }
+
+        $value = $this->getPropertyValue($dto, $column->property);
 
         if ($value === null) {
             return null;
         }
 
         return (string) $value;
+    }
+
+    /**
+     * @param mixed $formatter
+     */
+    private function getFormatterParameterCount(mixed $formatter): int
+    {
+        if ($formatter instanceof \Closure) {
+            $reflection = new \ReflectionFunction($formatter);
+
+            return $reflection->getNumberOfParameters();
+        }
+
+        if (is_string($formatter) && function_exists($formatter)) {
+            $reflection = new \ReflectionFunction($formatter);
+
+            return $reflection->getNumberOfParameters();
+        }
+
+        if (is_array($formatter) && count($formatter) === 2) {
+            $reflection = new \ReflectionMethod($formatter[0], $formatter[1]);
+
+            return $reflection->getNumberOfParameters();
+        }
+
+        // Default: assume 2 parameters (dto, context) for unknown callable types
+        return 2;
     }
 
     protected function getPropertyValue(mixed $dto, string $property): mixed

@@ -3,8 +3,8 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
-use App\Response\FilterShowResponse;
 use App\Responder\FilterShowResponder;
+use App\Response\FilterShowResponse;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -110,4 +110,3 @@ class FilterShowResponderTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 }
-
