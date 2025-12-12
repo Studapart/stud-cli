@@ -16,7 +16,7 @@ class ItemListHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $all, ?string $project): int
+    public function handle(SymfonyStyle $io, bool $all, ?string $project, ?string $sort = null): int
     {
         $io->section($this->translator->trans('item.list.section'));
 
@@ -49,6 +49,10 @@ class ItemListHandler
             return 0;
         }
 
+        if ($sort !== null) {
+            $issues = $this->sortIssues($issues, $sort);
+        }
+
         $table = array_map(fn (\App\DTO\WorkItem $issue) => [$issue->key, $issue->status, $issue->title], $issues);
         $io->table([
             $this->translator->trans('table.key'),
@@ -57,5 +61,23 @@ class ItemListHandler
         ], $table);
 
         return 0;
+    }
+
+    /**
+     * Sorts issues by the specified field.
+     *
+     * @param \App\DTO\WorkItem[] $issues
+     * @return \App\DTO\WorkItem[]
+     */
+    protected function sortIssues(array $issues, string $sort): array
+    {
+        $normalizedSort = ucfirst(strtolower($sort));
+        if ($normalizedSort === 'Key') {
+            usort($issues, fn (\App\DTO\WorkItem $a, \App\DTO\WorkItem $b) => strcmp($a->key, $b->key));
+        } elseif ($normalizedSort === 'Status') {
+            usort($issues, fn (\App\DTO\WorkItem $a, \App\DTO\WorkItem $b) => strcmp($a->status, $b->status));
+        }
+
+        return $issues;
     }
 }

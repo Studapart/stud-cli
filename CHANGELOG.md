@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2025-12-12
+
+### Added
+- Add `stud items:transition` command to transition Jira work items [SCI-27]
+  - New command `stud items:transition` (alias: `stud tx`) to transition a Jira work item to a different status
+  - Command accepts optional `<workItemKey>` argument
+  - When key is not provided, command attempts to detect from current Git branch name
+  - When key is detected from branch, command asks for user confirmation before proceeding
+  - When key is not detected, command prompts user to enter a Jira work item key
+  - Command validates key format and shows error for invalid format
+  - Command fetches and displays all available transitions for the issue (no filtering)
+  - Command allows user to select a transition from available options
+  - Command applies the selected transition to the issue
+  - Command does NOT auto-assign the issue (only transitions)
+  - Command does NOT cache transition IDs (always shows all available transitions)
+  - Command handles errors gracefully (issue not found, no transitions, API errors)
+  - Added translation keys for transition handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+- Added `--sort` option (alias `-s`) to `stud items:list` command to sort results by Key or Status (case-insensitive)
+
+### Added
+- Add Priority and Jira URL columns to stud filters:show command [SCI-28]
+  - Enhanced `stud filters:show` command to display Priority and Jira URL columns
+  - Priority column is conditionally displayed only when at least one issue has a priority assigned
+  - Column order: Key, Status, Priority (conditional), Description, Jira URL
+  - Priority column shows priority name (e.g., "High", "Medium", "Low") when available, empty string when not available (when column is visible)
+  - Jira URL column displays full URL in format: {JIRA_URL}/browse/{key}
+  - Added priority field to WorkItem DTO
+  - Updated JiraService to fetch and map priority field from Jira API
+  - Added translation keys for priority, description, and jira_url in all supported languages
+  - Full test coverage with unit tests following project conventions
+- Add filters:list command to display Jira filters [SCI-26]
+  - New command `stud filters:list` (alias: `stud fl`) to list all available Jira filters
+  - Displays filters in a table format with Name and Description columns
+  - Filters are sorted by name in ascending order (case-insensitive)
+  - Handles empty results and API errors gracefully
+  - Added translation keys for filter list handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+- Add filters:show command to retrieve Jira issues by filter name [SCI-25]
+  - New command `stud filters:show <filterName>` (alias: `stud fs`) to retrieve issues from saved Jira filters
+  - Generates JQL query `filter = "<filterName>"` and reuses existing search infrastructure
+  - Updated SearchHandler to return int (0 for success, 1 for error) for consistency with other handlers
+  - Added translation keys for filter show handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+
 ## [2.7.1] - 2025-12-08
 
 ### Added

@@ -20,11 +20,14 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\DeployHandler;
+use App\Handler\FilterListHandler;
+use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
+use App\Handler\ItemTransitionHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\ProjectListHandler;
@@ -477,16 +480,37 @@ function projects_list(
     $handler->handle(io());
 }
 
+#[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
+function filters_list(): void
+{
+    _load_constants();
+    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $handler->handle(io());
+}
+
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
 function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')]
     bool $all = false,
     #[AsOption(name: 'project', shortcut: 'p', description: 'Filter by project key')]
     ?string $project = null,
+    #[AsOption(name: 'sort', shortcut: 's', description: 'Sort results by Key or Status')]
+    ?string $sort = null,
 ): void {
     _load_constants();
-    $handler = new ItemListHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io(), $all, $project);
+    $translator = _get_translation_service();
+
+    if ($sort !== null) {
+        $normalizedSort = strtolower($sort);
+        if (! in_array($normalizedSort, ['key', 'status'], true)) {
+            io()->error($translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
+            exit(1);
+        }
+        $sort = ucfirst($normalizedSort);
+    }
+
+    $handler = new ItemListHandler(_get_jira_service(), $translator);
+    $handler->handle(io(), $all, $project, $sort);
 }
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
@@ -499,6 +523,15 @@ function items_search(
     $handler->handle(io(), $jql);
 }
 
+#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
+function filters_show(
+    #[AsArgument(name: 'filterName', description: 'The name of the saved Jira filter')]
+    string $filterName,
+): void {
+    _load_constants();
+    $handler = new FilterShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
+    $handler->handle(io(), $filterName);
+}
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
 function items_show(
@@ -508,6 +541,16 @@ function items_show(
     _load_constants();
     $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
     $handler->handle(io(), $key);
+}
+
+#[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
+function items_transition(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123). Optional - will detect from branch if not provided')]
+    ?string $key = null,
+): void {
+    _load_constants();
+    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    exit($handler->handle(io(), $key));
 }
 
 // =================================================================================
@@ -692,7 +735,10 @@ function help(
             'pj' => 'projects:list',
             'ls' => 'items:list',
             'search' => 'items:search',
+            'fl' => 'filters:list',
+            'fs' => 'filters:show',
             'sh' => 'items:show',
+            'tx' => 'items:transition',
             'start' => 'items:start',
             'co' => 'commit',
             'pl' => 'please',
@@ -755,7 +801,7 @@ function help(
                 'name' => 'items:list',
                 'alias' => 'ls',
                 'description' => $translator->trans('help.command_items_list'),
-                'example' => 'stud ls -p PROJ',
+                'example' => 'stud ls -p PROJ -s Key',
             ],
             [
                 'name' => 'items:show',
@@ -770,6 +816,25 @@ function help(
                 'args' => '<jql>',
                 'description' => $translator->trans('help.command_items_search'),
                 'example' => 'stud search "project = PROJ and status = Done"',
+            ],
+            [
+                'name' => 'items:transition',
+                'alias' => 'tx',
+                'args' => '[<key>]',
+                'description' => $translator->trans('help.command_items_transition'),
+                'example' => 'stud tx PROJ-123',
+            ],
+            [
+                'name' => 'filters:list',
+                'alias' => 'fl',
+                'description' => $translator->trans('help.command_filters_list'),
+            ],
+            [
+                'name' => 'filters:show',
+                'alias' => 'fs',
+                'args' => '<filterName>',
+                'description' => $translator->trans('help.command_filters_show'),
+                'example' => 'stud fs "My Filter"',
             ],
         ],
         $translator->trans('help.category_git_workflow') => [

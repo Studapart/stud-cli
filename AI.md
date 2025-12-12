@@ -119,7 +119,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - A list of any assumptions made or deviations from the ticket requirements, with explanations for why they were necessary.
     - Any additional improvements or refactoring that was done beyond the ticket scope.
 
-2.  **Submit Pull Request**: Use `stud submit` to create the pull request. This step MUST only be performed after all previous phases, including testing, documentation, and integrity checks, are complete.
+2.  **Submit Pull Request**: Use `stud submit --labels "AI-Generated,RFR"` to create the pull request. This step MUST only be performed after all previous phases, including testing, documentation, and integrity checks, are complete.
 
 3.  **PR Comment**: After submitting the PR (Step 2), pipe your report directly to the PR as a comment using `stud pr:comment` (or `stud pc`). For example: `echo "Your report content here" | stud pr:comment`
 

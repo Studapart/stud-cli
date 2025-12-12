@@ -44,9 +44,9 @@ class SearchHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'project = TPW');
 
-        // Test intent: section() was called, verified by return value
+        $this->assertSame(0, $result);
     }
 
     public function testHandleWithNoIssuesFound(): void
@@ -59,9 +59,9 @@ class SearchHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'project = TPW');
 
-        // Test intent: note() was called when no issues found, verified by return value
+        $this->assertSame(0, $result);
     }
 
     public function testHandleWithJiraServiceException(): void
@@ -74,9 +74,9 @@ class SearchHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'project = TPW');
 
-        // Test intent: error() was called on exception, verified by return value
+        $this->assertSame(1, $result);
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -101,8 +101,8 @@ class SearchHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $this->handler->handle($io, 'project = TPW');
+        $result = $this->handler->handle($io, 'project = TPW');
 
-        // Test intent: verbose output was shown, verified by return value
+        $this->assertSame(0, $result);
     }
 }

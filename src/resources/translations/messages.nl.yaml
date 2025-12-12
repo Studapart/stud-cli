@@ -78,12 +78,26 @@ item:
     label_description: "Beschrijving"
     label_link: "Link"
     label_none: "Geen"
+# Item Transition Handler
+  transition:
+    section: "Jira werkitem overgang"
+    detected_key: "Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?"
+    prompt_key: "Voer Jira werkitem sleutel in"
+    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
+    error_invalid_key: "Ongeldig Jira sleutelformaat. Verwacht formaat: PROJ-123"
+    fetching: "Beschikbare overgangen ophalen voor ticket: %key%"
+    no_transitions: "Geen overgangen beschikbaar voor ticket %key%."
+    select_transition: "Selecteer de overgang om toe te passen:"
+    error_fetch: "Fout bij ophalen van overgangen: %error%"
+    error_execute: "Fout bij uitvoeren van overgang: %error%"
+    success: "✅ Ticket %key% succesvol overgezet"
 
 # Item List Handler
   list:
     section: "Jira Tickets ophalen"
     error_fetch: "Fout bij ophalen van tickets: %error%"
     no_items: "Geen tickets gevonden die overeenkomen met uw criteria."
+    error_invalid_sort: "Ongeldige sorteerwaarde '%value%'. Toegestane waarden: Key, Status"
 
 # Project List Handler
 project:
@@ -98,6 +112,18 @@ search:
   jql_query: "JQL Query: %jql%"
   error_search: "Fout bij zoeken naar tickets: %error%"
   no_results: "Geen tickets gevonden die overeenkomen met uw JQL-query."
+
+# Filter Show Handler
+filter:
+  show:
+    section: "Tickets ophalen uit filter '%filterName%'"
+    jql_query: "JQL Query: %jql%"
+    error_fetch: "Fout bij ophalen van tickets uit filter: %error%"
+    no_results: "Geen tickets gevonden in filter '%filterName%'."
+  list:
+    section: "Jira-filters ophalen"
+    error_fetch: "Fout bij ophalen van filters: %error%"
+    no_filters: "Geen filters gevonden."
 
 # Status Handler
 status:
@@ -270,6 +296,8 @@ table:
   command: "Commando"
   alias: "Alias"
   description: "Beschrijving"
+  priority: "Prioriteit"
+  jira_url: "Jira URL"
 
 # Help Command
 help:
@@ -293,6 +321,9 @@ help:
   command_items_list: "Lijst actieve werkitems (uw dashboard)."
   command_items_show: "Toon gedetailleerde informatie voor één werkitem."
   command_items_search: "Zoek issues met JQL."
+  command_items_transition: "Zet een Jira werkitem over naar een andere status. Als sleutel niet wordt opgegeven, wordt geprobeerd te detecteren vanuit huidige branch."
+  command_filters_list: "Lijst alle beschikbare Jira-filters."
+  command_filters_show: "Haal issues op uit een opgeslagen Jira filter."
   command_items_start: "Maakt een nieuwe git tak van een Jira item."
   command_commit: "Begeleidt u bij het maken van een conventionele commit."
   command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
@@ -311,6 +342,7 @@ help:
   command_not_found: "Helptekst niet beschikbaar voor commando: %command%"
   option_all: "Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)"
   option_project: "Filter items op een specifieke projectcode (bijv. PROJ)"
+  option_items_list_sort: "Sorteer resultaten op Key of Status (gebruik --sort of -s)"
   option_commit_new: "Maak een nieuwe logische commit in plaats van een fixup"
   option_commit_message: "Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit"
   option_submit_draft: "Maak een Draft Pull Request (gemarkeerd als \"Draft\" op GitHub)"

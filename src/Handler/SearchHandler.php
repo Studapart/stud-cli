@@ -17,7 +17,7 @@ class SearchHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, string $jql): void
+    public function handle(SymfonyStyle $io, string $jql): int
     {
         $io->section($this->translator->trans('search.section'));
         if ($io->isVerbose()) {
@@ -29,13 +29,13 @@ class SearchHandler
         } catch (\Exception $e) {
             $io->error($this->translator->trans('search.error_search', ['error' => $e->getMessage()]));
 
-            return;
+            return 1;
         }
 
         if (empty($issues)) {
             $io->note($this->translator->trans('search.no_results'));
 
-            return;
+            return 0;
         }
 
         $table = array_map(fn (WorkItem $issue) => [$issue->key, $issue->status, $issue->title], $issues);
@@ -44,5 +44,7 @@ class SearchHandler
             $this->translator->trans('table.status'),
             $this->translator->trans('table.summary'),
         ], $table);
+
+        return 0;
     }
 }

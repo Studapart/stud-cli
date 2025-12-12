@@ -78,12 +78,26 @@ item:
     label_description: "Description"
     label_link: "Link"
     label_none: "None"
+# Item Transition Handler
+  transition:
+    section: "Transitioning Jira work item"
+    detected_key: "Detected Jira key '%key%' from current branch. Use this key?"
+    prompt_key: "Enter Jira work item key"
+    error_not_found: "Could not find Jira issue with key \"%key%\"."
+    error_invalid_key: "Invalid Jira key format. Expected format: PROJ-123"
+    fetching: "Fetching available transitions for issue: %key%"
+    no_transitions: "No transitions available for issue %key%."
+    select_transition: "Select the transition to apply:"
+    error_fetch: "Failed to fetch transitions: %error%"
+    error_execute: "Failed to execute transition: %error%"
+    success: "✅ Issue %key% transitioned successfully"
 
 # Item List Handler
   list:
     section: "Fetching Jira Items"
     error_fetch: "Failed to fetch items: %error%"
     no_items: "No items found matching your criteria."
+    error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
 # Project List Handler
 project:
@@ -98,6 +112,18 @@ search:
   jql_query: "JQL Query: %jql%"
   error_search: "Failed to search for issues: %error%"
   no_results: "No issues found matching your JQL query."
+
+# Filter Show Handler
+filter:
+  show:
+    section: "Fetching issues from filter '%filterName%'"
+    jql_query: "JQL Query: %jql%"
+    error_fetch: "Failed to fetch issues from filter: %error%"
+    no_results: "No issues found in filter '%filterName%'."
+  list:
+    section: "Fetching Jira Filters"
+    error_fetch: "Failed to fetch filters: %error%"
+    no_filters: "No filters found."
 
 # Status Handler
 status:
@@ -267,9 +293,11 @@ table:
   status: "Status"
   summary: "Summary"
   name: "Name"
+  description: "Description"
   command: "Command"
   alias: "Alias"
-  description: "Description"
+  priority: "Priority"
+  jira_url: "Jira URL"
 
 # Help Command
 help:
@@ -293,6 +321,9 @@ help:
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_search: "Search for issues using JQL."
+  command_items_transition: "Transitions a Jira work item to a different status. If key is not provided, attempts to detect from current branch."
+  command_filters_list: "Lists all available Jira filters."
+  command_filters_show: "Retrieve issues from a saved Jira filter."
   command_items_start: "Creates a new git branch from a Jira item."
   command_commit: "Guides you through making a conventional commit."
   command_please: "A power-user, safe force-push (force-with-lease)."
@@ -311,6 +342,7 @@ help:
   command_not_found: "Help text not available for command: %command%"
   option_all: "List items for all users (overrides default assignee filter)"
   option_project: "Filter items by a specific project key (e.g., PROJ)"
+  option_items_list_sort: "Sort results by Key or Status (use --sort or -s)"
   option_commit_new: "Create a new logical commit instead of a fixup"
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"

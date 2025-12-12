@@ -78,12 +78,26 @@ item:
     label_description: "Description"
     label_link: "Lien"
     label_none: "Aucun"
+# Item Transition Handler
+  transition:
+    section: "Transition d'un ticket Jira"
+    detected_key: "Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?"
+    prompt_key: "Entrez la clé du ticket Jira"
+    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
+    error_invalid_key: "Format de clé Jira invalide. Format attendu : PROJ-123"
+    fetching: "Récupération des transitions disponibles pour le ticket : %key%"
+    no_transitions: "Aucune transition disponible pour le ticket %key%."
+    select_transition: "Sélectionnez la transition à appliquer :"
+    error_fetch: "Échec de la récupération des transitions : %error%"
+    error_execute: "Échec de l'exécution de la transition : %error%"
+    success: "✅ Ticket %key% transitionné avec succès"
 
 # Item List Handler
   list:
     section: "Récupération des tickets Jira"
     error_fetch: "Échec de la récupération des tickets : %error%"
     no_items: "Aucun ticket trouvé correspondant à vos critères."
+    error_invalid_sort: "Valeur de tri invalide '%value%'. Valeurs acceptées : Key, Status"
 
 # Project List Handler
 project:
@@ -98,6 +112,18 @@ search:
   jql_query: "Requête JQL : %jql%"
   error_search: "Échec de la recherche de tickets : %error%"
   no_results: "Aucun ticket trouvé correspondant à votre requête JQL."
+
+# Filter Show Handler
+filter:
+  show:
+    section: "Récupération des tickets depuis le filtre '%filterName%'"
+    jql_query: "Requête JQL : %jql%"
+    error_fetch: "Échec de la récupération des tickets depuis le filtre : %error%"
+    no_results: "Aucun ticket trouvé dans le filtre '%filterName%'."
+  list:
+    section: "Récupération des filtres Jira"
+    error_fetch: "Échec de la récupération des filtres : %error%"
+    no_filters: "Aucun filtre trouvé."
 
 # Status Handler
 status:
@@ -270,6 +296,8 @@ table:
   command: "Commande"
   alias: "Alias"
   description: "Description"
+  priority: "Priorité"
+  jira_url: "URL Jira"
 
 # Help Command
 help:
@@ -293,6 +321,9 @@ help:
   command_items_list: "Liste les éléments de travail actifs (votre tableau de bord)."
   command_items_show: "Affiche des informations détaillées pour un élément de travail."
   command_items_search: "Rechercher des issues avec JQL."
+  command_items_transition: "Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle."
+  command_filters_list: "Liste tous les filtres Jira disponibles."
+  command_filters_show: "Récupérer les issues depuis un filtre Jira enregistré."
   command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."
   command_commit: "Vous guide à travers la création d'un commit conventionnel."
   command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."
@@ -311,6 +342,7 @@ help:
   command_not_found: "Texte d'aide non disponible pour la commande : %command%"
   option_all: "Lister les éléments pour tous les utilisateurs (remplace le filtre d'assigné par défaut)"
   option_project: "Filtrer les éléments par une clé de projet spécifique (par ex., PROJ)"
+  option_items_list_sort: "Trier les résultats par Key ou Status (utilisez --sort ou -s)"
   option_commit_new: "Créer un nouveau commit logique au lieu d'un fixup"
   option_commit_message: "Contourner le prompteur interactif et utiliser le message fourni pour le commit"
   option_submit_draft: "Créer une Pull Request en brouillon (marquée comme \"Draft\" sur GitHub)"

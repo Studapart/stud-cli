@@ -78,12 +78,26 @@ item:
     label_description: "Mô tả"
     label_link: "Liên kết"
     label_none: "Không có"
+# Item Transition Handler
+  transition:
+    section: "Chuyển đổi issue Jira"
+    detected_key: "Phát hiện khóa Jira '%key%' từ nhánh hiện tại. Sử dụng khóa này?"
+    prompt_key: "Nhập khóa issue Jira"
+    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
+    error_invalid_key: "Định dạng khóa Jira không hợp lệ. Định dạng mong đợi: PROJ-123"
+    fetching: "Đang lấy các chuyển đổi có sẵn cho issue: %key%"
+    no_transitions: "Không có chuyển đổi nào có sẵn cho issue %key%."
+    select_transition: "Chọn chuyển đổi để áp dụng:"
+    error_fetch: "Lỗi khi lấy chuyển đổi: %error%"
+    error_execute: "Lỗi khi thực thi chuyển đổi: %error%"
+    success: "✅ Issue %key% đã được chuyển đổi thành công"
 
 # Item List Handler
   list:
     section: "Đang lấy các mục Jira"
     error_fetch: "Không thể lấy các mục: %error%"
     no_items: "Không tìm thấy mục nào phù hợp với tiêu chí của bạn."
+    error_invalid_sort: "Giá trị sắp xếp không hợp lệ '%value%'. Giá trị được chấp nhận: Key, Status"
 
 # Project List Handler
 project:
@@ -98,6 +112,18 @@ search:
   jql_query: "Truy vấn JQL: %jql%"
   error_search: "Không thể tìm kiếm các issue: %error%"
   no_results: "Không tìm thấy issue nào phù hợp với truy vấn JQL của bạn."
+
+# Filter Show Handler
+filter:
+  show:
+    section: "Lấy các issue từ bộ lọc '%filterName%'"
+    jql_query: "Truy vấn JQL: %jql%"
+    error_fetch: "Không thể lấy các issue từ bộ lọc: %error%"
+    no_results: "Không tìm thấy issue nào trong bộ lọc '%filterName%'."
+  list:
+    section: "Lấy các bộ lọc Jira"
+    error_fetch: "Không thể lấy các bộ lọc: %error%"
+    no_filters: "Không tìm thấy bộ lọc nào."
 
 # Status Handler
 status:
@@ -270,6 +296,8 @@ table:
   command: "Lệnh"
   alias: "Bí danh"
   description: "Mô tả"
+  priority: "Ưu tiên"
+  jira_url: "URL Jira"
 
 # Help Command
 help:
@@ -293,6 +321,9 @@ help:
   command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
   command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
   command_items_search: "Tìm kiếm các issue bằng JQL."
+  command_items_transition: "Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại."
+  command_filters_list: "Liệt kê tất cả các bộ lọc Jira có sẵn."
+  command_filters_show: "Lấy các issue từ bộ lọc Jira đã lưu."
   command_items_start: "Tạo một nhánh git mới từ một mục Jira."
   command_commit: "Hướng dẫn bạn tạo một commit thông thường."
   command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
@@ -311,6 +342,7 @@ help:
   command_not_found: "Văn bản trợ giúp không có sẵn cho lệnh: %command%"
   option_all: "Liệt kê các mục cho tất cả người dùng (ghi đè bộ lọc người được gán mặc định)"
   option_project: "Lọc các mục theo khóa dự án cụ thể (ví dụ: PROJ)"
+  option_items_list_sort: "Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)"
   option_commit_new: "Tạo một commit logic mới thay vì fixup"
   option_commit_message: "Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit"
   option_submit_draft: "Tạo Pull Request ở chế độ nháp (được đánh dấu là \"Draft\" trên GitHub)"
