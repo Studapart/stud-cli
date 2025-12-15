@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\Handler\PrCommentHandler;
 use App\Service\GithubProvider;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -22,10 +23,12 @@ class PrCommentHandlerTest extends CommandTestCase
         $this->githubProvider = $this->createMock(GithubProvider::class);
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
+        $logger = $this->createMock(Logger::class);
         $this->handler = new PrCommentHandler(
             $this->gitRepository,
             $this->githubProvider,
-            $this->translationService
+            $this->translationService,
+            $logger
         );
     }
 
@@ -68,10 +71,12 @@ class PrCommentHandlerTest extends CommandTestCase
 
     public function testHandleWithNoProvider(): void
     {
+        $logger = $this->createMock(Logger::class);
         $handler = new PrCommentHandler(
             $this->gitRepository,
             null,
-            $this->translationService
+            $this->translationService,
+            $logger
         );
 
         $output = new BufferedOutput();
@@ -456,7 +461,8 @@ class PrCommentHandlerTest extends CommandTestCase
     {
         // Test that STDIN content takes precedence over argument
         // We create a test handler that overrides readStdin to simulate STDIN input
-        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+        $logger = $this->createMock(Logger::class);
+        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService, $logger) extends PrCommentHandler {
             protected function readStdin(): string
             {
                 return 'STDIN content';
@@ -475,20 +481,25 @@ class PrCommentHandlerTest extends CommandTestCase
     public function testGetCommentBodyWithStdinContentAndVerbose(): void
     {
         // Test verbose output path when STDIN has content
-        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService) extends PrCommentHandler {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isVerbose')->willReturn(true);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_VERBOSE, $this->callback(function ($message) {
+                return is_string($message) && (str_contains($message, 'STDIN') || str_contains($message, 'stdin'));
+            }));
+
+        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService, $logger) extends PrCommentHandler {
             protected function readStdin(): string
             {
                 return 'STDIN content';
             }
         };
-
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->method('isVerbose')->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->callback(function ($message) {
-                return is_string($message) && (str_contains($message, 'STDIN') || str_contains($message, 'stdin'));
-            }));
 
         $result = $this->callPrivateMethod($testHandler, 'getCommentBody', [$io, 'Argument message']);
 

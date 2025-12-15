@@ -4,9 +4,8 @@ namespace App\Tests\Handler;
 
 use App\DTO\Project;
 use App\Handler\ProjectListHandler;
+use App\Response\ProjectListResponse;
 use App\Tests\CommandTestCase;
-use App\Tests\TestKernel;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectListHandlerTest extends CommandTestCase
 {
@@ -16,63 +15,49 @@ class ProjectListHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        // ProjectListHandlerTest checks output text, so use real TranslationService
-        // This is acceptable since ProjectListHandler is the class under test
-        $translationsPath = __DIR__ . '/../../src/resources/translations';
-        $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
-
-        TestKernel::$jiraService = $this->jiraService;
-        TestKernel::$translationService = $this->translationService;
-        $this->handler = new ProjectListHandler($this->jiraService, $this->translationService);
+        $this->handler = new ProjectListHandler($this->jiraService);
     }
 
-    public function testHandle(): void
+    public function testHandleReturnsSuccessResponseWithProjects(): void
     {
-        $project = new Project(
-            'PROJ',
-            'My Project'
-        );
+        $project = new Project('PROJ', 'My Project');
 
         $this->jiraService->expects($this->once())
             ->method('getProjects')
             ->willReturn([$project]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('table')
-            ->with(
-                ['Key', 'Name'],
-                [['PROJ', 'My Project']]
-            );
+        $response = $this->handler->handle();
 
-        $this->handler->handle($io);
+        $this->assertInstanceOf(ProjectListResponse::class, $response);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->projects);
+        $this->assertSame($project, $response->projects[0]);
     }
 
-    public function testHandleWithNoProjectsFound(): void
+    public function testHandleReturnsSuccessResponseWithEmptyProjects(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getProjects')
             ->willReturn([]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('note')
-            ->with('No projects found.');
+        $response = $this->handler->handle();
 
-        $this->handler->handle($io);
+        $this->assertInstanceOf(ProjectListResponse::class, $response);
+        $this->assertTrue($response->isSuccess());
+        $this->assertEmpty($response->projects);
     }
 
-    public function testHandleWithJiraServiceException(): void
+    public function testHandleReturnsErrorResponseOnException(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getProjects')
             ->willThrowException(new \Exception('Jira API error'));
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('error')
-            ->with('Failed to fetch projects: Jira API error');
+        $response = $this->handler->handle();
 
-        $this->handler->handle($io);
+        $this->assertInstanceOf(ProjectListResponse::class, $response);
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('Jira API error', $response->getError());
+        $this->assertEmpty($response->projects);
     }
 }

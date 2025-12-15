@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\StatusHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -21,7 +22,8 @@ class StatusHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService, $logger);
     }
 
     public function testHandle(): void

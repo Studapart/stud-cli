@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\ChangelogParser;
 use App\Service\GithubProvider;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -22,6 +23,7 @@ class UpdateHandler
         protected readonly TranslationService $translator,
         protected readonly ChangelogParser $changelogParser,
         protected readonly UpdateFileService $updateFileService,
+        protected readonly Logger $logger,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null
     ) {
@@ -32,9 +34,9 @@ class UpdateHandler
         $io->section($this->translator->trans('update.section'));
 
         $binaryPath = $this->updateFileService->getBinaryPath($this->binaryPath);
-        $this->logVerbose($io, $this->translator->trans('update.binary_path'), $binaryPath);
-        $this->logVerbose($io, $this->translator->trans('update.repository'), "{$this->repoOwner}/{$this->repoName}");
-        $this->logVerbose($io, $this->translator->trans('update.current_version'), $this->currentVersion);
+        $this->logVerbose($this->translator->trans('update.binary_path'), $binaryPath);
+        $this->logVerbose($this->translator->trans('update.repository'), "{$this->repoOwner}/{$this->repoName}");
+        $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
         $releaseResult = $this->fetchLatestRelease($io, $githubProvider);
@@ -130,7 +132,7 @@ class UpdateHandler
         $latestVersion = ltrim($release['tag_name'] ?? '', 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
 
-        $this->logVerbose($io, $this->translator->trans('update.latest_version'), $latestVersion);
+        $this->logVerbose($this->translator->trans('update.latest_version'), $latestVersion);
 
         if (version_compare($latestVersion, $currentVersion, '<=')) {
             $io->success($this->translator->trans('update.success_latest', ['version' => $this->currentVersion]));
@@ -182,7 +184,7 @@ class UpdateHandler
 
         // Construct the GitHub API asset endpoint URL
         $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
-        $this->logVerbose($io, $this->translator->trans('update.downloading_from'), $apiUrl);
+        $this->logVerbose($this->translator->trans('update.downloading_from'), $apiUrl);
 
         try {
             $headers = [
@@ -212,11 +214,9 @@ class UpdateHandler
         }
     }
 
-    protected function logVerbose(SymfonyStyle $io, string $label, string $value): void
+    protected function logVerbose(string $label, string $value): void
     {
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$label}: {$value}</>");
-        }
+        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
     }
 
     /**
@@ -268,7 +268,7 @@ class UpdateHandler
             }
         } catch (\Exception $e) {
             // Silently fail - don't block update if changelog can't be fetched
-            $this->logVerbose($io, $this->translator->trans('update.changelog_error'), $e->getMessage());
+            $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
         }
     }
 }

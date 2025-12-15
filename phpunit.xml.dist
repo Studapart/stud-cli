@@ -15,6 +15,7 @@
         <exclude>
             <file>./src/config/app.php</file>
             <file>./src/config/constants.php</file>
+            <file>./src/config/colours.php</file>
             <file>./src/repack/logo.php</file>
         </exclude>
     </source>    

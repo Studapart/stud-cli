@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2025-12-15
+
+### Added
+- Create Response classes and ViewConfig infrastructure for Responder pattern [SCI-30]
+  - Created Response base classes: `ResponseInterface` and `AbstractResponse`
+  - Created specific Response classes: `FilterShowResponse`, `ItemListResponse`, `ItemShowResponse`, `ProjectListResponse`, `SearchResponse`
+  - All Response classes use static factory methods (`success()` and `error()`) and are final (DTOs)
+  - Created ViewConfig infrastructure: `ViewConfigInterface`, `TableViewConfig`, `PageViewConfig`
+  - Created supporting value objects: `Column`, `DefinitionItem`, `Section`, `Content`
+  - `TableViewConfig` supports conditional column visibility (e.g., Priority column) and column formatters
+  - `PageViewConfig` supports sections with definition lists and content blocks
+  - All classes include `declare(strict_types=1);` and explicit type hints
+  - Comprehensive unit tests with 100% coverage
+  - Updated README.md with Responder pattern architecture documentation
+
+### Changed
+- Refactor simple table-based handlers to use Responder pattern [SCI-31]
+  - Refactored `FilterShowHandler`, `SearchHandler`, `ItemListHandler`, and `ProjectListHandler` to return Response objects instead of handling IO directly
+  - Created corresponding Responder classes: `FilterShowResponder`, `SearchResponder`, `ItemListResponder`, `ProjectListResponder`
+  - All Responders use `TableViewConfig` for consistent table rendering with conditional column visibility
+  - Updated `castor.php` task functions to orchestrate Handler → Responder flow
+  - Handlers now contain pure domain logic (no IO dependencies)
+  - Responders handle all presentation logic (sections, error messages, table rendering)
+  - All handler tests refactored to test pure domain logic (no IO mocking)
+  - Comprehensive responder tests with 100% coverage
+  - Maintains existing behavior: error handling, empty state handling, verbose output, priority column conditional display
+- Refactor complex handlers (ItemShowHandler, StatusHandler) to use Responder pattern [SCI-32]
+  - Refactored `ItemShowHandler` to return `ItemShowResponse` instead of handling IO directly
+  - Created `ItemShowResponder` with definition list display and description section parsing
+  - Extracted description parsing logic to `DescriptionFormatter` service for reusability
+  - `DescriptionFormatter` handles section parsing, content sanitization, and checkbox list formatting
+  - `ItemShowResponder` displays issue details using definition lists and formatted description sections
+  - All description parsing behavior preserved (section dividers, checkbox lists, content formatting)
+  - Updated `castor.php` `items_show()` function to use Handler → Responder pattern
+  - All handler tests refactored to test pure domain logic (no IO mocking)
+  - Comprehensive responder and service tests with 100% coverage
+  - `StatusHandler` evaluated and kept as-is: it's a simple dashboard view (~60 lines) that combines Jira, Git, and local status in a unique format that doesn't fit the standard table/page pattern. Refactoring would add complexity without architectural benefit.
+
 ## [2.8.0] - 2025-12-12
 
 ### Added

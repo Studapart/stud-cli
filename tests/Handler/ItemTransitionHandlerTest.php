@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\ItemTransitionHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -17,10 +18,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        $logger = $this->createMock(Logger::class);
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
             $this->jiraService,
-            $this->translationService
+            $this->translationService,
+            $logger
         );
     }
 

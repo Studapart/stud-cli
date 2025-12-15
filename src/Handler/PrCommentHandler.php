@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -14,7 +15,8 @@ class PrCommentHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GithubProvider $githubProvider,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -48,9 +50,7 @@ class PrCommentHandler
 
         // Post the comment
         try {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.posting', ['number' => $prNumber])}</>");
-            }
+            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.posting', ['number' => $prNumber])}</>");
             $this->githubProvider->createComment($prNumber, $commentBody);
             $io->success($this->translator->trans('pr.comment.success', ['number' => $prNumber]));
         } catch (\Exception $e) {
@@ -71,18 +71,14 @@ class PrCommentHandler
         // 1st priority: Check for STDIN input (piped content)
         $stdinContent = $this->readStdin();
         if (! empty($stdinContent)) {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.using_stdin')}</>");
-            }
+            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.using_stdin')}</>");
 
             return $stdinContent;
         }
 
         // 2nd priority: Use direct argument if provided
         if ($message !== null && ! empty(trim($message))) {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.using_argument')}</>");
-            }
+            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.using_argument')}</>");
 
             return trim($message);
         }
@@ -155,9 +151,7 @@ class PrCommentHandler
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('pr.comment.finding_pr', ['branch' => $branch])}</>");
-        }
+        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('pr.comment.finding_pr', ['branch' => $branch])}");
 
         try {
             $pr = $this->githubProvider->findPullRequestByBranch($headBranch);
@@ -166,9 +160,7 @@ class PrCommentHandler
             }
         } catch (\Exception $e) {
             // @codeCoverageIgnoreStart
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>Error finding PR: {$e->getMessage()}</>");
-            }
+            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Error finding PR: {$e->getMessage()}</>");
             // @codeCoverageIgnoreEnd
         }
 

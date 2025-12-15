@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -15,7 +16,8 @@ class CommitHandler
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -47,12 +49,10 @@ class CommitHandler
         // 1. Auto-Fixup Strategy: Find the latest logical commit
         $latestLogicalSha = null;
         if (! $isNew) {
-            if ($io->isVerbose()) {
-                $io->writeln('  <fg=gray>' . $this->translator->trans('commit.checking_logical') . '</>');
-            }
+            $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, '  ' . $this->translator->trans('commit.checking_logical'));
             $latestLogicalSha = $this->gitRepository->findLatestLogicalSha($this->baseBranch);
-            if ($latestLogicalSha && $io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('commit.found_logical', ['sha' => $latestLogicalSha])}</>");
+            if ($latestLogicalSha) {
+                $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.found_logical', ['sha' => $latestLogicalSha])}");
             }
         }
 
@@ -80,9 +80,7 @@ class CommitHandler
         }
 
         try {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('commit.fetching_jira', ['key' => $key])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.fetching_jira', ['key' => $key])}");
             // The getIssue method now fetches components as well
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
@@ -94,11 +92,11 @@ class CommitHandler
         $detectedType = $this->getCommitTypeFromIssueType($issue->issueType);
         $detectedSummary = $issue->title;
 
-        if ($io->isVeryVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('commit.jira_details')}</>");
-            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_title', ['title' => $issue->title])}</>");
-            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_type', ['type' => $issue->issueType, 'commit_type' => $detectedType])}</>");
-            $io->writeln("    <fg=gray>{$this->translator->trans('commit.jira_components', ['components' => implode(', ', $issue->components)])}</>");
+        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "  {$this->translator->trans('commit.jira_details')}");
+        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_title', ['title' => $issue->title])}");
+        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_type', ['type' => $issue->issueType, 'commit_type' => $detectedType])}");
+        if (! empty($issue->components)) {
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_components', ['components' => implode(', ', $issue->components)])}");
         }
 
         // 4. Upgraded Interactive Prompter with Scope Inference
@@ -118,9 +116,7 @@ class CommitHandler
         // CRITICAL: Commit message MUST remain in English regardless of user's language
         $commitMessage = "{$type}" . ($scope ? "({$scope})" : "") . ": {$summary} [{$key}]";
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('commit.generated_message', ['message' => $commitMessage])}</>");
-        }
+        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.generated_message', ['message' => $commitMessage])}");
 
         $io->text($this->translator->trans('commit.staging'));
         $this->gitRepository->stageAllChanges();

@@ -29,13 +29,15 @@ class SubmitHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
+        $logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
             $this->githubProvider,
             $this->jiraConfig,
             'origin/develop',
-            $this->translationService
+            $this->translationService,
+            $logger
         );
     }
 
@@ -293,13 +295,15 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNoGitProviderConfigured(): void
     {
+        $logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
-            $this->translationService
+            $this->translationService,
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -869,13 +873,21 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('choice')
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
 
-        $io->method('isVerbose')->willReturn(true);
-
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('ignored'));
-
+        // Get the Logger mock from the handler and set expectations
         $reflection = new \ReflectionClass($this->handler);
+        $loggerProperty = $reflection->getProperty('logger');
+        $loggerProperty->setAccessible(true);
+        $logger = $loggerProperty->getValue($this->handler);
+
+        $io->method('isVerbose')->willReturn(true);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+
+        $logger->expects($this->once())
+            ->method('writeln')
+            ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->stringContains('ignored'));
+
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
@@ -946,13 +958,15 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithLabelsNoProvider(): void
     {
+        $logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
-            $this->translationService
+            $this->translationService,
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1473,13 +1487,15 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithExistingPRNoProvider(): void
     {
+        $logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
-            $this->translationService
+            $this->translationService,
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');

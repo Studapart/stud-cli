@@ -36,12 +36,20 @@ use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\ErrorResponder;
+use App\Responder\FilterShowResponder;
+use App\Responder\ItemListResponder;
+use App\Responder\ItemShowResponder;
+use App\Responder\ProjectListResponder;
+use App\Responder\SearchResponder;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\ProcessFactory;
+use App\Service\ThemeDetector;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
 use App\Service\VersionCheckService;
@@ -259,6 +267,51 @@ function _get_translation_service(): TranslationService
 }
 
 /**
+ * Gets the color configuration with theme detection.
+ *
+ * @return array<string, string>
+ */
+function _get_colour_config(): array
+{
+    $colours = require __DIR__ . '/src/config/colours.php';
+    $themeDetector = new ThemeDetector();
+    $theme = $themeDetector->detect();
+
+    return $colours[$theme] ?? $colours['light'];
+}
+
+/**
+ * Gets the Logger service instance.
+ */
+function _get_logger(): Logger
+{
+    $colors = _get_colour_config();
+
+    return new Logger(io(), $colors);
+}
+
+/**
+ * Gets the ErrorResponder instance.
+ */
+function _get_error_responder(): ErrorResponder
+{
+    return new ErrorResponder(_get_translation_service(), _get_colour_config());
+}
+
+/**
+ * Gets the ColorHelper service instance.
+ */
+function _get_color_helper(): \App\Service\ColorHelper
+{
+    static $colorHelper = null;
+    if ($colorHelper === null) {
+        $colorHelper = new \App\Service\ColorHelper(_get_colour_config());
+    }
+
+    return $colorHelper;
+}
+
+/**
  * Global variable to store the update message for display at command termination.
  */
 $GLOBALS['_version_check_message'] = null;
@@ -463,7 +516,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 function config_init(): void
 {
     _load_constants();
-    $handler = new InitHandler(new FileSystem(), _get_config_path(), _get_translation_service());
+    $handler = new InitHandler(new FileSystem(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -476,8 +529,15 @@ function projects_list(
 
 ): void {
     _load_constants();
-    $handler = new ProjectListHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io());
+    $handler = new ProjectListHandler(_get_jira_service());
+    $response = $handler->handle();
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ProjectListResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
@@ -509,8 +569,15 @@ function items_list(
         $sort = ucfirst($normalizedSort);
     }
 
-    $handler = new ItemListHandler(_get_jira_service(), $translator);
-    $handler->handle(io(), $all, $project, $sort);
+    $handler = new ItemListHandler(_get_jira_service());
+    $response = $handler->handle($all, $project, $sort);
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ItemListResponder($translator, _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
@@ -519,8 +586,15 @@ function items_search(
     string $jql,
 ): void {
     _load_constants();
-    $handler = new SearchHandler(_get_jira_service(), _get_translation_service());
-    $handler->handle(io(), $jql);
+    $handler = new SearchHandler(_get_jira_service());
+    $response = $handler->handle($jql);
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new SearchResponder(_get_translation_service(), _get_jira_config(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
@@ -529,8 +603,15 @@ function filters_show(
     string $filterName,
 ): void {
     _load_constants();
-    $handler = new FilterShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
-    $handler->handle(io(), $filterName);
+    $handler = new FilterShowHandler(_get_jira_service());
+    $response = $handler->handle($filterName);
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new FilterShowResponder(_get_translation_service(), _get_jira_config(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
@@ -539,8 +620,16 @@ function items_show(
     string $key,
 ): void {
     _load_constants();
-    $handler = new ItemShowHandler(_get_jira_service(), _get_jira_config(), _get_translation_service());
-    $handler->handle(io(), $key);
+    $handler = new ItemShowHandler(_get_jira_service());
+    $response = $handler->handle($key);
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+
+        return;
+    }
+    $responder = new ItemShowResponder(_get_translation_service(), _get_jira_config(), null, _get_color_helper());
+    $responder->respond(io(), $response, $key);
 }
 
 #[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
@@ -549,7 +638,7 @@ function items_transition(
     ?string $key = null,
 ): void {
     _load_constants();
-    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
     exit($handler->handle(io(), $key));
 }
 
@@ -563,7 +652,7 @@ function items_start(
     string $key,
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
     $handler->handle(io(), $key);
 }
 
@@ -583,7 +672,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
     $handler->handle(io(), $isNew, $message);
 }
 
@@ -663,7 +752,8 @@ function submit(
         $githubProvider,
         _get_jira_config(),
         DEFAULT_BASE_BRANCH,
-        _get_translation_service()
+        _get_translation_service(),
+        _get_logger()
     );
     $handler->handle(io(), $draft, $labels);
 }
@@ -711,7 +801,8 @@ function pr_comment(
     $handler = new PrCommentHandler(
         $gitRepository,
         $githubProvider,
-        _get_translation_service()
+        _get_translation_service(),
+        _get_logger()
     );
     $exitCode = $handler->handle(io(), $message);
     exit($exitCode);
@@ -724,6 +815,10 @@ function help(
 ): void {
     _load_constants();
     $translator = _get_translation_service();
+    $colorHelper = _get_color_helper();
+
+    // Register color styles for help output
+    $colorHelper->registerStyles(io());
 
     // If a command is provided, show help for that specific command
     if ($commandName !== null) {
@@ -760,22 +855,40 @@ function help(
     io()->writeln($logo(APP_NAME, APP_VERSION));
     io()->title($translator->trans('help.title'));
 
-    io()->section($translator->trans('help.description_section'));
+    $sectionTitle = $translator->trans('help.description_section');
+    if ($colorHelper !== null) {
+        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
+    }
+    io()->section($sectionTitle);
     io()->writeln('    ' . $translator->trans('help.description_text'));
     // io()->newLine();
     // io()->note($translator->trans('help.universal_help_note'));
     io()->newLine();
     io()->note($translator->trans('help.command_specific_help_note'));
 
-    io()->section($translator->trans('help.global_options_section'));
+    $sectionTitle = $translator->trans('help.global_options_section');
+    if ($colorHelper !== null) {
+        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
+    }
+    io()->section($sectionTitle);
+    $verboseOption = '-v|vv|vvv, --verbose';
+    $verboseDesc = $translator->trans('help.global_option_verbose');
+    if ($colorHelper !== null) {
+        $verboseOption = $colorHelper->format('definition_key', $verboseOption);
+        $verboseDesc = $colorHelper->format('definition_value', $verboseDesc);
+    }
     io()->definitionList(
         // ['-h, --help' => $translator->trans('help.global_option_help')],
         // ['-s, --silent' => $translator->trans('help.global_option_silent')],
         // ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
-        ['-v|vv|vvv, --verbose' => $translator->trans('help.global_option_verbose')],
+        [$verboseOption => $verboseDesc],
     );
 
-    io()->section($translator->trans('help.commands_section'));
+    $sectionTitle = $translator->trans('help.commands_section');
+    if ($colorHelper !== null) {
+        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
+    }
+    io()->section($sectionTitle);
     io()->writeln('  <info>stud</info> [command|alias] [-options] [arguments]');
     $commands = [
         $translator->trans('help.category_configuration') => [
@@ -917,7 +1030,7 @@ function status(
 
 ): void {
     _load_constants();
-    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -1035,6 +1148,7 @@ function update(
         _get_translation_service(),
         new ChangelogParser(),
         new UpdateFileService(_get_translation_service()),
+        _get_logger(),
         $gitToken
     );
     $result = $handler->handle(io(), $info);

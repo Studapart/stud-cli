@@ -8,6 +8,7 @@ use App\DTO\PullRequestData;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -22,7 +23,8 @@ class SubmitHandler
         private readonly ?GithubProvider $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -82,9 +84,7 @@ class SubmitHandler
         $prBody = null;
 
         try {
-            if ($io->isVerbose()) {
-                $io->writeln("  <fg=gray>{$this->translator->trans('submit.fetching_jira', ['key' => $jiraKey])}</>");
-            }
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('submit.fetching_jira', ['key' => $jiraKey])}");
             $issue = $this->jiraService->getIssue($jiraKey, true); // Request rendered fields
             $prBody = $issue->renderedDescription;
         } catch (\Exception $e) {
@@ -103,9 +103,7 @@ class SubmitHandler
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
-        if ($io->isVerbose()) {
-            $io->writeln("  <fg=gray>{$this->translator->trans('submit.using_head', ['head' => $headBranch])}</>");
-        }
+        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('submit.using_head', ['head' => $headBranch])}");
 
         // 8. Validate and process labels if provided
         $finalLabels = [];
@@ -177,9 +175,7 @@ class SubmitHandler
                         }
                     } catch (\Exception $findError) {
                         // If we can't find the PR, just continue with success message
-                        if ($io->isVerbose()) {
-                            $io->writeln("  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
-                        }
+                        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
                     }
                 }
 
@@ -290,9 +286,7 @@ class SubmitHandler
                 }
             } else {
                 // Ignore the label
-                if ($io->isVerbose()) {
-                    $io->writeln("  <fg=gray>{$this->translator->trans('submit.label_ignored', ['label' => $unknownLabel])}</>");
-                }
+                $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('submit.label_ignored', ['label' => $unknownLabel])}</>");
             }
         }
 

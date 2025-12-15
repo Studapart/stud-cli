@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -24,8 +25,9 @@ class ItemStartHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
+        $logger = $this->createMock(Logger::class);
         // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, []);
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
     }
 
     public function testHandle(): void
@@ -143,7 +145,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -200,7 +203,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -256,7 +260,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -350,7 +355,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -434,7 +440,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -490,7 +497,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -546,7 +554,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -603,7 +612,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -659,7 +669,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -715,7 +726,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -798,7 +810,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -882,7 +895,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -968,7 +982,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1052,7 +1067,8 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig);
+        $logger = $this->createMock(Logger::class);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('assignIssue')
