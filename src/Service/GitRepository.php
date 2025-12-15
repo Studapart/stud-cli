@@ -398,4 +398,103 @@ SCRIPT;
 
         throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
     }
+
+    /**
+     * Renames a local branch.
+     *
+     * @param string $oldName The current branch name
+     * @param string $newName The new branch name
+     */
+    public function renameLocalBranch(string $oldName, string $newName): void
+    {
+        $currentBranch = $this->getCurrentBranchName();
+        if ($oldName === $currentBranch) {
+            // Renaming current branch
+            $this->run("git branch -m {$newName}");
+        } else {
+            // Renaming a different branch
+            $this->run("git branch -m {$oldName} {$newName}");
+        }
+    }
+
+    /**
+     * Renames a remote branch by pushing the new branch, setting upstream, and deleting the old branch.
+     *
+     * @param string $oldName The current remote branch name
+     * @param string $newName The new remote branch name
+     * @param string $remote The remote name (default: 'origin')
+     */
+    public function renameRemoteBranch(string $oldName, string $newName, string $remote = 'origin'): void
+    {
+        // Push new branch and set upstream
+        $this->run("git push {$remote} {$newName}");
+        $this->run("git push {$remote} -u {$newName}");
+        // Delete old remote branch
+        $this->run("git push {$remote} --delete {$oldName}");
+        // Update local tracking branch
+        $this->run("git branch --set-upstream-to={$remote}/{$newName} {$newName}");
+    }
+
+    /**
+     * Returns the count of commits in $branch that are not in $compareBranch.
+     *
+     * @param string $branch The branch to check
+     * @param string $compareBranch The branch to compare against
+     * @return int Number of commits ahead, or 0 if branch is not ahead
+     */
+    public function getBranchCommitsAhead(string $branch, string $compareBranch): int
+    {
+        $process = $this->runQuietly("git rev-list --count {$compareBranch}..{$branch}");
+
+        if (! $process->isSuccessful()) {
+            return 0;
+        }
+
+        $output = trim($process->getOutput());
+
+        return empty($output) ? 0 : (int) $output;
+    }
+
+    /**
+     * Returns the count of commits in $compareBranch that are not in $branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $compareBranch The branch to compare against
+     * @return int Number of commits behind, or 0 if branch is not behind
+     */
+    public function getBranchCommitsBehind(string $branch, string $compareBranch): int
+    {
+        $process = $this->runQuietly("git rev-list --count {$branch}..{$compareBranch}");
+
+        if (! $process->isSuccessful()) {
+            return 0;
+        }
+
+        $output = trim($process->getOutput());
+
+        return empty($output) ? 0 : (int) $output;
+    }
+
+    /**
+     * Checks if a branch can be rebased onto another branch without conflicts.
+     *
+     * @param string $branch The branch to rebase
+     * @param string $ontoBranch The branch to rebase onto
+     * @return bool True if rebase would succeed, false otherwise
+     */
+    public function canRebaseBranch(string $branch, string $ontoBranch): bool
+    {
+        // Use merge-base to check if ontoBranch is an ancestor of branch
+        // If it is, rebase should be safe
+        $process = $this->runQuietly("git merge-base --is-ancestor {$ontoBranch} {$branch}");
+
+        if ($process->isSuccessful()) {
+            return true;
+        }
+
+        // If merge-base check fails, try a dry-run rebase
+        $dryRunProcess = $this->runQuietly("git rebase --dry-run {$ontoBranch} {$branch}");
+
+        return $dryRunProcess->isSuccessful();
+    }
 }
