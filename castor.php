@@ -17,6 +17,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\DeployHandler;
@@ -656,6 +657,61 @@ function items_start(
     $handler->handle(io(), $key);
 }
 
+#[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
+function branch_rename(
+    #[AsArgument(name: 'branch', description: 'The branch to rename (defaults to current branch)')]
+    ?string $branch = null,
+    #[AsArgument(name: 'key', description: 'The Jira issue key to regenerate branch name from (e.g., PROJ-123)')]
+    ?string $key = null,
+    #[AsOption(name: 'name', description: 'Explicit new branch name (no prefix will be added)')]
+    ?string $explicitName = null,
+): void {
+    _load_constants();
+    $gitConfig = _get_git_config();
+    $gitRepository = _get_git_repository();
+
+    $githubProvider = null;
+    if ($gitConfig['GIT_PROVIDER'] === 'github') {
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
+            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
+        }
+
+        if (! $repoOwner || ! $repoName) {
+            io()->error([
+                'Could not determine repository owner or name from git remote.',
+                'Please ensure your repository has a remote named "origin" configured.',
+                'You can check with: git remote -v',
+            ]);
+            exit(1);
+        }
+
+        if (io()->isVerbose()) {
+            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
+        }
+
+        $githubProvider = new GithubProvider(
+            $gitConfig['GIT_TOKEN'],
+            $repoOwner,
+            $repoName
+        );
+    }
+
+    $handler = new BranchRenameHandler(
+        $gitRepository,
+        _get_jira_service(),
+        $githubProvider,
+        _get_translation_service(),
+        _get_jira_config(),
+        DEFAULT_BASE_BRANCH,
+        _get_logger()
+    );
+    exit($handler->handle(io(), $branch, $key, $explicitName));
+}
+
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
@@ -835,6 +891,7 @@ function help(
             'sh' => 'items:show',
             'tx' => 'items:transition',
             'start' => 'items:start',
+            'rn' => 'branch:rename',
             'co' => 'commit',
             'pl' => 'please',
             'su' => 'submit',
@@ -957,6 +1014,13 @@ function help(
                 'args' => '<key>',
                 'description' => $translator->trans('help.command_items_start'),
                 'example' => 'stud start PROJ-123',
+            ],
+            [
+                'name' => 'branch:rename',
+                'alias' => 'rn',
+                'args' => '[<branch>] [<key>]',
+                'description' => $translator->trans('help.command_branch_rename'),
+                'example' => 'stud rn feat/OLD-123-old ACME-4067',
             ],
             [
                 'name' => 'commit',

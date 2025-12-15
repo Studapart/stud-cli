@@ -1290,4 +1290,205 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->gitRepository->getProjectKeyFromIssueKey('INVALID');
     }
+
+    public function testRenameLocalBranchRenamesCurrentBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process) {
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn('old-branch');
+                    $process->method('isSuccessful')->willReturn(true);
+                } else {
+                    $process->method('mustRun');
+                }
+
+                return $process;
+            });
+
+        $this->gitRepository->renameLocalBranch('old-branch', 'new-branch');
+    }
+
+    public function testRenameLocalBranchRenamesDifferentBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process) {
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn('current-branch');
+                    $process->method('isSuccessful')->willReturn(true);
+                } else {
+                    $process->method('mustRun');
+                }
+
+                return $process;
+            });
+
+        $this->gitRepository->renameLocalBranch('old-branch', 'new-branch');
+    }
+
+    public function testRenameRemoteBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process) {
+                $process->method('mustRun');
+
+                return $process;
+            });
+
+        $this->gitRepository->renameRemoteBranch('old-branch', 'new-branch', 'origin');
+    }
+
+    public function testGetBranchCommitsAhead(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-list --count base..branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('5');
+
+        $result = $this->gitRepository->getBranchCommitsAhead('branch', 'base');
+
+        $this->assertSame(5, $result);
+    }
+
+    public function testGetBranchCommitsAheadReturnsZeroOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $result = $this->gitRepository->getBranchCommitsAhead('branch', 'base');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testGetBranchCommitsBehind(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-list --count branch..base')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('3');
+
+        $result = $this->gitRepository->getBranchCommitsBehind('branch', 'base');
+
+        $this->assertSame(3, $result);
+    }
+
+    public function testGetBranchCommitsBehindReturnsZeroOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $result = $this->gitRepository->getBranchCommitsBehind('branch', 'base');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testCanRebaseBranchReturnsTrueWhenAncestor(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git merge-base --is-ancestor onto branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+
+        $result = $this->gitRepository->canRebaseBranch('branch', 'onto');
+
+        $this->assertTrue($result);
+    }
+
+    public function testCanRebaseBranchFallsBackToDryRun(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2) {
+                if (str_contains($command, 'merge-base')) {
+                    $process1->method('run');
+                    $process1->method('isSuccessful')->willReturn(false);
+
+                    return $process1;
+                } else {
+                    $process2->method('run');
+                    $process2->method('isSuccessful')->willReturn(true);
+
+                    return $process2;
+                }
+            });
+
+        $result = $this->gitRepository->canRebaseBranch('branch', 'onto');
+
+        $this->assertTrue($result);
+    }
+
+    public function testCanRebaseBranchReturnsFalseWhenBothFail(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2) {
+                if (str_contains($command, 'merge-base')) {
+                    $process1->method('run');
+                    $process1->method('isSuccessful')->willReturn(false);
+
+                    return $process1;
+                } else {
+                    $process2->method('run');
+                    $process2->method('isSuccessful')->willReturn(false);
+
+                    return $process2;
+                }
+            });
+
+        $result = $this->gitRepository->canRebaseBranch('branch', 'onto');
+
+        $this->assertFalse($result);
+    }
 }

@@ -69,16 +69,25 @@ class SubmitHandler
         }
         $firstLogicalMessage = $this->gitRepository->getCommitMessage($firstCommitSha);
 
-        // 5. Parse PR details from commit message
-        $prTitle = $firstLogicalMessage;
-        preg_match('/(?i)\[([a-z]+-\d+)]/', $prTitle, $matches);
-        $jiraKey = $matches[1] ?? null;
+        // 5. Parse PR details - try branch name first, then commit message
+        // Branch name is more reliable as it's always present and follows a consistent pattern
+        $jiraKey = $this->gitRepository->getJiraKeyFromBranchName();
+
+        // Fallback to commit message if branch name doesn't contain Jira key
+        if (! $jiraKey) {
+            $prTitle = $firstLogicalMessage;
+            preg_match('/(?i)\[([a-z]+-\d+)]/', $prTitle, $matches);
+            $jiraKey = $matches[1] ?? null;
+        }
 
         if (! $jiraKey) {
             $io->error($this->translator->trans('submit.error_no_jira_key'));
 
             return 1;
         }
+
+        // Use commit message for PR title (preserves commit convention)
+        $prTitle = $firstLogicalMessage;
 
         // 6. Fetch Jira issue for PR body
         $prBody = null;

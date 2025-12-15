@@ -276,4 +276,38 @@ class GithubProvider
 
         return $response->toArray();
     }
+
+    /**
+     * Attempts to update the head branch of a pull request.
+     * Note: GitHub API may not support changing PR head branch after creation.
+     * This method will throw an exception if the API doesn't support this operation.
+     *
+     * @param int $pullNumber The pull request number
+     * @param string $newHead The new head branch (format: owner:branch-name or just branch-name)
+     * @return array<string, mixed> Updated PR data
+     * @throws \RuntimeException If the API doesn't support this operation or returns an error
+     */
+    public function updatePullRequestHead(int $pullNumber, string $newHead): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
+        $payload = [
+            'head' => $newHead,
+        ];
+
+        $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
+
+        if ($response->getStatusCode() !== 200) {
+            $fullUrl = "https://api.github.com{$apiUrl}";
+            $errorMessage = sprintf(
+                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
+                $response->getStatusCode(),
+                $fullUrl,
+                $response->getContent(false)
+            );
+
+            throw new \RuntimeException($errorMessage);
+        }
+
+        return $response->toArray();
+    }
 }

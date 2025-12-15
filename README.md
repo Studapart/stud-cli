@@ -392,6 +392,43 @@ These commands integrate directly with your local Git repository to streamline y
         -   Subsequent runs will use the cached transition ID automatically.
         -   If no 'In Progress' transitions are available, a warning is displayed and branch creation continues.
 
+-   **`stud branch:rename`** (Alias: `stud rn`)
+    -   **Description:** Renames a branch, optionally regenerating the name from a Jira issue key or using an explicit name. The command handles both local and remote branches, updates associated Pull Requests, and manages branch synchronization.
+    -   **Arguments:**
+        -   `<branch>` (optional): The branch to rename. Defaults to the current branch if not provided.
+        -   `<key>` (optional): The Jira issue key to regenerate the branch name from (e.g., `PROJ-123`). If not provided, the key will be extracted from the current branch name.
+    -   **Options:**
+        -   `--name <name>` or `-n <name>`: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument.
+    -   **Usage:**
+        ```bash
+        # Rename current branch using its issue key (regenerate from Jira)
+        stud rn
+        
+        # Rename specific branch using a Jira key
+        stud rn feat/OLD-123-old ACME-4067
+        
+        # Rename current branch to exact name
+        stud rn --name custom-branch-name
+        
+        # Rename specific branch to exact name
+        stud rn feat/OLD-123-old --name new-branch-name
+        ```
+    -   **Behavior:**
+        -   The command blocks execution if the working directory has uncommitted changes.
+        -   Validates that the new branch name doesn't already exist (local or remote).
+        -   Validates explicit branch names follow Git naming rules.
+        -   Handles local-only branches (renames local, informs about missing remote).
+        -   Handles remote-only branches (prompts to rename remote only, default yes).
+        -   Checks branch synchronization before renaming remote.
+        -   Prompts to rebase if local is behind remote (default yes, bypass if `--quiet`).
+        -   Detects associated Pull Request (if GithubProvider available).
+        -   Attempts to update PR head branch via GitHub API (may not be supported by GitHub).
+        -   Adds comment to PR explaining the rename.
+        -   Handles PR update failures gracefully (warns but continues).
+        -   Shows confirmation message with current/new names and actions.
+        -   Asks for confirmation (default yes, bypass if `--quiet`).
+        -   Suggests creating PR if none exists after rename.
+
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.
     -   **Options:**
