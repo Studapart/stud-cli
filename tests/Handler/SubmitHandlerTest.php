@@ -196,8 +196,59 @@ class SubmitHandlerTest extends CommandTestCase
 
     public function testHandleWithNoJiraKeyInCommitMessage(): void
     {
+        // Test that branch name is used first when commit message doesn't have Jira key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature'); // No Jira key
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature'
+                    && $prData->head === 'studapart:feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->draft === false;
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithNoJiraKeyInCommitOrBranch(): void
+    {
+        // Test error path when neither branch name nor commit message has Jira key
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -211,6 +262,56 @@ class SubmitHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io);
 
         $this->assertSame(1, $result);
+    }
+
+    public function testHandleWithJiraKeyInBranchNameTakesPriority(): void
+    {
+        // Test that branch name Jira key takes priority even if commit message has different key
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-99]'); // Different key in commit
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                // Should use TPW-35 from branch name, not TPW-99 from commit message
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-99]' // PR title still uses commit message
+                    && $prData->head === 'studapart:feat/TPW-35-my-feature'
+                    && $prData->base === 'develop'
+                    && str_contains($prData->body, 'TPW-35') // But PR body uses branch name key
+                    && $prData->draft === false;
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
     }
 
     public function testHandleWithJiraServiceExceptionForPrBody(): void
