@@ -22,6 +22,7 @@ class SubmitHandlerTest extends CommandTestCase
     ];
     private ?GithubProvider $githubProvider;
     private CanConvertToMarkdownInterface $htmlConverter;
+    private \App\Service\Logger $logger;
 
     protected function setUp(): void
     {
@@ -32,7 +33,7 @@ class SubmitHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $this->logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -40,7 +41,7 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $logger,
+            $this->logger,
             $this->htmlConverter
         );
     }
@@ -656,7 +657,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,enhancement');
+        $result = $method->invoke($this->handler, 'bug,enhancement');
 
         $this->assertSame(['bug', 'enhancement'], $result);
     }
@@ -670,7 +671,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, '');
+        $result = $method->invoke($this->handler, '');
 
         $this->assertSame([], $result);
     }
@@ -685,7 +686,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method->setAccessible(true);
 
         // Test with whitespace-only input
-        $result = $method->invoke($this->handler, $io, '  ,  ,  ');
+        $result = $method->invoke($this->handler, '  ,  ,  ');
 
         $this->assertSame([], $result);
     }
@@ -709,7 +710,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method->setAccessible(true);
 
         // Request lowercase 'bug' but it should match 'Bug' from GitHub
-        $result = $method->invoke($this->handler, $io, 'bug');
+        $result = $method->invoke($this->handler, 'bug');
 
         $this->assertSame(['Bug'], $result); // Should use the exact case from GitHub
     }
@@ -855,25 +856,24 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         // Mock the methods that will be called
-        $io->expects($this->exactly(2))
+        $this->logger->expects($this->exactly(2))
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_create_option'));
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('success')
-            ->with($this->anything());
-
-        $io->method('isVerbose')->willReturn(false);
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+        $result = $method->invoke($this->handler, 'bug,new-label');
 
         $this->assertCount(2, $result);
         $this->assertContains('bug', $result);
@@ -898,21 +898,20 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
-
-        $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertSame(['bug'], $result);
     }
@@ -935,21 +934,20 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_retry_option'));
-
-        $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertNull($result);
     }
@@ -973,25 +971,24 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->exactly(2))
+        $this->logger->expects($this->exactly(2))
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_create_option'));
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->anything());
-
-        $io->method('isVerbose')->willReturn(false);
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+        $result = $method->invoke($this->handler, 'bug,new-label');
 
         $this->assertNull($result);
     }
@@ -1010,33 +1007,24 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
 
-        // Get the Logger mock from the handler and set expectations
-        $reflection = new \ReflectionClass($this->handler);
-        $loggerProperty = $reflection->getProperty('logger');
-        $loggerProperty->setAccessible(true);
-        $logger = $loggerProperty->getValue($this->handler);
-
-        $io->method('isVerbose')->willReturn(true);
-        $io->method('isQuiet')->willReturn(false);
-        $io->method('isDebug')->willReturn(false);
-        $io->method('isVeryVerbose')->willReturn(false);
-
-        $logger->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('writeln')
             ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->stringContains('ignored'));
 
+        $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertSame(['bug'], $result);
     }

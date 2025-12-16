@@ -45,7 +45,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService, $logger);
         $handler->handle($io->reveal());
     }
 
@@ -72,7 +73,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService, $logger);
         $handler->handle($io->reveal());
     }
 
@@ -99,7 +101,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService, $logger);
         $handler->handle($io->reveal());
     }
 
@@ -126,7 +129,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService, $logger);
         $handler->handle($io->reveal());
     }
 
@@ -136,10 +140,16 @@ class DeployHandlerTest extends CommandTestCase
         $io = $this->prophesize(SymfonyStyle::class);
 
         $gitRepository->getCurrentBranchName()->willReturn('feat/some-feature');
-        $io->section('Starting deployment process')->shouldBeCalled();
-        $io->error('You must be on a release branch to deploy.')->shouldBeCalled();
 
-        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting deployment process');
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'You must be on a release branch to deploy.');
+
+        $handler = new DeployHandler($gitRepository->reveal(), $this->translationService, $logger);
         $handler->handle($io->reveal());
     }
 }

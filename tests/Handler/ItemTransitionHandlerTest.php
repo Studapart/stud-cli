@@ -13,17 +13,33 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ItemTransitionHandlerTest extends CommandTestCase
 {
     private ItemTransitionHandler $handler;
+    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $logger = $this->createMock(Logger::class);
+        $this->logger = $this->createMock(Logger::class);
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
             $this->jiraService,
             $this->translationService,
-            $logger
+            $this->logger
+        );
+    }
+
+    /**
+     * Creates a handler with a real Logger instance for interactive tests.
+     */
+    private function createHandlerWithRealLogger(SymfonyStyle $io): ItemTransitionHandler
+    {
+        $realLogger = new Logger($io, []);
+
+        return new ItemTransitionHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            $this->translationService,
+            $realLogger
         );
     }
 
@@ -88,7 +104,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -152,7 +169,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, null);
 
         $this->assertSame(0, $result);
     }
@@ -218,7 +236,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, null);
 
         $this->assertSame(0, $result);
     }
@@ -282,7 +301,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, null);
 
         $this->assertSame(0, $result);
     }
@@ -482,7 +502,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -537,7 +558,8 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -547,7 +569,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [$io, 'tpw-35']);
+        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ 'tpw-35']);
 
         $this->assertSame('TPW-35', $key);
     }
@@ -557,7 +579,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [$io, 'proj-123']);
+        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ 'proj-123']);
 
         $this->assertSame('PROJ-123', $key);
     }
@@ -578,7 +600,29 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [$io, null]);
+        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ null]);
+
+        $this->assertNull($key);
+    }
+
+    public function testResolveKeyWithInvalidFormat(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn(null);
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // ask() for key - provide invalid format (doesn't match /^[A-Z]+-\d+$/)
+        fwrite($inputStream, "invalid-key-format\n");
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $key = $this->callPrivateMethod($handler, 'resolveKey', [ null]);
 
         $this->assertNull($key);
     }

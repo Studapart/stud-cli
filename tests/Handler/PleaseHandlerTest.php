@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\Handler\PleaseHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -19,7 +20,8 @@ class PleaseHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService, $logger);
     }
 
     public function testHandleWithUpstream(): void

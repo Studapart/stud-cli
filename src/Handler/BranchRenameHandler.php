@@ -32,25 +32,25 @@ class BranchRenameHandler
 
     public function handle(SymfonyStyle $io, ?string $branchName, ?string $key, ?string $explicitName): int
     {
-        $io->section($this->translator->trans('branch.rename.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.section'));
 
-        if (! $this->validateWorkingDirectory($io)) {
+        if (! $this->validateWorkingDirectory()) {
             return 1;
         }
 
         [$targetBranch, $key] = $this->normalizeBranchAndKey($branchName, $key);
-        $newBranchName = $this->determineNewBranchName($io, $targetBranch, $key, $explicitName);
-        if ($newBranchName === null || $this->validateNewBranchNameExists($io, $newBranchName)) {
+        $newBranchName = $this->determineNewBranchName($targetBranch, $key, $explicitName);
+        if ($newBranchName === null || $this->validateNewBranchNameExists($newBranchName)) {
             return 1;
         }
 
-        $branchStatus = $this->checkBranchExistence($io, $targetBranch);
+        $branchStatus = $this->checkBranchExistence($targetBranch);
         if ($branchStatus === null || $branchStatus === false) {
             return $branchStatus === false ? 0 : 1;
         }
 
         [$hasLocal, $hasRemote] = $branchStatus;
-        if ($this->handleBranchSynchronization($io, $targetBranch, $hasLocal, $hasRemote) === 1) {
+        if ($this->handleBranchSynchronization($targetBranch, $hasLocal, $hasRemote) === 1) {
             return 1;
         }
 
@@ -77,22 +77,22 @@ class BranchRenameHandler
     protected function performRename(SymfonyStyle $io, string $targetBranch, string $newBranchName, array $branchStatus): int
     {
         [$hasLocal, $hasRemote] = $branchStatus;
-        $pr = $this->findAssociatedPullRequest($io);
-        $this->showConfirmationMessage($io, [$targetBranch, $newBranchName], $branchStatus, $pr);
-        if (! $io->confirm($this->translator->trans('branch.rename.confirm_prompt'), true)) {
+        $pr = $this->findAssociatedPullRequest();
+        $this->showConfirmationMessage([$targetBranch, $newBranchName], $branchStatus, $pr);
+        if (! $this->logger->confirm($this->translator->trans('branch.rename.confirm_prompt'), true)) {
             return 0;
         }
-        $this->renameBranches($io, $targetBranch, $newBranchName, $branchStatus);
+        $this->renameBranches($targetBranch, $newBranchName, $branchStatus);
         $this->handlePostRenameActions($io, $pr, $targetBranch, $newBranchName);
 
         return 0;
     }
 
-    protected function validateWorkingDirectory(SymfonyStyle $io): bool
+    protected function validateWorkingDirectory(): bool
     {
         $status = $this->gitRepository->getPorcelainStatus();
         if (! empty($status)) {
-            $io->error($this->translator->trans('branch.rename.error_dirty_working'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_dirty_working'));
 
             return false;
         }
@@ -149,17 +149,17 @@ class BranchRenameHandler
         };
     }
 
-    protected function determineNewBranchName(SymfonyStyle $io, string $targetBranch, ?string $key, ?string $explicitName): ?string
+    protected function determineNewBranchName(string $targetBranch, ?string $key, ?string $explicitName): ?string
     {
         if ($explicitName !== null) {
-            return $this->handleExplicitName($io, $explicitName);
+            return $this->handleExplicitName($explicitName);
         }
 
         if ($key !== null) {
-            return $this->generateBranchNameFromKeyWithErrorHandling($io, $key);
+            return $this->generateBranchNameFromKeyWithErrorHandling($key);
         }
 
-        return $this->generateBranchNameFromExtractedKey($io, $targetBranch);
+        return $this->generateBranchNameFromExtractedKey($targetBranch);
     }
 
     /**
@@ -189,39 +189,39 @@ class BranchRenameHandler
      * @param array{0: bool, 1: bool} $branchStatus
      * @param array<string, mixed>|null $pr
      */
-    protected function showConfirmationMessage(SymfonyStyle $io, array $names, array $branchStatus, ?array $pr): void
+    protected function showConfirmationMessage(array $names, array $branchStatus, ?array $pr): void
     {
         [$oldName, $newName] = $names;
-        $io->text($this->translator->trans('branch.rename.confirmation_header', ['oldName' => $oldName]));
-        $io->text($this->translator->trans('branch.rename.confirmation_new', ['newName' => $newName]));
-        $io->text($this->translator->trans('branch.rename.confirmation_actions'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_header', ['oldName' => $oldName]));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_new', ['newName' => $newName]));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_actions'));
 
-        $this->showBranchConfirmationDetails($io, $oldName, $newName, $branchStatus);
-        $this->showPrConfirmation($io, $pr);
+        $this->showBranchConfirmationDetails($oldName, $newName, $branchStatus);
+        $this->showPrConfirmation($pr);
     }
 
     /**
      * @param array{0: bool, 1: bool} $branchStatus
      */
-    protected function showBranchConfirmationDetails(SymfonyStyle $io, string $oldName, string $newName, array $branchStatus): void
+    protected function showBranchConfirmationDetails(string $oldName, string $newName, array $branchStatus): void
     {
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
-            $io->text($this->translator->trans('branch.rename.confirmation_local', ['oldName' => $oldName, 'newName' => $newName]));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_local', ['oldName' => $oldName, 'newName' => $newName]));
         }
 
         if ($hasRemote) {
-            $io->text($this->translator->trans('branch.rename.confirmation_remote', ['oldName' => $oldName, 'newName' => $newName]));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_remote', ['oldName' => $oldName, 'newName' => $newName]));
         }
     }
 
     /**
      * @param array<string, mixed>|null $pr
      */
-    protected function showPrConfirmation(SymfonyStyle $io, ?array $pr): void
+    protected function showPrConfirmation(?array $pr): void
     {
         if ($pr !== null && isset($pr['number'])) {
-            $io->text($this->translator->trans('branch.rename.confirmation_pr', ['number' => $pr['number']]));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.confirmation_pr', ['number' => $pr['number']]));
         }
     }
 
@@ -234,17 +234,17 @@ class BranchRenameHandler
             return;
         }
 
-        $io->text($this->translator->trans('branch.rename.creating_new_pr'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.creating_new_pr'));
 
         $submitHandler = $this->createSubmitHandler();
         $submitResult = $submitHandler->handle($io, false, null);
         if ($submitResult !== 0) {
-            $io->warning($this->translator->trans('branch.rename.pr_creation_failed'));
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.pr_creation_failed'));
 
             return;
         }
 
-        $this->commentOnNewPullRequest($io, $oldName, $newName);
+        $this->commentOnNewPullRequest($oldName, $newName);
     }
 
     protected function createSubmitHandler(): SubmitHandler
@@ -261,9 +261,9 @@ class BranchRenameHandler
         );
     }
 
-    protected function commentOnNewPullRequest(SymfonyStyle $io, string $oldName, string $newName): void
+    protected function commentOnNewPullRequest(string $oldName, string $newName): void
     {
-        $io->text($this->translator->trans('branch.rename.commenting_pr'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.commenting_pr'));
 
         try {
             $currentBranch = $this->gitRepository->getCurrentBranchName();
@@ -280,11 +280,11 @@ class BranchRenameHandler
         }
     }
 
-    protected function validateNewBranchNameExists(SymfonyStyle $io, string $newBranchName): bool
+    protected function validateNewBranchNameExists(string $newBranchName): bool
     {
         if ($this->gitRepository->localBranchExists($newBranchName) ||
             $this->gitRepository->remoteBranchExists('origin', $newBranchName)) {
-            $io->error($this->translator->trans('branch.rename.error_new_name_exists', ['name' => $newBranchName]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_new_name_exists', ['name' => $newBranchName]));
 
             return true;
         }
@@ -295,20 +295,20 @@ class BranchRenameHandler
     /**
      * @return array{0: bool, 1: bool}|false|null Returns [hasLocal, hasRemote], false if user declined, or null if branch not found
      */
-    protected function checkBranchExistence(SymfonyStyle $io, string $targetBranch): array|false|null
+    protected function checkBranchExistence(string $targetBranch): array|false|null
     {
         $hasLocal = $this->gitRepository->localBranchExists($targetBranch);
         $hasRemote = $this->gitRepository->remoteBranchExists('origin', $targetBranch);
 
         if (! $hasLocal && ! $hasRemote) {
-            $io->error($this->translator->trans('branch.rename.error_branch_not_found', ['branch' => $targetBranch]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_branch_not_found', ['branch' => $targetBranch]));
 
             return null;
         }
 
         if ($hasRemote && ! $hasLocal) {
-            $io->note($this->translator->trans('branch.rename.local_not_found_remote_exists', ['branch' => $targetBranch]));
-            if (! $io->confirm($this->translator->trans('branch.rename.rename_remote_only_prompt'), true)) {
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.local_not_found_remote_exists', ['branch' => $targetBranch]));
+            if (! $this->logger->confirm($this->translator->trans('branch.rename.rename_remote_only_prompt'), true)) {
                 return false;
             }
         }
@@ -316,7 +316,7 @@ class BranchRenameHandler
         return [$hasLocal, $hasRemote];
     }
 
-    protected function handleBranchSynchronization(SymfonyStyle $io, string $targetBranch, bool $hasLocal, bool $hasRemote): int
+    protected function handleBranchSynchronization(string $targetBranch, bool $hasLocal, bool $hasRemote): int
     {
         if (! $hasLocal || ! $hasRemote) {
             return 0;
@@ -324,15 +324,15 @@ class BranchRenameHandler
 
         $syncResult = $this->checkBranchSync($targetBranch, "origin/{$targetBranch}");
         if ($syncResult['behind'] > 0) {
-            $io->text($this->translator->trans('branch.rename.checking_sync'));
-            if ($io->confirm($this->translator->trans('branch.rename.remote_ahead_prompt', ['count' => $syncResult['behind']]), true)) {
-                $io->text($this->translator->trans('branch.rename.rebasing'));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.checking_sync'));
+            if ($this->logger->confirm($this->translator->trans('branch.rename.remote_ahead_prompt', ['count' => $syncResult['behind']]), true)) {
+                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.rebasing'));
 
                 try {
                     $this->gitRepository->rebase("origin/{$targetBranch}");
                 } catch (\Exception $e) {
-                    $io->error($this->translator->trans('branch.rename.rebase_failed'));
-                    $io->text($this->translator->trans('branch.rename.rebase_suggestion', ['branch' => $targetBranch]));
+                    $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.rebase_failed'));
+                    $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.rebase_suggestion', ['branch' => $targetBranch]));
 
                     return 1;
                 }
@@ -345,13 +345,13 @@ class BranchRenameHandler
     /**
      * @return array<string, mixed>|null
      */
-    protected function findAssociatedPullRequest(SymfonyStyle $io): ?array
+    protected function findAssociatedPullRequest(): ?array
     {
         if ($this->githubProvider === null) {
             return null;
         }
 
-        $io->text($this->translator->trans('branch.rename.finding_pr'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.finding_pr'));
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$currentBranch}" : $currentBranch;
@@ -367,21 +367,21 @@ class BranchRenameHandler
     /**
      * @param array{0: bool, 1: bool} $branchStatus
      */
-    protected function renameBranches(SymfonyStyle $io, string $targetBranch, string $newBranchName, array $branchStatus): void
+    protected function renameBranches(string $targetBranch, string $newBranchName, array $branchStatus): void
     {
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
-            $io->text($this->translator->trans('branch.rename.renaming_local'));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.renaming_local'));
             $this->gitRepository->renameLocalBranch($targetBranch, $newBranchName);
         }
 
         if ($hasRemote) {
-            $io->text($this->translator->trans('branch.rename.renaming_remote'));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.renaming_remote'));
 
             try {
                 $this->gitRepository->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
             } catch (\Exception $e) {
-                $io->warning($this->translator->trans('branch.rename.remote_not_found'));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.remote_not_found'));
             }
         }
     }
@@ -395,21 +395,21 @@ class BranchRenameHandler
             $this->updatePullRequestAfterRename($io, $pr, $targetBranch, $newBranchName);
         }
 
-        $io->success($this->translator->trans('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
 
         if ($pr === null && $this->githubProvider !== null) {
-            $io->note($this->translator->trans('branch.rename.no_pr_found'));
-            if ($io->confirm($this->translator->trans('branch.rename.create_pr_prompt'), true)) {
-                $io->text($this->translator->trans('branch.rename.switching_for_submit'));
-                $io->text("Run 'stud submit' to create a Pull Request.");
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.no_pr_found'));
+            if ($this->logger->confirm($this->translator->trans('branch.rename.create_pr_prompt'), true)) {
+                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.switching_for_submit'));
+                $this->logger->text(Logger::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
             }
         }
     }
 
-    protected function handleExplicitName(SymfonyStyle $io, string $explicitName): ?string
+    protected function handleExplicitName(string $explicitName): ?string
     {
         if (! $this->validateBranchName($explicitName)) {
-            $io->error($this->translator->trans('branch.rename.error_invalid_name', ['name' => $explicitName]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_invalid_name', ['name' => $explicitName]));
 
             return null;
         }
@@ -417,31 +417,31 @@ class BranchRenameHandler
         return $explicitName;
     }
 
-    protected function generateBranchNameFromKeyWithErrorHandling(SymfonyStyle $io, string $key): ?string
+    protected function generateBranchNameFromKeyWithErrorHandling(string $key): ?string
     {
-        $io->text($this->translator->trans('branch.rename.fetching_issue'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.fetching_issue'));
 
         try {
-            $io->text($this->translator->trans('branch.rename.generating_name'));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.generating_name'));
 
             return $this->generateBranchNameFromKey($key);
         } catch (\Exception $e) {
-            $io->error($this->translator->trans('branch.rename.error_key_not_found', ['key' => $key]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_key_not_found', ['key' => $key]));
 
             return null;
         }
     }
 
-    protected function generateBranchNameFromExtractedKey(SymfonyStyle $io, string $targetBranch): ?string
+    protected function generateBranchNameFromExtractedKey(string $targetBranch): ?string
     {
         $extractedKey = $this->gitRepository->getJiraKeyFromBranchName();
         if ($extractedKey === null) {
-            $io->error($this->translator->trans('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
 
             return null;
         }
 
-        return $this->generateBranchNameFromKeyWithErrorHandling($io, $extractedKey);
+        return $this->generateBranchNameFromKeyWithErrorHandling($extractedKey);
     }
 
     protected function looksLikeJiraKey(string $value): bool

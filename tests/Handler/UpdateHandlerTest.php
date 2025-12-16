@@ -2473,7 +2473,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
 
         // This should not throw an error, but should skip the asset without 'name'
-        $asset = $this->callPrivateMethod($this->handler, 'findPharAsset', [$io, $releaseData]);
+        $asset = $this->callPrivateMethod($this->handler, 'findPharAsset', [$releaseData]);
 
         $this->assertNotNull($asset);
         $this->assertSame(2, $asset['id']);

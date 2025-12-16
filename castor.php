@@ -551,7 +551,7 @@ function projects_list(
 function filters_list(): void
 {
     _load_constants();
-    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -755,7 +755,7 @@ function please(
 
 ): void {
     _load_constants();
-    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
+    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -764,7 +764,7 @@ function flatten(
 
 ): void {
     _load_constants();
-    $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service());
+    $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
     exit($handler->handle(io()));
 }
 
@@ -773,7 +773,7 @@ function cache_clear(
 
 ): void {
     _load_constants();
-    $handler = new CacheClearHandler(_get_translation_service());
+    $handler = new CacheClearHandler(_get_translation_service(), _get_logger());
     exit($handler->handle(io()));
 }
 
@@ -1170,7 +1170,7 @@ function release(
         exit(1);
     }
 
-    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service());
+    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $handler->handle(io(), $version, $publish, $bumpType);
 }
 
@@ -1179,7 +1179,7 @@ function deploy(
 
 ): void {
     _load_constants();
-    $handler = new DeployHandler(_get_git_repository(), _get_translation_service());
+    $handler = new DeployHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 

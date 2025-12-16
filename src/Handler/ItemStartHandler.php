@@ -29,21 +29,21 @@ class ItemStartHandler
     public function handle(SymfonyStyle $io, string $key): int
     {
         $key = strtoupper($key);
-        $io->section($this->translator->trans('item.start.section', ['key' => $key]));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.section', ['key' => $key]));
 
         $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.fetching', ['key' => $key])}");
 
         try {
             $issue = $this->jiraService->getIssue($key);
         } catch (\Exception $e) {
-            $io->error($this->translator->trans('item.start.error_not_found', ['key' => $key]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.error_not_found', ['key' => $key]));
 
             return 1;
         }
 
         // Handle Jira transition if enabled
         if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
-            $this->handleTransition($io, $key, $issue);
+            $this->handleTransition($key, $issue);
             // All error handling is done inside handleTransition with warnings/errors
             // Branch creation continues regardless of transition success/failure
         }
@@ -56,26 +56,26 @@ class ItemStartHandler
 
         $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.generated_branch', ['branch' => $branchName])}");
 
-        $io->text($this->translator->trans('item.start.fetching_changes'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.fetching_changes'));
         $this->gitRepository->fetch();
 
         // Check for existing branches before creating
         $existingBranches = $this->gitRepository->findBranchesByIssueKey($key);
         $branchAction = $this->determineBranchAction($branchName, $existingBranches);
 
-        $this->executeBranchAction($io, $branchAction, $branchName);
+        $this->executeBranchAction($branchAction, $branchName);
 
         return 0;
     }
 
-    protected function handleTransition(SymfonyStyle $io, string $key, \App\DTO\WorkItem $issue): int
+    protected function handleTransition(string $key, \App\DTO\WorkItem $issue): int
     {
         // Step 1: Assign issue to current user
         try {
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.assigning', ['key' => $key])}");
             $this->jiraService->assignIssue($key);
         } catch (\Exception $e) {
-            $io->warning($this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
             // Continue even if assignment fails
         }
 
@@ -96,7 +96,7 @@ class ItemStartHandler
                 $transitions = $this->jiraService->getTransitions($key);
 
                 if (empty($transitions)) {
-                    $io->warning($this->translator->trans('item.start.no_transitions', ['key' => $key]));
+                    $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.no_transitions', ['key' => $key]));
 
                     return 0; // Skip transition, continue with branch creation
                 }
@@ -107,7 +107,7 @@ class ItemStartHandler
                     $transitionOptions[] = "{$transition['name']} (ID: {$transition['id']})";
                 }
 
-                $selectedDisplay = $io->choice(
+                $selectedDisplay = $this->logger->choice(
                     $this->translator->trans('item.start.select_transition'),
                     $transitionOptions
                 );
@@ -123,7 +123,7 @@ class ItemStartHandler
                 $transitionId = (int) $matches[1];
 
                 // Ask if user wants to save the choice
-                $saveChoice = $io->confirm(
+                $saveChoice = $this->logger->confirm(
                     $this->translator->trans('item.start.save_transition', ['project' => $projectKey]),
                     true
                 );
@@ -136,7 +136,7 @@ class ItemStartHandler
                     $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}");
                 }
             } catch (\Exception $e) {
-                $io->warning($this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
 
                 return 0; // Skip transition, continue with branch creation
             }
@@ -148,9 +148,9 @@ class ItemStartHandler
         if ($transitionId !== null) {
             try {
                 $this->jiraService->transitionIssue($key, $transitionId);
-                $io->success($this->translator->trans('item.start.transition_success', ['key' => $key]));
+                $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_success', ['key' => $key]));
             } catch (\Exception $e) {
-                $io->warning($this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
                 // Continue with branch creation even if transition fails
             }
         }
@@ -173,28 +173,28 @@ class ItemStartHandler
      *
      * @param array{action: string, branch: string} $branchAction
      */
-    protected function executeBranchAction(SymfonyStyle $io, array $branchAction, string $defaultBranchName): void
+    protected function executeBranchAction(array $branchAction, string $defaultBranchName): void
     {
         if ($branchAction['action'] === BranchAction::SWITCH_LOCAL) {
-            $io->text($this->translator->trans('item.start.switching_branch', ['branch' => $branchAction['branch']]));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_branch', ['branch' => $branchAction['branch']]));
             $this->gitRepository->switchBranch($branchAction['branch']);
-            $io->success($this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
         }
 
         if ($branchAction['action'] === BranchAction::SWITCH_REMOTE) {
-            $io->text($this->translator->trans('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]));
             $this->gitRepository->switchToRemoteBranch($branchAction['branch']);
-            $io->success($this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
         }
 
         // Default: create new branch
-        $io->text($this->translator->trans('item.start.creating_branch', ['branch' => $defaultBranchName]));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.creating_branch', ['branch' => $defaultBranchName]));
         $this->gitRepository->createBranch($defaultBranchName, $this->baseBranch);
-        $io->success($this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $this->baseBranch]));
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $this->baseBranch]));
     }
 
     /**

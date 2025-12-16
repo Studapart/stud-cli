@@ -32,12 +32,12 @@ class SubmitHandler
 
     public function handle(SymfonyStyle $io, bool $draft = false, ?string $labels = null): int
     {
-        $io->section($this->translator->trans('submit.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.section'));
 
         // 1. Check for clean working directory
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
-            $io->error($this->translator->trans('submit.error_dirty_working'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_dirty_working'));
 
             return 1;
         }
@@ -45,27 +45,27 @@ class SubmitHandler
         // 2. Get current branch name and check if it is a base branch
         $branch = $this->gitRepository->getCurrentBranchName();
         if (in_array($branch, ['develop', 'main', 'master'])) {
-            $io->error($this->translator->trans('submit.error_base_branch'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_base_branch'));
 
             return 1;
         }
 
         // 3. Push the branch
-        $io->text($this->translator->trans('submit.pushing', ['branch' => $branch]));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.pushing', ['branch' => $branch]));
         $pushProcess = $this->gitRepository->pushToOrigin('HEAD');
         if (! $pushProcess->isSuccessful()) {
-            $io->error(explode("\n", $this->translator->trans('submit.error_push')));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_push')));
 
             return 1;
         }
 
         // 4. Find the first logical commit
-        $io->text($this->translator->trans('submit.finding_commit'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.finding_commit'));
         $ancestorSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
         $firstCommitSha = $this->gitRepository->findFirstLogicalSha($ancestorSha);
 
         if (null === $firstCommitSha) {
-            $io->error($this->translator->trans('submit.error_no_logical'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_no_logical'));
 
             return 1;
         }
@@ -83,7 +83,7 @@ class SubmitHandler
         }
 
         if (! $jiraKey) {
-            $io->error($this->translator->trans('submit.error_no_jira_key'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_no_jira_key'));
 
             return 1;
         }
@@ -99,7 +99,7 @@ class SubmitHandler
             $issue = $this->jiraService->getIssue($jiraKey, true); // Request rendered fields
             $prBody = $issue->renderedDescription;
         } catch (\Exception $e) {
-            $io->warning(explode("\n", $this->translator->trans('submit.warning_jira_fetch', ['error' => $e->getMessage()])));
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.warning_jira_fetch', ['error' => $e->getMessage()])));
         }
         // Fallback if API fails or if description is empty/default
         if (empty($prBody)) {
@@ -128,7 +128,7 @@ class SubmitHandler
         // 8. Validate and process labels if provided
         $finalLabels = [];
         if ($labels !== null && $this->githubProvider) {
-            $finalLabels = $this->validateAndProcessLabels($io, $labels);
+            $finalLabels = $this->validateAndProcessLabels($labels);
             if ($finalLabels === null) {
                 // User chose to retry, abort the command
                 return 1;
@@ -136,7 +136,7 @@ class SubmitHandler
         }
 
         // 9. Call the Git Provider API
-        $io->text($this->translator->trans('submit.creating'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.creating'));
 
         try {
             if ($this->githubProvider) {
@@ -145,13 +145,13 @@ class SubmitHandler
 
                 // Add labels to PR if any were provided
                 if (! empty($finalLabels)) {
-                    $io->text($this->translator->trans('submit.adding_labels'));
+                    $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.adding_labels'));
                     $this->githubProvider->addLabelsToPullRequest($prData['number'], $finalLabels);
                 }
 
-                $io->success($this->translator->trans('submit.success_created', ['url' => $prData['html_url']]));
+                $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.success_created', ['url' => $prData['html_url']]));
             } else {
-                $io->warning($this->translator->trans('submit.warning_no_provider'));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.warning_no_provider'));
             }
         } catch (\Exception $e) {
             // Check if PR already exists (GitHub returns 422 status)
@@ -161,7 +161,7 @@ class SubmitHandler
             // GitHub returns 422 with "A pull request already exists" message
             if (str_contains($errorMessage, 'Status: 422') &&
                 str_contains($lowerMessage, 'pull request already exists')) {
-                $io->note($this->translator->trans('submit.note_pr_exists'));
+                $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.note_pr_exists'));
 
                 // Find the existing PR and apply labels/draft if needed
                 if ($this->githubProvider) {
@@ -173,23 +173,23 @@ class SubmitHandler
 
                             // Apply labels if provided
                             if (! empty($finalLabels)) {
-                                $io->text($this->translator->trans('submit.adding_labels'));
+                                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.adding_labels'));
 
                                 try {
                                     $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
                                 } catch (\Exception $labelError) {
-                                    $io->warning(explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
+                                    $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
                                 }
                             }
 
                             // Update draft status if --draft flag is set
                             if ($draft && ! $existingPr['draft']) {
-                                $io->text($this->translator->trans('submit.updating_to_draft'));
+                                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.updating_to_draft'));
 
                                 try {
                                     $this->githubProvider->updatePullRequest($prNumber, true);
                                 } catch (\Exception $draftError) {
-                                    $io->warning(explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
+                                    $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
                                 }
                             }
                         }
@@ -199,12 +199,12 @@ class SubmitHandler
                     }
                 }
 
-                $io->success($this->translator->trans('submit.success_pushed'));
+                $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.success_pushed'));
 
                 return 0;
             }
 
-            $io->error(explode("\n", $this->translator->trans('submit.error_create_pr', ['error' => $errorMessage])));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_pr', ['error' => $errorMessage])));
 
             return 1;
         }
@@ -223,14 +223,13 @@ class SubmitHandler
     /**
      * Validates and processes labels, handling unknown labels interactively.
      *
-     * @param SymfonyStyle $io
      * @param string $labelsInput Comma-separated string of labels
      * @return array|null Array of final labels to apply, or null if user chose to retry
      */
     /**
      * @return array<string>|null
      */
-    protected function validateAndProcessLabels(SymfonyStyle $io, string $labelsInput): ?array
+    protected function validateAndProcessLabels(string $labelsInput): ?array
     {
         // 1. Parse input into clean array
         $requestedLabels = array_map('trim', explode(',', $labelsInput));
@@ -242,12 +241,12 @@ class SubmitHandler
         }
 
         // 2. Fetch remote labels
-        $io->text($this->translator->trans('submit.fetching_labels'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.fetching_labels'));
 
         try {
             $remoteLabels = $this->githubProvider->getLabels();
         } catch (\Exception $e) {
-            $io->error(explode("\n", $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()])));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()])));
 
             return null;
         }
@@ -274,7 +273,7 @@ class SubmitHandler
 
         // 4. Interactive resolution for unknown labels
         foreach ($unknownLabels as $unknownLabel) {
-            $choice = $io->choice(
+            $choice = $this->logger->choice(
                 $this->translator->trans('submit.label_unknown_prompt', ['label' => $unknownLabel]),
                 [
                     $this->translator->trans('submit.label_create_option'),
@@ -291,16 +290,16 @@ class SubmitHandler
 
             if ($choice === $this->translator->trans('submit.label_create_option')) {
                 // Create the label
-                $io->text($this->translator->trans('submit.label_creating', ['label' => $unknownLabel]));
+                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.label_creating', ['label' => $unknownLabel]));
 
                 try {
                     // Generate a random color (GitHub requires 6 hex digits)
                     $color = sprintf('%06x', mt_rand(0, 0xffffff));
                     $this->githubProvider->createLabel($unknownLabel, $color);
                     $finalLabels[] = $unknownLabel;
-                    $io->success($this->translator->trans('submit.label_created', ['label' => $unknownLabel]));
+                    $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.label_created', ['label' => $unknownLabel]));
                 } catch (\Exception $e) {
-                    $io->error(explode("\n", $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()])));
+                    $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()])));
 
                     return null;
                 }

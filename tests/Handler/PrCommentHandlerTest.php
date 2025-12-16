@@ -147,7 +147,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
 
         $this->assertSame('My message', $result);
     }
@@ -158,7 +158,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         // When argument is empty and STDIN is TTY, should return null
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, '']);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ '']);
 
         $this->assertNull($result);
     }
@@ -169,7 +169,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         // When argument is null and STDIN is TTY, should return null
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, null]);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ null]);
 
         $this->assertNull($result);
     }
@@ -294,7 +294,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
 
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
 
         $this->assertSame('My message', $result);
     }
@@ -406,7 +406,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
 
         // Test verbose output path when using argument (STDIN is empty in test env)
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
 
         $this->assertSame('My message', $result);
     }
@@ -452,7 +452,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
 
         // In test environment, STDIN is TTY, so argument is used
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [$io, 'My message']);
+        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
 
         $this->assertSame('My message', $result);
     }
@@ -472,7 +472,7 @@ class PrCommentHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', [$io, 'Argument message']);
+        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', ['Argument message']);
 
         // STDIN should take precedence
         $this->assertSame('STDIN content', $result);
@@ -501,7 +501,7 @@ class PrCommentHandlerTest extends CommandTestCase
             }
         };
 
-        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', [$io, 'Argument message']);
+        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', ['Argument message']);
 
         $this->assertSame('STDIN content', $result);
     }
