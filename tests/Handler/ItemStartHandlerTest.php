@@ -53,6 +53,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -102,6 +107,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -175,6 +185,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -230,6 +245,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -307,6 +327,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -403,6 +428,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -470,6 +500,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -527,6 +562,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -582,6 +622,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -642,6 +687,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -697,6 +747,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -773,6 +828,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -861,6 +921,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('fetch');
 
         $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
@@ -944,6 +1009,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -1030,6 +1100,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
 
         $this->gitRepository->expects($this->once())
             ->method('createBranch')
@@ -1119,6 +1194,219 @@ class ItemStartHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'handleTransition', [$io, 'TPW-35', $workItem]);
 
         // Method returns 0 even when exception occurs (error handling)
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleSwitchesToExistingLocalBranch(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => ['feat/TPW-35-my-awesome-feature'], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('switchBranch')
+            ->with('feat/TPW-35-my-awesome-feature');
+
+        $this->gitRepository->expects($this->never())
+            ->method('createBranch');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleSwitchesToExistingRemoteBranch(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => ['feat/TPW-35-my-awesome-feature']]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('switchToRemoteBranch')
+            ->with('feat/TPW-35-my-awesome-feature');
+
+        $this->gitRepository->expects($this->never())
+            ->method('createBranch');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleCreatesBranchWhenNoneExists(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $this->gitRepository->expects($this->never())
+            ->method('switchBranch');
+
+        $this->gitRepository->expects($this->never())
+            ->method('switchToRemoteBranch');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleSwitchesToFirstLocalBranchWhenGeneratedBranchNotExists(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => ['feat/TPW-35-different-branch'], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('switchBranch')
+            ->with('feat/TPW-35-different-branch');
+
+        $this->gitRepository->expects($this->never())
+            ->method('createBranch');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleSwitchesToFirstRemoteBranchWhenGeneratedBranchNotExists(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => ['feat/TPW-35-different-branch']]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('switchToRemoteBranch')
+            ->with('feat/TPW-35-different-branch');
+
+        $this->gitRepository->expects($this->never())
+            ->method('createBranch');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
         $this->assertSame(0, $result);
     }
 }

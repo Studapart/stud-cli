@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud items:takeover` command (alias: `stud to`) to take over issues from other users [SCI-34]
+  - Command prioritizes remote branches over local branches
+  - If multiple remote branches found, command lists them and lets user choose
+  - If single remote branch found, command auto-selects it after confirmation
+  - Command switches to existing local branch if found
+  - Command creates local tracking branch from remote if remote exists but local doesn't
+  - Command shows branch status (behind/ahead/sync) compared to remote and develop
+  - Command warns if branch is based on different base branch than expected
+  - Command warns if local branch has diverged from remote (has local commits)
+  - Command pulls from remote (with rebase) if behind and no local commits
+  - If no branches found, command prompts user to start fresh (calls items:start)
+  - If user is already on target branch, command skips checkout and only checks status
+  - Command displays comprehensive success message with branch status
+  - Added new GitRepository methods: `switchBranch()`, `switchToRemoteBranch()`, `findBranchesByIssueKey()`, `getBranchStatus()`, `isBranchBasedOn()`, `pullWithRebase()`
+  - Updated ItemStartHandler to handle existing branches (switches instead of failing)
+  - Added translation keys for takeover handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+  - Updated README.md with command documentation and usage examples
 - Add `stud branch:rename` command (alias: `stud rn`) to rename branches with optional Jira key or explicit name [SCI-35]
   - Command accepts optional branch name parameter (defaults to current branch)
   - Command accepts optional Jira key parameter to regenerate branch name (like `stud start`)

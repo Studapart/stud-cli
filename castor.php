@@ -28,6 +28,7 @@ use App\Handler\InitHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
+use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
@@ -657,6 +658,17 @@ function items_start(
     $handler->handle(io(), $key);
 }
 
+#[AsTask(name: 'items:takeover', aliases: ['to'], description: 'Takes over an issue from another user')]
+function items_takeover(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')]
+    string $key,
+): void {
+    _load_constants();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    exit($handler->handle(io(), $key));
+}
+
 #[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
 function branch_rename(
     #[AsArgument(name: 'branch', description: 'The branch to rename (defaults to current branch)')]
@@ -891,6 +903,7 @@ function help(
             'sh' => 'items:show',
             'tx' => 'items:transition',
             'start' => 'items:start',
+            'to' => 'items:takeover',
             'rn' => 'branch:rename',
             'co' => 'commit',
             'pl' => 'please',
@@ -1014,6 +1027,13 @@ function help(
                 'args' => '<key>',
                 'description' => $translator->trans('help.command_items_start'),
                 'example' => 'stud start PROJ-123',
+            ],
+            [
+                'name' => 'items:takeover',
+                'alias' => 'to',
+                'args' => '<key>',
+                'description' => $translator->trans('help.command_items_takeover'),
+                'example' => 'stud to PROJ-123',
             ],
             [
                 'name' => 'branch:rename',
