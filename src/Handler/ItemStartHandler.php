@@ -59,10 +59,11 @@ class ItemStartHandler
         $io->text($this->translator->trans('item.start.fetching_changes'));
         $this->gitRepository->fetch();
 
-        $io->text($this->translator->trans('item.start.creating_branch', ['branch' => $branchName]));
-        $this->gitRepository->createBranch($branchName, $this->baseBranch);
+        // Check for existing branches before creating
+        $existingBranches = $this->gitRepository->findBranchesByIssueKey($key);
+        $branchAction = $this->determineBranchAction($branchName, $existingBranches);
 
-        $io->success($this->translator->trans('item.start.success', ['branch' => $branchName, 'base' => $this->baseBranch]));
+        $this->executeBranchAction($io, $branchAction, $branchName);
 
         return 0;
     }
@@ -165,5 +166,70 @@ class ItemStartHandler
             'task', 'sub-task' => 'chore',
             default => 'feat',
         };
+    }
+
+    /**
+     * Executes the determined branch action.
+     *
+     * @param array{action: string, branch: string} $branchAction
+     */
+    protected function executeBranchAction(SymfonyStyle $io, array $branchAction, string $defaultBranchName): void
+    {
+        if ($branchAction['action'] === BranchAction::SWITCH_LOCAL) {
+            $io->text($this->translator->trans('item.start.switching_branch', ['branch' => $branchAction['branch']]));
+            $this->gitRepository->switchBranch($branchAction['branch']);
+            $io->success($this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
+
+            return;
+        }
+
+        if ($branchAction['action'] === BranchAction::SWITCH_REMOTE) {
+            $io->text($this->translator->trans('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]));
+            $this->gitRepository->switchToRemoteBranch($branchAction['branch']);
+            $io->success($this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
+
+            return;
+        }
+
+        // Default: create new branch
+        $io->text($this->translator->trans('item.start.creating_branch', ['branch' => $defaultBranchName]));
+        $this->gitRepository->createBranch($defaultBranchName, $this->baseBranch);
+        $io->success($this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $this->baseBranch]));
+    }
+
+    /**
+     * Determines what action to take based on existing branches.
+     *
+     * @param string $generatedBranchName The generated branch name
+     * @param array{local: array<string>, remote: array<string>} $existingBranches Existing branches found
+     * @return array{action: string, branch: string} Action to take and branch name
+     */
+    protected function determineBranchAction(string $generatedBranchName, array $existingBranches): array
+    {
+        $localBranches = $existingBranches['local'];
+        $remoteBranches = $existingBranches['remote'];
+
+        // Check if local branch exists
+        if (in_array($generatedBranchName, $localBranches, true)) {
+            return ['action' => BranchAction::SWITCH_LOCAL, 'branch' => $generatedBranchName];
+        }
+
+        // Check if remote branch exists
+        if (in_array($generatedBranchName, $remoteBranches, true)) {
+            return ['action' => BranchAction::SWITCH_REMOTE, 'branch' => $generatedBranchName];
+        }
+
+        // If any local branch exists, switch to first one
+        if (! empty($localBranches)) {
+            return ['action' => BranchAction::SWITCH_LOCAL, 'branch' => $localBranches[0]];
+        }
+
+        // If any remote branch exists, switch to first one
+        if (! empty($remoteBranches)) {
+            return ['action' => BranchAction::SWITCH_REMOTE, 'branch' => $remoteBranches[0]];
+        }
+
+        // No existing branches, create new one
+        return ['action' => BranchAction::CREATE, 'branch' => $generatedBranchName];
     }
 }

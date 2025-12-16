@@ -1491,4 +1491,342 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->assertFalse($result);
     }
+
+    public function testSwitchBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git switch feat/PROJ-123-title')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->switchBranch('feat/PROJ-123-title');
+    }
+
+    public function testSwitchToRemoteBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git switch -c feat/PROJ-123-title origin/feat/PROJ-123-title')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->switchToRemoteBranch('feat/PROJ-123-title');
+    }
+
+    public function testSwitchToRemoteBranchWithCustomRemote(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git switch -c feat/PROJ-123-title upstream/feat/PROJ-123-title')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->switchToRemoteBranch('feat/PROJ-123-title', 'upstream');
+    }
+
+    public function testFindBranchesByIssueKeyReturnsLocalBranches(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+        $process3 = $this->createMock(Process::class);
+        $process4 = $this->createMock(Process::class);
+        $process5 = $this->createMock(Process::class);
+        $process6 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(6))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2, $process3, $process4, $process5, $process6) {
+                if (str_contains($command, "git branch --list 'feat/PROJ-123-*'")) {
+                    $process1->expects($this->once())->method('run');
+                    $process1->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process1->expects($this->once())->method('getOutput')->willReturn("  feat/PROJ-123-title\n");
+
+                    return $process1;
+                }
+                if (str_contains($command, "git branch --list 'fix/PROJ-123-*'")) {
+                    $process2->expects($this->once())->method('run');
+                    $process2->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process2->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process2;
+                }
+                if (str_contains($command, "git branch --list 'chore/PROJ-123-*'")) {
+                    $process3->expects($this->once())->method('run');
+                    $process3->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process3->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process3;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/feat/PROJ-123-*'")) {
+                    $process4->expects($this->once())->method('run');
+                    $process4->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process4->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process4;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/fix/PROJ-123-*'")) {
+                    $process5->expects($this->once())->method('run');
+                    $process5->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process5->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process5;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/chore/PROJ-123-*'")) {
+                    $process6->expects($this->once())->method('run');
+                    $process6->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process6->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process6;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->findBranchesByIssueKey('PROJ-123');
+
+        $this->assertSame(['feat/PROJ-123-title'], $result['local']);
+        $this->assertSame([], $result['remote']);
+    }
+
+    public function testFindBranchesByIssueKeyReturnsRemoteBranches(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+        $process3 = $this->createMock(Process::class);
+        $process4 = $this->createMock(Process::class);
+        $process5 = $this->createMock(Process::class);
+        $process6 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(6))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2, $process3, $process4, $process5, $process6) {
+                if (str_contains($command, "git branch --list 'feat/PROJ-123-*'")) {
+                    $process1->expects($this->once())->method('run');
+                    $process1->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process1->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process1;
+                }
+                if (str_contains($command, "git branch --list 'fix/PROJ-123-*'")) {
+                    $process2->expects($this->once())->method('run');
+                    $process2->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process2->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process2;
+                }
+                if (str_contains($command, "git branch --list 'chore/PROJ-123-*'")) {
+                    $process3->expects($this->once())->method('run');
+                    $process3->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process3->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process3;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/feat/PROJ-123-*'")) {
+                    $process4->expects($this->once())->method('run');
+                    $process4->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process4->expects($this->once())->method('getOutput')->willReturn("abc123\trefs/heads/feat/PROJ-123-title\n");
+
+                    return $process4;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/fix/PROJ-123-*'")) {
+                    $process5->expects($this->once())->method('run');
+                    $process5->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process5->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process5;
+                }
+                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/chore/PROJ-123-*'")) {
+                    $process6->expects($this->once())->method('run');
+                    $process6->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process6->expects($this->once())->method('getOutput')->willReturn('');
+
+                    return $process6;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->findBranchesByIssueKey('PROJ-123');
+
+        $this->assertSame([], $result['local']);
+        $this->assertSame(['feat/PROJ-123-title'], $result['remote']);
+    }
+
+    public function testGetBranchStatus(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+        $process3 = $this->createMock(Process::class);
+        $process4 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2, $process3, $process4) {
+                if (str_contains($command, 'git rev-list --count origin/feat/PROJ-123..feat/PROJ-123')) {
+                    $process1->expects($this->once())->method('run');
+                    $process1->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process1->expects($this->once())->method('getOutput')->willReturn("2\n");
+
+                    return $process1;
+                }
+                if (str_contains($command, 'git rev-list --count feat/PROJ-123..origin/feat/PROJ-123')) {
+                    $process2->expects($this->once())->method('run');
+                    $process2->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process2->expects($this->once())->method('getOutput')->willReturn("1\n");
+
+                    return $process2;
+                }
+                if (str_contains($command, 'git rev-list --count develop..feat/PROJ-123')) {
+                    $process3->expects($this->once())->method('run');
+                    $process3->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process3->expects($this->once())->method('getOutput')->willReturn("5\n");
+
+                    return $process3;
+                }
+                if (str_contains($command, 'git rev-list --count feat/PROJ-123..develop')) {
+                    $process4->expects($this->once())->method('run');
+                    $process4->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process4->expects($this->once())->method('getOutput')->willReturn("3\n");
+
+                    return $process4;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->getBranchStatus('feat/PROJ-123', 'develop', 'origin/feat/PROJ-123');
+
+        $this->assertSame(1, $result['behind_remote']);
+        $this->assertSame(2, $result['ahead_remote']);
+        $this->assertSame(3, $result['behind_base']);
+        $this->assertSame(5, $result['ahead_base']);
+    }
+
+    public function testGetBranchStatusWithoutRemote(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2) {
+                if (str_contains($command, 'git rev-list --count develop..feat/PROJ-123')) {
+                    $process1->expects($this->once())->method('run');
+                    $process1->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process1->expects($this->once())->method('getOutput')->willReturn("5\n");
+
+                    return $process1;
+                }
+                if (str_contains($command, 'git rev-list --count feat/PROJ-123..develop')) {
+                    $process2->expects($this->once())->method('run');
+                    $process2->expects($this->once())->method('isSuccessful')->willReturn(true);
+                    $process2->expects($this->once())->method('getOutput')->willReturn("3\n");
+
+                    return $process2;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->getBranchStatus('feat/PROJ-123', 'develop', null);
+
+        $this->assertSame(0, $result['behind_remote']);
+        $this->assertSame(0, $result['ahead_remote']);
+        $this->assertSame(3, $result['behind_base']);
+        $this->assertSame(5, $result['ahead_base']);
+    }
+
+    public function testIsBranchBasedOnReturnsTrue(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2) {
+                if (str_contains($command, 'git merge-base develop feat/PROJ-123')) {
+                    $process1->expects($this->once())->method('mustRun');
+                    $process1->expects($this->once())->method('getOutput')->willReturn("abc123\n");
+
+                    return $process1;
+                }
+                if (str_contains($command, 'git rev-parse develop')) {
+                    $process2->expects($this->once())->method('mustRun');
+                    $process2->expects($this->once())->method('getOutput')->willReturn("abc123\n");
+
+                    return $process2;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->isBranchBasedOn('feat/PROJ-123', 'develop');
+
+        $this->assertTrue($result);
+    }
+
+    public function testIsBranchBasedOnReturnsFalse(): void
+    {
+        $process1 = $this->createMock(Process::class);
+        $process2 = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process1, $process2) {
+                if (str_contains($command, 'git merge-base develop feat/PROJ-123')) {
+                    $process1->expects($this->once())->method('mustRun');
+                    $process1->expects($this->once())->method('getOutput')->willReturn("abc123\n");
+
+                    return $process1;
+                }
+                if (str_contains($command, 'git rev-parse develop')) {
+                    $process2->expects($this->once())->method('mustRun');
+                    $process2->expects($this->once())->method('getOutput')->willReturn("def456\n");
+
+                    return $process2;
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitRepository->isBranchBasedOn('feat/PROJ-123', 'develop');
+
+        $this->assertFalse($result);
+    }
+
+    public function testIsBranchBasedOnReturnsFalseOnException(): void
+    {
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git merge-base develop feat/PROJ-123')
+            ->willThrowException(new \RuntimeException('Branch not found'));
+
+        $result = $this->gitRepository->isBranchBasedOn('feat/PROJ-123', 'develop');
+
+        $this->assertFalse($result);
+    }
+
+    public function testPullWithRebase(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git pull --rebase origin feat/PROJ-123')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->pullWithRebase('origin', 'feat/PROJ-123');
+    }
 }

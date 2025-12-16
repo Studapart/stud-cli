@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="src/resources/logo-300.png" alt="Stud-Cli Logo" width="300">
+</div>
+
 # stud-cli: Jira & Git Workflow Streamliner
 
 `stud-cli` is a command-line interface tool designed to streamline a developer's daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the "golden path" of starting a task, making conventional commits, and preparing your work for submission, all from the command line.
@@ -379,7 +383,7 @@ These commands help you browse and view your Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
@@ -391,6 +395,32 @@ These commands integrate directly with your local Git repository to streamline y
         -   Your choice is saved to `.git/stud.config` for future use in the same project.
         -   Subsequent runs will use the cached transition ID automatically.
         -   If no 'In Progress' transitions are available, a warning is displayed and branch creation continues.
+    -   **Branch Detection:**
+        -   If a local branch matching the issue key exists, the command switches to it instead of creating a new branch.
+        -   If a remote branch exists but no local branch, the command creates a local tracking branch from the remote.
+        -   Remote branches are prioritized over local branches when both exist.
+
+-   **`stud items:takeover <key>`** (Alias: `stud to <key>`)
+    -   **Description:** Takes over an issue from another user. Assigns the issue to you, detects existing branches (prioritizing remote over local), and switches to them if found. If no branches exist, prompts to start fresh using `items:start`. The command also checks branch status compared to remote and base branch, warns about wrong base branches or diverged commits, and automatically pulls with rebase when behind remote (if no local commits exist).
+    -   **Argument:** `<key>` (e.g., `PROJ-123`)
+    -   **Usage:**
+        ```bash
+        stud items:takeover PROJ-123
+        stud to BUG-456
+        ```
+    -   **Behavior:**
+        -   Blocks execution if working directory has uncommitted changes.
+        -   Assigns the issue to the current user (warns on failure but continues).
+        -   Searches for branches matching pattern `{prefix}/{KEY}-*` (feat, fix, chore).
+        -   If multiple branches found: lists all (remote prioritized) and lets you choose.
+        -   If single remote branch found: auto-selects after confirmation.
+        -   If only local branches: lists all and lets you choose.
+        -   If already on target branch: skips checkout and only checks status.
+        -   Shows branch status (behind/ahead/sync) compared to remote and develop.
+        -   Warns if branch is based on different base branch than expected.
+        -   Warns if local branch has diverged from remote (has local commits).
+        -   Pulls from remote (with rebase) if behind and no local commits.
+        -   If no branches found: prompts to start fresh (calls `items:start`).
 
 -   **`stud branch:rename`** (Alias: `stud rn`)
     -   **Description:** Renames a branch, optionally regenerating the name from a Jira issue key or using an explicit name. The command handles both local and remote branches, updates associated Pull Requests, and manages branch synchronization.
