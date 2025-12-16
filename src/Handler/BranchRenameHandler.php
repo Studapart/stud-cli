@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
@@ -24,7 +25,8 @@ class BranchRenameHandler
         private readonly TranslationService $translator,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
-        private readonly Logger $logger
+        private readonly Logger $logger,
+        private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
@@ -254,7 +256,8 @@ class BranchRenameHandler
             $this->jiraConfig,
             $this->baseBranch,
             $this->translator,
-            $this->logger
+            $this->logger,
+            $this->htmlConverter
         );
     }
 

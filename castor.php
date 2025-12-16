@@ -184,6 +184,11 @@ function _get_git_config(): array
     return $config;
 }
 
+function _get_html_converter(): \App\Service\JiraHtmlConverter
+{
+    return new \App\Service\JiraHtmlConverter();
+}
+
 function _get_jira_service(): JiraService
 {
     if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraService) {
@@ -202,7 +207,7 @@ function _get_jira_service(): JiraService
         ],
     ]);
 
-    return new JiraService($client);
+    return new JiraService($client, _get_html_converter());
 }
 
 /**
@@ -719,7 +724,8 @@ function branch_rename(
         _get_translation_service(),
         _get_jira_config(),
         DEFAULT_BASE_BRANCH,
-        _get_logger()
+        _get_logger(),
+        _get_html_converter()
     );
     exit($handler->handle(io(), $branch, $key, $explicitName));
 }
@@ -821,7 +827,8 @@ function submit(
         _get_jira_config(),
         DEFAULT_BASE_BRANCH,
         _get_translation_service(),
-        _get_logger()
+        _get_logger(),
+        _get_html_converter()
     );
     $handler->handle(io(), $draft, $labels);
 }

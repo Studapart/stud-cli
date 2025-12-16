@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add HTML-to-Markdown conversion for Pull Request descriptions in `stud submit` command [SCI-36]
+  - PR descriptions are automatically converted from Jira's HTML format to Markdown for better readability on GitHub
+  - Conversion preserves formatting: headings, lists, code blocks, and links are correctly converted
+  - Conversion handles Jira-specific HTML artifacts (broken tags, HTML entities, spans) gracefully
+  - If conversion fails, PR description falls back to raw HTML (existing behavior preserved)
+  - CLI display (`stud sh`) continues to use plain text description (no changes to CLI output)
+  - Added `league/html-to-markdown` package dependency
+  - Added verbose logging for conversion success/failure scenarios
+  - Full test coverage with unit tests for conversion method
 - Add `stud items:takeover` command (alias: `stud to`) to take over issues from other users [SCI-34]
   - Command prioritizes remote branches over local branches
   - If multiple remote branches found, command lists them and lets user choose

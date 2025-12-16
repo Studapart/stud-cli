@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\PullRequestData;
+use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
@@ -24,7 +25,8 @@ class SubmitHandler
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
-        private readonly Logger $logger
+        private readonly Logger $logger,
+        private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
@@ -102,6 +104,15 @@ class SubmitHandler
         // Fallback if API fails or if description is empty/default
         if (empty($prBody)) {
             $prBody = "Resolves: {$this->jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
+        } else {
+            // Convert HTML to Markdown for better readability on GitHub
+            try {
+                $prBody = $this->htmlConverter->toMarkdown($prBody);
+                $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description');
+            } catch (\Exception $e) {
+                $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  HTML to Markdown conversion failed, using raw HTML: {$e->getMessage()}");
+                // prBody remains as original HTML (fallback behavior)
+            }
         }
 
         // 6.5. Prepend clickable Jira link to PR body

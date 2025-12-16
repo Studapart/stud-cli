@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\BranchRenameHandler;
+use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -22,6 +23,7 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -29,7 +31,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $logger,
+            $htmlConverter
         );
     }
 
@@ -1134,6 +1137,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     public function testHandleWithNoGithubProvider(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1141,7 +1145,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $this->gitRepository->expects($this->once())
@@ -1178,6 +1183,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pr = ['number' => 123];
 
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1185,7 +1191,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $handlerReflection = new \ReflectionClass($handler);
