@@ -7,7 +7,6 @@ namespace App\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
-use Stevebauman\Hypertext\Transformer;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JiraService
@@ -16,9 +15,8 @@ class JiraService
 
     public function __construct(
         private HttpClientInterface $client,
-        private ?Transformer $transformer = null,
+        private readonly CanConvertToPlainTextInterface $htmlConverter
     ) {
-        $this->transformer = $transformer ?? new Transformer();
     }
 
     public function getIssue(string $key, bool $renderFields = false): WorkItem
@@ -123,7 +121,7 @@ class JiraService
 
         $description = 'No description provided.';
         if (isset($data['renderedFields']['description'])) {
-            $description = $this->_convertHtmlToPlainText($data['renderedFields']['description']);
+            $description = $this->htmlConverter->toPlainText($data['renderedFields']['description']);
         } elseif (! empty($fields['description'])) {
             // Fallback to raw ADF if renderedFields is not available, but we won't parse it.
             // For now, we'll just use a placeholder or the raw content if it's not ADF.
@@ -250,32 +248,5 @@ class JiraService
         if ($response->getStatusCode() !== 204) {
             throw new \RuntimeException("Could not assign issue \"{$key}\" to user.");
         }
-    }
-
-    /**
-     * Converts HTML content to plain text suitable for terminal display.
-     * Uses Stevebauman\Hypertext library for robust conversion.
-     *
-     * Note: This method converts HTML to plain text and handles <hr> tags by
-     * converting them to dividers. Any further formatting, sanitization, or
-     * section parsing should be done by the handler/display layer.
-     */
-    protected function _convertHtmlToPlainText(string $html): string
-    {
-        // Convert <hr> tags to divider markers before transformer processes them
-        // The transformer's HtmlPurifier removes <hr> tags, so we need to convert them first
-        // We'll replace <hr> with a pattern that will become a divider line after transformation
-        // Using a pattern that will be preserved: newline + dashes + newline
-        $html = preg_replace('/<hr\s*\/?>/i', "\n---\n", $html);
-        $html = preg_replace('/<hr\s+[^>]*\/?>/i', "\n---\n", $html);
-
-        $text = $this->transformer
-            ->keepLinks()
-            ->keepNewLines()
-            ->toText($html);
-
-        // Don't remove leading whitespace here - let the handler do it
-        // This prevents accidentally removing non-whitespace characters
-        return $text;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Tests\Handler;
 use App\DTO\PullRequestData;
 use App\DTO\WorkItem;
 use App\Handler\SubmitHandler;
+use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -20,16 +21,19 @@ class SubmitHandlerTest extends CommandTestCase
         'JIRA_URL' => 'https://my-jira.com',
     ];
     private ?GithubProvider $githubProvider;
+    private CanConvertToMarkdownInterface $htmlConverter;
+    private \App\Service\Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->githubProvider = $this->createMock(GithubProvider::class);
+        $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $this->logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -37,7 +41,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $logger
+            $this->logger,
+            $this->htmlConverter
         );
     }
 
@@ -66,6 +71,11 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->expects($this->once())
+            ->method('toMarkdown')
+            ->with('My rendered description')
+            ->willReturn('My rendered description');
 
         $this->githubProvider
             ->expects($this->once())
@@ -113,6 +123,11 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->expects($this->once())
+            ->method('toMarkdown')
+            ->with('My rendered description')
+            ->willReturn('My rendered description');
 
         $this->githubProvider
             ->expects($this->once())
@@ -222,6 +237,9 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
@@ -291,6 +309,9 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
 
         $this->githubProvider
             ->expects($this->once())
@@ -373,6 +394,9 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
@@ -397,6 +421,7 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithNoGitProviderConfigured(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -404,7 +429,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -464,6 +490,9 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
         $this->githubProvider->method('createPullRequest')->willThrowException(new \Exception('GitHub API error'));
 
         $output = new BufferedOutput();
@@ -500,6 +529,9 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
 
         $this->githubProvider->method('createPullRequest')->willThrowException(
             new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
@@ -541,6 +573,9 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
         $this->githubProvider->method('createPullRequest')->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $output = new BufferedOutput();
@@ -578,6 +613,9 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
 
         $this->githubProvider
             ->expects($this->once())
@@ -619,7 +657,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,enhancement');
+        $result = $method->invoke($this->handler, 'bug,enhancement');
 
         $this->assertSame(['bug', 'enhancement'], $result);
     }
@@ -633,7 +671,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, '');
+        $result = $method->invoke($this->handler, '');
 
         $this->assertSame([], $result);
     }
@@ -648,7 +686,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method->setAccessible(true);
 
         // Test with whitespace-only input
-        $result = $method->invoke($this->handler, $io, '  ,  ,  ');
+        $result = $method->invoke($this->handler, '  ,  ,  ');
 
         $this->assertSame([], $result);
     }
@@ -672,7 +710,7 @@ class SubmitHandlerTest extends CommandTestCase
         $method->setAccessible(true);
 
         // Request lowercase 'bug' but it should match 'Bug' from GitHub
-        $result = $method->invoke($this->handler, $io, 'bug');
+        $result = $method->invoke($this->handler, 'bug');
 
         $this->assertSame(['Bug'], $result); // Should use the exact case from GitHub
     }
@@ -702,6 +740,10 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description'
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->with('My rendered description')
+            ->willReturn('My rendered description');
 
         $remoteLabels = [
             ['name' => 'bug'],
@@ -771,6 +813,9 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
         $this->githubProvider
             ->expects($this->once())
             ->method('getLabels')
@@ -811,25 +856,24 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         // Mock the methods that will be called
-        $io->expects($this->exactly(2))
+        $this->logger->expects($this->exactly(2))
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_create_option'));
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('success')
-            ->with($this->anything());
-
-        $io->method('isVerbose')->willReturn(false);
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+        $result = $method->invoke($this->handler, 'bug,new-label');
 
         $this->assertCount(2, $result);
         $this->assertContains('bug', $result);
@@ -854,21 +898,20 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
-
-        $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertSame(['bug'], $result);
     }
@@ -891,21 +934,20 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_retry_option'));
-
-        $io->method('isVerbose')->willReturn(false);
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertNull($result);
     }
@@ -929,25 +971,24 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->exactly(2))
+        $this->logger->expects($this->exactly(2))
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_create_option'));
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->anything());
-
-        $io->method('isVerbose')->willReturn(false);
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,new-label');
+        $result = $method->invoke($this->handler, 'bug,new-label');
 
         $this->assertNull($result);
     }
@@ -966,33 +1007,24 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('text')
-            ->with($this->anything());
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
             ->willReturn($this->translationService->trans('submit.label_ignore_option'));
 
-        // Get the Logger mock from the handler and set expectations
-        $reflection = new \ReflectionClass($this->handler);
-        $loggerProperty = $reflection->getProperty('logger');
-        $loggerProperty->setAccessible(true);
-        $logger = $loggerProperty->getValue($this->handler);
-
-        $io->method('isVerbose')->willReturn(true);
-        $io->method('isQuiet')->willReturn(false);
-        $io->method('isDebug')->willReturn(false);
-        $io->method('isVeryVerbose')->willReturn(false);
-
-        $logger->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('writeln')
             ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->stringContains('ignored'));
 
+        $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->handler, $io, 'bug,typo');
+        $result = $method->invoke($this->handler, 'bug,typo');
 
         $this->assertSame(['bug'], $result);
     }
@@ -1060,6 +1092,7 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithLabelsNoProvider(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1067,7 +1100,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1589,6 +1623,7 @@ class SubmitHandlerTest extends CommandTestCase
     public function testHandleWithExistingPRNoProvider(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1596,7 +1631,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1633,6 +1669,60 @@ class SubmitHandlerTest extends CommandTestCase
 
         // Should handle gracefully when no provider (labels/draft ignored)
         $result = $this->handler->handle($io, true, 'bug');
+
+        $this->assertSame(0, $result);
+    }
+
+    // Note: HTML-to-Markdown conversion tests were moved to JiraHtmlConverterTest
+    // as the conversion logic is now in the JiraHtmlConverter service
+
+    public function testHandleWithHtmlConverterException(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: '<p>Test HTML</p>'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        // Mock converter to throw exception
+        $this->htmlConverter->expects($this->once())
+            ->method('toMarkdown')
+            ->with('<p>Test HTML</p>')
+            ->willThrowException(new \Exception('Conversion failed'));
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                // Should use original HTML when conversion fails
+                return $prData instanceof PullRequestData
+                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\n<p>Test HTML</p>";
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $this->handler->handle($io);
 
         $this->assertSame(0, $result);
     }

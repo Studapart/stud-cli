@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\BranchRenameHandler;
+use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -15,13 +16,15 @@ class BranchRenameHandlerTest extends CommandTestCase
 {
     private BranchRenameHandler $handler;
     private GithubProvider&MockObject $githubProvider;
+    private \App\Service\Logger&MockObject $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->githubProvider = $this->createMock(GithubProvider::class);
-        $logger = $this->createMock(\App\Service\Logger::class);
+        $this->logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -29,7 +32,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $this->logger,
+            $htmlConverter
         );
     }
 
@@ -121,11 +125,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -172,11 +176,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, 'TPW-35', null);
 
@@ -224,11 +228,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         // Pass SCI-34 as branchName (first arg), null as key (second arg)
         // Handler should detect it's a Jira key and treat it as key instead
@@ -280,11 +284,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, null);
 
@@ -395,11 +399,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -444,11 +448,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -527,11 +531,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->with(456, 'Branch renamed from `old-branch` to `new-branch`');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -597,10 +601,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             });
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('note');
-        $io->method('confirm')->willReturn(false);
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('note');
+        $this->logger->method('confirm')->willReturn(false);
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -648,10 +652,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -690,10 +694,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Rebase failed'));
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('error');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('error');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -721,9 +725,9 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(false);
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(false);
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -768,11 +772,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('warning');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('warning');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -806,11 +810,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('PR not found'));
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -883,10 +887,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->with(456, 'Branch renamed from `old-branch` to `new-branch`');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -922,11 +926,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn($pr);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('note');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('note');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -1000,11 +1004,11 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Comment failed'));
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('warning');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('warning');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -1053,12 +1057,12 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturn($pr);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
-        $io->method('warning');
-        $io->method('error');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('confirm')->willReturn(true);
+        $this->logger->method('success');
+        $this->logger->method('warning');
+        $this->logger->method('error');
 
         $result = $this->handler->handle($io, null, null, 'new-branch');
 
@@ -1134,6 +1138,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     public function testHandleWithNoGithubProvider(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1141,7 +1146,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $this->gitRepository->expects($this->once())
@@ -1163,10 +1169,10 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->with('old-branch', 'new-branch');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->method('section');
-        $io->method('text');
-        $io->method('confirm')->willReturn(true);
-        $io->method('success');
+        $logger->method('section');
+        $logger->method('text');
+        $logger->method('confirm')->willReturn(true);
+        $logger->method('success');
 
         $result = $handler->handle($io, null, null, 'new-branch');
 
@@ -1178,6 +1184,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pr = ['number' => 123];
 
         $logger = $this->createMock(\App\Service\Logger::class);
+        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -1185,7 +1192,8 @@ class BranchRenameHandlerTest extends CommandTestCase
             $this->translationService,
             ['JIRA_URL' => 'https://jira.example.com'],
             'origin/develop',
-            $logger
+            $logger,
+            $htmlConverter
         );
 
         $handlerReflection = new \ReflectionClass($handler);

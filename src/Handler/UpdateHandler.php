@@ -31,7 +31,7 @@ class UpdateHandler
 
     public function handle(SymfonyStyle $io, bool $info = false): int
     {
-        $io->section($this->translator->trans('update.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.section'));
 
         $binaryPath = $this->updateFileService->getBinaryPath($this->binaryPath);
         $this->logVerbose($this->translator->trans('update.binary_path'), $binaryPath);
@@ -39,7 +39,7 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
-        $releaseResult = $this->fetchLatestRelease($io, $githubProvider);
+        $releaseResult = $this->fetchLatestRelease($githubProvider);
 
         if ($releaseResult['is404']) {
             // 404 means no releases found - this is a success case (already warned)
@@ -53,24 +53,24 @@ class UpdateHandler
 
         $release = $releaseResult['release'];
 
-        if ($this->isAlreadyLatestVersion($io, $release)) {
+        if ($this->isAlreadyLatestVersion($release)) {
             return 0;
         }
 
         // Display changelog before downloading
-        $this->displayChangelog($io, $githubProvider, $release);
+        $this->displayChangelog($githubProvider, $release);
 
         // If --info flag is set, exit after displaying changelog without downloading
         if ($info) {
             return 0;
         }
 
-        $pharAsset = $this->findPharAsset($io, $release);
+        $pharAsset = $this->findPharAsset($release);
         if (! $pharAsset) {
             return 1;
         }
 
-        $tempFile = $this->downloadPhar($io, $pharAsset, $this->repoOwner, $this->repoName);
+        $tempFile = $this->downloadPhar($pharAsset, $this->repoOwner, $this->repoName);
         if ($tempFile === null) {
             return 1;
         }
@@ -107,18 +107,18 @@ class UpdateHandler
     /**
      * @return array{release: array<string, mixed>|null, is404: bool}
      */
-    protected function fetchLatestRelease(SymfonyStyle $io, GithubProvider $githubProvider): array
+    protected function fetchLatestRelease(GithubProvider $githubProvider): array
     {
         try {
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Status: 404')) {
-                $io->warning(explode("\n", $this->translator->trans('update.warning_no_releases')));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.warning_no_releases')));
 
                 return ['release' => null, 'is404' => true];
             }
 
-            $io->error(explode("\n", $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()])));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()])));
 
             return ['release' => null, 'is404' => false];
         }
@@ -127,7 +127,7 @@ class UpdateHandler
     /**
      * @param array<string, mixed> $release
      */
-    protected function isAlreadyLatestVersion(SymfonyStyle $io, array $release): bool
+    protected function isAlreadyLatestVersion(array $release): bool
     {
         $latestVersion = ltrim($release['tag_name'] ?? '', 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
@@ -135,7 +135,7 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.latest_version'), $latestVersion);
 
         if (version_compare($latestVersion, $currentVersion, '<=')) {
-            $io->success($this->translator->trans('update.success_latest', ['version' => $this->currentVersion]));
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.success_latest', ['version' => $this->currentVersion]));
 
             return true;
         }
@@ -147,9 +147,9 @@ class UpdateHandler
      * @param array<string, mixed> $release
      * @return array<string, mixed>|null
      */
-    protected function findPharAsset(SymfonyStyle $io, array $release): ?array
+    protected function findPharAsset(array $release): ?array
     {
-        $io->text($this->translator->trans('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
 
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'] ?? null;
@@ -162,7 +162,7 @@ class UpdateHandler
             }
         }
 
-        $io->error(explode("\n", $this->translator->trans('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))])));
+        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))])));
 
         return null;
     }
@@ -170,14 +170,14 @@ class UpdateHandler
     /**
      * @param array<string, mixed> $pharAsset
      */
-    protected function downloadPhar(SymfonyStyle $io, array $pharAsset, string $repoOwner, string $repoName): ?string
+    protected function downloadPhar(array $pharAsset, string $repoOwner, string $repoName): ?string
     {
         $tempFile = sys_get_temp_dir() . '/stud.phar.new';
 
         // Extract asset ID from the asset object
         $assetId = $pharAsset['id'] ?? null;
         if (! $assetId) {
-            $io->error(explode("\n", $this->translator->trans('update.error_asset_id')));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_asset_id')));
 
             return null;
         }
@@ -208,7 +208,7 @@ class UpdateHandler
 
             return $tempFile;
         } catch (\Exception $e) {
-            $io->error(explode("\n", $this->translator->trans('update.error_download', ['error' => $e->getMessage()])));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_download', ['error' => $e->getMessage()])));
 
             return null;
         }
@@ -222,7 +222,7 @@ class UpdateHandler
     /**
      * @param array<string, mixed> $release
      */
-    protected function displayChangelog(SymfonyStyle $io, GithubProvider $githubProvider, array $release): void
+    protected function displayChangelog(GithubProvider $githubProvider, array $release): void
     {
         try {
             $tagName = $release['tag_name'] ?? 'unknown';
@@ -238,15 +238,15 @@ class UpdateHandler
                 return;
             }
 
-            $io->section($this->translator->trans('update.changelog_section', ['version' => $tagName]));
+            $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.changelog_section', ['version' => $tagName]));
 
             // Display breaking changes first with warning
             if ($hasBreaking) {
-                $io->warning($this->translator->trans('update.breaking_changes_detected'));
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.breaking_changes_detected'));
                 foreach ($changes['breakingChanges'] as $breakingChange) {
-                    $io->writeln("  <fg=red>⚠️  {$breakingChange}</>");
+                    $this->logger->writeln(Logger::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
                 }
-                $io->newLine();
+                $this->logger->newLine(Logger::VERBOSITY_NORMAL);
             }
 
             // Display other sections
@@ -260,11 +260,11 @@ class UpdateHandler
                 // @codeCoverageIgnoreEnd
 
                 $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
-                $io->text("<fg=cyan>{$sectionTitle}</>");
+                $this->logger->text(Logger::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
                 foreach ($items as $item) {
-                    $io->writeln("  • {$item}");
+                    $this->logger->writeln(Logger::VERBOSITY_NORMAL, "  • {$item}");
                 }
-                $io->newLine();
+                $this->logger->newLine(Logger::VERBOSITY_NORMAL);
             }
         } catch (\Exception $e) {
             // Silently fail - don't block update if changelog can't be fetched

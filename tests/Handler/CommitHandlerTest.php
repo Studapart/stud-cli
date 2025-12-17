@@ -13,13 +13,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class CommitHandlerTest extends CommandTestCase
 {
     private CommitHandler $handler;
+    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $logger = $this->createMock(Logger::class);
-        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $logger);
+        $this->logger = $this->createMock(Logger::class);
+        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $this->logger);
     }
 
     public function testHandleWithCleanWorkingTree(): void
@@ -27,6 +28,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
             ->willReturn('');
+
+        $this->logger->method('note');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -42,6 +45,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
             ->willReturn('   ');
+
+        $this->logger->method('note');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -64,6 +69,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('commit')
             ->with('my message');
+
+        $this->logger->method('success');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -92,26 +99,17 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commitFixup')
             ->with('abcdef');
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->method('isVerbose')->willReturn(true);
-        $io->method('isQuiet')->willReturn(false);
-        $io->method('isDebug')->willReturn(false);
-        $io->method('isVeryVerbose')->willReturn(false);
-
-        // Get the Logger mock from the handler and set expectations
-        $reflection = new \ReflectionClass($this->handler);
-        $loggerProperty = $reflection->getProperty('logger');
-        $loggerProperty->setAccessible(true);
-        $logger = $loggerProperty->getValue($this->handler);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $loggerCalls = [];
-        $logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
             $loggerCalls[] = $message;
         });
 
-        $io->method('section');
-        $io->method('text');
-        $io->method('success');
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('success');
 
         $result = $this->handler->handle($io, false, null);
 
@@ -159,18 +157,24 @@ class CommitHandlerTest extends CommandTestCase
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $io->expects($this->exactly(3))
+        $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question) => match (true) {
+                fn (string $question, ?string $default) => match (true) {
                     str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
                     str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
                     str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln');
 
         $result = $this->handler->handle($io, false, null);
 
@@ -190,6 +194,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getJiraKeyFromBranchName')
             ->willReturn(null);
+
+        $this->logger->method('error');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -218,6 +224,8 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Jira service error'));
+
+        $this->logger->method('error');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -267,23 +275,28 @@ class CommitHandlerTest extends CommandTestCase
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->method('isVeryVerbose')->willReturn(true);
-        $io->method('writeln')->willReturnCallback(function (string $message) use ($output) { $output->writeln($message); });
-        $io->method('section');
-        $io->method('text');
-        $io->method('success');
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $io->expects($this->exactly(3))
+        $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question) => match (true) {
+                fn (string $question, ?string $default) => match (true) {
                     str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
                     str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
                     str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+            if ($verbosity <= Logger::VERBOSITY_VERY_VERBOSE) {
+                $output->writeln($message);
+            }
+        });
 
         $result = $this->handler->handle($io, false, null);
 
@@ -330,18 +343,24 @@ class CommitHandlerTest extends CommandTestCase
             ->with('feat: My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $io->expects($this->exactly(3))
+        $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question) => match (true) {
+                fn (string $question, ?string $default) => match (true) {
                     str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => null,
+                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => '',
                     str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln');
 
         $result = $this->handler->handle($io, false, null);
 
@@ -387,23 +406,33 @@ class CommitHandlerTest extends CommandTestCase
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->method('isVerbose')->willReturn(true);
-        $io->method('writeln')->willReturnCallback(function (string $message) use ($output) { $output->writeln($message); });
-        $io->method('section');
-        $io->method('text');
-        $io->method('success');
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $io->expects($this->exactly(3))
+        $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question) => match (true) {
+                fn (string $question, ?string $default) => match (true) {
                     str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
                     str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
                     str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+            if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
+                $output->writeln($message);
+            }
+        });
+        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+            if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
+                $output->writeln($message);
+            }
+        });
 
         $result = $this->handler->handle($io, false, null);
 
@@ -452,18 +481,22 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects($this->exactly(3))
+        $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question) => match (true) {
+                fn (string $question, ?string $default) => match (true) {
                     str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => null,
+                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => '',
                     str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln');
 
         $result = $this->handler->handle($io, false, null);
 

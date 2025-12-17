@@ -1332,10 +1332,69 @@ class GitRepositoryTest extends CommandTestCase
     public function testRenameRemoteBranch(): void
     {
         $process = $this->createMock(Process::class);
-        $this->processFactory->expects($this->exactly(4))
+        $callCount = 0;
+        $this->processFactory->expects($this->exactly(5))
             ->method('create')
-            ->willReturnCallback(function ($command) use ($process) {
+            ->willReturnCallback(function ($command) use ($process, &$callCount) {
+                $callCount++;
+                if ($callCount === 1) {
+                    // First call: localBranchExists() -> git rev-parse --verify --quiet old-branch
+                    $this->assertStringContainsString('git rev-parse --verify --quiet old-branch', $command);
+                    $process->method('isSuccessful')->willReturn(true);
+                } elseif ($callCount === 2) {
+                    // Second call: git push origin old-branch:new-branch
+                    $this->assertStringContainsString('git push origin old-branch:new-branch', $command);
+                } elseif ($callCount === 3) {
+                    // Third call: git push origin -u old-branch:new-branch
+                    $this->assertStringContainsString('git push origin -u old-branch:new-branch', $command);
+                } elseif ($callCount === 4) {
+                    // Fourth call: git push origin --delete old-branch
+                    $this->assertStringContainsString('git push origin --delete old-branch', $command);
+                } elseif ($callCount === 5) {
+                    // Fifth call: git branch --set-upstream-to=origin/new-branch old-branch
+                    $this->assertStringContainsString('git branch --set-upstream-to=origin/new-branch old-branch', $command);
+                }
                 $process->method('mustRun');
+                if ($callCount > 1) {
+                    $process->method('isSuccessful')->willReturn(true);
+                }
+
+                return $process;
+            });
+
+        $this->gitRepository->renameRemoteBranch('old-branch', 'new-branch', 'origin');
+    }
+
+    public function testRenameRemoteBranchWhenLocalAlreadyRenamed(): void
+    {
+        $process = $this->createMock(Process::class);
+        $callCount = 0;
+        $this->processFactory->expects($this->exactly(5))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($process, &$callCount) {
+                $callCount++;
+                if ($callCount === 1) {
+                    // First call: localBranchExists() -> git rev-parse --verify --quiet old-branch
+                    // Returns false because local branch was already renamed
+                    $this->assertStringContainsString('git rev-parse --verify --quiet old-branch', $command);
+                    $process->method('isSuccessful')->willReturn(false);
+                } elseif ($callCount === 2) {
+                    // Second call: git push origin new-branch:new-branch (or just new-branch)
+                    $this->assertStringContainsString('git push origin new-branch', $command);
+                } elseif ($callCount === 3) {
+                    // Third call: git push origin -u new-branch:new-branch (or just new-branch)
+                    $this->assertStringContainsString('git push origin -u new-branch', $command);
+                } elseif ($callCount === 4) {
+                    // Fourth call: git push origin --delete old-branch
+                    $this->assertStringContainsString('git push origin --delete old-branch', $command);
+                } elseif ($callCount === 5) {
+                    // Fifth call: git branch --set-upstream-to=origin/new-branch new-branch
+                    $this->assertStringContainsString('git branch --set-upstream-to=origin/new-branch new-branch', $command);
+                }
+                $process->method('mustRun');
+                if ($callCount > 1) {
+                    $process->method('isSuccessful')->willReturn(true);
+                }
 
                 return $process;
             });

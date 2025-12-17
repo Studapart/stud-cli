@@ -15,12 +15,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 {
     private ItemTakeoverHandler $handler;
     private ItemStartHandler $itemStartHandler;
+    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $logger = $this->createMock(Logger::class);
+        $this->logger = $this->createMock(Logger::class);
         $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
         $this->handler = new ItemTakeoverHandler(
             $this->gitRepository,
@@ -29,7 +30,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             'origin/develop',
             $this->translationService,
             [],
-            $logger
+            $this->logger
+        );
+    }
+
+    /**
+     * Creates a handler with a real Logger instance for interactive tests.
+     */
+    private function createHandlerWithRealLogger(SymfonyStyle $io): ItemTakeoverHandler
+    {
+        $realLogger = new Logger($io, []);
+
+        return new ItemTakeoverHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            $this->itemStartHandler,
+            'origin/develop',
+            $this->translationService,
+            [],
+            $realLogger
         );
     }
 
@@ -40,9 +59,17 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn(" M file.php\n");
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes (only one branch, so no choice needed)
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($io, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(1, $result);
     }
@@ -59,9 +86,17 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Issue not found'));
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes (only one branch, so no choice needed)
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($io, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(1, $result);
     }
@@ -105,14 +140,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('handle')
             ->willReturn(0);
 
-        // Create a mock IO that will return true for confirm()
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for starting fresh - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -155,14 +194,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('handle')
             ->willReturn(0);
 
-        // Create a mock IO that will return true for confirm()
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for starting fresh - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -224,16 +267,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
-        // Create a mock IO that will return true for confirm() and handle other methods
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -296,9 +341,17 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn(true);
 
         $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes (only one branch, so no choice needed)
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($io, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -359,16 +412,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
-        // Create a mock IO that will return true for confirm() and handle other methods
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -431,16 +486,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturn(false);
 
         // Create a mock IO that will return true for confirm() and handle other methods
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('warning');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -506,16 +563,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('pullWithRebase')
             ->with('origin', 'feat/PROJ-123-title');
 
-        // Create a mock IO that will return true for confirm() and handle other methods
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -581,16 +640,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('pullWithRebase');
 
         // Create a mock IO that will return true for confirm() and handle other methods
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('warning');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -632,14 +693,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->itemStartHandler->expects($this->never())
             ->method('handle');
 
-        // Create a mock IO that will return false for confirm()
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(false);
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() - no
+        fwrite($inputStream, "n\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -716,14 +781,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willReturnCallback(function ($message) {
                 // Allow text() to be called multiple times
             });
-        // Mock choice to return the exact format that buildBranchOptions creates for the first remote branch
-        // JSON encoding escapes forward slashes, so we need: "feat\/PROJ-123-branch2"
-        $mockIo->method('choice')
-            ->willReturn('item.takeover.branch_remote {"branch":"feat\/PROJ-123-branch2"}');
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // choice() for branch selection - select first option (index 0) which is "feat/PROJ-123-branch2"
+        fwrite($inputStream, "0\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -767,21 +836,22 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         // extractBranchNameFromSelection returns null when no match is found
         // This simulates user canceling or invalid selection
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text')
-            ->willReturnCallback(function ($message) {
-                // Allow text() to be called multiple times
-            });
+        // Mock the logger's choice() method to return an invalid selection
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('jiraWriteln');
+        $this->logger->method('warning');
         // Return a selection that doesn't match any branch label
-        $mockIo->method('choice')
+        $this->logger->method('choice')
             ->willReturn('Invalid Selection That Does Not Match');
 
         // When selection doesn't match, getCurrentBranchName is never called
         $this->gitRepository->expects($this->never())
             ->method('getCurrentBranchName');
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $result = $this->handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -820,14 +890,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        // Create a mock IO that will return false for confirm()
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(false);
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() - no
+        fwrite($inputStream, "n\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -892,15 +966,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('pullWithRebase');
 
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -962,15 +1039,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -1032,15 +1112,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
-        $mockIo = $this->createMock(SymfonyStyle::class);
-        $mockIo->method('section');
-        $mockIo->method('text');
-        $mockIo->method('confirm')
-            ->willReturn(true);
-        $mockIo->method('success');
-        $mockIo->method('note');
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for switching - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
 
-        $result = $this->handler->handle($mockIo, 'PROJ-123');
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);
     }

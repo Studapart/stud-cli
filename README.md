@@ -497,7 +497,7 @@ These commands integrate directly with your local Git repository to streamline y
         ```
 
 -   **`stud submit`** (Alias: `stud sub`)
-    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub.
+    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub.
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
@@ -510,6 +510,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
         ```
+    -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
 -   **`stud pr:comment`** (Alias: `stud pc`)
     -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.

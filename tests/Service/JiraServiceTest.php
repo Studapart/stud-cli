@@ -5,10 +5,10 @@ namespace App\Tests\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
+use App\Service\CanConvertToPlainTextInterface;
 use App\Service\JiraService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Stevebauman\Hypertext\Transformer as RealTransformer;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -16,13 +16,13 @@ class JiraServiceTest extends TestCase
 {
     private JiraService $jiraService;
     private HttpClientInterface&MockObject $httpClientMock;
-    private RealTransformer&MockObject $transformerMock;
+    private CanConvertToPlainTextInterface&MockObject $htmlConverterMock;
 
     protected function setUp(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->transformerMock = $this->createMock(RealTransformer::class);
-        $this->jiraService = new JiraService($this->httpClientMock, $this->transformerMock);
+        $this->htmlConverterMock = $this->createMock(CanConvertToPlainTextInterface::class);
+        $this->jiraService = new JiraService($this->httpClientMock, $this->htmlConverterMock);
     }
 
     public function testGetIssueSuccess(): void
@@ -96,14 +96,8 @@ class JiraServiceTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}?expand=renderedFields")
             ->willReturn($responseMock);
 
-        $this->transformerMock->expects($this->once())
-            ->method('keepLinks')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->once())
-            ->method('keepNewLines')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->once())
-            ->method('toText')
+        $this->htmlConverterMock->expects($this->once())
+            ->method('toPlainText')
             ->with($mockHtmlDescription)
             ->willReturn($expectedPlainText);
 
@@ -407,14 +401,8 @@ class JiraServiceTest extends TestCase
 echo 'hello';
 ```";
 
-        $this->transformerMock->expects($this->once())
-            ->method('keepLinks')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->once())
-            ->method('keepNewLines')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->once())
-            ->method('toText')
+        $this->htmlConverterMock->expects($this->once())
+            ->method('toPlainText')
             ->with($expectedHtml)
             ->willReturn($expectedPlainText);
 
@@ -444,59 +432,8 @@ echo 'hello';
         $this->assertSame('Unassigned', $workItem->assignee);
     }
 
-    public function testConvertHtmlToPlainText(): void
-    {
-        $html1 = '<p>Hello, <strong>world</strong>!</p><ul><li>Item 1</li><li>Item 2</li></ul><pre><code>function test() { return true; }</code></pre>';
-        $expected1 = "Hello, world!
-
-* Item 1
-* Item 2
-
-```
-function test() { return true; }
-```";
-
-        $html2 = '<p>This &amp; that &gt; 10 &euro;</p>';
-        $expected2 = "This & that > 10 €";
-
-        $html3 = "<p>Line 1</p>\n\n<p>Line 2</p>";
-        $expected3 = "Line 1
-
-Line 2";
-
-        $html4 = "Line 1<br>Line 2<br/>Line 3";
-        $expected4 = "Line 1
-Line 2
-Line 3";
-
-        $this->transformerMock->expects($this->exactly(4))
-            ->method('keepLinks')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->exactly(4))
-            ->method('keepNewLines')
-            ->willReturnSelf();
-        $this->transformerMock->expects($this->exactly(4))
-            ->method('toText')
-            ->willReturnCallback(function ($html) use ($html1, $expected1, $html2, $expected2, $html3, $expected3, $html4, $expected4) {
-                switch ($html) {
-                    case $html1:
-                        return $expected1;
-                    case $html2:
-                        return $expected2;
-                    case $html3:
-                        return $expected3;
-                    case $html4:
-                        return $expected4;
-                    default:
-                        return 'Unexpected HTML input: ' . $html;
-                }
-            });
-
-        $this->assertSame($expected1, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html1]));
-        $this->assertSame($expected2, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html2]));
-        $this->assertSame($expected3, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html3]));
-        $this->assertSame($expected4, $this->callPrivateMethod($this->jiraService, '_convertHtmlToPlainText', [$html4]));
-    }
+    // Note: testConvertHtmlToPlainText was removed as the conversion logic
+    // is now in JiraHtmlConverter and tested in JiraHtmlConverterTest
 
     public function testMapToWorkItemWithAdfDescriptionFallback(): void
     {

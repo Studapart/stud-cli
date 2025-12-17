@@ -22,28 +22,28 @@ class PrCommentHandler
 
     public function handle(SymfonyStyle $io, ?string $message = null): int
     {
-        $io->section($this->translator->trans('pr.comment.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.section'));
 
         // Check if GitHub provider is available
         if (! $this->githubProvider) {
-            $io->error($this->translator->trans('pr.comment.error_no_provider'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_provider'));
 
             return 1;
         }
 
         // Get comment body with precedence: STDIN first, then argument
-        $commentBody = $this->getCommentBody($io, $message);
+        $commentBody = $this->getCommentBody($message);
 
         if (empty($commentBody)) {
-            $io->error($this->translator->trans('pr.comment.error_no_input'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_input'));
 
             return 1;
         }
 
         // Find the active PR for the current branch
-        $prNumber = $this->findActivePullRequest($io);
+        $prNumber = $this->findActivePullRequest();
         if ($prNumber === null) {
-            $io->error($this->translator->trans('pr.comment.error_no_pr'));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_pr'));
 
             return 1;
         }
@@ -52,9 +52,9 @@ class PrCommentHandler
         try {
             $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.posting', ['number' => $prNumber])}</>");
             $this->githubProvider->createComment($prNumber, $commentBody);
-            $io->success($this->translator->trans('pr.comment.success', ['number' => $prNumber]));
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.success', ['number' => $prNumber]));
         } catch (\Exception $e) {
-            $io->error(explode("\n", $this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()])));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()])));
 
             return 1;
         }
@@ -66,7 +66,7 @@ class PrCommentHandler
      * Gets comment body with precedence: STDIN first, then argument.
      * Returns null if neither is available.
      */
-    protected function getCommentBody(SymfonyStyle $io, ?string $message): ?string
+    protected function getCommentBody(?string $message): ?string
     {
         // 1st priority: Check for STDIN input (piped content)
         $stdinContent = $this->readStdin();
@@ -142,7 +142,7 @@ class PrCommentHandler
      * Finds the active Pull Request number for the current branch.
      * Returns null if no PR is found.
      */
-    protected function findActivePullRequest(SymfonyStyle $io): ?int
+    protected function findActivePullRequest(): ?int
     {
         $branch = $this->gitRepository->getCurrentBranchName();
 

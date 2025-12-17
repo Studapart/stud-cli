@@ -423,7 +423,8 @@ SCRIPT;
     }
 
     /**
-     * Renames a remote branch by pushing the new branch, setting upstream, and deleting the old branch.
+     * Renames a remote branch by pushing the local branch as the new name on remote,
+     * setting upstream, and deleting the old remote branch.
      *
      * @param string $oldName The current remote branch name
      * @param string $newName The new remote branch name
@@ -431,13 +432,19 @@ SCRIPT;
      */
     public function renameRemoteBranch(string $oldName, string $newName, string $remote = 'origin'): void
     {
-        // Push new branch and set upstream
-        $this->run("git push {$remote} {$newName}");
-        $this->run("git push {$remote} -u {$newName}");
+        // Determine which local branch to push from
+        // If local branch was already renamed, it's now $newName, otherwise it's still $oldName
+        $localBranch = $this->localBranchExists($oldName) ? $oldName : $newName;
+
+        // Push local branch to remote with new name and set upstream
+        // Format: git push origin localBranch:newName
+        // This pushes the local branch to the remote as 'newName'
+        $this->run("git push {$remote} {$localBranch}:{$newName}");
+        $this->run("git push {$remote} -u {$localBranch}:{$newName}");
         // Delete old remote branch
         $this->run("git push {$remote} --delete {$oldName}");
         // Update local tracking branch
-        $this->run("git branch --set-upstream-to={$remote}/{$newName} {$newName}");
+        $this->run("git branch --set-upstream-to={$remote}/{$newName} {$localBranch}");
     }
 
     /**

@@ -4,18 +4,21 @@ namespace App\Tests\Handler;
 
 use App\DTO\Filter;
 use App\Handler\FilterListHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterListHandlerTest extends CommandTestCase
 {
     private FilterListHandler $handler;
+    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->handler = new FilterListHandler($this->jiraService, $this->translationService);
+        $this->logger = $this->createMock(Logger::class);
+        $this->handler = new FilterListHandler($this->jiraService, $this->translationService, $this->logger);
     }
 
     public function testHandle(): void
@@ -29,13 +32,13 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willReturn([$filter]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->logger->expects($this->once())
             ->method('table')
             ->with(
+                Logger::VERBOSITY_NORMAL,
                 $this->callback(function ($headers) {
                     return is_array($headers) && count($headers) === 2;
                 }),
@@ -48,6 +51,7 @@ class FilterListHandlerTest extends CommandTestCase
                 })
             );
 
+        $io = $this->createMock(SymfonyStyle::class);
         $this->handler->handle($io);
     }
 
@@ -57,16 +61,16 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willReturn([]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->logger->expects($this->once())
             ->method('note')
-            ->with($this->callback(function ($message) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
                 return is_string($message) && ! empty($message);
             }));
 
+        $io = $this->createMock(SymfonyStyle::class);
         $this->handler->handle($io);
     }
 
@@ -76,16 +80,16 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willThrowException(new \Exception('Jira API error'));
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->callback(function ($message) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
                 return is_string($message) && ! empty($message);
             }));
 
+        $io = $this->createMock(SymfonyStyle::class);
         $this->handler->handle($io);
     }
 
@@ -99,13 +103,13 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willReturn([$filter1, $filter2, $filter3]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->logger->expects($this->once())
             ->method('table')
             ->with(
+                Logger::VERBOSITY_NORMAL,
                 $this->callback(function ($headers) {
                     return is_array($headers) && count($headers) === 2;
                 }),
@@ -118,6 +122,7 @@ class FilterListHandlerTest extends CommandTestCase
                 })
             );
 
+        $io = $this->createMock(SymfonyStyle::class);
         $this->handler->handle($io);
     }
 
@@ -132,13 +137,13 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willReturn([$filter]);
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->logger->expects($this->once())
             ->method('table')
             ->with(
+                Logger::VERBOSITY_NORMAL,
                 $this->callback(function ($headers) {
                     return is_array($headers) && count($headers) === 2;
                 }),
@@ -151,6 +156,7 @@ class FilterListHandlerTest extends CommandTestCase
                 })
             );
 
+        $io = $this->createMock(SymfonyStyle::class);
         $this->handler->handle($io);
     }
 }

@@ -155,8 +155,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -218,8 +230,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -280,8 +304,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -346,19 +382,6 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-35', 11);
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $inputStream = fopen('php://memory', 'r+');
-        // Provide input for interactive prompts:
-        // 1. choice() for transition selection - select first option (index 0)
-        fwrite($inputStream, "0\n");
-        // 2. confirm() for saving choice - yes
-        fwrite($inputStream, "y\n");
-        rewind($inputStream);
-
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
-
         $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(0, $result);
@@ -380,8 +403,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - NO (user declines)
+        fwrite($inputStream, "n\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -470,8 +505,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -532,8 +579,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -594,8 +653,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -657,8 +728,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -719,8 +802,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -781,8 +876,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -870,8 +977,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -960,8 +1079,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1052,8 +1183,20 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        // Use real logger for interactive tests
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // Provide input for interactive prompts:
+        // 1. choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        // 2. confirm() for saving choice - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $realLogger = new Logger($io, []);
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1142,7 +1285,21 @@ class ItemStartHandlerTest extends CommandTestCase
         );
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        // Create a mocked logger to test the edge case where choice() returns invalid string
         $logger = $this->createMock(Logger::class);
+        $logger->method('jiraWriteln');
+        $logger->method('text');
+        $logger->method('section');
+        // Mock choice to return a string that doesn't match our regex pattern
+        // This simulates an edge case where the regex fails (shouldn't happen in practice)
+        $logger->expects($this->once())
+            ->method('choice')
+            ->willReturn('Invalid Selection Without ID Pattern');
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(Logger::VERBOSITY_NORMAL, $this->stringContains('item.start.transition_error'));
+
         $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
@@ -1174,24 +1331,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $io = $this->createMock(SymfonyStyle::class);
-
-        // Mock choice to return a string that doesn't match our regex pattern
-        // This simulates an edge case where the regex fails (shouldn't happen in practice)
-        $io->expects($this->once())
-            ->method('choice')
-            ->willReturn('Invalid Selection Without ID Pattern');
-
-        $io->expects($this->any())
-            ->method('isVerbose')
-            ->willReturn(false);
-
-        // The exception is caught and a warning is shown
-        $io->expects($this->once())
-            ->method('warning')
-            ->with($this->stringContains('item.start.transition_error'));
-
-        $result = $this->callPrivateMethod($handler, 'handleTransition', [$io, 'TPW-35', $workItem]);
+        $result = $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem]);
 
         // Method returns 0 even when exception occurs (error handling)
         $this->assertSame(0, $result);
