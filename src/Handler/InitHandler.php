@@ -24,11 +24,11 @@ class InitHandler
     {
         $existingConfig = $this->fileSystem->fileExists($this->configPath) ? $this->fileSystem->parseFile($this->configPath) : [];
 
-        $io->section($this->translator->trans('config.init.wizard.title'));
-        $io->text($this->translator->trans('config.init.wizard.description', ['path' => $this->configPath]));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.title'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.description', ['path' => $this->configPath]));
 
         // Language Configuration
-        $io->section($this->translator->trans('config.init.language.title'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.language.title'));
         $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
         $defaultLanguage = $existingConfig['LANGUAGE'] ?? $this->detectSystemLocale() ?? 'en';
 
@@ -44,7 +44,7 @@ class InitHandler
         // Find the default display option
         $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
 
-        $languageChoiceDisplay = $io->choice(
+        $languageChoiceDisplay = $this->logger->choice(
             $this->translator->trans('config.init.language.prompt'),
             $languageOptions,
             $defaultDisplay
@@ -54,26 +54,26 @@ class InitHandler
         $languageChoice = $languageMap[$languageChoiceDisplay];
 
         // Jira Configuration
-        $io->section($this->translator->trans('config.init.jira.title'));
-        $io->text($this->translator->trans('config.init.jira.token_help'));
-        $jiraUrl = $io->ask($this->translator->trans('config.init.jira.url_prompt'), $existingConfig['JIRA_URL'] ?? null);
-        $jiraEmail = $io->ask($this->translator->trans('config.init.jira.email_prompt'), $existingConfig['JIRA_EMAIL'] ?? null);
-        $jiraToken = $io->askHidden($this->translator->trans('config.init.jira.token_prompt'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.title'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.token_help'));
+        $jiraUrl = $this->logger->ask($this->translator->trans('config.init.jira.url_prompt'), $existingConfig['JIRA_URL'] ?? null);
+        $jiraEmail = $this->logger->ask($this->translator->trans('config.init.jira.email_prompt'), $existingConfig['JIRA_EMAIL'] ?? null);
+        $jiraToken = $this->logger->askHidden($this->translator->trans('config.init.jira.token_prompt'));
 
         // Git Provider Configuration
-        $io->section($this->translator->trans('config.init.git.title'));
-        $io->text([
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.git.title'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, [
             $this->translator->trans('config.init.git.description'),
             $this->translator->trans('config.init.git.token_help'),
             $this->translator->trans('config.init.git.auto_detect_note'),
         ]);
-        $gitProvider = $io->choice($this->translator->trans('config.init.git.provider_prompt'), ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
-        $gitToken = $io->askHidden($this->translator->trans('config.init.git.token_prompt'));
+        $gitProvider = $this->logger->choice($this->translator->trans('config.init.git.provider_prompt'), ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
+        $gitToken = $this->logger->askHidden($this->translator->trans('config.init.git.token_prompt'));
 
         // Jira Transition Configuration
-        $io->section($this->translator->trans('config.init.jira_transition.title'));
-        $io->text($this->translator->trans('config.init.jira_transition.description'));
-        $jiraTransitionEnabled = $io->confirm(
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.title'));
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.description'));
+        $jiraTransitionEnabled = $this->logger->confirm(
             $this->translator->trans('config.init.jira_transition.prompt'),
             $existingConfig['JIRA_TRANSITION_ENABLED'] ?? false
         );
@@ -94,22 +94,22 @@ class InitHandler
         }
 
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump(array_filter($config)));
-        $io->success($this->translator->trans('config.init.success'));
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
 
         // Shell completion setup
-        $this->promptForCompletion($io);
+        $this->promptForCompletion();
     }
 
-    protected function promptForCompletion(SymfonyStyle $io): void
+    protected function promptForCompletion(): void
     {
         $shell = $this->detectShell();
         if ($shell === null) {
             return;
         }
 
-        $io->section($this->translator->trans('config.init.completion.title'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.title'));
 
-        $choice = $io->choice(
+        $choice = $this->logger->choice(
             $this->translator->trans('config.init.completion.prompt', ['shell' => $shell]),
             [
                 $this->translator->trans('config.init.completion.yes'),
@@ -125,9 +125,9 @@ class InitHandler
 
             $shellrc = $shell === 'bash' ? 'bashrc' : 'zshrc';
 
-            $io->success($this->translator->trans('config.init.completion.success_message'));
-            $io->writeln('  <info>' . $command . '</info>');
-            $io->text($this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.success_message'));
+            $this->logger->writeln(Logger::VERBOSITY_NORMAL, '  <info>' . $command . '</info>');
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
         } else {
             $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('config.init.completion.skipped'));
         }

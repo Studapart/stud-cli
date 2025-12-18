@@ -22,7 +22,7 @@ class StatusHandler
 
     public function handle(SymfonyStyle $io): int
     {
-        $io->section($this->translator->trans('status.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('status.section'));
         $key = $this->gitRepository->getJiraKeyFromBranchName();
         $branch = $this->gitRepository->getCurrentBranchName();
 
@@ -33,26 +33,26 @@ class StatusHandler
             try {
                 $issue = $this->jiraService->getIssue($key);
                 $statusText = $this->translator->trans('status.jira_status', ['status' => $issue->status, 'key' => $issue->key, 'title' => $issue->title]);
-                $io->writeln("Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}");
+                $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}");
             } catch (\Exception $e) {
-                $io->writeln("Jira:   <fg=red>{$this->translator->trans('status.jira_error', ['error' => $e->getMessage()])}</>");
+                $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=red>{$this->translator->trans('status.jira_error', ['error' => $e->getMessage()])}</>");
             }
         } else {
-            $io->writeln("Jira:   <fg=gray>{$this->translator->trans('status.jira_no_key')}</>");
+            $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=gray>{$this->translator->trans('status.jira_no_key')}</>");
         }
 
         // Git Status
         $gitBranchText = $this->translator->trans('status.git_branch', ['branch' => $branch]);
-        $io->writeln("Git:    " . $gitBranchText);
+        $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Git:    " . $gitBranchText);
 
         // Local Status
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         $changeCount = count(array_filter(explode("\n", $gitStatus)));
 
         if ($changeCount > 0) {
-            $io->writeln("Local:  {$this->translator->trans('status.local_changes', ['count' => $changeCount])}");
+            $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Local:  {$this->translator->trans('status.local_changes', ['count' => $changeCount])}");
         } else {
-            $io->writeln("Local:  <fg=green>{$this->translator->trans('status.local_clean')}</>");
+            $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Local:  <fg=green>{$this->translator->trans('status.local_clean')}</>");
         }
 
         return 0;

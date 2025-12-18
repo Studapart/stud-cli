@@ -347,4 +347,205 @@ class LoggerTest extends CommandTestCase
 
         $this->assertSame(Logger::VERBOSITY_VERY_VERBOSE, $method->invoke($logger));
     }
+
+    public function testTitleRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('title')
+            ->with('Test Title');
+
+        $logger = new Logger($io, []);
+        $logger->title(Logger::VERBOSITY_NORMAL, 'Test Title');
+    }
+
+    public function testListingRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $elements = ['Item 1', 'Item 2', 'Item 3'];
+        $io->expects($this->once())
+            ->method('listing')
+            ->with($elements);
+
+        $logger = new Logger($io, []);
+        $logger->listing(Logger::VERBOSITY_NORMAL, $elements);
+    }
+
+    public function testCommentRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('comment')
+            ->with('Test comment');
+
+        $logger = new Logger($io, []);
+        $logger->comment(Logger::VERBOSITY_NORMAL, 'Test comment');
+    }
+
+    public function testCommentWithArrayRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $messages = ['Comment 1', 'Comment 2'];
+        $io->expects($this->once())
+            ->method('comment')
+            ->with($messages);
+
+        $logger = new Logger($io, []);
+        $logger->comment(Logger::VERBOSITY_NORMAL, $messages);
+    }
+
+    public function testInfoRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('info')
+            ->with('Test info');
+
+        $logger = new Logger($io, []);
+        $logger->info(Logger::VERBOSITY_NORMAL, 'Test info');
+    }
+
+    public function testInfoWithArrayRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $messages = ['Info 1', 'Info 2'];
+        $io->expects($this->once())
+            ->method('info')
+            ->with($messages);
+
+        $logger = new Logger($io, []);
+        $logger->info(Logger::VERBOSITY_NORMAL, $messages);
+    }
+
+    public function testCautionRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('caution')
+            ->with('Test caution');
+
+        $logger = new Logger($io, []);
+        $logger->caution(Logger::VERBOSITY_NORMAL, 'Test caution');
+    }
+
+    public function testCautionWithArrayRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $messages = ['Caution 1', 'Caution 2'];
+        $io->expects($this->once())
+            ->method('caution')
+            ->with($messages);
+
+        $logger = new Logger($io, []);
+        $logger->caution(Logger::VERBOSITY_NORMAL, $messages);
+    }
+
+    public function testTableRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $headers = ['Header 1', 'Header 2'];
+        $rows = [['Row 1 Col 1', 'Row 1 Col 2'], ['Row 2 Col 1', 'Row 2 Col 2']];
+        $io->expects($this->once())
+            ->method('table')
+            ->with($headers, $rows);
+
+        $logger = new Logger($io, []);
+        $logger->table(Logger::VERBOSITY_NORMAL, $headers, $rows);
+    }
+
+    public function testHorizontalTableRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $headers = ['Header 1', 'Header 2'];
+        $rows = [['Row 1 Col 1', 'Row 1 Col 2'], ['Row 2 Col 1', 'Row 2 Col 2']];
+        $io->expects($this->once())
+            ->method('horizontalTable')
+            ->with($headers, $rows);
+
+        $logger = new Logger($io, []);
+        $logger->horizontalTable(Logger::VERBOSITY_NORMAL, $headers, $rows);
+    }
+
+    public function testDefinitionListRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $list = ['Key 1' => 'Value 1', 'Key 2' => 'Value 2'];
+        $io->expects($this->once())
+            ->method('definitionList')
+            ->with(...array_map(fn ($k, $v) => [$k, $v], array_keys($list), $list));
+
+        $logger = new Logger($io, []);
+        $logger->definitionList(Logger::VERBOSITY_NORMAL, ...array_map(fn ($k, $v) => [$k, $v], array_keys($list), $list));
+    }
+
+    public function testNewLineRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('newLine')
+            ->with(2);
+
+        $logger = new Logger($io, []);
+        $logger->newLine(Logger::VERBOSITY_NORMAL, 2);
+    }
 }

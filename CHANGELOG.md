@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-12-18
+
+### Added
+- Add HTML-to-Markdown conversion for Pull Request descriptions in `stud submit` command [SCI-36]
+  - PR descriptions are automatically converted from Jira's HTML format to Markdown for better readability on GitHub
+  - Conversion preserves formatting: headings, lists, code blocks, and links are correctly converted
+  - Conversion handles Jira-specific HTML artifacts (broken tags, HTML entities, spans) gracefully
+  - If conversion fails, PR description falls back to raw HTML (existing behavior preserved)
+  - CLI display (`stud sh`) continues to use plain text description (no changes to CLI output)
+  - Added `league/html-to-markdown` package dependency
+  - Added verbose logging for conversion success/failure scenarios
+  - Full test coverage with unit tests for conversion method
+- Add `stud items:takeover` command (alias: `stud to`) to take over issues from other users [SCI-34]
+  - Command prioritizes remote branches over local branches
+  - If multiple remote branches found, command lists them and lets user choose
+  - If single remote branch found, command auto-selects it after confirmation
+  - Command switches to existing local branch if found
+  - Command creates local tracking branch from remote if remote exists but local doesn't
+  - Command shows branch status (behind/ahead/sync) compared to remote and develop
+  - Command warns if branch is based on different base branch than expected
+  - Command warns if local branch has diverged from remote (has local commits)
+  - Command pulls from remote (with rebase) if behind and no local commits
+  - If no branches found, command prompts user to start fresh (calls items:start)
+  - If user is already on target branch, command skips checkout and only checks status
+  - Command displays comprehensive success message with branch status
+  - Added new GitRepository methods: `switchBranch()`, `switchToRemoteBranch()`, `findBranchesByIssueKey()`, `getBranchStatus()`, `isBranchBasedOn()`, `pullWithRebase()`
+  - Updated ItemStartHandler to handle existing branches (switches instead of failing)
+  - Added translation keys for takeover handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+  - Updated README.md with command documentation and usage examples
+- Add `stud branch:rename` command (alias: `stud rn`) to rename branches with optional Jira key or explicit name [SCI-35]
+  - Command accepts optional branch name parameter (defaults to current branch)
+  - Command accepts optional Jira key parameter to regenerate branch name (like `stud start`)
+  - Command accepts `--name` option for explicit branch name (no prefix added)
+  - Command validates new branch name doesn't already exist (local and remote)
+  - Command validates explicit branch name follows Git naming rules
+  - Command handles local-only branches (renames local, informs about missing remote)
+  - Command handles remote-only branches (prompts to rename remote only, default yes)
+  - Command checks branch synchronization before renaming remote
+  - Command prompts to rebase if local is behind remote (default yes, bypass if `--quiet`)
+  - Command handles rebase failures gracefully with helpful suggestions
+  - Command renames both local and remote branches when both exist
+  - Command detects associated Pull Request (if GithubProvider available)
+  - Command attempts to update PR head branch via GitHub API (may not be supported by GitHub)
+  - Command adds comment to PR explaining the rename
+  - Command handles PR update failures gracefully (warns but continues)
+  - Command shows confirmation message with current/new names and actions
+  - Command asks for confirmation (default yes, bypass if `--quiet`)
+  - Command suggests creating PR if none exists after rename
+  - Added new GitRepository methods: `renameLocalBranch()`, `renameRemoteBranch()`, `getBranchCommitsAhead()`, `getBranchCommitsBehind()`, `canRebaseBranch()`
+  - Added new GithubProvider method: `updatePullRequestHead()`
+  - Added translation keys for branch rename handler in all supported languages
+  - Full test coverage with unit tests following project conventions
+  - Updated README.md with command documentation and usage examples
+
 ## [2.9.0] - 2025-12-15
 
 ### Added

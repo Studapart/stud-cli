@@ -633,4 +633,51 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->createComment($issueNumber, $body);
     }
+
+    public function testUpdatePullRequestHeadSuccess(): void
+    {
+        $pullNumber = 123;
+        $newHead = 'owner:new-branch';
+        $expectedResponse = ['number' => $pullNumber, 'head' => ['ref' => 'new-branch']];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'PATCH',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}",
+                [
+                    'json' => [
+                        'head' => $newHead,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testUpdatePullRequestHeadThrowsExceptionOnError(): void
+    {
+        $pullNumber = 123;
+        $newHead = 'owner:new-branch';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(422);
+        $responseMock->method('getContent')->with(false)->willReturn('{"message": "Head branch cannot be changed"}');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'PATCH .*\'\.\nResponse: .*Head branch cannot be changed/');
+
+        $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
+    }
 }

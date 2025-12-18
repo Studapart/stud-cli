@@ -172,6 +172,189 @@ class Logger
     }
 
     /**
+     * Displays a section header.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string $message Section message
+     */
+    public function section(int $verbosity, string $message): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->section($message);
+        }
+    }
+
+    /**
+     * Displays a title.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string $message Title message
+     */
+    public function title(int $verbosity, string $message): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->title($message);
+        }
+    }
+
+    /**
+     * Displays a listing of elements.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param array<string> $elements Elements to list
+     */
+    public function listing(int $verbosity, array $elements): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->listing($elements);
+        }
+    }
+
+    /**
+     * Logs a comment message.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string|array<string> $message
+     */
+    public function comment(int $verbosity, string|array $message): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->comment($message);
+        }
+    }
+
+    /**
+     * Logs an info message.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string|array<string> $message
+     */
+    public function info(int $verbosity, string|array $message): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->info($message);
+        }
+    }
+
+    /**
+     * Logs a caution message.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string|array<string> $message
+     */
+    public function caution(int $verbosity, string|array $message): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->caution($message);
+        }
+    }
+
+    /**
+     * Displays a table.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param array<string> $headers Table headers
+     * @param array<array<string>> $rows Table rows
+     */
+    public function table(int $verbosity, array $headers, array $rows): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->table($headers, $rows);
+        }
+    }
+
+    /**
+     * Displays a horizontal table.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param array<string> $headers Table headers
+     * @param array<array<string>> $rows Table rows
+     */
+    public function horizontalTable(int $verbosity, array $headers, array $rows): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->horizontalTable($headers, $rows);
+        }
+    }
+
+    /**
+     * Displays a definition list.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param string|array<string|int, mixed>|\Symfony\Component\Console\Helper\TableSeparator ...$list Definition list items
+     */
+    public function definitionList(int $verbosity, string|array|\Symfony\Component\Console\Helper\TableSeparator ...$list): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->definitionList(...$list);
+        }
+    }
+
+    /**
+     * Outputs a new line.
+     *
+     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
+     * @param int $count Number of new lines
+     */
+    public function newLine(int $verbosity, int $count = 1): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->newLine($count);
+        }
+    }
+
+    /**
+     * Asks a question to the user (interactive - always displayed regardless of verbosity).
+     *
+     * @param string $question Question to ask
+     * @param string|null $default Default value
+     * @param callable|null $validator Validation callback
+     * @return string User's answer
+     */
+    public function ask(string $question, ?string $default = null, ?callable $validator = null): string
+    {
+        return $this->io->ask($question, $default, $validator);
+    }
+
+    /**
+     * Asks a hidden question to the user (interactive - always displayed regardless of verbosity).
+     *
+     * @param string $question Question to ask
+     * @param callable|null $validator Validation callback
+     * @return string User's answer
+     */
+    public function askHidden(string $question, ?callable $validator = null): string
+    {
+        return $this->io->askHidden($question, $validator);
+    }
+
+    /**
+     * Asks for confirmation (interactive - always displayed regardless of verbosity).
+     *
+     * @param string $question Question to ask
+     * @param bool $default Default value
+     * @return bool User's answer
+     */
+    public function confirm(string $question, bool $default = true): bool
+    {
+        return $this->io->confirm($question, $default);
+    }
+
+    /**
+     * Asks the user to select from a list of choices (interactive - always displayed regardless of verbosity).
+     *
+     * @param string $question Question to ask
+     * @param array<string> $choices Available choices
+     * @param mixed $default Default value
+     * @param bool $multiSelect Whether to allow multiple selections
+     * @return mixed User's selection
+     */
+    public function choice(string $question, array $choices, mixed $default = null, bool $multiSelect = false): mixed
+    {
+        return $this->io->choice($question, $choices, $default, $multiSelect);
+    }
+
+    /**
      * Checks if message should be displayed based on current verbosity level.
      * Respects --quiet flag (suppresses all output).
      */

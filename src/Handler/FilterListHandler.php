@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\Filter;
 use App\Service\JiraService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -13,24 +14,25 @@ class FilterListHandler
 {
     public function __construct(
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
     public function handle(SymfonyStyle $io): void
     {
-        $io->section($this->translator->trans('filter.list.section'));
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.section'));
 
         try {
             $filters = $this->jiraService->getFilters();
         } catch (\Exception $e) {
-            $io->error($this->translator->trans('filter.list.error_fetch', ['error' => $e->getMessage()]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.error_fetch', ['error' => $e->getMessage()]));
 
             return;
         }
 
         if (empty($filters)) {
-            $io->note($this->translator->trans('filter.list.no_filters'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.no_filters'));
 
             return;
         }
@@ -41,7 +43,7 @@ class FilterListHandler
             $filter->name,
             $filter->description ?? '',
         ], $filters);
-        $io->table([
+        $this->logger->table(Logger::VERBOSITY_NORMAL, [
             $this->translator->trans('table.name'),
             $this->translator->trans('table.description'),
         ], $table);

@@ -186,6 +186,12 @@ class HelpService
                 'options' => [],
                 'arguments' => ['<key>'],
             ],
+            'items:takeover' => [
+                'alias' => 'to',
+                'description_key' => 'help.command_items_takeover',
+                'options' => [],
+                'arguments' => ['<key>'],
+            ],
             'commit' => [
                 'alias' => 'co',
                 'description_key' => 'help.command_commit',

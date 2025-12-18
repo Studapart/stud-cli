@@ -60,6 +60,11 @@ class GitRepository
         $this->run("git pull {$remote} {$branch}");
     }
 
+    public function pullWithRebase(string $remote, string $branch): void
+    {
+        $this->run("git pull --rebase {$remote} {$branch}");
+    }
+
     public function merge(string $branch): void
     {
         $this->run("git merge --no-ff {$branch}");
@@ -397,5 +402,257 @@ SCRIPT;
         }
 
         throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
+    }
+
+    /**
+     * Renames a local branch.
+     *
+     * @param string $oldName The current branch name
+     * @param string $newName The new branch name
+     */
+    public function renameLocalBranch(string $oldName, string $newName): void
+    {
+        $currentBranch = $this->getCurrentBranchName();
+        if ($oldName === $currentBranch) {
+            // Renaming current branch
+            $this->run("git branch -m {$newName}");
+        } else {
+            // Renaming a different branch
+            $this->run("git branch -m {$oldName} {$newName}");
+        }
+    }
+
+    /**
+     * Renames a remote branch by pushing the local branch as the new name on remote,
+     * setting upstream, and deleting the old remote branch.
+     *
+     * @param string $oldName The current remote branch name
+     * @param string $newName The new remote branch name
+     * @param string $remote The remote name (default: 'origin')
+     */
+    public function renameRemoteBranch(string $oldName, string $newName, string $remote = 'origin'): void
+    {
+        // Determine which local branch to push from
+        // If local branch was already renamed, it's now $newName, otherwise it's still $oldName
+        $localBranch = $this->localBranchExists($oldName) ? $oldName : $newName;
+
+        // Push local branch to remote with new name and set upstream
+        // Format: git push origin localBranch:newName
+        // This pushes the local branch to the remote as 'newName'
+        $this->run("git push {$remote} {$localBranch}:{$newName}");
+        $this->run("git push {$remote} -u {$localBranch}:{$newName}");
+        // Delete old remote branch
+        $this->run("git push {$remote} --delete {$oldName}");
+        // Update local tracking branch
+        $this->run("git branch --set-upstream-to={$remote}/{$newName} {$localBranch}");
+    }
+
+    /**
+     * Returns the count of commits in $branch that are not in $compareBranch.
+     *
+     * @param string $branch The branch to check
+     * @param string $compareBranch The branch to compare against
+     * @return int Number of commits ahead, or 0 if branch is not ahead
+     */
+    public function getBranchCommitsAhead(string $branch, string $compareBranch): int
+    {
+        $process = $this->runQuietly("git rev-list --count {$compareBranch}..{$branch}");
+
+        if (! $process->isSuccessful()) {
+            return 0;
+        }
+
+        $output = trim($process->getOutput());
+
+        return empty($output) ? 0 : (int) $output;
+    }
+
+    /**
+     * Returns the count of commits in $compareBranch that are not in $branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $compareBranch The branch to compare against
+     * @return int Number of commits behind, or 0 if branch is not behind
+     */
+    public function getBranchCommitsBehind(string $branch, string $compareBranch): int
+    {
+        $process = $this->runQuietly("git rev-list --count {$branch}..{$compareBranch}");
+
+        if (! $process->isSuccessful()) {
+            return 0;
+        }
+
+        $output = trim($process->getOutput());
+
+        return empty($output) ? 0 : (int) $output;
+    }
+
+    /**
+     * Checks if a branch can be rebased onto another branch without conflicts.
+     *
+     * @param string $branch The branch to rebase
+     * @param string $ontoBranch The branch to rebase onto
+     * @return bool True if rebase would succeed, false otherwise
+     */
+    public function canRebaseBranch(string $branch, string $ontoBranch): bool
+    {
+        // Use merge-base to check if ontoBranch is an ancestor of branch
+        // If it is, rebase should be safe
+        $process = $this->runQuietly("git merge-base --is-ancestor {$ontoBranch} {$branch}");
+
+        if ($process->isSuccessful()) {
+            return true;
+        }
+
+        // If merge-base check fails, try a dry-run rebase
+        $dryRunProcess = $this->runQuietly("git rebase --dry-run {$ontoBranch} {$branch}");
+
+        return $dryRunProcess->isSuccessful();
+    }
+
+    /**
+     * Switches to an existing local branch.
+     *
+     * @param string $branchName The branch name to switch to
+     * @throws \RuntimeException If branch doesn't exist locally
+     */
+    public function switchBranch(string $branchName): void
+    {
+        $this->run("git switch {$branchName}");
+    }
+
+    /**
+     * Creates a local tracking branch from a remote branch.
+     *
+     * @param string $branchName The branch name (without remote prefix)
+     * @param string $remote The remote name (default: 'origin')
+     * @throws \RuntimeException If remote branch doesn't exist
+     */
+    public function switchToRemoteBranch(string $branchName, string $remote = 'origin'): void
+    {
+        $this->run("git switch -c {$branchName} {$remote}/{$branchName}");
+    }
+
+    /**
+     * Finds branches matching the issue key pattern (feat/{KEY}-*, fix/{KEY}-*, chore/{KEY}-*).
+     *
+     * @param string $key The Jira issue key (e.g., 'PROJ-123')
+     * @return array{local: array<string>, remote: array<string>} Array with 'local' and 'remote' branch arrays
+     */
+    public function findBranchesByIssueKey(string $key): array
+    {
+        $localBranches = $this->findLocalBranchesByIssueKey($key);
+        $remoteBranches = $this->findRemoteBranchesByIssueKey($key);
+
+        return [
+            'local' => $localBranches,
+            'remote' => $remoteBranches,
+        ];
+    }
+
+    /**
+     * Gets branch status compared to remote and base branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $baseBranch The base branch to compare against
+     * @param string|null $remoteBranch The remote branch name (e.g., 'origin/feat/PROJ-123-title') or null
+     * @return array{behind_remote: int, ahead_remote: int, behind_base: int, ahead_base: int}
+     */
+    public function getBranchStatus(string $branch, string $baseBranch, ?string $remoteBranch = null): array
+    {
+        $behindRemote = 0;
+        $aheadRemote = 0;
+
+        if ($remoteBranch !== null) {
+            $behindRemote = $this->getBranchCommitsBehind($branch, $remoteBranch);
+            $aheadRemote = $this->getBranchCommitsAhead($branch, $remoteBranch);
+        }
+
+        $behindBase = $this->getBranchCommitsBehind($branch, $baseBranch);
+        $aheadBase = $this->getBranchCommitsAhead($branch, $baseBranch);
+
+        return [
+            'behind_remote' => $behindRemote,
+            'ahead_remote' => $aheadRemote,
+            'behind_base' => $behindBase,
+            'ahead_base' => $aheadBase,
+        ];
+    }
+
+    /**
+     * Checks if a branch is directly based on the specified base branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $baseBranch The base branch to check against
+     * @return bool True if branch is directly based on baseBranch, false otherwise
+     */
+    public function isBranchBasedOn(string $branch, string $baseBranch): bool
+    {
+        try {
+            $mergeBase = $this->getMergeBase($baseBranch, $branch);
+            $baseHead = trim($this->run("git rev-parse {$baseBranch}")->getOutput());
+
+            return $mergeBase === $baseHead;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Finds local branches matching the issue key pattern.
+     *
+     * @param string $key The Jira issue key
+     * @return array<string> Array of local branch names
+     */
+    protected function findLocalBranchesByIssueKey(string $key): array
+    {
+        $prefixes = ['feat', 'fix', 'chore'];
+        $branches = [];
+
+        foreach ($prefixes as $prefix) {
+            $process = $this->runQuietly("git branch --list '{$prefix}/{$key}-*'");
+            if ($process->isSuccessful()) {
+                $output = trim($process->getOutput());
+                if (! empty($output)) {
+                    $foundBranches = array_filter(
+                        array_map('trim', explode("\n", $output)),
+                        fn (string $branch) => ! empty($branch)
+                    );
+                    $branches = array_merge($branches, $foundBranches);
+                }
+            }
+        }
+
+        return $branches;
+    }
+
+    /**
+     * Finds remote branches matching the issue key pattern.
+     *
+     * @param string $key The Jira issue key
+     * @param string $remote The remote name (default: 'origin')
+     * @return array<string> Array of remote branch names (without remote prefix)
+     */
+    protected function findRemoteBranchesByIssueKey(string $key, string $remote = 'origin'): array
+    {
+        $prefixes = ['feat', 'fix', 'chore'];
+        $branches = [];
+
+        foreach ($prefixes as $prefix) {
+            $process = $this->runQuietly("git ls-remote --heads {$remote} 'refs/heads/{$prefix}/{$key}-*'");
+            if ($process->isSuccessful()) {
+                $output = trim($process->getOutput());
+                if (! empty($output)) {
+                    $lines = explode("\n", $output);
+                    foreach ($lines as $line) {
+                        if (preg_match('#refs/heads/(.+)$#', $line, $matches)) {
+                            $branches[] = $matches[1];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $branches;
     }
 }

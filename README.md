@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="src/resources/logo-300.png" alt="Stud-Cli Logo" width="300">
+</div>
+
 # stud-cli: Jira & Git Workflow Streamliner
 
 `stud-cli` is a command-line interface tool designed to streamline a developer's daily workflow by tightly integrating Jira work items with local Git repository operations. It guides you through the "golden path" of starting a task, making conventional commits, and preparing your work for submission, all from the command line.
@@ -379,7 +383,7 @@ These commands help you browse and view your Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
@@ -391,6 +395,69 @@ These commands integrate directly with your local Git repository to streamline y
         -   Your choice is saved to `.git/stud.config` for future use in the same project.
         -   Subsequent runs will use the cached transition ID automatically.
         -   If no 'In Progress' transitions are available, a warning is displayed and branch creation continues.
+    -   **Branch Detection:**
+        -   If a local branch matching the issue key exists, the command switches to it instead of creating a new branch.
+        -   If a remote branch exists but no local branch, the command creates a local tracking branch from the remote.
+        -   Remote branches are prioritized over local branches when both exist.
+
+-   **`stud items:takeover <key>`** (Alias: `stud to <key>`)
+    -   **Description:** Takes over an issue from another user. Assigns the issue to you, detects existing branches (prioritizing remote over local), and switches to them if found. If no branches exist, prompts to start fresh using `items:start`. The command also checks branch status compared to remote and base branch, warns about wrong base branches or diverged commits, and automatically pulls with rebase when behind remote (if no local commits exist).
+    -   **Argument:** `<key>` (e.g., `PROJ-123`)
+    -   **Usage:**
+        ```bash
+        stud items:takeover PROJ-123
+        stud to BUG-456
+        ```
+    -   **Behavior:**
+        -   Blocks execution if working directory has uncommitted changes.
+        -   Assigns the issue to the current user (warns on failure but continues).
+        -   Searches for branches matching pattern `{prefix}/{KEY}-*` (feat, fix, chore).
+        -   If multiple branches found: lists all (remote prioritized) and lets you choose.
+        -   If single remote branch found: auto-selects after confirmation.
+        -   If only local branches: lists all and lets you choose.
+        -   If already on target branch: skips checkout and only checks status.
+        -   Shows branch status (behind/ahead/sync) compared to remote and develop.
+        -   Warns if branch is based on different base branch than expected.
+        -   Warns if local branch has diverged from remote (has local commits).
+        -   Pulls from remote (with rebase) if behind and no local commits.
+        -   If no branches found: prompts to start fresh (calls `items:start`).
+
+-   **`stud branch:rename`** (Alias: `stud rn`)
+    -   **Description:** Renames a branch, optionally regenerating the name from a Jira issue key or using an explicit name. The command handles both local and remote branches, updates associated Pull Requests, and manages branch synchronization.
+    -   **Arguments:**
+        -   `<branch>` (optional): The branch to rename. Defaults to the current branch if not provided.
+        -   `<key>` (optional): The Jira issue key to regenerate the branch name from (e.g., `PROJ-123`). If not provided, the key will be extracted from the current branch name.
+    -   **Options:**
+        -   `--name <name>` or `-n <name>`: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument.
+    -   **Usage:**
+        ```bash
+        # Rename current branch using its issue key (regenerate from Jira)
+        stud rn
+        
+        # Rename specific branch using a Jira key
+        stud rn feat/OLD-123-old ACME-4067
+        
+        # Rename current branch to exact name
+        stud rn --name custom-branch-name
+        
+        # Rename specific branch to exact name
+        stud rn feat/OLD-123-old --name new-branch-name
+        ```
+    -   **Behavior:**
+        -   The command blocks execution if the working directory has uncommitted changes.
+        -   Validates that the new branch name doesn't already exist (local or remote).
+        -   Validates explicit branch names follow Git naming rules.
+        -   Handles local-only branches (renames local, informs about missing remote).
+        -   Handles remote-only branches (prompts to rename remote only, default yes).
+        -   Checks branch synchronization before renaming remote.
+        -   Prompts to rebase if local is behind remote (default yes, bypass if `--quiet`).
+        -   Detects associated Pull Request (if GithubProvider available).
+        -   Attempts to update PR head branch via GitHub API (may not be supported by GitHub).
+        -   Adds comment to PR explaining the rename.
+        -   Handles PR update failures gracefully (warns but continues).
+        -   Shows confirmation message with current/new names and actions.
+        -   Asks for confirmation (default yes, bypass if `--quiet`).
+        -   Suggests creating PR if none exists after rename.
 
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.
@@ -430,7 +497,7 @@ These commands integrate directly with your local Git repository to streamline y
         ```
 
 -   **`stud submit`** (Alias: `stud sub`)
-    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub.
+    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub.
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
@@ -443,6 +510,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
         ```
+    -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
 -   **`stud pr:comment`** (Alias: `stud pc`)
     -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.

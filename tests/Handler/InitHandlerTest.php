@@ -30,9 +30,19 @@ class InitHandlerTest extends CommandTestCase
         $this->translationService = new \App\Service\TranslationService('en', $translationsPath);
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        // Use real Logger for tests that check output, mock for others
+        // Logger will be created per test with real $io for interactive methods
         $this->logger = $this->createMock(\App\Service\Logger::class);
         $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->logger);
+    }
+
+    /**
+     * Creates a handler with a real Logger instance for interactive tests.
+     */
+    private function createHandlerWithRealLogger(SymfonyStyle $io): InitHandler
+    {
+        $realLogger = new \App\Service\Logger($io, []);
+
+        return new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger);
     }
 
     protected function tearDown(): void
@@ -83,7 +93,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: title() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -139,16 +150,17 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "https://new-jira.example.com/\n"); // New Jira URL
         fwrite($inputStream, "new@example.com\n"); // New Jira Email
-        fwrite($inputStream, "\n"); // Keep existing Jira token
+        fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden)
         fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
-        fwrite($inputStream, "\n"); // Keep existing Git token
+        fwrite($inputStream, "existing_git_token\n"); // Git token (askHidden)
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -194,7 +206,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -250,16 +263,17 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
-        fwrite($inputStream, "\n"); // Keep existing Jira token
+        fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden - can't be empty)
         fwrite($inputStream, "\n"); // Keep existing Git provider
-        fwrite($inputStream, "\n"); // Keep existing Git token
+        fwrite($inputStream, "existing_git_token\n"); // Git token (askHidden - can't be empty)
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -311,7 +325,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -363,7 +378,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -416,7 +432,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -461,7 +478,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -516,7 +534,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -573,7 +592,8 @@ class InitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $this->handler->handle($io);
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
 
         // Restore original SHELL
         if ($originalShell !== false) {

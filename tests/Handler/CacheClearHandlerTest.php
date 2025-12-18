@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\Handler\CacheClearHandler;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -20,7 +21,8 @@ class CacheClearHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new CacheClearHandler($this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $this->handler = new CacheClearHandler($this->translationService, $logger);
 
         // Create a temporary cache directory for testing
         $this->tempCacheDir = sys_get_temp_dir() . '/stud-test-cache-' . uniqid();

@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "2.9.0",
+    "version": "3.0.0",
     "authors": [
         {
             "name": "Pierre-Emmanuel Manteau",
@@ -31,7 +31,8 @@
         "jolicode/castor": "^1.1.0",
         "symfony/yaml": "^7.3",
         "symfony/translation": "^7.3",
-        "stevebauman/hypertext": "^1.1"
+        "stevebauman/hypertext": "^1.1",
+        "league/html-to-markdown": "^5.0"
     },
     "autoload": {
         "psr-4": {
