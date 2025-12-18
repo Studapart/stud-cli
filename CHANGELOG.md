@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-12-18
+
 ### Added
 - Add HTML-to-Markdown conversion for Pull Request descriptions in `stud submit` command [SCI-36]
   - PR descriptions are automatically converted from Jira's HTML format to Markdown for better readability on GitHub
