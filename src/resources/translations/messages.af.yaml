@@ -430,4 +430,5 @@ help:
   option_release_minor: "Verhoog klein weergawe (X.Y.0)"
   option_release_patch: "Verhoog patch weergawe (X.Y.Z). Dit is die verstek as geen vlae verskaf word nie"
   option_release_publish: "Publiseer die vrystelling tak na die afgeleë repository"
+  option_branch_rename_name: "Eksplisiete nuwe tak naam (geen voorvoegsel sal bygevoeg word nie). Hierdie opsie het voorrang bo die key argument"
 

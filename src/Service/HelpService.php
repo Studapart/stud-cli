@@ -17,7 +17,9 @@ class HelpService
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',
         'items:start' => 'stud items:start',
+        'items:transition' => 'stud items:transition',
         'filters:show' => 'stud filters:show',
+        'branch:rename' => 'stud branch:rename',
         'commit' => 'stud commit',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
@@ -153,6 +155,7 @@ class HelpService
                 'options' => [
                     ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_all', 'argument' => null],
                     ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_project', 'argument' => '<key>'],
+                    ['name' => '--sort', 'shortcut' => '-s', 'description_key' => 'help.option_items_list_sort', 'argument' => '<value>'],
                 ],
                 'arguments' => [],
             ],
@@ -180,6 +183,12 @@ class HelpService
                 'options' => [],
                 'arguments' => ['<key>'],
             ],
+            'items:transition' => [
+                'alias' => 'tx',
+                'description_key' => 'help.command_items_transition',
+                'options' => [],
+                'arguments' => ['[<key>]'],
+            ],
             'items:start' => [
                 'alias' => 'start',
                 'description_key' => 'help.command_items_start',
@@ -191,6 +200,14 @@ class HelpService
                 'description_key' => 'help.command_items_takeover',
                 'options' => [],
                 'arguments' => ['<key>'],
+            ],
+            'branch:rename' => [
+                'alias' => 'rn',
+                'description_key' => 'help.command_branch_rename',
+                'options' => [
+                    ['name' => '--name', 'shortcut' => '-n', 'description_key' => 'help.option_branch_rename_name', 'argument' => '<name>'],
+                ],
+                'arguments' => ['[<branch>]', '[<key>]'],
             ],
             'commit' => [
                 'alias' => 'co',
@@ -317,20 +334,25 @@ class HelpService
         $lines[] = "    ``bash";
 
         // Build example values for arguments
+        // Skip optional arguments (wrapped in square brackets [...])
         $exampleArgs = [];
+        $argumentExamples = [
+            '<key>' => 'JIRA-33',
+            '<jql>' => '"project = PROJ and status = Done"',
+            '<shell>' => 'bash',
+            '<message>' => '"Comment text"',
+            '<filterName>' => '"My Filter"',
+            '<branch>' => 'feat/OLD-123-old',
+        ];
         foreach ($command['arguments'] as $arg) {
-            if ($arg === '<key>') {
-                $exampleArgs[] = 'JIRA-33';
-            } elseif (str_contains($arg, '<version>')) {
+            // Skip optional arguments (they appear in command signature but not in usage examples)
+            if (str_starts_with($arg, '[') && str_ends_with($arg, ']')) {
+                continue;
+            }
+            if (str_contains($arg, '<version>')) {
                 $exampleArgs[] = '1.2.0';
-            } elseif ($arg === '<jql>') {
-                $exampleArgs[] = '"project = PROJ and status = Done"';
-            } elseif ($arg === '<shell>') {
-                $exampleArgs[] = 'bash';
-            } elseif ($arg === '<message>') {
-                $exampleArgs[] = '"Comment text"';
-            } elseif ($arg === '<filterName>') {
-                $exampleArgs[] = '"My Filter"';
+            } elseif (isset($argumentExamples[$arg])) {
+                $exampleArgs[] = $argumentExamples[$arg];
             } else {
                 // Fallback for unknown argument types
                 // Currently all commands use known patterns, so this path is untestable
@@ -354,21 +376,19 @@ class HelpService
             // Show example with first option
             $firstOption = $command['options'][0];
             $optionExample = $firstOption['shortcut'] ?: $firstOption['name'];
-            // Currently all commands have first option without arguments
-            // This code path is untestable with current command set
-            // @codeCoverageIgnoreStart
             if (isset($firstOption['argument']) && $firstOption['argument']) {
-                $optionArg = '';
-                if ($firstOption['argument'] === '<labels>') {
-                    $optionArg = ' "bug,enhancement"';
-                } elseif ($firstOption['argument'] === '<message>') {
-                    $optionArg = ' "feat: My custom message"';
-                } elseif ($firstOption['argument'] === '<key>') {
-                    $optionArg = ' PROJ';
+                $optionArgExamples = [
+                    '<labels>' => ' "bug,enhancement"',
+                    '<message>' => ' "feat: My custom message"',
+                    '<key>' => ' PROJ',
+                    '<value>' => ' Key',
+                    '<name>' => ' custom-branch-name',
+                ];
+                $optionArgument = $firstOption['argument'];
+                if (array_key_exists($optionArgument, $optionArgExamples)) {
+                    $optionExample .= $optionArgExamples[$optionArgument];
                 }
-                $optionExample .= $optionArg;
             }
-            // @codeCoverageIgnoreEnd
             $lines[] = "    stud {$commandName}{$argsString} {$optionExample}";
             if ($command['alias']) {
                 $lines[] = "    stud {$command['alias']}{$argsString} {$optionExample}";
@@ -379,15 +399,17 @@ class HelpService
                 $secondOption = $command['options'][1];
                 $secondOptionExample = $secondOption['shortcut'] ?: $secondOption['name'];
                 if (isset($secondOption['argument']) && $secondOption['argument']) {
-                    $optionArg = '';
-                    if ($secondOption['argument'] === '<labels>') {
-                        $optionArg = ' "bug,enhancement"';
-                    } elseif ($secondOption['argument'] === '<message>') {
-                        $optionArg = ' "feat: My custom message"';
-                    } elseif ($secondOption['argument'] === '<key>') {
-                        $optionArg = ' PROJ';
+                    $optionArgExamples = [
+                        '<labels>' => ' "bug,enhancement"',
+                        '<message>' => ' "feat: My custom message"',
+                        '<key>' => ' PROJ',
+                        '<value>' => ' Key',
+                        '<name>' => ' custom-branch-name',
+                    ];
+                    $secondOptionArgument = $secondOption['argument'];
+                    if (array_key_exists($secondOptionArgument, $optionArgExamples)) {
+                        $secondOptionExample .= $optionArgExamples[$secondOptionArgument];
                     }
-                    $secondOptionExample .= $optionArg;
                 }
                 $lines[] = "    stud {$commandName}{$argsString} {$secondOptionExample}";
                 if ($command['alias']) {

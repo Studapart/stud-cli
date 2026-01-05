@@ -430,4 +430,5 @@ help:
   option_release_minor: "Incrementar versión menor (X.Y.0)"
   option_release_patch: "Incrementar versión de parche (X.Y.Z). Este es el valor por defecto si no se proporcionan banderas"
   option_release_publish: "Publicar la rama de release en el repositorio remoto"
+  option_branch_rename_name: "Nombre explícito de la nueva rama (no se agregará ningún prefijo). Esta opción tiene prioridad sobre el argumento key"
 

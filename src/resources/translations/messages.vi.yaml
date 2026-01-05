@@ -430,4 +430,5 @@ help:
   option_release_minor: "Tăng phiên bản phụ (X.Y.0)"
   option_release_patch: "Tăng phiên bản bản vá (X.Y.Z). Đây là mặc định nếu không có cờ nào được cung cấp"
   option_release_publish: "Xuất bản nhánh phát hành đến kho lưu trữ từ xa"
+  option_branch_rename_name: "Tên nhánh mới rõ ràng (không có tiền tố sẽ được thêm). Tùy chọn này có ưu tiên hơn đối số key"
 

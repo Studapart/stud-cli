@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Complete HelpService documentation for missing commands and options [SCI-37]
+  - Added `items:transition` command to help documentation with alias `tx` and optional `[<key>]` argument
+  - Added `branch:rename` command to help documentation with alias `rn`, `--name` option, and optional arguments `[<branch>]` and `[<key>]`
+  - Added `--sort` option to `items:list` command documentation with shortcut `-s` and description
+  - Fixed README.md: corrected submit command alias from `stud sub` to `stud su` for consistency with codebase
+  - Enhanced usage example generation to correctly exclude optional arguments (wrapped in `[...]`) from examples
+  - Added support for `<value>`, `<name>`, and `<branch>` argument types in option examples
+  - Added translation key `help.option_branch_rename_name` to all language files
+
 ## [3.0.0] - 2025-12-18
 
 ### Added
