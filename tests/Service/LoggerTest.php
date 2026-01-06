@@ -548,4 +548,60 @@ class LoggerTest extends CommandTestCase
         $logger = new Logger($io, []);
         $logger->newLine(Logger::VERBOSITY_NORMAL, 2);
     }
+
+    public function testAskHiddenReturnsString(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('askHidden')
+            ->with('Enter token:', null)
+            ->willReturn('secret_token');
+
+        $logger = new Logger($io, []);
+        $result = $logger->askHidden('Enter token:');
+
+        $this->assertSame('secret_token', $result);
+    }
+
+    public function testAskHiddenReturnsNull(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('askHidden')
+            ->with('Enter token:', null)
+            ->willReturn(null);
+
+        $logger = new Logger($io, []);
+        $result = $logger->askHidden('Enter token:');
+
+        $this->assertNull($result);
+    }
+
+    public function testAskReturnsString(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('ask')
+            ->with('Enter value:', 'default', null)
+            ->willReturn('user_input');
+
+        $logger = new Logger($io, []);
+        $result = $logger->ask('Enter value:', 'default');
+
+        $this->assertSame('user_input', $result);
+    }
+
+    public function testAskReturnsNull(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('ask')
+            ->with('Enter value:', null, null)
+            ->willReturn(null);
+
+        $logger = new Logger($io, []);
+        $result = $logger->ask('Enter value:');
+
+        $this->assertNull($result);
+    }
 }
