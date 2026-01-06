@@ -263,9 +263,9 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
-        fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden - can't be empty)
+        fwrite($inputStream, "\n"); // Press Enter without input for Jira token (askHidden returns null/empty, should preserve existing)
         fwrite($inputStream, "\n"); // Keep existing Git provider
-        fwrite($inputStream, "existing_git_token\n"); // Git token (askHidden - can't be empty)
+        fwrite($inputStream, "\n"); // Press Enter without input for Git token (askHidden returns null/empty, should preserve existing)
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -276,6 +276,7 @@ class InitHandlerTest extends CommandTestCase
         $handler->handle($io);
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
+        // When user presses Enter without input, askHidden() returns null/empty, and existing tokens are preserved via ?: operator
     }
 
     public function testHandleJiraUrlTrimming(): void

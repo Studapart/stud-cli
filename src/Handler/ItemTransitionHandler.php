@@ -114,7 +114,7 @@ class ItemTransitionHandler
 
         // Prompt user for key
         $promptedKey = $this->logger->ask($this->translator->trans('item.transition.prompt_key'));
-        if ($promptedKey === '') {
+        if ($promptedKey === '' || $promptedKey === null) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_invalid_key'));
 
             return null;

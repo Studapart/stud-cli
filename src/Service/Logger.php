@@ -309,9 +309,9 @@ class Logger
      * @param string $question Question to ask
      * @param string|null $default Default value
      * @param callable|null $validator Validation callback
-     * @return string User's answer
+     * @return string|null User's answer, or null if no input provided and no default value, or if user cancels/interactive mode unavailable
      */
-    public function ask(string $question, ?string $default = null, ?callable $validator = null): string
+    public function ask(string $question, ?string $default = null, ?callable $validator = null): ?string
     {
         return $this->io->ask($question, $default, $validator);
     }
@@ -321,9 +321,9 @@ class Logger
      *
      * @param string $question Question to ask
      * @param callable|null $validator Validation callback
-     * @return string User's answer
+     * @return string|null User's answer, or null if no input provided and no default value, or if user cancels/interactive mode unavailable
      */
-    public function askHidden(string $question, ?callable $validator = null): string
+    public function askHidden(string $question, ?callable $validator = null): ?string
     {
         return $this->io->askHidden($question, $validator);
     }

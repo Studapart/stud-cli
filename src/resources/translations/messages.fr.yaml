@@ -430,4 +430,5 @@ help:
   option_release_minor: "Incrémenter la version mineure (X.Y.0)"
   option_release_patch: "Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni"
   option_release_publish: "Publier la branche de release sur le dépôt distant"
+  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
 

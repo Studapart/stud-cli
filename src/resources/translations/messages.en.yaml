@@ -430,4 +430,5 @@ help:
   option_release_minor: "Increment minor version (X.Y.0)"
   option_release_patch: "Increment patch version (X.Y.Z). This is the default if no flags are provided"
   option_release_publish: "Publish the release branch to the remote"
+  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
 

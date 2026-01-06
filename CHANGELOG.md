@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-01-06
+
+### Fixed
+- Fix TypeError in Logger::askHidden() when Symfony returns null [SCI-38]
+  - Changed Logger::askHidden() return type from `string` to `?string` to match Symfony's behavior
+  - Changed Logger::ask() return type from `string` to `?string` to match Symfony's behavior (same root cause)
+  - Symfony's askHidden() and ask() can return null when user presses Enter without input, cancels prompt (Ctrl+C), or runs in non-interactive mode
+  - Updated method docblocks to document when null may be returned
+  - InitHandler already handles null correctly via `?:` operator, so no changes needed there
+  - Updated ItemTransitionHandler to handle null return from ask()
+  - Added unit tests to verify null return scenarios for both ask() and askHidden()
+- Fix missing commands and options in HelpService documentation [SCI-37]
+  - Added `items:transition` command (alias: `tx`) with optional `[<key>]` argument to help documentation
+  - Added `branch:rename` command (alias: `rn`) with `--name` option and optional `[<branch>]` and `[<key>]` arguments to help documentation
+  - Added `--sort` option (shortcut: `-s`) to `items:list` command in help documentation
+  - Fixed README.md: corrected submit command alias from `stud sub` to `stud su` to match actual implementation
+  - Enhanced usage example generation to skip optional arguments (wrapped in `[...]`) in examples while keeping them in command signatures
+  - Added support for `<value>`, `<name>`, and `<branch>` argument types in option examples
+  - Added translation key `help.option_branch_rename_name` to all supported languages
+  - Updated HelpServiceTest to include new commands in test coverage
+
 ## [3.0.0] - 2025-12-18
 
 ### Added

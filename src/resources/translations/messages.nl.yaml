@@ -430,4 +430,5 @@ help:
   option_release_minor: "Verhoog minor versie (X.Y.0)"
   option_release_patch: "Verhoog patch versie (X.Y.Z). Dit is de standaard als geen vlaggen worden opgegeven"
   option_release_publish: "Publiceer de release tak naar de remote repository"
+  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
 
