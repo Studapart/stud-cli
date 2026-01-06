@@ -430,4 +430,5 @@ help:
   option_release_minor: "Αύξηση δευτερεύουσας έκδοσης (X.Y.0)"
   option_release_patch: "Αύξηση έκδοσης patch (X.Y.Z). Αυτή είναι η προεπιλογή εάν δεν παρέχονται σημαίες"
   option_release_publish: "Δημοσίευση του κλάδου release στον απομακρυσμένο αποθετήριο"
+  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
 
