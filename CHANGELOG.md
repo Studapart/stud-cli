@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-01-06
+
 ### Fixed
 - Fix TypeError in Logger::askHidden() when Symfony returns null [SCI-38]
   - Changed Logger::askHidden() return type from `string` to `?string` to match Symfony's behavior
