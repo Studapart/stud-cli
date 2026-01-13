@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+- [System Requirements](#system-requirements)
 - [For Developers](#for-developers)
   - [Project Goal](#project-goal)
   - [Architectural Principles](#architectural-principles)
@@ -22,6 +23,46 @@
     - [Jira Information Commands](#jira-information-commands)
     - [Git Workflow Commands](#git-workflow-commands)
   - [User Troubleshooting](#user-troubleshooting)
+
+---
+
+## System Requirements
+
+### PHP Version
+
+- **PHP 8.2 or higher** is required.
+
+### PHP Extensions
+
+The following PHP extensions are required:
+
+- **php-xml**: Required for HTML to Markdown conversion (used in `stud submit` command)
+
+#### Installation
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install php-xml
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install php-xml
+```
+
+**macOS (Homebrew):**
+```bash
+brew install php-xml
+```
+
+#### Verification
+
+To verify that the XML extension is installed, run:
+```bash
+php -m | grep xml
+```
+
+If the command returns nothing, the extension is not installed. Install it using your system's package manager (see instructions above).
 
 ---
 
@@ -112,19 +153,29 @@ This architecture enables:
 
 To get `stud-cli` running from source, the process is simple as all dependencies are managed by Composer.
 
-1.  **Clone the Repository:**
+1.  **Verify System Requirements:**
+    Ensure you have PHP 8.2 or higher installed and the required PHP extensions (see [System Requirements](#system-requirements) above).
+
+2.  **Verify PHP Extensions:**
+    Ensure required PHP extensions are installed:
+    ```bash
+    php -m | grep xml
+    ```
+    If the command returns nothing, install the extension using your system's package manager (see [System Requirements](#system-requirements) above).
+
+3.  **Clone the Repository:**
     ```bash
     git clone <your-repository-url>
     cd stud-cli
     ```
 
-2.  **Install All Dependencies:**
+4.  **Install All Dependencies:**
     This single command will install all required PHP packages, including the Castor framework and the Box PHAR compiler, as they are defined in `composer.json`.
     ```bash
     composer install
     ```
 
-3.  **Run the Tool:**
+5.  **Run the Tool:**
     You can now run `stud-cli` directly using the `stud` executable provided in the project root. This is a wrapper that invokes Castor.
     ```bash
     ./stud help
@@ -178,6 +229,12 @@ vendor/bin/phpunit
 This section is for users who want to use the `stud-cli` tool as a standalone executable (PHAR).
 
 ### User Installation
+
+#### System Requirements
+
+Before installing `stud-cli`, ensure you have:
+- **PHP 8.2 or higher** installed
+- **php-xml extension** installed (see [System Requirements](#system-requirements) above for installation instructions)
 
 #### Recommended Installation (for seamless `stud update`)
 
@@ -248,6 +305,8 @@ Before using `stud-cli` for the first time, you need to configure your Jira conn
 
 **Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
 
+For detailed instructions on creating tokens and required permissions/scopes, see the [Token Setup Guide](#token-setup-guide) above.
+
 At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
 
 **Usage:**
@@ -280,6 +339,64 @@ eval "$(stud completion zsh)" >> ~/.zshrc
 ```
 
 **Note:** The easiest way to set up completion is through the `stud config:init` wizard, which will guide you through the installation process.
+
+#### Token Setup Guide
+
+This section provides detailed instructions for creating and configuring the API tokens required by `stud-cli`.
+
+##### Jira API Token
+
+**Required Permissions:**
+- Read access to issues
+- Read access to projects
+- Read access to filters
+
+**Creation Steps:**
+1. Go to [Atlassian Account Settings > Security > API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Click "Create API token"
+3. Give it a label (e.g., "stud-cli")
+4. Copy the generated token (you won't be able to see it again)
+5. Paste it when prompted by `stud config:init`
+
+**What it enables:**
+- Viewing Jira issues, projects, and filters
+- Reading issue descriptions and metadata
+- All operations are read-only (no modifications to Jira)
+
+**Storage:** Token is stored in `~/.config/stud/config.yml` (plain text)
+
+##### GitHub Token
+
+**Required Scopes:**
+- `repo` scope (full control of private repositories)
+- Required for: Creating PRs, adding comments, managing labels
+
+**Creation Steps:**
+1. Go to [GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens)
+2. Click "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "stud-cli")
+4. Select expiration period
+5. Check the `repo` scope checkbox
+6. Click "Generate token"
+7. Copy the token immediately (you won't be able to see it again)
+8. Paste it when prompted by `stud config:init`
+
+**Note:** Fine-grained tokens are not currently supported. Use classic tokens.
+
+**What it enables:**
+- `stud submit`: Creating Pull Requests
+- `stud pr:comment`: Adding comments to PRs
+- `stud branch:rename`: Managing PRs and labels during branch rename
+- Label management and PR operations
+
+**Storage:** Token is stored in `~/.config/stud/config.yml` (plain text)
+
+**Security Best Practices:**
+- Use tokens with minimal required scopes
+- Set appropriate expiration dates
+- Rotate tokens periodically
+- Never commit tokens to version control
+- Restrict file permissions: `chmod 600 ~/.config/stud/config.yml`
 
 ### Usage
 
@@ -596,6 +713,18 @@ These commands help you manage the release process.
 -   **`Configuration file not found`:** Run `stud config:init` to set up your Jira credentials.
 -   **`Could not find Jira issue with key`:** Double-check the Jira key you provided. Ensure it's correct and you have access to the issue.
 -   **`Could not find a Jira key in your current branch name`:** Ensure your branch name follows the `prefix/PROJ-123-summary` format, or use `stud items:start <key>` to create a new branch.
+-   **`Class 'DOMDocument' not found` or `Fatal error: Class 'DOMDocument' not found`:** The PHP XML extension is missing. Install it using:
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get install php-xml
+    # Fedora/RHEL
+    sudo dnf install php-xml
+    # macOS (Homebrew)
+    brew install php-xml
+    ```
+    After installation, restart your terminal. Verify with: `php -m | grep xml`
+-   **`GitHub API Error` or `Permission denied` when using `stud submit`:** Your GitHub token may be missing the `repo` scope. Generate a new token with `repo` scope and update your configuration with `stud config:init`.
+-   **`Jira API Error` or `Unauthorized`:** Your Jira API token may be invalid or expired. Generate a new token and update your configuration with `stud config:init`.
 
 ---
 

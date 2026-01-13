@@ -186,7 +186,7 @@ function _get_git_config(): array
 
 function _get_html_converter(): \App\Service\JiraHtmlConverter
 {
-    return new \App\Service\JiraHtmlConverter();
+    return new \App\Service\JiraHtmlConverter(null, _get_logger());
 }
 
 function _get_jira_service(): JiraService
@@ -478,6 +478,91 @@ function _config_check_listener(ConsoleCommandEvent $event): void
 
     $io->warning($translator->trans('config.error.missing_setup'));
     $io->text($translator->trans('config.error.run_init_instruction'));
+
+    // Prevent command execution and set exit code to 1
+    $event->disableCommand();
+    $command->setCode(function () {
+        return 1;
+    });
+}
+
+/**
+ * Checks for required PHP extensions before command execution.
+ * Aborts non-whitelisted commands if required extensions are missing.
+ */
+#[AsListener(event: ConsoleEvents::COMMAND)]
+function _php_extension_check_listener(ConsoleCommandEvent $event): void
+{
+    // Skip extension check during PHAR compilation/build process
+    // During castor repack, the execution context is not suitable for this check
+    $constantsPath = __DIR__ . '/src/config/constants.php';
+    if (! file_exists($constantsPath)) {
+        // Constants file doesn't exist (likely during build), skip check
+        return;
+    }
+
+    $command = $event->getCommand();
+    if ($command === null) {
+        return;
+    }
+
+    // Only check extensions for stud-cli task commands, not Castor internal commands (e.g., repack)
+    // Castor internal commands are not instances of TaskCommand
+    if (! $command instanceof \Castor\Console\Command\TaskCommand) {
+        // This is a Castor internal command, skip extension check
+        return;
+    }
+
+    $commandName = $command->getName();
+
+    // Whitelist: Commands that should work without extensions (user needs to see help/init)
+    $whitelistedCommands = [
+        'config:init',
+        'init', // alias
+        'help',
+        'main', // default command
+        'cache:clear',
+        'cc', // alias
+    ];
+
+    // Skip check for whitelisted commands
+    if (in_array($commandName, $whitelistedCommands, true)) {
+        return;
+    }
+
+    // Check for required PHP extensions
+    $missingExtensions = [];
+    if (! extension_loaded('xml')) {
+        $missingExtensions[] = 'ext-xml';
+    }
+
+    // If no extensions are missing, proceed
+    if (empty($missingExtensions)) {
+        return;
+    }
+
+    // Required extensions are missing and command is not whitelisted
+    // Get translation service (works without config, defaults to 'en')
+    $translator = _get_translation_service();
+    $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+
+    $errorMessages = [
+        'Required PHP extension is missing: ' . implode(', ', $missingExtensions),
+        'Install it using one of the following commands:',
+    ];
+
+    // Add installation instructions for each missing extension
+    foreach ($missingExtensions as $extension) {
+        if ($extension === 'ext-xml') {
+            $errorMessages[] = ' Ubuntu/Debian: sudo apt-get install php-xml';
+            $errorMessages[] = ' Fedora/RHEL: sudo dnf install php-xml';
+            $errorMessages[] = ' macOS (Homebrew): brew install php-xml';
+        }
+    }
+
+    $errorMessages[] = 'After installation, restart your terminal or web server.';
+
+    $io->error($errorMessages);
 
     // Prevent command execution and set exit code to 1
     $event->disableCommand();

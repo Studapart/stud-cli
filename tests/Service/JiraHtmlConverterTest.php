@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\JiraHtmlConverter;
+use App\Service\Logger;
 use PHPUnit\Framework\TestCase;
 use Stevebauman\Hypertext\Transformer;
 
@@ -223,5 +224,186 @@ class JiraHtmlConverterTest extends TestCase
 
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+    }
+
+    public function testToMarkdownWithLoggerWhenExtensionAvailable(): void
+    {
+        // Create a mock logger - should not be called when extension is available
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->never())
+            ->method('warning');
+
+        // Create converter with logger
+        $converter = new JiraHtmlConverter(null, $logger);
+
+        // Test that conversion works normally when extension is available
+        $html = '<p>Test content</p>';
+        $result = $converter->toMarkdown($html);
+
+        $this->assertIsString($result);
+        $this->assertNotEmpty($result);
+        // When extension is available, result should be converted markdown, not original HTML
+        $this->assertNotSame($html, $result);
+    }
+
+    public function testToMarkdownHandlesDOMDocumentException(): void
+    {
+        // Create a mock logger
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.'
+            );
+
+        // Create converter with logger
+        $converter = new JiraHtmlConverter(null, $logger);
+
+        // Use reflection to inject a mock converter that throws DOMDocument exception
+        $reflection = new \ReflectionClass($converter);
+        $markdownConverterProperty = $reflection->getProperty('markdownConverter');
+        $markdownConverterProperty->setAccessible(true);
+
+        // Create a mock that throws DOMDocument-related exception
+        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter->method('convert')
+            ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
+
+        // Inject the mock
+        $markdownConverterProperty->setValue($converter, $mockConverter);
+
+        // Test that exception is caught and original content is returned
+        $content = '<p>Test content</p>';
+        $result = $converter->toMarkdown($content);
+
+        // Should return original content when DOMDocument exception occurs
+        $this->assertSame($content, $result);
+    }
+
+    public function testToMarkdownHandlesNonDOMDocumentException(): void
+    {
+        // Create a mock logger
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->never())
+            ->method('warning');
+
+        // Create converter with logger
+        $converter = new JiraHtmlConverter(null, $logger);
+
+        // Use reflection to inject a mock converter that throws non-DOMDocument exception
+        $reflection = new \ReflectionClass($converter);
+        $markdownConverterProperty = $reflection->getProperty('markdownConverter');
+        $markdownConverterProperty->setAccessible(true);
+
+        // Create a mock that throws a different exception
+        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter->method('convert')
+            ->willThrowException(new \Exception('Some other error'));
+
+        // Inject the mock
+        $markdownConverterProperty->setValue($converter, $mockConverter);
+
+        // Test that exception is caught and original content is returned
+        $content = '<p>Test content</p>';
+        $result = $converter->toMarkdown($content);
+
+        // Should return original content when exception occurs
+        $this->assertSame($content, $result);
+    }
+
+    public function testConstructorWithLogger(): void
+    {
+        $logger = $this->createMock(Logger::class);
+        $converter = new JiraHtmlConverter(null, $logger);
+
+        $this->assertInstanceOf(JiraHtmlConverter::class, $converter);
+    }
+
+    public function testToMarkdownHandlesDOMDocumentExceptionWithoutLogger(): void
+    {
+        // Create converter without logger
+        $converter = new JiraHtmlConverter();
+
+        // Use reflection to inject a mock converter that throws DOMDocument exception
+        $reflection = new \ReflectionClass($converter);
+        $markdownConverterProperty = $reflection->getProperty('markdownConverter');
+        $markdownConverterProperty->setAccessible(true);
+
+        // Create a mock that throws DOMDocument-related exception
+        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter->method('convert')
+            ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
+
+        // Inject the mock
+        $markdownConverterProperty->setValue($converter, $mockConverter);
+
+        // Test that exception is caught and original content is returned (even without logger)
+        $content = '<p>Test content</p>';
+        $result = $converter->toMarkdown($content);
+
+        // Should return original content when DOMDocument exception occurs
+        $this->assertSame($content, $result);
+    }
+
+    public function testToMarkdownHandlesNonDOMDocumentExceptionWithoutLogger(): void
+    {
+        // Create converter without logger
+        $converter = new JiraHtmlConverter();
+
+        // Use reflection to inject a mock converter that throws non-DOMDocument exception
+        $reflection = new \ReflectionClass($converter);
+        $markdownConverterProperty = $reflection->getProperty('markdownConverter');
+        $markdownConverterProperty->setAccessible(true);
+
+        // Create a mock that throws a different exception
+        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter->method('convert')
+            ->willThrowException(new \Exception('Some other error'));
+
+        // Inject the mock
+        $markdownConverterProperty->setValue($converter, $mockConverter);
+
+        // Test that exception is caught and original content is returned
+        $content = '<p>Test content</p>';
+        $result = $converter->toMarkdown($content);
+
+        // Should return original content when exception occurs
+        $this->assertSame($content, $result);
+    }
+
+    public function testToMarkdownHandlesDOMDocumentExceptionWithDifferentMessage(): void
+    {
+        // Create a mock logger
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.'
+            );
+
+        // Create converter with logger
+        $converter = new JiraHtmlConverter(null, $logger);
+
+        // Use reflection to inject a mock converter that throws DOMDocument exception with different message
+        $reflection = new \ReflectionClass($converter);
+        $markdownConverterProperty = $reflection->getProperty('markdownConverter');
+        $markdownConverterProperty->setAccessible(true);
+
+        // Create a mock that throws DOMDocument-related exception with different message format
+        $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
+        $mockConverter->method('convert')
+            ->willThrowException(new \Exception('DOMDocument error occurred'));
+
+        // Inject the mock
+        $markdownConverterProperty->setValue($converter, $mockConverter);
+
+        // Test that exception is caught and original content is returned
+        $content = '<p>Test content</p>';
+        $result = $converter->toMarkdown($content);
+
+        // Should return original content when DOMDocument exception occurs
+        $this->assertSame($content, $result);
     }
 }
