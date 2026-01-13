@@ -83,7 +83,9 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 1.  **Code Coverage Verification**: 
     - **CRITICAL**: Run the full test suite and verify that the entire project maintains 100% code coverage (not just new files).
-    - If coverage drops below 100%, you MUST write additional tests to restore full coverage before proceeding.
+    - Use `vendor/bin/phpunit --coverage-text` for a quick overview of coverage percentages.
+    - **When coverage is not 100%**: Use `php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-clover phpunit-results.xml` to generate a detailed Clover XML report that identifies exactly which lines are missing coverage. The Clover format provides precise insight into uncovered lines, making it easier to identify and fix gaps.
+    - If coverage drops below 100%, you MUST write additional tests to restore full coverage before proceeding. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (see CONVENTIONS.md for proper usage).
     - This is a blocking requirement; the commit cannot proceed until 100% coverage is restored.
 
 2.  **Complexity Verification**: 
