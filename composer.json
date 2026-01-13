@@ -24,6 +24,8 @@
         "workflow"
     ],
     "require": {
+        "php": "8.2",
+        "ext-xml": "*",
         "symfony/http-client": "^7.3",
         "symfony/process": "^7.3",
         "symfony/console": "^7.3,<7.4",

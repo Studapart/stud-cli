@@ -15,11 +15,14 @@ class JiraHtmlConverter implements HtmlConverterInterface
 {
     private readonly Transformer $transformer;
     private ?LeagueHtmlConverter $markdownConverter = null;
+    private ?Logger $logger = null;
 
     public function __construct(
-        ?Transformer $transformer = null
+        ?Transformer $transformer = null,
+        ?Logger $logger = null
     ) {
         $this->transformer = $transformer ?? new Transformer();
+        $this->logger = $logger;
     }
 
     /**
@@ -58,6 +61,18 @@ class JiraHtmlConverter implements HtmlConverterInterface
      */
     public function toMarkdown(string $content): string
     {
+        // Check for XML extension before attempting conversion
+        // Cannot test extension_loaded() returning false in test environment
+        // @codeCoverageIgnoreStart
+        if (! extension_loaded('xml') && ! class_exists('DOMDocument')) {
+            if ($this->logger !== null) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, 'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.');
+            }
+
+            return $content;
+        }
+        // @codeCoverageIgnoreEnd
+
         try {
             if ($this->markdownConverter === null) {
                 $this->markdownConverter = new LeagueHtmlConverter([
@@ -70,7 +85,17 @@ class JiraHtmlConverter implements HtmlConverterInterface
 
             return $this->markdownConverter->convert($content);
         } catch (\Exception $e) {
-            // If conversion fails, return original content as fallback
+            // Check if exception is related to missing XML extension
+            $errorMessage = $e->getMessage();
+            if (str_contains($errorMessage, 'DOMDocument') || str_contains($errorMessage, "Class 'DOMDocument' not found")) {
+                if ($this->logger !== null) {
+                    $this->logger->warning(Logger::VERBOSITY_NORMAL, 'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.');
+                }
+
+                return $content;
+            }
+
+            // If conversion fails for other reasons, return original content as fallback
             return $content;
         }
     }

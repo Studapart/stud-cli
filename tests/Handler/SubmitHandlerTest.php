@@ -1676,11 +1676,13 @@ class SubmitHandlerTest extends CommandTestCase
     // Note: HTML-to-Markdown conversion tests were moved to JiraHtmlConverterTest
     // as the conversion logic is now in the JiraHtmlConverter service
 
-    public function testHandleWithHtmlConverterException(): void
+    public function testHandleWithHtmlConverterDOMDocumentException(): void
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getRepositoryName')->willReturn('my-repo');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushToOrigin')->willReturn($process);
@@ -1702,17 +1704,31 @@ class SubmitHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        // Mock converter to throw exception
+        // Mock converter to throw DOMDocument exception
         $this->htmlConverter->expects($this->once())
             ->method('toMarkdown')
             ->with('<p>Test HTML</p>')
-            ->willThrowException(new \Exception('Conversion failed'));
+            ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
+
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                [
+                    'HTML to Markdown conversion failed: PHP XML extension is missing.',
+                    'Install it using:',
+                    '  Ubuntu/Debian: sudo apt-get install php-xml',
+                    '  Fedora/RHEL: sudo dnf install php-xml',
+                    '  macOS (Homebrew): brew install php-xml',
+                    'Using raw HTML for PR description.',
+                ]
+            );
 
         $this->githubProvider
             ->expects($this->once())
             ->method('createPullRequest')
             ->with($this->callback(function ($prData) {
-                // Should use original HTML when conversion fails
+                // Should use original HTML when DOMDocument exception occurs
                 return $prData instanceof PullRequestData
                     && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\n<p>Test HTML</p>";
             }))
@@ -1720,7 +1736,6 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $this->handler->handle($io);
 

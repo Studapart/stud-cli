@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add PHP extension validation and improve README with system requirements and token setup guide [SCI-39]
+  - Added extension check in `JiraHtmlConverter::toMarkdown()` to validate XML extension before HTML to Markdown conversion
+  - Added bootstrap extension validation listener in `castor.php` to check for required PHP extensions before command execution
+  - Added `ext-xml` requirement to `composer.json` to document the dependency
+  - Added System Requirements section to README.md with PHP version and extension requirements
+  - Added PHP extension installation instructions for Ubuntu/Debian, Fedora/RHEL, and macOS
+  - Added Token Setup Guide subsection to README.md Configuration section with detailed Jira and GitHub token instructions
+  - Added troubleshooting entries for missing XML extension and token permission errors
+  - Updated GitHub Actions workflow to explicitly include xml extension
+  - Improved error messages in `SubmitHandler` to provide actionable guidance when XML extension is missing
+  - Extension check gracefully falls back to original content when XML extension is unavailable
+  - Extension check is skipped for whitelisted commands (config:init, help, main, cache:clear) to allow users to see help/init
+
 ## [3.1.0] - 2026-01-06
 
 ### Fixed
