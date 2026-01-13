@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-01-13
+
 ### Added
 - Add PHP extension validation and improve README with system requirements and token setup guide [SCI-39]
   - Added extension check in `JiraHtmlConverter::toMarkdown()` to validate XML extension before HTML to Markdown conversion
