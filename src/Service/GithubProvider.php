@@ -195,12 +195,39 @@ class GithubProvider
     }
 
     /**
-     * @return array<string, mixed>|null
+     * Finds a pull request by branch head.
+     *
+     * @param string $head The branch head in format "owner:branch" or just "branch"
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'open')
+     * @return array<string, mixed>|null The PR data or null if not found
      */
-    public function findPullRequestByBranch(string $head): ?array
+    public function findPullRequestByBranch(string $head, string $state = 'open'): ?array
     {
+        // If state is 'all', we need to check both 'open' and 'closed'
+        if ($state === 'all') {
+            $openPr = $this->findPullRequestByBranchInternal($head, 'open');
+            if ($openPr !== null) {
+                return $openPr;
+            }
+
+            return $this->findPullRequestByBranchInternal($head, 'closed');
+        }
+
+        return $this->findPullRequestByBranchInternal($head, $state);
+    }
+
+    /**
+     * Internal method to find PR by branch (avoids recursion).
+     *
+     * @param string $head The branch head
+     * @param string $state The PR state: 'open' or 'closed'
+     * @return array<string, mixed>|null The PR data or null if not found
+     */
+    protected function findPullRequestByBranchInternal(string $head, string $state): ?array
+    {
+
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
-        $queryParams = http_build_query(['head' => $head, 'state' => 'open']);
+        $queryParams = http_build_query(['head' => $head, 'state' => $state]);
         $apiUrl .= '?' . $queryParams;
 
         $response = $this->client->request('GET', $apiUrl);
@@ -221,6 +248,21 @@ class GithubProvider
 
         // Return the first PR if any exist
         return ! empty($pulls) ? $pulls[0] : null;
+    }
+
+    /**
+     * Finds a pull request by branch name (constructs owner:branch format automatically).
+     *
+     * @param string $branchName The branch name (without remote prefix)
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'all')
+     * @return array<string, mixed>|null The PR data or null if not found
+     */
+    public function findPullRequestByBranchName(string $branchName, string $state = 'all'): ?array
+    {
+        $owner = $this->owner;
+        $head = "{$owner}:{$branchName}";
+
+        return $this->findPullRequestByBranch($head, $state);
     }
 
     /**

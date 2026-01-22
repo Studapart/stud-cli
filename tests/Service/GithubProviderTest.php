@@ -680,4 +680,191 @@ class GithubProviderTest extends TestCase
 
         $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
     }
+
+    public function testFindPullRequestByBranchWithStateOpen(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+                'draft' => false,
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'open');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateClosed(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=closed"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'closed');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateAllReturnsOpenFirst(): void
+    {
+        $head = 'test_owner:feature/test';
+        $openResponse = [
+            [
+                'number' => 123,
+                'title' => 'Open PR',
+                'head' => ['ref' => 'feature/test'],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($openResponse);
+
+        $this->httpClientMock->expects($this->exactly(1))
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'all');
+
+        $this->assertSame($openResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateAllReturnsClosedWhenOpenNotFound(): void
+    {
+        $head = 'test_owner:feature/test';
+        $openResponse = [];
+        $closedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Closed PR',
+                'head' => ['ref' => 'feature/test'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($openResponse);
+
+        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock->method('getStatusCode')->willReturn(200);
+        $closedResponseMock->method('toArray')->willReturn($closedResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($openResponseMock, $closedResponseMock) {
+                if (str_contains($url, 'state=open')) {
+                    return $openResponseMock;
+                }
+                if (str_contains($url, 'state=closed')) {
+                    return $closedResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url}");
+            });
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'all');
+
+        $this->assertSame($closedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchName(): void
+    {
+        $branchName = 'feature/test';
+        $head = self::GITHUB_OWNER . ':' . $branchName;
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+            ],
+        ];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->exactly(1))
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($openResponseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranchName($branchName, 'all');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchNameReturnsNullWhenNotFound(): void
+    {
+        $branchName = 'feature/test';
+        $head = self::GITHUB_OWNER . ':' . $branchName;
+        $openResponse = [];
+        $closedResponse = [];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($openResponse);
+
+        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock->method('getStatusCode')->willReturn(200);
+        $closedResponseMock->method('toArray')->willReturn($closedResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($openResponseMock, $closedResponseMock) {
+                if (str_contains($url, 'state=open')) {
+                    return $openResponseMock;
+                }
+                if (str_contains($url, 'state=closed')) {
+                    return $closedResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url}");
+            });
+
+        $result = $this->githubProvider->findPullRequestByBranchName($branchName, 'all');
+
+        $this->assertNull($result);
+    }
 }

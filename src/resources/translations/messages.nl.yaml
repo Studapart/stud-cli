@@ -1,434 +1,509 @@
-# Configuration
 config:
   init:
     wizard:
-      title: "Stud CLI Configuratie Wizard"
-      description: "Dit zal uw configuratiebestand maken of bijwerken op: %path%"
+      title: Stud CLI Configuratie Wizard
+      description: 'Dit zal uw configuratiebestand maken of bijwerken op: %path%'
     language:
-      title: "Taalconfiguratie"
-      prompt: "Selecteer uw taal"
+      title: Taalconfiguratie
+      prompt: Selecteer uw taal
     jira:
-      title: "Jira Configuratie"
-      token_help: "U kunt hier een API-token genereren: https://id.atlassian.com/manage-profile/security/api-tokens"
-      url_prompt: "Voer uw Jira URL in"
-      email_prompt: "Voer uw Jira e-mailadres in"
-      token_prompt: "Voer uw Jira API-token in (laat leeg om bestaande te behouden)"
+      title: Jira Configuratie
+      token_help: 'U kunt hier een API-token genereren: https://id.atlassian.com/manage-profile/security/api-tokens'
+      url_prompt: Voer uw Jira URL in
+      email_prompt: Voer uw Jira e-mailadres in
+      token_prompt: Voer uw Jira API-token in (laat leeg om bestaande te behouden)
     git:
-      title: "Git Provider Configuratie"
-      description: "Dit is vereist voor het `stud submit` commando om Pull Requests te maken."
-      token_help: "U kunt hier een token genereren: https://github.com/settings/tokens"
-      auto_detect_note: "Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote."
-      provider_prompt: "Selecteer uw Git provider"
-      token_prompt: "Voer uw Git provider PAT in (laat leeg om bestaande te behouden)"
+      title: Git Provider Configuratie
+      description: Dit is vereist voor het `stud submit` commando om Pull Requests te maken.
+      token_help: 'U kunt hier een token genereren: https://github.com/settings/tokens'
+      auto_detect_note: 'Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote.'
+      provider_prompt: Selecteer uw Git provider
+      token_prompt: Voer uw Git provider PAT in (laat leeg om bestaande te behouden)
     jira_transition:
-      title: "Jira Transitie Configuratie"
-      description: "Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket."
-      prompt: "Automatische Jira transitie naar 'In Uitvoering' inschakelen?"
-    success: "Configuratie succesvol opgeslagen!"
+      title: Jira Transitie Configuratie
+      description: Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket.
+      prompt: Automatische Jira transitie naar 'In Uitvoering' inschakelen?
+    success: Configuratie succesvol opgeslagen!
     completion:
-      title: "Shell Auto-aanvulling Instellen"
-      prompt: "We hebben gedetecteerd dat u '%shell%' gebruikt. Wilt u shell auto-aanvulling instellen?"
-      yes: "Ja"
-      no: "Nee"
-      success_message: "✅ Geweldig! Om de installatie te voltooien, voer dit commando uit:"
-      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
-      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
-      reload_instruction: "Start vervolgens uw shell opnieuw of voer 'source ~/.%shellrc%' uit"
-      skipped: "Shell auto-aanvulling instellen overgeslagen."
+      title: Shell Auto-aanvulling Instellen
+      prompt: We hebben gedetecteerd dat u '%shell%' gebruikt. Wilt u shell auto-aanvulling instellen?
+      yes: Ja
+      no: Nee
+      success_message: '✅ Geweldig! Om de installatie te voltooien, voer dit commando uit:'
+      bash_command: echo 'eval "$(stud completion bash)"' >> ~/.bashrc
+      zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
+      reload_instruction: Start vervolgens uw shell opnieuw of voer 'source ~/.%shellrc%' uit
+      skipped: Shell auto-aanvulling instellen overgeslagen.
   error:
-    not_found: "Configuratiebestand niet gevonden op: %path%\nVoer alstublieft \"stud config:init\" uit om er een te maken."
-    missing_jira_keys: "Uw configuratiebestand mist vereiste Jira-sleutels: %keys%\nVoer alstublieft \"stud config:init\" opnieuw uit."
-    missing_git_keys: "Uw configuratiebestand mist vereiste Git provider-sleutels: %keys%\nVoer alstublieft \"stud config:init\" opnieuw uit."
-    missing_setup: "Configuratiebestand niet gevonden. Stel alstublieft stud-cli in voordat u deze opdracht gebruikt."
-    run_init_instruction: "Voer 'stud config:init' uit om uw configuratiebestand te maken."
+    not_found: 'Configuratiebestand niet gevonden op: %path%
 
-# Item Start Handler
+      Voer alstublieft "stud config:init" uit om er een te maken.'
+    missing_jira_keys: 'Uw configuratiebestand mist vereiste Jira-sleutels: %keys%
+
+      Voer alstublieft "stud config:init" opnieuw uit.'
+    missing_git_keys: 'Uw configuratiebestand mist vereiste Git provider-sleutels: %keys%
+
+      Voer alstublieft "stud config:init" opnieuw uit.'
+    missing_setup: Configuratiebestand niet gevonden. Stel alstublieft stud-cli in voordat u deze opdracht gebruikt.
+    run_init_instruction: Voer 'stud config:init' uit om uw configuratiebestand te maken.
 item:
   start:
-    section: "Werk starten op %key%"
-    fetching: "Details ophalen voor ticket: %key%"
-    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
-    generated_branch: "Gegenereerde branchnaam: %branch%"
-    fetching_changes: "Laatste wijzigingen ophalen van origin..."
-    creating_branch: "Nieuwe branch aanmaken: %branch%"
-    success: "Branch '%branch%' aangemaakt vanaf '%base%'."
-    assigning: "Ticket %key% toewijzen aan huidige gebruiker..."
-    assign_error: "Toewijzen van ticket mislukt: %error%"
-    no_transitions: "Geen 'In Uitvoering' transities beschikbaar voor ticket %key%. Transitie overgeslagen."
-    select_transition: "Selecteer de transitie naar 'In Uitvoering':"
-    invalid_selection: "Ongeldige transitie selectie."
-    save_transition: "Wilt u deze transitiekeuze opslaan voor project '%project%'?"
-    transition_saved: "Transitiekeuze opgeslagen voor project '%project%'."
-    using_cached_transition: "Gebruik gecachte transitie ID: %id%"
-    transition_success: "✅ Ticket %key% overgezet naar 'In Uitvoering'"
-    transition_error: "Ophalen van transities mislukt: %error%"
-    transition_exec_error: "Uitvoeren van transitie mislukt: %error%. Doorgaan met aanmaken van branch."
-    switching_branch: "Switching to existing branch: %branch%"
-    switching_remote_branch: "Switching to remote branch: %branch%"
-    success_switched: "Switched to branch '%branch%'."
+    section: Werk starten op %key%
+    fetching: 'Details ophalen voor ticket: %key%'
+    error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+    generated_branch: 'Gegenereerde branchnaam: %branch%'
+    fetching_changes: Laatste wijzigingen ophalen van origin...
+    creating_branch: 'Nieuwe branch aanmaken: %branch%'
+    success: Branch '%branch%' aangemaakt vanaf '%base%'.
+    assigning: Ticket %key% toewijzen aan huidige gebruiker...
+    assign_error: 'Toewijzen van ticket mislukt: %error%'
+    no_transitions: Geen 'In Uitvoering' transities beschikbaar voor ticket %key%. Transitie overgeslagen.
+    select_transition: 'Selecteer de transitie naar ''In Uitvoering'':'
+    invalid_selection: Ongeldige transitie selectie.
+    save_transition: Wilt u deze transitiekeuze opslaan voor project '%project%'?
+    transition_saved: Transitiekeuze opgeslagen voor project '%project%'.
+    using_cached_transition: 'Gebruik gecachte transitie ID: %id%'
+    transition_success: ✅ Ticket %key% overgezet naar 'In Uitvoering'
+    transition_error: 'Ophalen van transities mislukt: %error%'
+    transition_exec_error: 'Uitvoeren van transitie mislukt: %error%. Doorgaan met aanmaken van branch.'
+    switching_branch: 'Switching to existing branch: %branch%'
+    switching_remote_branch: 'Switching to remote branch: %branch%'
+    success_switched: Switched to branch '%branch%'.
   takeover:
-    section: "Taking over issue %key%"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."
-    error_not_found: "Could not find Jira issue with key \"%key%\"."
-    assigning: "Assigning issue %key% to current user..."
-    assign_warning: "Failed to assign issue: %error%. Continuing anyway."
-    fetching: "Fetching from remote..."
-    searching_branches: "Searching for branches..."
-    branches_found: "Found %count% branch(es) for this issue:"
-    select_branch: "Select a branch to take over:"
-    branch_remote: "%branch% (remote)"
-    branch_local: "%branch% (local)"
-    confirm_branch: "Take over branch '%branch%'?"
-    switching: "Switching to branch %branch%..."
-    already_on_branch: "Already on branch %branch%. Checking status..."
-    status_behind_remote: "Branch is %count% commit(s) behind remote"
-    status_ahead_remote: "Branch is %count% commit(s) ahead of remote"
-    status_sync_remote: "Branch is in sync with remote"
-    status_behind_base: "Branch is %count% commit(s) behind %base%"
-    status_ahead_base: "Branch is %count% commit(s) ahead of %base%"
-    status_sync_base: "Branch is in sync with %base%"
-    warning_wrong_base: "⚠️ Warning: Branch is based on a different branch than expected (%base%)."
-    warning_diverged: "⚠️ Warning: Local branch has commits not on remote. Manual intervention required."
-    pulling: "Pulling latest changes from remote..."
-    no_branches: "No branches found for issue %key%."
-    start_fresh_prompt: "Would you like to start fresh? (This will create a new branch)"
-    success_took_over: "✅ Successfully took over %key%"
-    success_on_branch: "📍 You are now on branch: %branch%"
-    success_status_header: "📊 Branch status:"
-    success_status_remote: " - Remote: %status%"
-    success_status_base: " - %base%: %status%"
-    success_view_details: "ℹ️ View issue details: stud sh %key%"
-
-# Item Show Handler
+    section: Taking over issue %key%
+    error_dirty_working: Your working directory is not clean. Please commit your changes before taking over an issue.
+    error_not_found: Could not find Jira issue with key "%key%".
+    assigning: Assigning issue %key% to current user...
+    assign_warning: 'Failed to assign issue: %error%. Continuing anyway.'
+    fetching: Fetching from remote...
+    searching_branches: Searching for branches...
+    branches_found: 'Found %count% branch(es) for this issue:'
+    select_branch: 'Select a branch to take over:'
+    branch_remote: '%branch% (remote)'
+    branch_local: '%branch% (local)'
+    confirm_branch: Take over branch '%branch%'?
+    switching: Switching to branch %branch%...
+    already_on_branch: Already on branch %branch%. Checking status...
+    status_behind_remote: Branch is %count% commit(s) behind remote
+    status_ahead_remote: Branch is %count% commit(s) ahead of remote
+    status_sync_remote: Branch is in sync with remote
+    status_behind_base: Branch is %count% commit(s) behind %base%
+    status_ahead_base: Branch is %count% commit(s) ahead of %base%
+    status_sync_base: Branch is in sync with %base%
+    warning_wrong_base: '⚠️ Warning: Branch is based on a different branch than expected (%base%).'
+    warning_diverged: '⚠️ Warning: Local branch has commits not on remote. Manual intervention required.'
+    pulling: Pulling latest changes from remote...
+    no_branches: No branches found for issue %key%.
+    start_fresh_prompt: Would you like to start fresh? (This will create a new branch)
+    success_took_over: ✅ Successfully took over %key%
+    success_on_branch: '📍 You are now on branch: %branch%'
+    success_status_header: '📊 Branch status:'
+    success_status_remote: ' - Remote: %status%'
+    success_status_base: ' - %base%: %status%'
+    success_view_details: 'ℹ️ View issue details: stud sh %key%'
   show:
-    section: "Details voor ticket %key%"
-    fetching: "Details ophalen voor ticket: %key%"
-    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
-    label_key: "Sleutel"
-    label_title: "Titel"
-    label_status: "Status"
-    label_assignee: "Toegewezen"
-    label_type: "Type"
-    label_labels: "Labels"
-    label_description: "Beschrijving"
-    label_link: "Link"
-    label_none: "Geen"
-# Item Transition Handler
+    section: Details voor ticket %key%
+    fetching: 'Details ophalen voor ticket: %key%'
+    error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+    label_key: Sleutel
+    label_title: Titel
+    label_status: Status
+    label_assignee: Toegewezen
+    label_type: Type
+    label_labels: Labels
+    label_description: Beschrijving
+    label_link: Link
+    label_none: Geen
   transition:
-    section: "Jira werkitem overgang"
-    detected_key: "Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?"
-    prompt_key: "Voer Jira werkitem sleutel in"
-    error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
-    error_invalid_key: "Ongeldig Jira sleutelformaat. Verwacht formaat: PROJ-123"
-    fetching: "Beschikbare overgangen ophalen voor ticket: %key%"
-    no_transitions: "Geen overgangen beschikbaar voor ticket %key%."
-    select_transition: "Selecteer de overgang om toe te passen:"
-    error_fetch: "Fout bij ophalen van overgangen: %error%"
-    error_execute: "Fout bij uitvoeren van overgang: %error%"
-    success: "✅ Ticket %key% succesvol overgezet"
-
-# Item List Handler
+    section: Jira werkitem overgang
+    detected_key: Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?
+    prompt_key: Voer Jira werkitem sleutel in
+    error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+    error_invalid_key: 'Ongeldig Jira sleutelformaat. Verwacht formaat: PROJ-123'
+    fetching: 'Beschikbare overgangen ophalen voor ticket: %key%'
+    no_transitions: Geen overgangen beschikbaar voor ticket %key%.
+    select_transition: 'Selecteer de overgang om toe te passen:'
+    error_fetch: 'Fout bij ophalen van overgangen: %error%'
+    error_execute: 'Fout bij uitvoeren van overgang: %error%'
+    success: ✅ Ticket %key% succesvol overgezet
   list:
-    section: "Jira Tickets ophalen"
-    error_fetch: "Fout bij ophalen van tickets: %error%"
-    no_items: "Geen tickets gevonden die overeenkomen met uw criteria."
-    error_invalid_sort: "Ongeldige sorteerwaarde '%value%'. Toegestane waarden: Key, Status"
-
-# Project List Handler
+    section: Jira Tickets ophalen
+    error_fetch: 'Fout bij ophalen van tickets: %error%'
+    no_items: Geen tickets gevonden die overeenkomen met uw criteria.
+    error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waarden: Key, Status'
 project:
   list:
-    section: "Jira Projecten ophalen"
-    error_fetch: "Fout bij ophalen van projecten: %error%"
-    no_projects: "Geen projecten gevonden."
-
-# Search Handler
+    section: Jira Projecten ophalen
+    error_fetch: 'Fout bij ophalen van projecten: %error%'
+    no_projects: Geen projecten gevonden.
 search:
-  section: "Jira tickets zoeken met JQL"
-  jql_query: "JQL Query: %jql%"
-  error_search: "Fout bij zoeken naar tickets: %error%"
-  no_results: "Geen tickets gevonden die overeenkomen met uw JQL-query."
-
-# Filter Show Handler
+  section: Jira tickets zoeken met JQL
+  jql_query: 'JQL Query: %jql%'
+  error_search: 'Fout bij zoeken naar tickets: %error%'
+  no_results: Geen tickets gevonden die overeenkomen met uw JQL-query.
 filter:
   show:
-    section: "Tickets ophalen uit filter '%filterName%'"
-    jql_query: "JQL Query: %jql%"
-    error_fetch: "Fout bij ophalen van tickets uit filter: %error%"
-    no_results: "Geen tickets gevonden in filter '%filterName%'."
+    section: Tickets ophalen uit filter '%filterName%'
+    jql_query: 'JQL Query: %jql%'
+    error_fetch: 'Fout bij ophalen van tickets uit filter: %error%'
+    no_results: Geen tickets gevonden in filter '%filterName%'.
   list:
-    section: "Jira-filters ophalen"
-    error_fetch: "Fout bij ophalen van filters: %error%"
-    no_filters: "Geen filters gevonden."
-
-# Status Handler
+    section: Jira-filters ophalen
+    error_fetch: 'Fout bij ophalen van filters: %error%'
+    no_filters: Geen filters gevonden.
 status:
-  section: "Huidige Status"
-  fetching: "Status ophalen voor Jira ticket: %key%"
-  jira_status: "[%status%] %key%: %title%"
-  jira_error: "Kon Jira ticket details niet ophalen: %error%"
-  jira_no_key: "Geen Jira-sleutel gevonden in branchnaam."
-  git_branch: "Op branch '%branch%'"
-  local_changes: "U heeft %count% niet-gecommitte wijzigingen."
-  local_clean: "Werkdirectory is schoon."
-
-# Please Handler
+  section: Huidige Status
+  fetching: 'Status ophalen voor Jira ticket: %key%'
+  jira_status: '[%status%] %key%: %title%'
+  jira_error: 'Kon Jira ticket details niet ophalen: %error%'
+  jira_no_key: Geen Jira-sleutel gevonden in branchnaam.
+  git_branch: Op branch '%branch%'
+  local_changes: U heeft %count% niet-gecommitte wijzigingen.
+  local_clean: Werkdirectory is schoon.
 please:
-  error_no_upstream: "Uw huidige branch heeft geen upstream remote geconfigureerd.\nVoor de eerste push en om een Pull Request te maken, gebruik alstublieft \"stud submit\"."
-  warning_force: "⚠️  Forceren met lease..."
+  error_no_upstream: 'Uw huidige branch heeft geen upstream remote geconfigureerd.
 
-# Flatten Handler
+    Voor de eerste push en om een Pull Request te maken, gebruik alstublieft "stud submit".'
+  warning_force: ⚠️  Forceren met lease...
 flatten:
-  section: "Fixup commits afvlakken"
-  error_dirty_working: "Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u afvlakt."
-  warning_rewrite: "⚠️  Dit zal uw commit geschiedenis herschrijven. U moet mogelijk 'stud please' uitvoeren om daarna force-push te doen."
-  success: "✅ Alle fixup! commits zijn samengevoegd in hun doelcommits."
-  error_rebase: "Rebase mislukt: %error%"
-  no_fixups: "Geen fixup! of squash! commits gevonden. Niets om af te vlaken."
-
-# Cache Clear Handler
+  section: Fixup commits afvlakken
+  error_dirty_working: Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u afvlakt.
+  warning_rewrite: ⚠️  Dit zal uw commit geschiedenis herschrijven. U moet mogelijk 'stud please' uitvoeren om daarna force-push te doen.
+  success: ✅ Alle fixup! commits zijn samengevoegd in hun doelcommits.
+  error_rebase: 'Rebase mislukt: %error%'
+  no_fixups: Geen fixup! of squash! commits gevonden. Niets om af te vlaken.
 cache:
   clear:
-    section: "Update controle cache wissen"
-    success: "✅ Update controle cache succesvol gewist."
-    already_clear: "Cache was al leeg."
-    error_delete: "Fout bij verwijderen van cache bestand."
-
-# Submit Handler
+    section: Update controle cache wissen
+    success: ✅ Update controle cache succesvol gewist.
+    already_clear: Cache was al leeg.
+    error_delete: Fout bij verwijderen van cache bestand.
 submit:
-  section: "Pull Request indienen"
-  error_dirty_working: "Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u indient."
-  error_base_branch: "Kan geen Pull Request maken vanaf de basisbranch."
-  pushing: "Branch %branch% pushen..."
-  error_push: "Push mislukt. Uw branch heeft mogelijk geschiedenis herschreven.\nProbeer 'stud please' uit te voeren om te force-pushen."
-  finding_commit: "Eerste logische commit zoeken om te gebruiken voor PR-details..."
-  fetching_jira: "Jira ticket ophalen voor PR-body: %key%"
-  error_no_logical: "Kon geen logische commit vinden op deze branch. Kan PR niet maken."
-  error_no_jira_key: "Kon Jira-sleutel niet parseren uit commit-bericht. Kan PR niet maken."
-  warning_jira_fetch: "Kon Jira ticket details niet ophalen voor PR-body: %error%\nTerugvallen op een eenvoudige link."
-  creating: "Pull Request aanmaken..."
-  success_created: "✅ Pull Request aangemaakt: %url%"
-  warning_no_provider: "Geen Git provider geconfigureerd voor dit project."
-  note_pr_exists: "Een Pull Request bestaat al voor deze branch."
-  success_pushed: "✅ Wijzigingen zijn naar GitHub gepusht"
-  error_create_pr: "Fout bij aanmaken van Pull Request.\nFout: %error%"
-  using_head: "Head branch gebruiken: %head%"
-  fetching_labels: "Labels van repository ophalen..."
-  label_unknown_prompt: "Label '%label%' bestaat niet in de repository. Wat wil je doen?"
-  label_create_option: "Aanmaken: Maak het label aan op GitHub en voeg het toe aan de PR"
-  label_ignore_option: "Negeren: Sla dit label over en verwijder het uit de definitieve lijst"
-  label_retry_option: "Opnieuw proberen: Annuleer de opdracht en voer opnieuw uit met een gecorrigeerde lijst"
-  label_creating: "Label '%label%' aanmaken..."
-  label_created: "✅ Label '%label%' succesvol aangemaakt"
-  label_ignored: "Label '%label%' wordt genegeerd"
-  error_fetch_labels: "Fout bij ophalen van labels van GitHub.\nFout: %error%"
-  error_create_label: "Fout bij aanmaken van label '%label%'.\nFout: %error%"
-  error_add_labels: "Fout bij toevoegen van labels aan Pull Request.\nFout: %error%"
-  adding_labels: "Labels toevoegen aan Pull Request..."
-  updating_to_draft: "Pull Request bijwerken naar conceptstatus..."
-  error_update_draft: "Fout bij bijwerken van conceptstatus van Pull Request.\nFout: %error%"
+  section: Pull Request indienen
+  error_dirty_working: Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u indient.
+  error_base_branch: Kan geen Pull Request maken vanaf de basisbranch.
+  pushing: Branch %branch% pushen...
+  error_push: 'Push mislukt. Uw branch heeft mogelijk geschiedenis herschreven.
 
-# PR Comment Handler
+    Probeer ''stud please'' uit te voeren om te force-pushen.'
+  finding_commit: Eerste logische commit zoeken om te gebruiken voor PR-details...
+  fetching_jira: 'Jira ticket ophalen voor PR-body: %key%'
+  error_no_logical: Kon geen logische commit vinden op deze branch. Kan PR niet maken.
+  error_no_jira_key: Kon Jira-sleutel niet parseren uit commit-bericht. Kan PR niet maken.
+  warning_jira_fetch: 'Kon Jira ticket details niet ophalen voor PR-body: %error%
+
+    Terugvallen op een eenvoudige link.'
+  creating: Pull Request aanmaken...
+  success_created: '✅ Pull Request aangemaakt: %url%'
+  warning_no_provider: Geen Git provider geconfigureerd voor dit project.
+  note_pr_exists: Een Pull Request bestaat al voor deze branch.
+  success_pushed: ✅ Wijzigingen zijn naar GitHub gepusht
+  error_create_pr: 'Fout bij aanmaken van Pull Request.
+
+    Fout: %error%'
+  using_head: 'Head branch gebruiken: %head%'
+  fetching_labels: Labels van repository ophalen...
+  label_unknown_prompt: Label '%label%' bestaat niet in de repository. Wat wil je doen?
+  label_create_option: 'Aanmaken: Maak het label aan op GitHub en voeg het toe aan de PR'
+  label_ignore_option: 'Negeren: Sla dit label over en verwijder het uit de definitieve lijst'
+  label_retry_option: 'Opnieuw proberen: Annuleer de opdracht en voer opnieuw uit met een gecorrigeerde lijst'
+  label_creating: Label '%label%' aanmaken...
+  label_created: ✅ Label '%label%' succesvol aangemaakt
+  label_ignored: Label '%label%' wordt genegeerd
+  error_fetch_labels: 'Fout bij ophalen van labels van GitHub.
+
+    Fout: %error%'
+  error_create_label: 'Fout bij aanmaken van label ''%label%''.
+
+    Fout: %error%'
+  error_add_labels: 'Fout bij toevoegen van labels aan Pull Request.
+
+    Fout: %error%'
+  adding_labels: Labels toevoegen aan Pull Request...
+  updating_to_draft: Pull Request bijwerken naar conceptstatus...
+  error_update_draft: 'Fout bij bijwerken van conceptstatus van Pull Request.
+
+    Fout: %error%'
 pr:
   comment:
-    section: "Commentaar plaatsen op Pull Request"
-    error_no_provider: "Geen Git provider geconfigureerd voor dit project."
-    error_no_input: "Geen commentaarinhoud opgegeven.\nGeef alstublieft inhoud op via STDIN (piping) of als direct argument.\nVoorbeeld: echo \"Commentaar tekst\" | stud pr:comment\nVoorbeeld: stud pr:comment \"Commentaar tekst\""
-    error_no_pr: "Kon geen actieve Pull Request vinden voor de huidige branch."
-    error_post: "Fout bij plaatsen van commentaar op Pull Request.\nFout: %error%"
-    finding_pr: "Zoeken naar Pull Request voor branch: %branch%"
-    posting: "Commentaar plaatsen op Pull Request #%number%..."
-    success: "✅ Commentaar succesvol geplaatst op Pull Request #%number%"
-    using_stdin: "Commentaar lezen van STDIN..."
-    using_argument: "Commentaar gebruiken van argument..."
+    section: Commentaar plaatsen op Pull Request
+    error_no_provider: Geen Git provider geconfigureerd voor dit project.
+    error_no_input: 'Geen commentaarinhoud opgegeven.
 
-# Branch Rename Handler
+      Geef alstublieft inhoud op via STDIN (piping) of als direct argument.
+
+      Voorbeeld: echo "Commentaar tekst" | stud pr:comment
+
+      Voorbeeld: stud pr:comment "Commentaar tekst"'
+    error_no_pr: Kon geen actieve Pull Request vinden voor de huidige branch.
+    error_post: 'Fout bij plaatsen van commentaar op Pull Request.
+
+      Fout: %error%'
+    finding_pr: 'Zoeken naar Pull Request voor branch: %branch%'
+    posting: 'Commentaar plaatsen op Pull Request #%number%...'
+    success: '✅ Commentaar succesvol geplaatst op Pull Request #%number%'
+    using_stdin: Commentaar lezen van STDIN...
+    using_argument: Commentaar gebruiken van argument...
 branch:
   rename:
-    section: "Renaming branch"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before renaming a branch."
-    error_branch_not_found: "Branch '%branch%' not found (local or remote)."
-    error_new_name_exists: "Branch '%name%' already exists (local or remote). Cannot rename."
-    error_invalid_name: "Invalid branch name: %name%. Branch names must follow Git naming rules."
-    error_key_not_found: "Could not find Jira issue with key \"%key%\"."
-    error_no_key_in_branch: "Could not extract Jira key from branch name '%branch%'."
-    fetching_issue: "Fetching issue details from Jira..."
-    generating_name: "Generating new branch name from issue..."
-    checking_branches: "Checking branch existence..."
-    local_not_found_remote_exists: "Local branch '%branch%' not found, but remote branch exists."
-    rename_remote_only_prompt: "Rename only the remote branch? (Y/n)"
-    remote_not_found: "Remote branch not found. Only local branch will be renamed."
-    checking_sync: "Checking branch synchronization..."
-    remote_ahead_prompt: "Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)"
-    rebasing: "Rebasing local branch onto remote..."
-    rebase_failed: "Rebase failed. Please resolve conflicts manually and try again."
-    rebase_suggestion: "Suggested commands: git rebase origin/%branch%, resolve conflicts, then run 'stud rn' again."
-    finding_pr: "Checking for associated Pull Request..."
-    confirmation_header: "Current branch: %oldName%"
-    confirmation_new: "Proposed name: %newName%"
-    confirmation_actions: "The following will be renamed:"
-    confirmation_local: " - Local branch: %oldName% → %newName%"
-    confirmation_remote: " - Remote branch: origin/%oldName% → origin/%newName%"
-    confirmation_pr: " - Pull Request: #%number% (will be updated and commented)"
-    confirm_prompt: "Are you sure you want to rename this branch? (Y/n)"
-    renaming_local: "Renaming local branch..."
-    renaming_remote: "Renaming remote branch..."
-    updating_pr: "Updating Pull Request..."
-    creating_new_pr: "Creating new Pull Request for renamed branch..."
+    section: Renaming branch
+    error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.
+    error_branch_not_found: Branch '%branch%' not found (local or remote).
+    error_new_name_exists: Branch '%name%' already exists (local or remote). Cannot rename.
+    error_invalid_name: 'Invalid branch name: %name%. Branch names must follow Git naming rules.'
+    error_key_not_found: Could not find Jira issue with key "%key%".
+    error_no_key_in_branch: Could not extract Jira key from branch name '%branch%'.
+    fetching_issue: Fetching issue details from Jira...
+    generating_name: Generating new branch name from issue...
+    checking_branches: Checking branch existence...
+    local_not_found_remote_exists: Local branch '%branch%' not found, but remote branch exists.
+    rename_remote_only_prompt: Rename only the remote branch? (Y/n)
+    remote_not_found: Remote branch not found. Only local branch will be renamed.
+    checking_sync: Checking branch synchronization...
+    remote_ahead_prompt: Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)
+    rebasing: Rebasing local branch onto remote...
+    rebase_failed: Rebase failed. Please resolve conflicts manually and try again.
+    rebase_suggestion: 'Suggested commands: git rebase origin/%branch%, resolve conflicts, then run ''stud rn'' again.'
+    finding_pr: Checking for associated Pull Request...
+    confirmation_header: 'Current branch: %oldName%'
+    confirmation_new: 'Proposed name: %newName%'
+    confirmation_actions: 'The following will be renamed:'
+    confirmation_local: ' - Local branch: %oldName% → %newName%'
+    confirmation_remote: ' - Remote branch: origin/%oldName% → origin/%newName%'
+    confirmation_pr: ' - Pull Request: #%number% (will be updated and commented)'
+    confirm_prompt: Are you sure you want to rename this branch? (Y/n)
+    renaming_local: Renaming local branch...
+    renaming_remote: Renaming remote branch...
+    updating_pr: Updating Pull Request...
+    creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: "⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually."
-    commenting_pr: "Adding comment to Pull Request..."
-    success: "✅ Branch renamed successfully from %oldName% to %newName%"
-    no_pr_found: "No Pull Request found for this branch."
-    create_pr_prompt: "Would you like to create a Pull Request? (Y/n)"
-    switching_for_submit: "Switching to renamed branch to create PR..."
-
-# Commit Handler
+    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
+    commenting_pr: Adding comment to Pull Request...
+    success: ✅ Branch renamed successfully from %oldName% to %newName%
+    no_pr_found: No Pull Request found for this branch.
+    create_pr_prompt: Would you like to create a Pull Request? (Y/n)
+    switching_for_submit: Switching to renamed branch to create PR...
 commit:
-  section: "Conventionele Commit Helper"
-  staging: "Alle wijzigingen stagen..."
-  committing: "Committen met opgegeven bericht..."
-  committing_simple: "Committen..."
-  success: "Commit succesvol aangemaakt!"
-  checking_logical: "Controleren op vorige logische commit..."
-  found_logical: "Logische commit SHA gevonden: %sha%"
-  creating_fixup: "Fixup commit aanmaken voor %sha%..."
-  fixup_success: "✅ Wijzigingen opgeslagen als fixup voor commit %sha%."
-  note_no_logical: "Geen vorige logische commit gevonden of --new flag gebruikt. Interactieve prompt starten..."
-  note_clean_working_tree: "Werkboom is schoon. Commit afbreken."
-  error_no_key: "Kon geen Jira-sleutel vinden in uw huidige branchnaam.\nGebruik alstublieft \"stud start <key>\" om een branch aan te maken."
-  fetching_jira: "Jira ticket ophalen: %key%"
-  error_not_found: "Kon Jira ticket met sleutel \"%key%\" niet vinden."
-  jira_details: "Jira Ticket Details:"
-  jira_title: "Titel: %title%"
-  jira_type: "Type: %type% -> %commit_type%"
-  jira_components: "Componenten: %components%"
-  scope_prompt: "Scope (optioneel)"
-  scope_auto: "Scope (auto-gedetecteerd '%scope%')"
-  type_prompt: "Commit Type (auto-gedetecteerd '%type%')"
-  summary_prompt: "Kort Bericht (auto-ingevuld vanuit Jira)"
-  generated_message: "Gegenereerd commit-bericht:\n%message%"
+  section: Conventionele Commit Helper
+  staging: Alle wijzigingen stagen...
+  committing: Committen met opgegeven bericht...
+  committing_simple: Committen...
+  success: Commit succesvol aangemaakt!
+  checking_logical: Controleren op vorige logische commit...
+  found_logical: 'Logische commit SHA gevonden: %sha%'
+  creating_fixup: Fixup commit aanmaken voor %sha%...
+  fixup_success: ✅ Wijzigingen opgeslagen als fixup voor commit %sha%.
+  note_no_logical: Geen vorige logische commit gevonden of --new flag gebruikt. Interactieve prompt starten...
+  note_clean_working_tree: Werkboom is schoon. Commit afbreken.
+  error_no_key: 'Kon geen Jira-sleutel vinden in uw huidige branchnaam.
 
-# Update Handler
+    Gebruik alstublieft "stud start <key>" om een branch aan te maken.'
+  fetching_jira: 'Jira ticket ophalen: %key%'
+  error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+  jira_details: 'Jira Ticket Details:'
+  jira_title: 'Titel: %title%'
+  jira_type: 'Type: %type% -> %commit_type%'
+  jira_components: 'Componenten: %components%'
+  scope_prompt: Scope (optioneel)
+  scope_auto: Scope (auto-gedetecteerd '%scope%')
+  type_prompt: Commit Type (auto-gedetecteerd '%type%')
+  summary_prompt: Kort Bericht (auto-ingevuld vanuit Jira)
+  generated_message: 'Gegenereerd commit-bericht:
+
+    %message%'
 update:
-  section: "Controleren op updates"
-  binary_path: "Binair pad"
-  repository: "Repository"
-  current_version: "Huidige versie"
-  latest_version: "Laatste versie"
-  downloading_from: "Downloaden vanaf"
-  warning_no_releases: "Geen releases gevonden voor deze repository.\nDe repository heeft mogelijk nog geen gepubliceerde releases."
-  error_fetch: "Fout bij ophalen van laatste release-informatie.\nFout: %error%"
-  success_latest: "U gebruikt al de laatste versie (%version%)."
-  new_version: "Een nieuwe versie (%version%) is beschikbaar. Bijwerken..."
-  error_no_phar: "Kon stud.phar asset niet vinden in de laatste release.\nRelease assets: %assets%"
-  error_download: "Fout bij downloaden van nieuwe versie.\nFout: %error%"
-  error_asset_id: "Fout bij downloaden van nieuwe versie.\nFout: Asset ID niet gevonden in release asset."
-  error_not_writable: "Update mislukt: Het bestand is niet beschrijfbaar.\nVoer alstublieft opnieuw uit met verhoogde rechten: sudo stud update"
-  error_backup: "Fout bij aanmaken van backup van huidige versie.\nFout: %error%"
-  error_rollback: "Update mislukt en is teruggedraaid.\nFout: %error%"
-  error_rollback_failed: "Update mislukt en terugdraaien is ook mislukt!\nOriginele fout: %original_error%\nTerugdraai fout: %rollback_error%\nHerstel alstublieft handmatig vanaf: %backup_path%"
-  changelog_section: "Wijzigingen in versie %version%"
-  breaking_changes_detected: "⚠️  Breaking changes gedetecteerd in deze update:"
-  changelog_error: "Kon changelog niet ophalen"
-  success_hash_verified: "✅ Hash-verificatie geslaagd. Het binaire bestand is authentiek."
-  error_hash_not_found: "Beveiligingsverificatiefout: Kon het checksumbestand niet vinden in de release.\nHet binaire bestand kan niet worden geverifieerd. Update geannuleerd om veiligheidsredenen."
-  error_hash_calculation: "Beveiligingsverificatiefout: Kon de hash van het gedownloade bestand niet berekenen.\nUpdate geannuleerd om veiligheidsredenen."
-  error_hash_mismatch: "Beveiligingsverificatiefout: Hash-inconsistentie gedetecteerd!\n\nVerwachte hash: %expected%\nBerekende hash: %calculated%\n\nHet gedownloade binaire bestand kan corrupt zijn of zijn gewijzigd."
-  error_digest_not_found: "Beveiligingsverificatiefout: Geen digest gevonden in GitHub API-reactie.\nHet binaire bestand kan niet worden geverifieerd."
-  prompt_continue_on_verification_failure: "⚠️ Waarschuwing: Checksum-verificatie is mislukt.\nWilt u toch doorgaan met de installatie?"
-  downloading_checksum: "Checksumbestand downloaden vanaf"
-  checksum_download_error: "Fout bij downloaden van checksumbestand"
+  section: Controleren op updates
+  binary_path: Binair pad
+  repository: Repository
+  current_version: Huidige versie
+  latest_version: Laatste versie
+  downloading_from: Downloaden vanaf
+  warning_no_releases: 'Geen releases gevonden voor deze repository.
 
-# Release Handler
+    De repository heeft mogelijk nog geen gepubliceerde releases.'
+  error_fetch: 'Fout bij ophalen van laatste release-informatie.
+
+    Fout: %error%'
+  success_latest: U gebruikt al de laatste versie (%version%).
+  new_version: Een nieuwe versie (%version%) is beschikbaar. Bijwerken...
+  error_no_phar: 'Kon stud.phar asset niet vinden in de laatste release.
+
+    Release assets: %assets%'
+  error_download: 'Fout bij downloaden van nieuwe versie.
+
+    Fout: %error%'
+  error_asset_id: 'Fout bij downloaden van nieuwe versie.
+
+    Fout: Asset ID niet gevonden in release asset.'
+  error_not_writable: 'Update mislukt: Het bestand is niet beschrijfbaar.
+
+    Voer alstublieft opnieuw uit met verhoogde rechten: sudo stud update'
+  error_backup: 'Fout bij aanmaken van backup van huidige versie.
+
+    Fout: %error%'
+  error_rollback: 'Update mislukt en is teruggedraaid.
+
+    Fout: %error%'
+  error_rollback_failed: 'Update mislukt en terugdraaien is ook mislukt!
+
+    Originele fout: %original_error%
+
+    Terugdraai fout: %rollback_error%
+
+    Herstel alstublieft handmatig vanaf: %backup_path%'
+  changelog_section: Wijzigingen in versie %version%
+  breaking_changes_detected: '⚠️  Breaking changes gedetecteerd in deze update:'
+  changelog_error: Kon changelog niet ophalen
+  success_hash_verified: ✅ Hash-verificatie geslaagd. Het binaire bestand is authentiek.
+  error_hash_not_found: 'Beveiligingsverificatiefout: Kon het checksumbestand niet vinden in de release.
+
+    Het binaire bestand kan niet worden geverifieerd. Update geannuleerd om veiligheidsredenen.'
+  error_hash_calculation: 'Beveiligingsverificatiefout: Kon de hash van het gedownloade bestand niet berekenen.
+
+    Update geannuleerd om veiligheidsredenen.'
+  error_hash_mismatch: 'Beveiligingsverificatiefout: Hash-inconsistentie gedetecteerd!
+
+
+    Verwachte hash: %expected%
+
+    Berekende hash: %calculated%
+
+
+    Het gedownloade binaire bestand kan corrupt zijn of zijn gewijzigd.'
+  error_digest_not_found: 'Beveiligingsverificatiefout: Geen digest gevonden in GitHub API-reactie.
+
+    Het binaire bestand kan niet worden geverifieerd.'
+  prompt_continue_on_verification_failure: '⚠️ Waarschuwing: Checksum-verificatie is mislukt.
+
+    Wilt u toch doorgaan met de installatie?'
+  downloading_checksum: Checksumbestand downloaden vanaf
+  checksum_download_error: Fout bij downloaden van checksumbestand
 release:
-  section: "Release proces starten voor versie %version%"
-  fetched: "Laatste wijzigingen opgehaald van origin."
-  created_branch: "Release branch aangemaakt: %branch%"
-  updated_composer: "Versie bijgewerkt in composer.json naar %version%"
-  updated_lock: "composer.lock bijgewerkt"
-  dumped_config: "Config gedumpt naar config/app.php"
-  updated_changelog: "CHANGELOG.md bijgewerkt met versie %version%"
-  staged: "Wijzigingen gestaged."
-  committed: "Versie bump gecommit."
-  published: "Release branch gepubliceerd naar remote."
-  confirm_publish: "Wilt u de release branch naar remote publiceren?"
-  success: "Release %version% is klaar om te worden gedeployed."
-
-# Deploy Handler
+  section: Release proces starten voor versie %version%
+  fetched: Laatste wijzigingen opgehaald van origin.
+  created_branch: 'Release branch aangemaakt: %branch%'
+  updated_composer: Versie bijgewerkt in composer.json naar %version%
+  updated_lock: composer.lock bijgewerkt
+  dumped_config: Config gedumpt naar config/app.php
+  updated_changelog: CHANGELOG.md bijgewerkt met versie %version%
+  staged: Wijzigingen gestaged.
+  committed: Versie bump gecommit.
+  published: Release branch gepubliceerd naar remote.
+  confirm_publish: Wilt u de release branch naar remote publiceren?
+  success: Release %version% is klaar om te worden gedeployed.
 deploy:
-  section: "Deployment proces starten"
-  error_not_release: "U moet op een release branch zijn om te deployen."
-  deployed: "Gedeployed naar main en getagged."
-  updated_develop: "Develop branch bijgewerkt."
-  cleaned: "Release branch opgeschoond."
-  success: "Release v%version% succesvol gedeployed naar main. develop is gerebaseerd en force-pusht. Branches opgeschoond."
-
-# Table Headers
+  section: Deployment proces starten
+  error_not_release: U moet op een release branch zijn om te deployen.
+  deployed: Gedeployed naar main en getagged.
+  updated_develop: Develop branch bijgewerkt.
+  cleaned: Release branch opgeschoond.
+  success: Release v%version% succesvol gedeployed naar main. develop is gerebaseerd en force-pusht. Branches opgeschoond.
+branches:
+  list:
+    section: Branch Lijst
+    no_branches: Geen branches gevonden
+    column:
+      branch: Branch
+      status: Status
+      remote: Remote
+      pr: PR
+    status:
+      merged: samengevoegd
+      stale: verouderd
+      active_pr: actieve-pr
+      active: actief
+    fetching_local: Lokale branches ophalen...
+    fetching_remote: Remote branches ophalen voor %count% lokale branches...
+    note_origin: 'Opmerking: Alleen ''origin'' remote wordt gecontroleerd. Andere remotes worden genegeerd.'
+  clean:
+    section: Branch Opruiming
+    scanning: Scannen naar branches om op te ruimen...
+    found: '%count% branch(en) gevonden om op te ruimen:'
+    confirm: '%count% branch(en) verwijderen? (J/n)'
+    cancelled: Opruiming geannuleerd.
+    deleting: 'Branch verwijderen: %branch%'
+    deleted: '%count% branch(en) verwijderd'
+    none: Geen branches om op te ruimen
+    protected: 'Beschermde branch overgeslagen: %branch%'
+    error: 'Fout bij verwijderen van branch %branch%: %error%'
+    note_origin: 'Opmerking: Alleen ''origin'' remote wordt gecontroleerd. Andere remotes worden genegeerd.'
+    fetching_local: Lokale branches ophalen...
+    fetching_remote: Remote branches ophalen...
+    local_only_header: 'Alleen lokale branches (%count%):'
+    with_remote_header: 'Branches met remote (%count%):'
+    with_remote_note: Deze branches bestaan op remote. U wordt gevraagd om ze ook van remote te verwijderen.
+    current_branch_skipped: Huidige branch '%branch%' is een kandidaat voor verwijdering maar wordt overgeslagen. Schakel eerst over naar een andere branch als u deze wilt verwijderen.
+    delete_remote_confirm: Remote branch 'origin/%branch%' ook verwijderen? (j/N)
+    deleted_remote: Remote branch 'origin/%branch%' verwijderd
+    error_remote: 'Fout bij verwijderen van remote branch ''origin/%branch%'': %error%'
+    remote_kept: Remote branch 'origin/%branch%' behouden (niet verwijderd)
+    remote_kept_quiet: Remote branch 'origin/%branch%' behouden (gebruik interactieve modus om remote branches te verwijderen)
 table:
-  key: "Sleutel"
-  status: "Status"
-  summary: "Samenvatting"
-  name: "Naam"
-  command: "Commando"
-  alias: "Alias"
-  description: "Beschrijving"
-  priority: "Prioriteit"
-  jira_url: "Jira URL"
-
-# Help Command
+  key: Sleutel
+  status: Status
+  summary: Samenvatting
+  name: Naam
+  command: Commando
+  alias: Alias
+  description: Beschrijving
+  priority: Prioriteit
+  jira_url: Jira URL
 help:
-  title: "Handleiding"
-  description_section: "BESCHRIJVING"
-  description_text: "`stud-cli` is een command-line interface tool ontworpen om de dagelijkse workflow van een ontwikkelaar te stroomlijnen door Jira werkitems nauw te integreren met lokale Git repository operaties. Het begeleidt u door het \"gouden pad\" van het starten van een taak, het maken van conventionele commits en het voorbereiden van uw werk voor indiening, allemaal vanaf de command line."
-  global_options_section: "GLOBALE OPTIES"
-  commands_section: "COMMANDO'S"
-  global_option_help: "Help weergeven voor het gegeven commando. Wanneer geen commando wordt gegeven, help weergeven voor het list commando."
-  global_option_silent: "Geen berichten weergeven."
-  global_option_quiet: "Alleen fouten worden weergegeven. Alle andere output wordt onderdrukt."
-  global_option_verbose: "Verhoog de uitgebreidheid van berichten: 1 voor normale output, 2 voor meer uitgebreide output en 3 voor debug."
-  category_configuration: "Configuratie"
-  category_jira_information: "Jira Informatie"
-  category_git_workflow: "Git Workflow"
-  category_release_commands: "Release Commando's"
-  example_prefix: "Voorbeeld: %example%"
-  command_config_init: "Interactieve wizard om Jira & Git verbindingsdetails in te stellen."
-  command_completion: "Genereert shell auto-aanvulling scripts voor bash of zsh."
-  command_projects_list: "Lijst alle zichtbare Jira projecten."
-  command_items_list: "Lijst actieve werkitems (uw dashboard)."
-  command_items_show: "Toon gedetailleerde informatie voor één werkitem."
-  command_items_search: "Zoek issues met JQL."
-  command_items_transition: "Zet een Jira werkitem over naar een andere status. Als sleutel niet wordt opgegeven, wordt geprobeerd te detecteren vanuit huidige branch."
-  command_filters_list: "Lijst alle beschikbare Jira-filters."
-  command_filters_show: "Haal issues op uit een opgeslagen Jira filter."
-  command_items_start: "Maakt een nieuwe git tak van een Jira item."
-  command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
-  command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
-  command_commit: "Begeleidt u bij het maken van een conventionele commit."
-  command_please: "Een veilige force-push voor gevorderde gebruikers (force-with-lease)."
-  command_flatten: "Automatisch alle fixup! commits samenvoegen in hun doelcommits."
-  command_cache_clear: "Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht."
-  command_submit: "Pusht de huidige tak en maakt een Pull Request."
-  command_pr_comment: "Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument."
-  command_status: "Een snelle \"waar ben ik?\" dashboard."
-  command_release: "Maakt een nieuwe release tak en verhoogt de versie."
-  command_deploy: "Deployt de huidige release tak."
-  command_update: "Controleert op en installeert nieuwe versies van de tool."
-  universal_help_note: "Tip: Gebruik --help (of -h) met elk commando om gedetailleerde help te zien. Bijvoorbeeld: stud commit --help"
-  command_specific_help_note: "Tip: Voer 'stud help <commando>' uit om gedetailleerde help voor een specifiek commando te zien. Bijvoorbeeld: stud help commit"
-  command_help_title: "Help: %command%"
-  see_readme_note: "Voor meer informatie, zie de volledige documentatie in README.md"
-  command_not_found: "Helptekst niet beschikbaar voor commando: %command%"
-  option_all: "Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)"
-  option_project: "Filter items op een specifieke projectcode (bijv. PROJ)"
-  option_items_list_sort: "Sorteer resultaten op Key of Status (gebruik --sort of -s)"
-  option_commit_new: "Maak een nieuwe logische commit in plaats van een fixup"
-  option_commit_message: "Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit"
-  option_submit_draft: "Maak een Draft Pull Request (gemarkeerd als \"Draft\" op GitHub)"
-  option_submit_labels: "Komma-gescheiden lijst van labels om toe te passen op de Pull Request. Als een label niet bestaat, wordt u gevraagd deze te maken, te negeren of opnieuw te proberen met een gecorrigeerde lijst"
-  option_update_info: "Bekijk het changelog van de nieuwste beschikbare versie zonder te downloaden of te installeren. Handig voor het controleren van breaking changes voordat u update"
-  option_release_major: "Verhoog major versie (X.0.0)"
-  option_release_minor: "Verhoog minor versie (X.Y.0)"
-  option_release_patch: "Verhoog patch versie (X.Y.Z). Dit is de standaard als geen vlaggen worden opgegeven"
-  option_release_publish: "Publiceer de release tak naar de remote repository"
-  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
-
+  title: Handleiding
+  description_section: BESCHRIJVING
+  description_text: '`stud-cli` is een command-line interface tool ontworpen om de dagelijkse workflow van een ontwikkelaar te stroomlijnen door Jira werkitems nauw te integreren met lokale Git repository operaties. Het begeleidt u door het "gouden pad" van het starten van een taak, het maken van conventionele commits en het voorbereiden van uw werk voor indiening, allemaal vanaf de command line.'
+  global_options_section: GLOBALE OPTIES
+  commands_section: COMMANDO'S
+  global_option_help: Help weergeven voor het gegeven commando. Wanneer geen commando wordt gegeven, help weergeven voor het list commando.
+  global_option_silent: Geen berichten weergeven.
+  global_option_quiet: Alleen fouten worden weergegeven. Alle andere output wordt onderdrukt.
+  global_option_verbose: 'Verhoog de uitgebreidheid van berichten: 1 voor normale output, 2 voor meer uitgebreide output en 3 voor debug.'
+  category_configuration: Configuratie
+  category_jira_information: Jira Informatie
+  category_git_workflow: Git Workflow
+  category_release_commands: Release Commando's
+  example_prefix: 'Voorbeeld: %example%'
+  command_config_init: Interactieve wizard om Jira & Git verbindingsdetails in te stellen.
+  command_completion: Genereert shell auto-aanvulling scripts voor bash of zsh.
+  command_projects_list: Lijst alle zichtbare Jira projecten.
+  command_items_list: Lijst actieve werkitems (uw dashboard).
+  command_items_show: Toon gedetailleerde informatie voor één werkitem.
+  command_items_search: Zoek issues met JQL.
+  command_items_transition: Zet een Jira werkitem over naar een andere status. Als sleutel niet wordt opgegeven, wordt geprobeerd te detecteren vanuit huidige branch.
+  command_filters_list: Lijst alle beschikbare Jira-filters.
+  command_filters_show: Haal issues op uit een opgeslagen Jira filter.
+  command_items_start: Maakt een nieuwe git tak van een Jira item.
+  command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
+  command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
+  command_commit: Begeleidt u bij het maken van een conventionele commit.
+  command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
+  command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
+  command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
+  command_submit: Pusht de huidige tak en maakt een Pull Request.
+  command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
+  command_status: Een snelle "waar ben ik?" dashboard.
+  command_release: Maakt een nieuwe release tak en verhoogt de versie.
+  command_deploy: Deployt de huidige release tak.
+  command_update: Controleert op en installeert nieuwe versies van de tool.
+  universal_help_note: 'Tip: Gebruik --help (of -h) met elk commando om gedetailleerde help te zien. Bijvoorbeeld: stud commit --help'
+  command_specific_help_note: 'Tip: Voer ''stud help <commando>'' uit om gedetailleerde help voor een specifiek commando te zien. Bijvoorbeeld: stud help commit'
+  command_help_title: 'Help: %command%'
+  see_readme_note: Voor meer informatie, zie de volledige documentatie in README.md
+  command_not_found: 'Helptekst niet beschikbaar voor commando: %command%'
+  option_all: Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)
+  option_project: Filter items op een specifieke projectcode (bijv. PROJ)
+  option_items_list_sort: Sorteer resultaten op Key of Status (gebruik --sort of -s)
+  option_commit_new: Maak een nieuwe logische commit in plaats van een fixup
+  option_commit_message: Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit
+  option_submit_draft: Maak een Draft Pull Request (gemarkeerd als "Draft" op GitHub)
+  option_submit_labels: Komma-gescheiden lijst van labels om toe te passen op de Pull Request. Als een label niet bestaat, wordt u gevraagd deze te maken, te negeren of opnieuw te proberen met een gecorrigeerde lijst
+  option_update_info: Bekijk het changelog van de nieuwste beschikbare versie zonder te downloaden of te installeren. Handig voor het controleren van breaking changes voordat u update
+  option_release_major: Verhoog major versie (X.0.0)
+  option_release_minor: Verhoog minor versie (X.Y.0)
+  option_release_patch: Verhoog patch versie (X.Y.Z). Dit is de standaard als geen vlaggen worden opgegeven
+  option_release_publish: Publiceer de release tak naar de remote repository
+  option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
+  command_branches_list: Lijst lokale/remote branches met status (samengevoegd, verouderd, actieve PR)
+  command_branches_clean: Interactieve opruiming van samengevoegde/verouderde branches
+  option_branches_clean_quiet: Verwijder alle overeenkomende branches zonder te vragen
+  option_deploy_clean: Ruim samengevoegde branches op na deployment

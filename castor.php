@@ -17,6 +17,8 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Handler\BranchCleanHandler;
+use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
@@ -235,6 +237,33 @@ function _get_git_repository(): GitRepository
     }
 
     return new GitRepository(_get_process_factory());
+}
+
+function _get_github_provider(): ?GithubProvider
+{
+    try {
+        $gitConfig = _get_git_config();
+        if ($gitConfig['GIT_PROVIDER'] !== 'github') {
+            return null;
+        }
+
+        $gitRepository = _get_git_repository();
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+
+        if (! $repoOwner || ! $repoName) {
+            return null;
+        }
+
+        return new GithubProvider(
+            $gitConfig['GIT_TOKEN'],
+            $repoOwner,
+            $repoName
+        );
+    } catch (\Exception $e) {
+        // Config might not exist or GitHub provider not configured
+        return null;
+    }
 }
 
 function _get_translation_service(): TranslationService
@@ -815,6 +844,30 @@ function branch_rename(
     exit($handler->handle(io(), $branch, $key, $explicitName));
 }
 
+#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
+function branches_list(): int
+{
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $githubProvider = _get_github_provider();
+    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+
+    return $handler->handle(io());
+}
+
+#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
+function branches_clean(
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Remove all matching branches without prompting')]
+    bool $quiet = false
+): int {
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $githubProvider = _get_github_provider();
+    $handler = new BranchCleanHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+
+    return $handler->handle(io(), $quiet);
+}
+
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
@@ -1261,11 +1314,20 @@ function release(
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
 function deploy(
-
+    #[AsOption(name: 'clean', description: 'Clean up merged branches after deployment')]
+    bool $clean = false
 ): void {
     _load_constants();
     $handler = new DeployHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $handler->handle(io());
+
+    // Clean up merged branches if requested (after deployment cleanup)
+    if ($clean) {
+        $gitRepository = _get_git_repository();
+        $githubProvider = _get_github_provider();
+        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+        $cleanHandler->handle(io(), true); // true = quiet mode (non-interactive)
+    }
 }
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]

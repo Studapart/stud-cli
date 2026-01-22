@@ -1888,4 +1888,210 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->gitRepository->pullWithRebase('origin', 'feat/PROJ-123');
     }
+
+    public function testGetAllLocalBranches(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with("git branch --format='%(refname:short)'")
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("develop\nfeat/PROJ-123\nmain");
+
+        $result = $this->gitRepository->getAllLocalBranches();
+
+        $this->assertSame(['develop', 'feat/PROJ-123', 'main'], $result);
+    }
+
+    public function testGetAllLocalBranchesReturnsEmptyArrayOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $result = $this->gitRepository->getAllLocalBranches();
+
+        $this->assertSame([], $result);
+    }
+
+    public function testGetAllLocalBranchesReturnsEmptyArrayOnEmptyOutput(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('');
+
+        $result = $this->gitRepository->getAllLocalBranches();
+
+        $this->assertSame([], $result);
+    }
+
+    public function testIsBranchMergedIntoReturnsTrue(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch --merged develop')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("  develop\n* feat/PROJ-123\n  main\n");
+
+        $result = $this->gitRepository->isBranchMergedInto('feat/PROJ-123', 'develop');
+
+        $this->assertTrue($result);
+    }
+
+    public function testIsBranchMergedIntoReturnsFalse(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch --merged develop')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("  develop\n  main\n");
+
+        $result = $this->gitRepository->isBranchMergedInto('feat/PROJ-123', 'develop');
+
+        $this->assertFalse($result);
+    }
+
+    public function testIsBranchMergedIntoReturnsFalseOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $result = $this->gitRepository->isBranchMergedInto('feat/PROJ-123', 'develop');
+
+        $this->assertFalse($result);
+    }
+
+    public function testIsBranchMergedIntoReturnsFalseOnEmptyOutput(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch --merged develop')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn(''); // Empty output
+
+        $result = $this->gitRepository->isBranchMergedInto('feat/PROJ-123', 'develop');
+
+        $this->assertFalse($result);
+    }
+
+    public function testGetAllRemoteBranches(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("abc123\trefs/heads/develop\n def456\trefs/heads/feat/PROJ-123\n");
+
+        $result = $this->gitRepository->getAllRemoteBranches('origin');
+
+        $this->assertSame(['develop', 'feat/PROJ-123'], $result);
+    }
+
+    public function testGetAllRemoteBranchesReturnsEmptyArrayOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $result = $this->gitRepository->getAllRemoteBranches('origin');
+
+        $this->assertSame([], $result);
+    }
+
+    public function testGetAllRemoteBranchesReturnsEmptyArrayOnEmptyOutput(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('');
+
+        $result = $this->gitRepository->getAllRemoteBranches('origin');
+
+        $this->assertSame([], $result);
+    }
 }
