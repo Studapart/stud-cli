@@ -30,6 +30,8 @@ class HelpService
         'update' => 'stud update',
         'release' => 'stud release',
         'deploy' => 'stud deploy',
+        'branches:list' => 'stud branches:list',
+        'branches:clean' => 'stud branches:clean',
     ];
 
     public function __construct(
@@ -293,7 +295,23 @@ class HelpService
             'deploy' => [
                 'alias' => 'mep',
                 'description_key' => 'help.command_deploy',
+                'options' => [
+                    ['name' => '--clean', 'shortcut' => null, 'description_key' => 'help.option_deploy_clean', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
+            'branches:list' => [
+                'alias' => 'bl',
+                'description_key' => 'help.command_branches_list',
                 'options' => [],
+                'arguments' => [],
+            ],
+            'branches:clean' => [
+                'alias' => 'bc',
+                'description_key' => 'help.command_branches_clean',
+                'options' => [
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_branches_clean_quiet', 'argument' => null],
+                ],
                 'arguments' => [],
             ],
         ];

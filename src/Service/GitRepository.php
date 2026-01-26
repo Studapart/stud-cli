@@ -655,4 +655,93 @@ SCRIPT;
 
         return $branches;
     }
+
+    /**
+     * Gets all local branch names.
+     *
+     * @return array<string> Array of local branch names (excluding current branch marker *)
+     */
+    public function getAllLocalBranches(): array
+    {
+        $process = $this->runQuietly("git branch --format='%(refname:short)'");
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return [];
+        }
+
+        $branches = array_filter(
+            array_map('trim', explode("\n", $output)),
+            fn (string $branch) => ! empty($branch)
+        );
+
+        return array_values($branches);
+    }
+
+    /**
+     * Checks if a branch is merged into the specified base branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $baseBranch The base branch to check against
+     * @return bool True if branch is merged into baseBranch, false otherwise
+     */
+    public function isBranchMergedInto(string $branch, string $baseBranch): bool
+    {
+        $process = $this->runQuietly("git branch --merged {$baseBranch}");
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return false;
+        }
+
+        $mergedBranches = array_filter(
+            array_map('trim', explode("\n", $output)),
+            fn (string $line) => ! empty($line)
+        );
+
+        foreach ($mergedBranches as $mergedBranch) {
+            // Remove leading * marker if present
+            $cleanBranch = ltrim($mergedBranch, '* ');
+            if ($cleanBranch === $branch) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets all remote branch names.
+     *
+     * @param string $remote The remote name (default: 'origin')
+     * @return array<string> Array of remote branch names (without remote prefix)
+     */
+    public function getAllRemoteBranches(string $remote = 'origin'): array
+    {
+        $process = $this->runQuietly("git ls-remote --heads {$remote}");
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return [];
+        }
+
+        $branches = [];
+        $lines = explode("\n", $output);
+        foreach ($lines as $line) {
+            if (preg_match('#refs/heads/(.+)$#', $line, $matches)) {
+                $branches[] = $matches[1];
+            }
+        }
+
+        return $branches;
+    }
 }

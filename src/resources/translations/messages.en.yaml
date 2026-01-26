@@ -363,6 +363,47 @@ deploy:
   cleaned: "Cleaned up release branch."
   success: "Release v%version% successfully deployed to main. develop has been rebased and force-pushed. Branches cleaned up."
 
+branches:
+  list:
+    section: "Branch List"
+    no_branches: "No branches found"
+    fetching_local: "Fetching local branches..."
+    fetching_remote: "Fetching remote branches for %count% local branches..."
+    note_origin: "Note: Only checking 'origin' remote. Other remotes are ignored."
+    column:
+      branch: "Branch"
+      status: "Status"
+      remote: "Remote"
+      pr: "PR"
+    status:
+      merged: "merged"
+      stale: "stale"
+      active_pr: "active-pr"
+      active: "active"
+  clean:
+    section: "Branch Cleanup"
+    note_origin: "Note: Only checking 'origin' remote. Other remotes are ignored."
+    scanning: "Scanning for branches to clean..."
+    fetching_local: "Fetching local branches..."
+    fetching_remote: "Fetching remote branches..."
+    found: "Found %count% branch(es) to clean:"
+    local_only_header: "Local-only branches (%count%):"
+    with_remote_header: "Branches with remote (%count%):"
+    with_remote_note: "These branches exist on remote. You'll be prompted to delete them from remote as well."
+    confirm: "Delete %count% branch(es)? (Y/n)"
+    cancelled: "Cleanup cancelled."
+    deleting: "Deleting branch: %branch%"
+    deleted: "Deleted %count% branch(es)"
+    none: "No branches to clean"
+    protected: "Skipping protected branch: %branch%"
+    error: "Error deleting branch %branch%: %error%"
+    current_branch_skipped: "Current branch '%branch%' is a candidate for deletion but will be skipped. Switch to another branch first if you want to delete it."
+    delete_remote_confirm: "Delete remote branch 'origin/%branch%' as well? (y/N)"
+    deleted_remote: "Deleted remote branch 'origin/%branch%'"
+    error_remote: "Error deleting remote branch 'origin/%branch%': %error%"
+    remote_kept: "Remote branch 'origin/%branch%' kept (not deleted)"
+    remote_kept_quiet: "Remote branch 'origin/%branch%' kept (use interactive mode to delete remote branches)"
+
 # Table Headers
 table:
   key: "Key"
@@ -412,6 +453,8 @@ help:
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."
+  command_branches_list: "List local/remote branches with status (merged, stale, active PR)"
+  command_branches_clean: "Interactive cleanup of merged/stale branches"
   command_update: "Checks for and installs new versions of the tool."
   universal_help_note: "Tip: Use --help (or -h) with any command to see detailed help. For example: stud commit --help"
   command_specific_help_note: "Tip: Run 'stud help <command>' to see detailed help for a specific command. For example: stud help commit"
@@ -431,4 +474,6 @@ help:
   option_release_patch: "Increment patch version (X.Y.Z). This is the default if no flags are provided"
   option_release_publish: "Publish the release branch to the remote"
   option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
+  option_branches_clean_quiet: "Remove all matching branches without prompting"
+  option_deploy_clean: "Clean up merged branches after deployment"
 

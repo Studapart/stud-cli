@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add branch management commands: `branches:list` and `branches:clean` [SCI-40]
+  - `stud branches:list` (alias `bl`) lists all local branches with status (merged, stale, active-pr, active)
+  - `stud branches:clean` (alias `bc`) interactively cleans up merged/stale branches with `--quiet` option for non-interactive mode
+  - Add `--clean` option to `stud deploy` to clean up merged branches after deployment
+  - GitRepository methods: `getAllLocalBranches()`, `isBranchMergedInto()`, `getAllRemoteBranches()`
+  - GithubProvider: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
+  - GithubProvider: `findPullRequestByBranchName()` helper method for finding PRs by branch name
+  - BranchListHandler and BranchCleanHandler following ADR pattern
+  - Protected branches (develop, main, master) are never deleted by `branches:clean`
+  - All user-facing text uses TranslationService
+  - Comprehensive unit and integration tests with 100% coverage
+
 ## [3.2.0] - 2026-01-13
 
 ### Added

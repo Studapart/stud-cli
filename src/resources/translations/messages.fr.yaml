@@ -1,434 +1,509 @@
-# Configuration
 config:
   init:
     wizard:
-      title: "Assistant de configuration Stud CLI"
-      description: "Cela créera ou mettra à jour votre fichier de configuration à : %path%"
+      title: Assistant de configuration Stud CLI
+      description: 'Cela créera ou mettra à jour votre fichier de configuration à : %path%'
     language:
-      title: "Configuration de la langue"
-      prompt: "Sélectionnez votre langue"
+      title: Configuration de la langue
+      prompt: Sélectionnez votre langue
     jira:
-      title: "Configuration Jira"
-      token_help: "Vous pouvez générer un jeton API ici : https://id.atlassian.com/manage-profile/security/api-tokens"
-      url_prompt: "Entrez votre URL Jira"
-      email_prompt: "Entrez votre adresse e-mail Jira"
-      token_prompt: "Entrez votre jeton API Jira (laissez vide pour conserver l'existant)"
+      title: Configuration Jira
+      token_help: 'Vous pouvez générer un jeton API ici : https://id.atlassian.com/manage-profile/security/api-tokens'
+      url_prompt: Entrez votre URL Jira
+      email_prompt: Entrez votre adresse e-mail Jira
+      token_prompt: Entrez votre jeton API Jira (laissez vide pour conserver l'existant)
     git:
-      title: "Configuration du fournisseur Git"
-      description: "Ceci est requis pour la commande `stud submit` afin de créer des Pull Requests."
-      token_help: "Vous pouvez générer un jeton ici : https://github.com/settings/tokens"
-      auto_detect_note: "Note : Le propriétaire et le nom du dépôt seront automatiquement détectés depuis votre remote git."
-      provider_prompt: "Sélectionnez votre fournisseur Git"
-      token_prompt: "Entrez votre PAT du fournisseur Git (laissez vide pour conserver l'existant)"
+      title: Configuration du fournisseur Git
+      description: Ceci est requis pour la commande `stud submit` afin de créer des Pull Requests.
+      token_help: 'Vous pouvez générer un jeton ici : https://github.com/settings/tokens'
+      auto_detect_note: 'Note : Le propriétaire et le nom du dépôt seront automatiquement détectés depuis votre remote git.'
+      provider_prompt: Sélectionnez votre fournisseur Git
+      token_prompt: Entrez votre PAT du fournisseur Git (laissez vide pour conserver l'existant)
     jira_transition:
-      title: "Configuration de transition Jira"
-      description: "Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket."
-      prompt: "Activer la transition automatique Jira vers 'En cours' ?"
-    success: "Configuration enregistrée avec succès !"
+      title: Configuration de transition Jira
+      description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
+      prompt: Activer la transition automatique Jira vers 'En cours' ?
+    success: Configuration enregistrée avec succès !
     completion:
-      title: "Configuration de l'auto-complétion du shell"
-      prompt: "Nous avons détecté que vous utilisez '%shell%'. Souhaitez-vous configurer l'auto-complétion du shell ?"
-      yes: "Oui"
-      no: "Non"
-      success_message: "✅ Parfait ! Pour terminer l'installation, exécutez cette commande :"
-      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
-      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
-      reload_instruction: "Ensuite, redémarrez votre shell ou exécutez 'source ~/.%shellrc%'"
-      skipped: "Configuration de l'auto-complétion du shell ignorée."
+      title: Configuration de l'auto-complétion du shell
+      prompt: Nous avons détecté que vous utilisez '%shell%'. Souhaitez-vous configurer l'auto-complétion du shell ?
+      yes: Oui
+      no: Non
+      success_message: '✅ Parfait ! Pour terminer l''installation, exécutez cette commande :'
+      bash_command: echo 'eval "$(stud completion bash)"' >> ~/.bashrc
+      zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
+      reload_instruction: Ensuite, redémarrez votre shell ou exécutez 'source ~/.%shellrc%'
+      skipped: Configuration de l'auto-complétion du shell ignorée.
   error:
-    not_found: "Fichier de configuration introuvable à : %path%\nVeuillez exécuter \"stud config:init\" pour en créer un."
-    missing_jira_keys: "Votre fichier de configuration manque des clés Jira requises : %keys%\nVeuillez exécuter \"stud config:init\" à nouveau."
-    missing_git_keys: "Votre fichier de configuration manque des clés du fournisseur Git requises : %keys%\nVeuillez exécuter \"stud config:init\" à nouveau."
-    missing_setup: "Fichier de configuration introuvable. Veuillez configurer stud-cli avant d'utiliser cette commande."
-    run_init_instruction: "Exécutez 'stud config:init' pour créer votre fichier de configuration."
+    not_found: 'Fichier de configuration introuvable à : %path%
 
-# Item Start Handler
+      Veuillez exécuter "stud config:init" pour en créer un.'
+    missing_jira_keys: 'Votre fichier de configuration manque des clés Jira requises : %keys%
+
+      Veuillez exécuter "stud config:init" à nouveau.'
+    missing_git_keys: 'Votre fichier de configuration manque des clés du fournisseur Git requises : %keys%
+
+      Veuillez exécuter "stud config:init" à nouveau.'
+    missing_setup: Fichier de configuration introuvable. Veuillez configurer stud-cli avant d'utiliser cette commande.
+    run_init_instruction: Exécutez 'stud config:init' pour créer votre fichier de configuration.
 item:
   start:
-    section: "Démarrage du travail sur %key%"
-    fetching: "Récupération des détails pour le ticket : %key%"
-    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
-    generated_branch: "Nom de branche généré : %branch%"
-    fetching_changes: "Récupération des dernières modifications depuis origin..."
-    creating_branch: "Création de la nouvelle branche : %branch%"
-    success: "Branche '%branch%' créée depuis '%base%'."
-    assigning: "Attribution du ticket %key% à l'utilisateur actuel..."
-    assign_error: "Échec de l'attribution du ticket : %error%"
-    no_transitions: "Aucune transition vers 'En cours' disponible pour le ticket %key%. Transition ignorée."
-    select_transition: "Sélectionnez la transition vers 'En cours' :"
-    invalid_selection: "Sélection de transition invalide."
-    save_transition: "Souhaitez-vous enregistrer ce choix de transition pour le projet '%project%' ?"
-    transition_saved: "Choix de transition enregistré pour le projet '%project%'."
-    using_cached_transition: "Utilisation de l'ID de transition en cache : %id%"
-    transition_success: "✅ Ticket %key% transitionné vers 'En cours'"
-    transition_error: "Échec de la récupération des transitions : %error%"
-    transition_exec_error: "Échec de l'exécution de la transition : %error%. Poursuite de la création de branche."
-    switching_branch: "Basculement vers la branche existante : %branch%"
-    switching_remote_branch: "Basculement vers la branche distante : %branch%"
-    success_switched: "Basculement vers la branche '%branch%'."
+    section: Démarrage du travail sur %key%
+    fetching: 'Récupération des détails pour le ticket : %key%'
+    error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    generated_branch: 'Nom de branche généré : %branch%'
+    fetching_changes: Récupération des dernières modifications depuis origin...
+    creating_branch: 'Création de la nouvelle branche : %branch%'
+    success: Branche '%branch%' créée depuis '%base%'.
+    assigning: Attribution du ticket %key% à l'utilisateur actuel...
+    assign_error: 'Échec de l''attribution du ticket : %error%'
+    no_transitions: Aucune transition vers 'En cours' disponible pour le ticket %key%. Transition ignorée.
+    select_transition: 'Sélectionnez la transition vers ''En cours'' :'
+    invalid_selection: Sélection de transition invalide.
+    save_transition: Souhaitez-vous enregistrer ce choix de transition pour le projet '%project%' ?
+    transition_saved: Choix de transition enregistré pour le projet '%project%'.
+    using_cached_transition: 'Utilisation de l''ID de transition en cache : %id%'
+    transition_success: ✅ Ticket %key% transitionné vers 'En cours'
+    transition_error: 'Échec de la récupération des transitions : %error%'
+    transition_exec_error: 'Échec de l''exécution de la transition : %error%. Poursuite de la création de branche.'
+    switching_branch: 'Basculement vers la branche existante : %branch%'
+    switching_remote_branch: 'Basculement vers la branche distante : %branch%'
+    success_switched: Basculement vers la branche '%branch%'.
   takeover:
-    section: "Reprise du ticket %key%"
-    error_dirty_working: "Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avant de reprendre un ticket."
-    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
-    assigning: "Attribution du ticket %key% à l'utilisateur actuel..."
-    assign_warning: "Échec de l'attribution du ticket : %error%. Poursuite quand même."
-    fetching: "Récupération depuis le dépôt distant..."
-    searching_branches: "Recherche de branches..."
-    branches_found: "%count% branche(s) trouvée(s) pour ce ticket :"
-    select_branch: "Sélectionnez une branche à reprendre :"
-    branch_remote: "%branch% (distant)"
-    branch_local: "%branch% (local)"
-    confirm_branch: "Reprendre la branche '%branch%' ?"
-    switching: "Basculement vers la branche %branch%..."
-    already_on_branch: "Déjà sur la branche %branch%. Vérification du statut..."
-    status_behind_remote: "La branche est %count% commit(s) en retard sur le dépôt distant"
-    status_ahead_remote: "La branche est %count% commit(s) en avance sur le dépôt distant"
-    status_sync_remote: "La branche est synchronisée avec le dépôt distant"
-    status_behind_base: "La branche est %count% commit(s) en retard sur %base%"
-    status_ahead_base: "La branche est %count% commit(s) en avance sur %base%"
-    status_sync_base: "La branche est synchronisée avec %base%"
-    warning_wrong_base: "⚠️ Avertissement : La branche est basée sur une branche différente de celle attendue (%base%)."
-    warning_diverged: "⚠️ Avertissement : La branche locale a des commits qui ne sont pas sur le dépôt distant. Intervention manuelle requise."
-    pulling: "Récupération des dernières modifications depuis le dépôt distant..."
-    no_branches: "Aucune branche trouvée pour le ticket %key%."
-    start_fresh_prompt: "Souhaitez-vous démarrer à zéro ? (Cela créera une nouvelle branche)"
-    success_took_over: "✅ Reprise réussie de %key%"
-    success_on_branch: "📍 Vous êtes maintenant sur la branche : %branch%"
-    success_status_header: "📊 Statut de la branche :"
-    success_status_remote: " - Distant : %status%"
-    success_status_base: " - %base% : %status%"
-    success_view_details: "ℹ️ Voir les détails du ticket : stud sh %key%"
-
-# Item Show Handler
+    section: Reprise du ticket %key%
+    error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avant de reprendre un ticket.
+    error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    assigning: Attribution du ticket %key% à l'utilisateur actuel...
+    assign_warning: 'Échec de l''attribution du ticket : %error%. Poursuite quand même.'
+    fetching: Récupération depuis le dépôt distant...
+    searching_branches: Recherche de branches...
+    branches_found: '%count% branche(s) trouvée(s) pour ce ticket :'
+    select_branch: 'Sélectionnez une branche à reprendre :'
+    branch_remote: '%branch% (distant)'
+    branch_local: '%branch% (local)'
+    confirm_branch: Reprendre la branche '%branch%' ?
+    switching: Basculement vers la branche %branch%...
+    already_on_branch: Déjà sur la branche %branch%. Vérification du statut...
+    status_behind_remote: La branche est %count% commit(s) en retard sur le dépôt distant
+    status_ahead_remote: La branche est %count% commit(s) en avance sur le dépôt distant
+    status_sync_remote: La branche est synchronisée avec le dépôt distant
+    status_behind_base: La branche est %count% commit(s) en retard sur %base%
+    status_ahead_base: La branche est %count% commit(s) en avance sur %base%
+    status_sync_base: La branche est synchronisée avec %base%
+    warning_wrong_base: '⚠️ Avertissement : La branche est basée sur une branche différente de celle attendue (%base%).'
+    warning_diverged: '⚠️ Avertissement : La branche locale a des commits qui ne sont pas sur le dépôt distant. Intervention manuelle requise.'
+    pulling: Récupération des dernières modifications depuis le dépôt distant...
+    no_branches: Aucune branche trouvée pour le ticket %key%.
+    start_fresh_prompt: Souhaitez-vous démarrer à zéro ? (Cela créera une nouvelle branche)
+    success_took_over: ✅ Reprise réussie de %key%
+    success_on_branch: '📍 Vous êtes maintenant sur la branche : %branch%'
+    success_status_header: '📊 Statut de la branche :'
+    success_status_remote: ' - Distant : %status%'
+    success_status_base: ' - %base% : %status%'
+    success_view_details: 'ℹ️ Voir les détails du ticket : stud sh %key%'
   show:
-    section: "Détails du ticket %key%"
-    fetching: "Récupération des détails pour le ticket : %key%"
-    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
-    label_key: "Clé"
-    label_title: "Titre"
-    label_status: "Statut"
-    label_assignee: "Assigné"
-    label_type: "Type"
-    label_labels: "Étiquettes"
-    label_description: "Description"
-    label_link: "Lien"
-    label_none: "Aucun"
-# Item Transition Handler
+    section: Détails du ticket %key%
+    fetching: 'Récupération des détails pour le ticket : %key%'
+    error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    label_key: Clé
+    label_title: Titre
+    label_status: Statut
+    label_assignee: Assigné
+    label_type: Type
+    label_labels: Étiquettes
+    label_description: Description
+    label_link: Lien
+    label_none: Aucun
   transition:
-    section: "Transition d'un ticket Jira"
-    detected_key: "Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?"
-    prompt_key: "Entrez la clé du ticket Jira"
-    error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
-    error_invalid_key: "Format de clé Jira invalide. Format attendu : PROJ-123"
-    fetching: "Récupération des transitions disponibles pour le ticket : %key%"
-    no_transitions: "Aucune transition disponible pour le ticket %key%."
-    select_transition: "Sélectionnez la transition à appliquer :"
-    error_fetch: "Échec de la récupération des transitions : %error%"
-    error_execute: "Échec de l'exécution de la transition : %error%"
-    success: "✅ Ticket %key% transitionné avec succès"
-
-# Item List Handler
+    section: Transition d'un ticket Jira
+    detected_key: Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?
+    prompt_key: Entrez la clé du ticket Jira
+    error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    error_invalid_key: 'Format de clé Jira invalide. Format attendu : PROJ-123'
+    fetching: 'Récupération des transitions disponibles pour le ticket : %key%'
+    no_transitions: Aucune transition disponible pour le ticket %key%.
+    select_transition: 'Sélectionnez la transition à appliquer :'
+    error_fetch: 'Échec de la récupération des transitions : %error%'
+    error_execute: 'Échec de l''exécution de la transition : %error%'
+    success: ✅ Ticket %key% transitionné avec succès
   list:
-    section: "Récupération des tickets Jira"
-    error_fetch: "Échec de la récupération des tickets : %error%"
-    no_items: "Aucun ticket trouvé correspondant à vos critères."
-    error_invalid_sort: "Valeur de tri invalide '%value%'. Valeurs acceptées : Key, Status"
-
-# Project List Handler
+    section: Récupération des tickets Jira
+    error_fetch: 'Échec de la récupération des tickets : %error%'
+    no_items: Aucun ticket trouvé correspondant à vos critères.
+    error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
 project:
   list:
-    section: "Récupération des projets Jira"
-    error_fetch: "Échec de la récupération des projets : %error%"
-    no_projects: "Aucun projet trouvé."
-
-# Search Handler
+    section: Récupération des projets Jira
+    error_fetch: 'Échec de la récupération des projets : %error%'
+    no_projects: Aucun projet trouvé.
 search:
-  section: "Recherche de tickets Jira avec JQL"
-  jql_query: "Requête JQL : %jql%"
-  error_search: "Échec de la recherche de tickets : %error%"
-  no_results: "Aucun ticket trouvé correspondant à votre requête JQL."
-
-# Filter Show Handler
+  section: Recherche de tickets Jira avec JQL
+  jql_query: 'Requête JQL : %jql%'
+  error_search: 'Échec de la recherche de tickets : %error%'
+  no_results: Aucun ticket trouvé correspondant à votre requête JQL.
 filter:
   show:
-    section: "Récupération des tickets depuis le filtre '%filterName%'"
-    jql_query: "Requête JQL : %jql%"
-    error_fetch: "Échec de la récupération des tickets depuis le filtre : %error%"
-    no_results: "Aucun ticket trouvé dans le filtre '%filterName%'."
+    section: Récupération des tickets depuis le filtre '%filterName%'
+    jql_query: 'Requête JQL : %jql%'
+    error_fetch: 'Échec de la récupération des tickets depuis le filtre : %error%'
+    no_results: Aucun ticket trouvé dans le filtre '%filterName%'.
   list:
-    section: "Récupération des filtres Jira"
-    error_fetch: "Échec de la récupération des filtres : %error%"
-    no_filters: "Aucun filtre trouvé."
-
-# Status Handler
+    section: Récupération des filtres Jira
+    error_fetch: 'Échec de la récupération des filtres : %error%'
+    no_filters: Aucun filtre trouvé.
 status:
-  section: "Statut actuel"
-  fetching: "Récupération du statut pour le ticket Jira : %key%"
-  jira_status: "[%status%] %key% : %title%"
-  jira_error: "Impossible de récupérer les détails du ticket Jira : %error%"
-  jira_no_key: "Aucune clé Jira trouvée dans le nom de la branche."
-  git_branch: "Sur la branche '%branch%'"
-  local_changes: "Vous avez %count% modifications non commitées."
-  local_clean: "Le répertoire de travail est propre."
-
-# Please Handler
+  section: Statut actuel
+  fetching: 'Récupération du statut pour le ticket Jira : %key%'
+  jira_status: '[%status%] %key% : %title%'
+  jira_error: 'Impossible de récupérer les détails du ticket Jira : %error%'
+  jira_no_key: Aucune clé Jira trouvée dans le nom de la branche.
+  git_branch: Sur la branche '%branch%'
+  local_changes: Vous avez %count% modifications non commitées.
+  local_clean: Le répertoire de travail est propre.
 please:
-  error_no_upstream: "Votre branche actuelle n'a pas de remote upstream configuré.\nPour le push initial et pour créer une Pull Request, veuillez utiliser \"stud submit\"."
-  warning_force: "⚠️  Forçage avec lease..."
+  error_no_upstream: 'Votre branche actuelle n''a pas de remote upstream configuré.
 
-# Flatten Handler
+    Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
+  warning_force: ⚠️  Forçage avec lease...
 flatten:
-  section: "Aplatissement des commits fixup"
-  error_dirty_working: "Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant d'aplatir."
-  warning_rewrite: "⚠️  Ceci va réécrire l'historique de vos commits. Vous devrez peut-être exécuter 'stud please' pour force-push par la suite."
-  success: "✅ Tous les commits fixup! ont été fusionnés dans leurs commits cibles."
-  error_rebase: "Échec du rebase : %error%"
-  no_fixups: "Aucun commit fixup! ou squash! trouvé. Rien à aplatir."
-
-# Cache Clear Handler
+  section: Aplatissement des commits fixup
+  error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant d'aplatir.
+  warning_rewrite: ⚠️  Ceci va réécrire l'historique de vos commits. Vous devrez peut-être exécuter 'stud please' pour force-push par la suite.
+  success: ✅ Tous les commits fixup! ont été fusionnés dans leurs commits cibles.
+  error_rebase: 'Échec du rebase : %error%'
+  no_fixups: Aucun commit fixup! ou squash! trouvé. Rien à aplatir.
 cache:
   clear:
-    section: "Nettoyage du cache de vérification de mise à jour"
-    success: "✅ Cache de vérification de mise à jour nettoyé avec succès."
-    already_clear: "Le cache était déjà vide."
-    error_delete: "Échec de la suppression du fichier de cache."
-
-# Submit Handler
+    section: Nettoyage du cache de vérification de mise à jour
+    success: ✅ Cache de vérification de mise à jour nettoyé avec succès.
+    already_clear: Le cache était déjà vide.
+    error_delete: Échec de la suppression du fichier de cache.
 submit:
-  section: "Soumission de Pull Request"
-  error_dirty_working: "Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant de soumettre."
-  error_base_branch: "Impossible de créer une Pull Request depuis la branche de base."
-  pushing: "Push de la branche %branch%..."
-  error_push: "Échec du push. Votre branche a peut-être réécrit l'historique.\nEssayez d'exécuter 'stud please' pour forcer le push."
-  finding_commit: "Recherche du premier commit logique à utiliser pour les détails de la PR..."
-  fetching_jira: "Récupération du ticket Jira pour le corps de la PR : %key%"
-  error_no_logical: "Impossible de trouver un commit logique sur cette branche. Impossible de créer la PR."
-  error_no_jira_key: "Impossible de parser la clé Jira depuis le message de commit. Impossible de créer la PR."
-  warning_jira_fetch: "Impossible de récupérer les détails du ticket Jira pour le corps de la PR : %error%\nRetour à un simple lien."
-  creating: "Création de la Pull Request..."
-  success_created: "✅ Pull Request créée : %url%"
-  warning_no_provider: "Aucun fournisseur Git configuré pour ce projet."
-  note_pr_exists: "Une Pull Request existe déjà pour cette branche."
-  success_pushed: "✅ Les modifications ont été poussées vers GitHub"
-  error_create_pr: "Échec de la création de la Pull Request.\nErreur : %error%"
-  using_head: "Utilisation de la branche head : %head%"
-  fetching_labels: "Récupération des labels du dépôt..."
-  label_unknown_prompt: "Le label '%label%' n'existe pas dans le dépôt. Que souhaitez-vous faire ?"
-  label_create_option: "Créer : Créer le label sur GitHub et l'ajouter à la PR"
-  label_ignore_option: "Ignorer : Ignorer ce label et le retirer de la liste finale"
-  label_retry_option: "Réessayer : Annuler la commande et la relancer avec une liste corrigée"
-  label_creating: "Création du label '%label%'..."
-  label_created: "✅ Label '%label%' créé avec succès"
-  label_ignored: "Le label '%label%' sera ignoré"
-  error_fetch_labels: "Échec de la récupération des labels depuis GitHub.\nErreur : %error%"
-  error_create_label: "Échec de la création du label '%label%'.\nErreur : %error%"
-  error_add_labels: "Échec de l'ajout des labels à la Pull Request.\nErreur : %error%"
-  adding_labels: "Ajout des labels à la Pull Request..."
-  updating_to_draft: "Mise à jour de la Pull Request en statut brouillon..."
-  error_update_draft: "Échec de la mise à jour du statut brouillon de la Pull Request.\nErreur : %error%"
+  section: Soumission de Pull Request
+  error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant de soumettre.
+  error_base_branch: Impossible de créer une Pull Request depuis la branche de base.
+  pushing: Push de la branche %branch%...
+  error_push: 'Échec du push. Votre branche a peut-être réécrit l''historique.
 
-# PR Comment Handler
+    Essayez d''exécuter ''stud please'' pour forcer le push.'
+  finding_commit: Recherche du premier commit logique à utiliser pour les détails de la PR...
+  fetching_jira: 'Récupération du ticket Jira pour le corps de la PR : %key%'
+  error_no_logical: Impossible de trouver un commit logique sur cette branche. Impossible de créer la PR.
+  error_no_jira_key: Impossible de parser la clé Jira depuis le message de commit. Impossible de créer la PR.
+  warning_jira_fetch: 'Impossible de récupérer les détails du ticket Jira pour le corps de la PR : %error%
+
+    Retour à un simple lien.'
+  creating: Création de la Pull Request...
+  success_created: '✅ Pull Request créée : %url%'
+  warning_no_provider: Aucun fournisseur Git configuré pour ce projet.
+  note_pr_exists: Une Pull Request existe déjà pour cette branche.
+  success_pushed: ✅ Les modifications ont été poussées vers GitHub
+  error_create_pr: 'Échec de la création de la Pull Request.
+
+    Erreur : %error%'
+  using_head: 'Utilisation de la branche head : %head%'
+  fetching_labels: Récupération des labels du dépôt...
+  label_unknown_prompt: Le label '%label%' n'existe pas dans le dépôt. Que souhaitez-vous faire ?
+  label_create_option: 'Créer : Créer le label sur GitHub et l''ajouter à la PR'
+  label_ignore_option: 'Ignorer : Ignorer ce label et le retirer de la liste finale'
+  label_retry_option: 'Réessayer : Annuler la commande et la relancer avec une liste corrigée'
+  label_creating: Création du label '%label%'...
+  label_created: ✅ Label '%label%' créé avec succès
+  label_ignored: Le label '%label%' sera ignoré
+  error_fetch_labels: 'Échec de la récupération des labels depuis GitHub.
+
+    Erreur : %error%'
+  error_create_label: 'Échec de la création du label ''%label%''.
+
+    Erreur : %error%'
+  error_add_labels: 'Échec de l''ajout des labels à la Pull Request.
+
+    Erreur : %error%'
+  adding_labels: Ajout des labels à la Pull Request...
+  updating_to_draft: Mise à jour de la Pull Request en statut brouillon...
+  error_update_draft: 'Échec de la mise à jour du statut brouillon de la Pull Request.
+
+    Erreur : %error%'
 pr:
   comment:
-    section: "Publication d'un commentaire sur la Pull Request"
-    error_no_provider: "Aucun fournisseur Git configuré pour ce projet."
-    error_no_input: "Aucun contenu de commentaire fourni.\nVeuillez fournir le contenu via STDIN (pipeline) ou comme argument direct.\nExemple : echo \"Texte du commentaire\" | stud pr:comment\nExemple : stud pr:comment \"Texte du commentaire\""
-    error_no_pr: "Impossible de trouver une Pull Request active pour la branche actuelle."
-    error_post: "Échec de la publication du commentaire sur la Pull Request.\nErreur : %error%"
-    finding_pr: "Recherche de la Pull Request pour la branche : %branch%"
-    posting: "Publication du commentaire sur la Pull Request #%number%..."
-    success: "✅ Commentaire publié avec succès sur la Pull Request #%number%"
-    using_stdin: "Lecture du commentaire depuis STDIN..."
-    using_argument: "Utilisation du commentaire depuis l'argument..."
+    section: Publication d'un commentaire sur la Pull Request
+    error_no_provider: Aucun fournisseur Git configuré pour ce projet.
+    error_no_input: 'Aucun contenu de commentaire fourni.
 
-# Branch Rename Handler
+      Veuillez fournir le contenu via STDIN (pipeline) ou comme argument direct.
+
+      Exemple : echo "Texte du commentaire" | stud pr:comment
+
+      Exemple : stud pr:comment "Texte du commentaire"'
+    error_no_pr: Impossible de trouver une Pull Request active pour la branche actuelle.
+    error_post: 'Échec de la publication du commentaire sur la Pull Request.
+
+      Erreur : %error%'
+    finding_pr: 'Recherche de la Pull Request pour la branche : %branch%'
+    posting: 'Publication du commentaire sur la Pull Request #%number%...'
+    success: '✅ Commentaire publié avec succès sur la Pull Request #%number%'
+    using_stdin: Lecture du commentaire depuis STDIN...
+    using_argument: Utilisation du commentaire depuis l'argument...
 branch:
   rename:
-    section: "Renaming branch"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before renaming a branch."
-    error_branch_not_found: "Branch '%branch%' not found (local or remote)."
-    error_new_name_exists: "Branch '%name%' already exists (local or remote). Cannot rename."
-    error_invalid_name: "Invalid branch name: %name%. Branch names must follow Git naming rules."
-    error_key_not_found: "Could not find Jira issue with key \"%key%\"."
-    error_no_key_in_branch: "Could not extract Jira key from branch name '%branch%'."
-    fetching_issue: "Fetching issue details from Jira..."
-    generating_name: "Generating new branch name from issue..."
-    checking_branches: "Checking branch existence..."
-    local_not_found_remote_exists: "Local branch '%branch%' not found, but remote branch exists."
-    rename_remote_only_prompt: "Rename only the remote branch? (Y/n)"
-    remote_not_found: "Remote branch not found. Only local branch will be renamed."
-    checking_sync: "Checking branch synchronization..."
-    remote_ahead_prompt: "Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)"
-    rebasing: "Rebasing local branch onto remote..."
-    rebase_failed: "Rebase failed. Please resolve conflicts manually and try again."
-    rebase_suggestion: "Suggested commands: git rebase origin/%branch%, resolve conflicts, then run 'stud rn' again."
-    finding_pr: "Checking for associated Pull Request..."
-    confirmation_header: "Current branch: %oldName%"
-    confirmation_new: "Proposed name: %newName%"
-    confirmation_actions: "The following will be renamed:"
-    confirmation_local: " - Local branch: %oldName% → %newName%"
-    confirmation_remote: " - Remote branch: origin/%oldName% → origin/%newName%"
-    confirmation_pr: " - Pull Request: #%number% (will be updated and commented)"
-    confirm_prompt: "Are you sure you want to rename this branch? (Y/n)"
-    renaming_local: "Renaming local branch..."
-    renaming_remote: "Renaming remote branch..."
-    updating_pr: "Updating Pull Request..."
-    creating_new_pr: "Creating new Pull Request for renamed branch..."
+    section: Renaming branch
+    error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.
+    error_branch_not_found: Branch '%branch%' not found (local or remote).
+    error_new_name_exists: Branch '%name%' already exists (local or remote). Cannot rename.
+    error_invalid_name: 'Invalid branch name: %name%. Branch names must follow Git naming rules.'
+    error_key_not_found: Could not find Jira issue with key "%key%".
+    error_no_key_in_branch: Could not extract Jira key from branch name '%branch%'.
+    fetching_issue: Fetching issue details from Jira...
+    generating_name: Generating new branch name from issue...
+    checking_branches: Checking branch existence...
+    local_not_found_remote_exists: Local branch '%branch%' not found, but remote branch exists.
+    rename_remote_only_prompt: Rename only the remote branch? (Y/n)
+    remote_not_found: Remote branch not found. Only local branch will be renamed.
+    checking_sync: Checking branch synchronization...
+    remote_ahead_prompt: Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)
+    rebasing: Rebasing local branch onto remote...
+    rebase_failed: Rebase failed. Please resolve conflicts manually and try again.
+    rebase_suggestion: 'Suggested commands: git rebase origin/%branch%, resolve conflicts, then run ''stud rn'' again.'
+    finding_pr: Checking for associated Pull Request...
+    confirmation_header: 'Current branch: %oldName%'
+    confirmation_new: 'Proposed name: %newName%'
+    confirmation_actions: 'The following will be renamed:'
+    confirmation_local: ' - Local branch: %oldName% → %newName%'
+    confirmation_remote: ' - Remote branch: origin/%oldName% → origin/%newName%'
+    confirmation_pr: ' - Pull Request: #%number% (will be updated and commented)'
+    confirm_prompt: Are you sure you want to rename this branch? (Y/n)
+    renaming_local: Renaming local branch...
+    renaming_remote: Renaming remote branch...
+    updating_pr: Updating Pull Request...
+    creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: "⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually."
-    commenting_pr: "Adding comment to Pull Request..."
-    success: "✅ Branch renamed successfully from %oldName% to %newName%"
-    no_pr_found: "No Pull Request found for this branch."
-    create_pr_prompt: "Would you like to create a Pull Request? (Y/n)"
-    switching_for_submit: "Switching to renamed branch to create PR..."
-
-# Commit Handler
+    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
+    commenting_pr: Adding comment to Pull Request...
+    success: ✅ Branch renamed successfully from %oldName% to %newName%
+    no_pr_found: No Pull Request found for this branch.
+    create_pr_prompt: Would you like to create a Pull Request? (Y/n)
+    switching_for_submit: Switching to renamed branch to create PR...
 commit:
-  section: "Assistant de commit conventionnel"
-  staging: "Mise en staging de toutes les modifications..."
-  committing: "Commit avec le message fourni..."
-  committing_simple: "Commit en cours..."
-  success: "Commit créé avec succès !"
-  checking_logical: "Vérification du commit logique précédent..."
-  found_logical: "Commit logique SHA trouvé : %sha%"
-  creating_fixup: "Création d'un commit fixup pour %sha%..."
-  fixup_success: "✅ Modifications enregistrées comme fixup pour le commit %sha%."
-  note_no_logical: "Aucun commit logique précédent trouvé ou flag --new utilisé. Démarrage de l'assistant interactif..."
-  note_clean_working_tree: "L'arbre de travail est propre. Abandon du commit."
-  error_no_key: "Impossible de trouver une clé Jira dans le nom de votre branche actuelle.\nVeuillez utiliser \"stud start <key>\" pour créer une branche."
-  fetching_jira: "Récupération du ticket Jira : %key%"
-  error_not_found: "Impossible de trouver le ticket Jira avec la clé \"%key%\"."
-  jira_details: "Détails du ticket Jira :"
-  jira_title: "Titre : %title%"
-  jira_type: "Type : %type% -> %commit_type%"
-  jira_components: "Composants : %components%"
-  scope_prompt: "Portée (optionnelle)"
-  scope_auto: "Portée (auto-détectée '%scope%')"
-  type_prompt: "Type de commit (auto-détecté '%type%')"
-  summary_prompt: "Message court (auto-rempli depuis Jira)"
-  generated_message: "Message de commit généré :\n%message%"
+  section: Assistant de commit conventionnel
+  staging: Mise en staging de toutes les modifications...
+  committing: Commit avec le message fourni...
+  committing_simple: Commit en cours...
+  success: Commit créé avec succès !
+  checking_logical: Vérification du commit logique précédent...
+  found_logical: 'Commit logique SHA trouvé : %sha%'
+  creating_fixup: Création d'un commit fixup pour %sha%...
+  fixup_success: ✅ Modifications enregistrées comme fixup pour le commit %sha%.
+  note_no_logical: Aucun commit logique précédent trouvé ou flag --new utilisé. Démarrage de l'assistant interactif...
+  note_clean_working_tree: L'arbre de travail est propre. Abandon du commit.
+  error_no_key: 'Impossible de trouver une clé Jira dans le nom de votre branche actuelle.
 
-# Update Handler
+    Veuillez utiliser "stud start <key>" pour créer une branche.'
+  fetching_jira: 'Récupération du ticket Jira : %key%'
+  error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+  jira_details: 'Détails du ticket Jira :'
+  jira_title: 'Titre : %title%'
+  jira_type: 'Type : %type% -> %commit_type%'
+  jira_components: 'Composants : %components%'
+  scope_prompt: Portée (optionnelle)
+  scope_auto: Portée (auto-détectée '%scope%')
+  type_prompt: Type de commit (auto-détecté '%type%')
+  summary_prompt: Message court (auto-rempli depuis Jira)
+  generated_message: 'Message de commit généré :
+
+    %message%'
 update:
-  section: "Vérification des mises à jour"
-  binary_path: "Chemin du binaire"
-  repository: "Dépôt"
-  current_version: "Version actuelle"
-  latest_version: "Dernière version"
-  downloading_from: "Téléchargement depuis"
-  warning_no_releases: "Aucune release trouvée pour ce dépôt.\nLe dépôt n'a peut-être pas encore de releases publiées."
-  error_fetch: "Échec de la récupération des informations de la dernière release.\nErreur : %error%"
-  success_latest: "Vous êtes déjà sur la dernière version (%version%)."
-  new_version: "Une nouvelle version (%version%) est disponible. Mise à jour..."
-  error_no_phar: "Impossible de trouver l'asset stud.phar dans la dernière release.\nAssets de release : %assets%"
-  error_download: "Échec du téléchargement de la nouvelle version.\nErreur : %error%"
-  error_asset_id: "Échec du téléchargement de la nouvelle version.\nErreur : ID d'asset introuvable dans l'asset de release."
-  error_not_writable: "Échec de la mise à jour : Le fichier n'est pas accessible en écriture.\nVeuillez ré-exécuter avec des privilèges élevés : sudo stud update"
-  error_backup: "Échec de la création d'une sauvegarde de la version actuelle.\nErreur : %error%"
-  error_rollback: "Échec de la mise à jour et retour en arrière effectué.\nErreur : %error%"
-  error_rollback_failed: "Échec de la mise à jour et le retour en arrière a également échoué !\nErreur originale : %original_error%\nErreur de retour en arrière : %rollback_error%\nVeuillez restaurer manuellement depuis : %backup_path%"
-  changelog_section: "Modifications dans la version %version%"
-  breaking_changes_detected: "⚠️  Changements cassants détectés dans cette mise à jour :"
-  changelog_error: "Impossible de récupérer le changelog"
-  success_hash_verified: "✅ Vérification du hash réussie. Le binaire est authentique."
-  error_hash_not_found: "Échec de la vérification de sécurité : Impossible de trouver le fichier de checksum dans la release.\nLe binaire ne peut pas être vérifié. Mise à jour annulée pour des raisons de sécurité."
-  error_hash_calculation: "Échec de la vérification de sécurité : Impossible de calculer le hash du fichier téléchargé.\nMise à jour annulée pour des raisons de sécurité."
-  error_hash_mismatch: "Échec de la vérification de sécurité : Incohérence de hash détectée !\n\nHash attendu : %expected%\nHash calculé : %calculated%\n\nLe binaire téléchargé peut être corrompu ou avoir été modifié."
-  error_digest_not_found: "Échec de la vérification de sécurité : Aucun digest trouvé dans la réponse de l'API GitHub.\nLe binaire ne peut pas être vérifié."
-  prompt_continue_on_verification_failure: "⚠️ Avertissement : La vérification du checksum a échoué.\nVoulez-vous continuer l'installation quand même ?"
-  downloading_checksum: "Téléchargement du fichier de checksum depuis"
-  checksum_download_error: "Erreur lors du téléchargement du fichier de checksum"
+  section: Vérification des mises à jour
+  binary_path: Chemin du binaire
+  repository: Dépôt
+  current_version: Version actuelle
+  latest_version: Dernière version
+  downloading_from: Téléchargement depuis
+  warning_no_releases: 'Aucune release trouvée pour ce dépôt.
 
-# Release Handler
+    Le dépôt n''a peut-être pas encore de releases publiées.'
+  error_fetch: 'Échec de la récupération des informations de la dernière release.
+
+    Erreur : %error%'
+  success_latest: Vous êtes déjà sur la dernière version (%version%).
+  new_version: Une nouvelle version (%version%) est disponible. Mise à jour...
+  error_no_phar: 'Impossible de trouver l''asset stud.phar dans la dernière release.
+
+    Assets de release : %assets%'
+  error_download: 'Échec du téléchargement de la nouvelle version.
+
+    Erreur : %error%'
+  error_asset_id: 'Échec du téléchargement de la nouvelle version.
+
+    Erreur : ID d''asset introuvable dans l''asset de release.'
+  error_not_writable: 'Échec de la mise à jour : Le fichier n''est pas accessible en écriture.
+
+    Veuillez ré-exécuter avec des privilèges élevés : sudo stud update'
+  error_backup: 'Échec de la création d''une sauvegarde de la version actuelle.
+
+    Erreur : %error%'
+  error_rollback: 'Échec de la mise à jour et retour en arrière effectué.
+
+    Erreur : %error%'
+  error_rollback_failed: 'Échec de la mise à jour et le retour en arrière a également échoué !
+
+    Erreur originale : %original_error%
+
+    Erreur de retour en arrière : %rollback_error%
+
+    Veuillez restaurer manuellement depuis : %backup_path%'
+  changelog_section: Modifications dans la version %version%
+  breaking_changes_detected: '⚠️  Changements cassants détectés dans cette mise à jour :'
+  changelog_error: Impossible de récupérer le changelog
+  success_hash_verified: ✅ Vérification du hash réussie. Le binaire est authentique.
+  error_hash_not_found: 'Échec de la vérification de sécurité : Impossible de trouver le fichier de checksum dans la release.
+
+    Le binaire ne peut pas être vérifié. Mise à jour annulée pour des raisons de sécurité.'
+  error_hash_calculation: 'Échec de la vérification de sécurité : Impossible de calculer le hash du fichier téléchargé.
+
+    Mise à jour annulée pour des raisons de sécurité.'
+  error_hash_mismatch: 'Échec de la vérification de sécurité : Incohérence de hash détectée !
+
+
+    Hash attendu : %expected%
+
+    Hash calculé : %calculated%
+
+
+    Le binaire téléchargé peut être corrompu ou avoir été modifié.'
+  error_digest_not_found: 'Échec de la vérification de sécurité : Aucun digest trouvé dans la réponse de l''API GitHub.
+
+    Le binaire ne peut pas être vérifié.'
+  prompt_continue_on_verification_failure: '⚠️ Avertissement : La vérification du checksum a échoué.
+
+    Voulez-vous continuer l''installation quand même ?'
+  downloading_checksum: Téléchargement du fichier de checksum depuis
+  checksum_download_error: Erreur lors du téléchargement du fichier de checksum
 release:
-  section: "Démarrage du processus de release pour la version %version%"
-  fetched: "Dernières modifications récupérées depuis origin."
-  created_branch: "Branche de release créée : %branch%"
-  updated_composer: "Version mise à jour dans composer.json à %version%"
-  updated_lock: "composer.lock mis à jour"
-  dumped_config: "Config vidée dans config/app.php"
-  updated_changelog: "CHANGELOG.md mis à jour avec la version %version%"
-  staged: "Modifications mises en staging."
-  committed: "Incrément de version commité."
-  published: "Branche de release publiée sur le remote."
-  confirm_publish: "Souhaitez-vous publier la branche de release sur le remote ?"
-  success: "La release %version% est prête à être déployée."
-
-# Deploy Handler
+  section: Démarrage du processus de release pour la version %version%
+  fetched: Dernières modifications récupérées depuis origin.
+  created_branch: 'Branche de release créée : %branch%'
+  updated_composer: Version mise à jour dans composer.json à %version%
+  updated_lock: composer.lock mis à jour
+  dumped_config: Config vidée dans config/app.php
+  updated_changelog: CHANGELOG.md mis à jour avec la version %version%
+  staged: Modifications mises en staging.
+  committed: Incrément de version commité.
+  published: Branche de release publiée sur le remote.
+  confirm_publish: Souhaitez-vous publier la branche de release sur le remote ?
+  success: La release %version% est prête à être déployée.
 deploy:
-  section: "Démarrage du processus de déploiement"
-  error_not_release: "Vous devez être sur une branche de release pour déployer."
-  deployed: "Déployé sur main et tagué."
-  updated_develop: "Branche develop mise à jour."
-  cleaned: "Branche de release nettoyée."
-  success: "Release v%version% déployée avec succès sur main. develop a été rebasé et force-pushé. Branches nettoyées."
-
-# Table Headers
+  section: Démarrage du processus de déploiement
+  error_not_release: Vous devez être sur une branche de release pour déployer.
+  deployed: Déployé sur main et tagué.
+  updated_develop: Branche develop mise à jour.
+  cleaned: Branche de release nettoyée.
+  success: Release v%version% déployée avec succès sur main. develop a été rebasé et force-pushé. Branches nettoyées.
 table:
-  key: "Clé"
-  status: "Statut"
-  summary: "Résumé"
-  name: "Nom"
-  command: "Commande"
-  alias: "Alias"
-  description: "Description"
-  priority: "Priorité"
-  jira_url: "URL Jira"
-
-# Help Command
+  key: Clé
+  status: Statut
+  summary: Résumé
+  name: Nom
+  command: Commande
+  alias: Alias
+  description: Description
+  priority: Priorité
+  jira_url: URL Jira
 help:
-  title: "Manuel"
-  description_section: "DESCRIPTION"
-  description_text: "`stud-cli` est un outil d'interface en ligne de commande conçu pour rationaliser le flux de travail quotidien d'un développeur en intégrant étroitement les éléments de travail Jira avec les opérations du dépôt Git local. Il vous guide à travers le \"chemin d'or\" de démarrage d'une tâche, de création de commits conventionnels et de préparation de votre travail pour la soumission, le tout depuis la ligne de commande."
-  global_options_section: "OPTIONS GLOBALES"
-  commands_section: "COMMANDES"
-  global_option_help: "Afficher l'aide pour la commande donnée. Lorsqu'aucune commande n'est donnée, afficher l'aide pour la commande list."
-  global_option_silent: "Ne pas afficher de message."
-  global_option_quiet: "Seules les erreurs sont affichées. Toutes les autres sorties sont supprimées."
-  global_option_verbose: "Augmenter la verbosité des messages : 1 pour la sortie normale, 2 pour une sortie plus verbeuse et 3 pour le debug."
-  category_configuration: "Configuration"
-  category_jira_information: "Informations Jira"
-  category_git_workflow: "Flux de travail Git"
-  category_release_commands: "Commandes de Release"
-  example_prefix: "Exemple : %example%"
-  command_config_init: "Assistant interactif pour configurer les détails de connexion Jira & Git."
-  command_completion: "Génère des scripts d'auto-complétion pour bash ou zsh."
-  command_projects_list: "Liste tous les projets Jira visibles."
-  command_items_list: "Liste les éléments de travail actifs (votre tableau de bord)."
-  command_items_show: "Affiche des informations détaillées pour un élément de travail."
-  command_items_search: "Rechercher des issues avec JQL."
-  command_items_transition: "Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle."
-  command_filters_list: "Liste tous les filtres Jira disponibles."
-  command_filters_show: "Récupérer les issues depuis un filtre Jira enregistré."
-  command_items_start: "Crée une nouvelle branche git à partir d'un élément Jira."
-  command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
-  command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
-  command_commit: "Vous guide à travers la création d'un commit conventionnel."
-  command_please: "Un force-push sûr pour utilisateur avancé (force-with-lease)."
-  command_flatten: "Fusionner automatiquement tous les commits fixup! dans leurs commits cibles."
-  command_cache_clear: "Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande."
-  command_submit: "Pousse la branche actuelle et crée une Pull Request."
-  command_pr_comment: "Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct."
-  command_status: "Un tableau de bord rapide \"où suis-je ?\"."
-  command_release: "Crée une nouvelle branche de release et incrémente la version."
-  command_deploy: "Déploie la branche de release actuelle."
-  command_update: "Vérifie et installe les nouvelles versions de l'outil."
-  universal_help_note: "Astuce : Utilisez --help (ou -h) avec n'importe quelle commande pour voir l'aide détaillée. Par exemple : stud commit --help"
-  command_specific_help_note: "Astuce : Exécutez 'stud help <commande>' pour voir l'aide détaillée d'une commande spécifique. Par exemple : stud help commit"
-  command_help_title: "Aide : %command%"
-  see_readme_note: "Pour plus d'informations, consultez la documentation complète dans README.md"
-  command_not_found: "Texte d'aide non disponible pour la commande : %command%"
-  option_all: "Lister les éléments pour tous les utilisateurs (remplace le filtre d'assigné par défaut)"
-  option_project: "Filtrer les éléments par une clé de projet spécifique (par ex., PROJ)"
-  option_items_list_sort: "Trier les résultats par Key ou Status (utilisez --sort ou -s)"
-  option_commit_new: "Créer un nouveau commit logique au lieu d'un fixup"
-  option_commit_message: "Contourner le prompteur interactif et utiliser le message fourni pour le commit"
-  option_submit_draft: "Créer une Pull Request en brouillon (marquée comme \"Draft\" sur GitHub)"
-  option_submit_labels: "Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée"
-  option_update_info: "Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour"
-  option_release_major: "Incrémenter la version majeure (X.0.0)"
-  option_release_minor: "Incrémenter la version mineure (X.Y.0)"
-  option_release_patch: "Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni"
-  option_release_publish: "Publier la branche de release sur le dépôt distant"
-  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
-
+  title: Manuel
+  description_section: DESCRIPTION
+  description_text: '`stud-cli` est un outil d''interface en ligne de commande conçu pour rationaliser le flux de travail quotidien d''un développeur en intégrant étroitement les éléments de travail Jira avec les opérations du dépôt Git local. Il vous guide à travers le "chemin d''or" de démarrage d''une tâche, de création de commits conventionnels et de préparation de votre travail pour la soumission, le tout depuis la ligne de commande.'
+  global_options_section: OPTIONS GLOBALES
+  commands_section: COMMANDES
+  global_option_help: Afficher l'aide pour la commande donnée. Lorsqu'aucune commande n'est donnée, afficher l'aide pour la commande list.
+  global_option_silent: Ne pas afficher de message.
+  global_option_quiet: Seules les erreurs sont affichées. Toutes les autres sorties sont supprimées.
+  global_option_verbose: 'Augmenter la verbosité des messages : 1 pour la sortie normale, 2 pour une sortie plus verbeuse et 3 pour le debug.'
+  category_configuration: Configuration
+  category_jira_information: Informations Jira
+  category_git_workflow: Flux de travail Git
+  category_release_commands: Commandes de Release
+  example_prefix: 'Exemple : %example%'
+  command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
+  command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
+  command_projects_list: Liste tous les projets Jira visibles.
+  command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
+  command_items_show: Affiche des informations détaillées pour un élément de travail.
+  command_items_search: Rechercher des issues avec JQL.
+  command_items_transition: Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle.
+  command_filters_list: Liste tous les filtres Jira disponibles.
+  command_filters_show: Récupérer les issues depuis un filtre Jira enregistré.
+  command_items_start: Crée une nouvelle branche git à partir d'un élément Jira.
+  command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
+  command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
+  command_commit: Vous guide à travers la création d'un commit conventionnel.
+  command_please: Un force-push sûr pour utilisateur avancé (force-with-lease).
+  command_flatten: Fusionner automatiquement tous les commits fixup! dans leurs commits cibles.
+  command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
+  command_submit: Pousse la branche actuelle et crée une Pull Request.
+  command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
+  command_status: Un tableau de bord rapide "où suis-je ?".
+  command_release: Crée une nouvelle branche de release et incrémente la version.
+  command_deploy: Déploie la branche de release actuelle.
+  command_update: Vérifie et installe les nouvelles versions de l'outil.
+  universal_help_note: 'Astuce : Utilisez --help (ou -h) avec n''importe quelle commande pour voir l''aide détaillée. Par exemple : stud commit --help'
+  command_specific_help_note: 'Astuce : Exécutez ''stud help <commande>'' pour voir l''aide détaillée d''une commande spécifique. Par exemple : stud help commit'
+  command_help_title: 'Aide : %command%'
+  see_readme_note: Pour plus d'informations, consultez la documentation complète dans README.md
+  command_not_found: 'Texte d''aide non disponible pour la commande : %command%'
+  option_all: Lister les éléments pour tous les utilisateurs (remplace le filtre d'assigné par défaut)
+  option_project: Filtrer les éléments par une clé de projet spécifique (par ex., PROJ)
+  option_items_list_sort: Trier les résultats par Key ou Status (utilisez --sort ou -s)
+  option_commit_new: Créer un nouveau commit logique au lieu d'un fixup
+  option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
+  option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
+  option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
+  option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour
+  option_release_major: Incrémenter la version majeure (X.0.0)
+  option_release_minor: Incrémenter la version mineure (X.Y.0)
+  option_release_patch: Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni
+  option_release_publish: Publier la branche de release sur le dépôt distant
+  option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
+  command_branches_list: Liste les branches locales/distantes avec statut (fusionnée, obsolète, PR active)
+  command_branches_clean: Nettoyage interactif des branches fusionnées/obsolètes
+  option_branches_clean_quiet: Supprimer toutes les branches correspondantes sans demander
+  option_deploy_clean: Nettoyer les branches fusionnées après le déploiement
+branches:
+  list:
+    section: Liste des Branches
+    no_branches: Aucune branche trouvée
+    column:
+      branch: Branche
+      status: Statut
+      remote: Distant
+      pr: PR
+    status:
+      merged: fusionnée
+      stale: obsolète
+      active_pr: pr-active
+      active: active
+    fetching_local: Récupération des branches locales...
+    fetching_remote: Récupération des branches distantes pour %count% branches locales...
+    note_origin: 'Note: Seul le dépôt distant ''origin'' est vérifié. Les autres dépôts distants sont ignorés.'
+  clean:
+    section: Nettoyage des Branches
+    scanning: Recherche de branches à nettoyer...
+    found: '%count% branche(s) trouvée(s) à nettoyer:'
+    confirm: Supprimer %count% branche(s)? (O/n)
+    cancelled: Nettoyage annulé.
+    deleting: 'Suppression de la branche: %branch%'
+    deleted: '%count% branche(s) supprimée(s)'
+    none: Aucune branche à nettoyer
+    protected: 'Branche protégée ignorée: %branch%'
+    error: 'Erreur lors de la suppression de la branche %branch%: %error%'
+    note_origin: 'Note: Seul le dépôt distant ''origin'' est vérifié. Les autres dépôts distants sont ignorés.'
+    fetching_local: Récupération des branches locales...
+    fetching_remote: Récupération des branches distantes...
+    local_only_header: 'Branches locales uniquement (%count%):'
+    with_remote_header: 'Branches avec dépôt distant (%count%):'
+    with_remote_note: Ces branches existent sur le dépôt distant. Vous serez invité à les supprimer également du dépôt distant.
+    current_branch_skipped: La branche actuelle '%branch%' est candidate à la suppression mais sera ignorée. Passez d'abord à une autre branche si vous souhaitez la supprimer.
+    delete_remote_confirm: Supprimer également la branche distante 'origin/%branch%'? (o/N)
+    deleted_remote: Branche distante 'origin/%branch%' supprimée
+    error_remote: 'Erreur lors de la suppression de la branche distante ''origin/%branch%'': %error%'
+    remote_kept: Branche distante 'origin/%branch%' conservée (non supprimée)
+    remote_kept_quiet: Branche distante 'origin/%branch%' conservée (utilisez le mode interactif pour supprimer les branches distantes)
