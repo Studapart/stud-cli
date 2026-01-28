@@ -398,6 +398,7 @@ deploy:
   updated_develop: Ο κλάδος develop ενημερώθηκε.
   cleaned: Ο κλάδος release καθαρίστηκε.
   success: Το release v%version% αναπτύχθηκε με επιτυχία στο main. Το develop rebase και force-push. Οι κλάδοι καθαρίστηκαν.
+  warning_branch_cleanup: 'Προειδοποίηση: Δεν ήταν δυνατή η διαγραφή του κλάδου release %branch%: %error%'
 table:
   key: Κλειδί
   status: Κατάσταση
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Σφάλμα κατά τη διαγραφή του απομακρυσμένου κλάδου ''origin/%branch%'': %error%'
     remote_kept: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (δεν διαγράφηκε)
     remote_kept_quiet: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (χρησιμοποιήστε τη διαδραστική λειτουργία για διαγραφή απομακρυσμένων κλάδων)
+    pruning_refs: Καθαρισμός παλιών αναφορών απομακρυσμένων παρακολούθησης...
+    force_delete_warning: Χρήση αναγκαστικής διαγραφής για τον κλάδο %branch% (ο απομακρυσμένος κλάδος διαγράφηκε)

@@ -398,6 +398,7 @@ deploy:
   updated_develop: Ветка develop обновлена.
   cleaned: Ветка релиза очищена.
   success: Релиз v%version% успешно развернут в main. develop был перебазирован и принудительно отправлен. Ветки очищены.
+  warning_branch_cleanup: 'Предупреждение: Не удалось удалить ветку релиза %branch%: %error%'
 table:
   key: Ключ
   status: Статус
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Ошибка при удалении удалённой ветки ''origin/%branch%'': %error%'
     remote_kept: Удалённая ветка 'origin/%branch%' сохранена (не удалена)
     remote_kept_quiet: Удалённая ветка 'origin/%branch%' сохранена (используйте интерактивный режим для удаления удалённых веток)
+    pruning_refs: Удаление устаревших ссылок на удалённые ветки...
+    force_delete_warning: Использование принудительного удаления для ветки %branch% (удалённая ветка была удалена)

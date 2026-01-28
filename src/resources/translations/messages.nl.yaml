@@ -398,6 +398,7 @@ deploy:
   updated_develop: Develop branch bijgewerkt.
   cleaned: Release branch opgeschoond.
   success: Release v%version% succesvol gedeployed naar main. develop is gerebaseerd en force-pusht. Branches opgeschoond.
+  warning_branch_cleanup: "Warning: Could not delete release branch %branch%: %error%"
 branches:
   list:
     section: Branch Lijst
@@ -438,6 +439,8 @@ branches:
     error_remote: 'Fout bij verwijderen van remote branch ''origin/%branch%'': %error%'
     remote_kept: Remote branch 'origin/%branch%' behouden (niet verwijderd)
     remote_kept_quiet: Remote branch 'origin/%branch%' behouden (gebruik interactieve modus om remote branches te verwijderen)
+    pruning_refs: Verwijderen van verouderde remote-tracking referenties...
+    force_delete_warning: Force delete gebruiken voor branch %branch% (remote branch is verwijderd)
 table:
   key: Sleutel
   status: Status

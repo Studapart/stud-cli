@@ -398,6 +398,7 @@ deploy:
   updated_develop: Branche develop mise à jour.
   cleaned: Branche de release nettoyée.
   success: Release v%version% déployée avec succès sur main. develop a été rebasé et force-pushé. Branches nettoyées.
+  warning_branch_cleanup: 'Avertissement: Impossible de supprimer la branche de release %branch%: %error%'
 table:
   key: Clé
   status: Statut
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Erreur lors de la suppression de la branche distante ''origin/%branch%'': %error%'
     remote_kept: Branche distante 'origin/%branch%' conservée (non supprimée)
     remote_kept_quiet: Branche distante 'origin/%branch%' conservée (utilisez le mode interactif pour supprimer les branches distantes)
+    pruning_refs: Nettoyage des références de suivi distantes obsolètes...
+    force_delete_warning: Utilisation de la suppression forcée pour la branche %branch% (la branche distante a été supprimée)

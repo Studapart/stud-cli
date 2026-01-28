@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fix branch deletion failures due to stale remote-tracking references [SCI-44]
+  - `GitRepository::deleteBranch()` now accepts optional `$remoteExists` parameter to handle stale refs
+  - When remote branch doesn't exist, stale remote-tracking refs are pruned before deletion
+  - Added `GitRepository::deleteBranchForce()` method for force delete fallback
+  - Added `GitRepository::pruneRemoteTrackingRefs()` method to remove stale refs
+  - `BranchCleanHandler` and `DeployHandler` now handle deletion failures gracefully with force delete fallback
+  - Branch deletion now works correctly even when remote branch was deleted externally (e.g., via GitHub UI)
+
 ### Added
 - Add branch management commands: `branches:list` and `branches:clean` [SCI-40]
   - `stud branches:list` (alias `bl`) lists all local branches with status (merged, stale, active-pr, active)

@@ -362,6 +362,7 @@ deploy:
   updated_develop: "Updated develop branch."
   cleaned: "Cleaned up release branch."
   success: "Release v%version% successfully deployed to main. develop has been rebased and force-pushed. Branches cleaned up."
+  warning_branch_cleanup: "Warning: Could not delete release branch %branch%: %error%"
 
 branches:
   list:
@@ -403,6 +404,8 @@ branches:
     error_remote: "Error deleting remote branch 'origin/%branch%': %error%"
     remote_kept: "Remote branch 'origin/%branch%' kept (not deleted)"
     remote_kept_quiet: "Remote branch 'origin/%branch%' kept (use interactive mode to delete remote branches)"
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
 
 # Table Headers
 table:

@@ -398,6 +398,7 @@ deploy:
   updated_develop: Develop tak bygewerk.
   cleaned: Release tak skoongemaak.
   success: Release v%version% suksesvol gedeploy na main. develop is gerebase en force-push. Takke skoongemaak.
+  warning_branch_cleanup: "Warning: Could not delete release branch %branch%: %error%"
 table:
   key: Sleutel
   status: Status
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Fout by verwydering van afstand tak ''origin/%branch%'': %error%'
     remote_kept: Afstand tak 'origin/%branch%' behou (nie verwyder nie)
     remote_kept_quiet: Afstand tak 'origin/%branch%' behou (gebruik interaktiewe modus om afstand takke te verwyder)
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"

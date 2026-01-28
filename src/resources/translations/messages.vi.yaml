@@ -398,6 +398,7 @@ deploy:
   updated_develop: Đã cập nhật nhánh develop.
   cleaned: Đã dọn dẹp nhánh phát hành.
   success: Bản phát hành v%version% đã được triển khai thành công lên main. develop đã được rebase và force-push. Các nhánh đã được dọn dẹp.
+  warning_branch_cleanup: 'Cảnh báo: Không thể xóa nhánh phát hành %branch%: %error%'
 table:
   key: Khóa
   status: Trạng thái
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Lỗi khi xóa nhánh remote ''origin/%branch%'': %error%'
     remote_kept: Giữ lại nhánh remote 'origin/%branch%' (không xóa)
     remote_kept_quiet: Giữ lại nhánh remote 'origin/%branch%' (sử dụng chế độ tương tác để xóa nhánh remote)
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
