@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Exception\GitException;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class GitRepository
@@ -345,7 +347,19 @@ SCRIPT;
     public function run(string $command): Process
     {
         $process = $this->processFactory->create($command);
-        $process->mustRun();
+
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $e) {
+            $errorOutput = $process->getErrorOutput() ?: $process->getOutput();
+            $technicalDetails = trim($errorOutput) ?: 'Command failed with no error output';
+
+            throw new GitException(
+                "Git command failed: {$command}",
+                $technicalDetails,
+                $e
+            );
+        }
 
         return $process;
     }

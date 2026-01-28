@@ -41,6 +41,23 @@ class Logger
     }
 
     /**
+     * Logs an error with both user-friendly and technical details.
+     *
+     * @param int $verbosity Minimum verbosity level to display
+     * @param string $userMessage User-friendly translated message
+     * @param string $technicalDetails Technical error details (Git output, API response, etc.)
+     */
+    public function errorWithDetails(int $verbosity, string $userMessage, string $technicalDetails): void
+    {
+        if ($this->shouldDisplay($verbosity)) {
+            $this->io->error($userMessage);
+            if (! empty(trim($technicalDetails))) {
+                $this->io->text(['', ' Technical details: ' . $technicalDetails]);
+            }
+        }
+    }
+
+    /**
      * Logs a warning message.
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)

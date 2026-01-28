@@ -115,8 +115,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to create pull request.');
 
         $prData = new PullRequestData($title, $head, $base, $body);
         $this->githubProvider->createPullRequest($prData);
@@ -159,8 +159,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get latest release.');
 
         $this->githubProvider->getLatestRelease();
     }
@@ -204,8 +204,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get changelog content.');
 
         $this->githubProvider->getChangelogContent($tag);
     }
@@ -310,8 +310,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get labels.');
 
         $this->githubProvider->getLabels();
     }
@@ -390,8 +390,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to create label '{$name}'.");
 
         $this->githubProvider->createLabel($name, $color);
     }
@@ -432,8 +432,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to add labels to pull request #{$issueNumber}.");
 
         $this->githubProvider->addLabelsToPullRequest($issueNumber, $labels);
     }
@@ -498,8 +498,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to find pull request by branch.');
 
         $this->githubProvider->findPullRequestByBranch($head);
     }
@@ -580,8 +580,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'PATCH .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to update pull request #{$pullNumber}.");
 
         $this->githubProvider->updatePullRequest($pullNumber, $draft);
     }
@@ -628,8 +628,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to create comment on issue #{$issueNumber}.");
 
         $this->githubProvider->createComment($issueNumber, $body);
     }
@@ -675,8 +675,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'PATCH .*\'\.\nResponse: .*Head branch cannot be changed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to update pull request head for PR #{$pullNumber}.");
 
         $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
     }

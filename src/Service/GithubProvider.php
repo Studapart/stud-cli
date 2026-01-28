@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\PullRequestData;
+use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -42,15 +43,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to create pull request.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -66,15 +65,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get latest release.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -89,15 +86,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get changelog content.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $content = $response->toArray();
@@ -125,15 +120,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get labels.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -157,15 +150,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to create label '{$name}'.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -182,15 +173,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to add labels to pull request #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
     }
 
@@ -233,15 +222,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to find pull request by branch.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $pulls = $response->toArray();
@@ -278,15 +265,13 @@ class GithubProvider
         $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to update pull request #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -305,15 +290,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to create comment on issue #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -339,17 +322,50 @@ class GithubProvider
         $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to update pull request head for PR #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
+    }
+
+    /**
+     * Extracts technical details from an HTTP response for error reporting.
+     * Truncates response body to 500 characters to avoid overwhelming output.
+     *
+     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response
+     * @param string $method HTTP method (GET, POST, etc.)
+     * @param string $apiUrl API endpoint URL
+     * @return string Technical details including method, URL, status code and response body
+     */
+    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, string $method, string $apiUrl): string
+    {
+        $statusCode = $response->getStatusCode();
+        $fullUrl = "https://api.github.com{$apiUrl}";
+        $responseBody = 'No response body';
+
+        try {
+            $content = $response->getContent(false);
+            if (! empty($content)) {
+                $responseBody = mb_strlen($content) > 500
+                    ? mb_substr($content, 0, 500) . '... (truncated)'
+                    : $content;
+            }
+        } catch (\Exception $e) {
+            $responseBody = 'Unable to read response body: ' . $e->getMessage();
+        }
+
+        return sprintf(
+            "GitHub API Error (Status: %d) when calling '%s %s'.\nResponse: %s",
+            $statusCode,
+            $method,
+            $fullUrl,
+            $responseBody
+        );
     }
 }
