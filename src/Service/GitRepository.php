@@ -147,9 +147,30 @@ SCRIPT;
         }
     }
 
-    public function deleteBranch(string $branch): void
+    public function deleteBranch(string $branch, ?bool $remoteExists = null): void
     {
+        // If remote state is explicitly false (remote doesn't exist), prune stale refs first
+        if ($remoteExists === false) {
+            $this->pruneRemoteTrackingRefs();
+        }
+
         $this->run("git branch -d {$branch}");
+    }
+
+    public function deleteBranchForce(string $branch): Process
+    {
+        return $this->run("git branch -D {$branch}");
+    }
+
+    /**
+     * Prunes stale remote-tracking references for the specified remote.
+     * This removes local refs for branches that no longer exist on the remote.
+     *
+     * @param string $remote The remote name (default: 'origin')
+     */
+    public function pruneRemoteTrackingRefs(string $remote = 'origin'): void
+    {
+        $this->run("git fetch --prune {$remote}");
     }
 
     public function deleteRemoteBranch(string $remote, string $branch): void

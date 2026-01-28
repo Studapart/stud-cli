@@ -792,6 +792,88 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->deleteBranch('my-branch');
     }
 
+    public function testDeleteBranchWithRemoteExistsTrue(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch -d my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->deleteBranch('my-branch', true);
+    }
+
+    public function testDeleteBranchWithRemoteExistsFalse(): void
+    {
+        $pruneProcess = $this->createMock(Process::class);
+        $deleteProcess = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function ($command) use ($pruneProcess, $deleteProcess) {
+                if ($command === 'git fetch --prune origin') {
+                    return $pruneProcess;
+                }
+                if ($command === 'git branch -d my-branch') {
+                    return $deleteProcess;
+                }
+
+                return null;
+            });
+
+        $pruneProcess->expects($this->once())
+            ->method('mustRun');
+        $deleteProcess->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->deleteBranch('my-branch', false);
+    }
+
+    public function testDeleteBranchForce(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git branch -D my-branch')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->deleteBranchForce('my-branch');
+    }
+
+    public function testPruneRemoteTrackingRefs(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git fetch --prune origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->pruneRemoteTrackingRefs();
+    }
+
+    public function testPruneRemoteTrackingRefsWithCustomRemote(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git fetch --prune upstream')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->pruneRemoteTrackingRefs('upstream');
+    }
+
     public function testDeleteRemoteBranch(): void
     {
         $process = $this->createMock(Process::class);

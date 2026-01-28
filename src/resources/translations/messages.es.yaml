@@ -398,6 +398,7 @@ deploy:
   updated_develop: Rama develop actualizada.
   cleaned: Rama de release limpiada.
   success: Release v%version% desplegada exitosamente en main. develop ha sido rebaseado y force-pusheado. Ramas limpiadas.
+  warning_branch_cleanup: "Warning: Could not delete release branch %branch%: %error%"
 table:
   key: Clave
   status: Estado
@@ -507,3 +508,5 @@ branches:
     error_remote: 'Error al eliminar la rama remota ''origin/%branch%'': %error%'
     remote_kept: Rama remota 'origin/%branch%' conservada (no eliminada)
     remote_kept_quiet: Rama remota 'origin/%branch%' conservada (use el modo interactivo para eliminar ramas remotas)
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
