@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Display technical error details from Git and API errors alongside user-friendly messages [SCI-41]
+  - Created `GitException` and `ApiException` classes with `getTechnicalDetails()` method
+  - `GitRepository::run()` now captures Git error output and throws `GitException` with technical details
+  - `JiraService` methods now throw `ApiException` with API response body and status code
+  - `GithubProvider` methods now throw `ApiException` with API response details
+  - Added `Logger::errorWithDetails()` method to display both user-friendly and technical error messages
+  - All handlers now catch `GitException` and `ApiException` and display both messages using `errorWithDetails()`
+  - Technical details are truncated to 500 characters to avoid overwhelming output
+  - Error messages maintain backward compatibility with existing translations
+
 ### Fixed
 - Fix branch deletion failures due to stale remote-tracking references [SCI-44]
   - `GitRepository::deleteBranch()` now accepts optional `$remoteExists` parameter to handle stale refs

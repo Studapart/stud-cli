@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\ChangelogParser;
 use App\Service\GithubProvider;
 use App\Service\Logger;
@@ -111,6 +112,20 @@ class UpdateHandler
     {
         try {
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
+        } catch (ApiException $e) {
+            if ($e->getStatusCode() === 404) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.warning_no_releases')));
+
+                return ['release' => null, 'is404' => true];
+            }
+
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return ['release' => null, 'is404' => false];
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Status: 404')) {
                 $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.warning_no_releases')));
@@ -266,6 +281,10 @@ class UpdateHandler
                 }
                 $this->logger->newLine(Logger::VERBOSITY_NORMAL);
             }
+        } catch (ApiException $e) {
+            // Silently fail - don't block update if changelog can't be fetched
+            $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             // Silently fail - don't block update if changelog can't be fetched
             $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());

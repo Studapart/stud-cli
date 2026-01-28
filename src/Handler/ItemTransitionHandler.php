@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -33,6 +34,14 @@ class ItemTransitionHandler
         try {
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.transition.fetching', ['key' => $resolvedKey])}");
             $this->jiraService->getIssue($resolvedKey);
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('item.transition.error_not_found', ['key' => $resolvedKey]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $resolvedKey]));
 
@@ -42,6 +51,14 @@ class ItemTransitionHandler
         // Fetch transitions
         try {
             $transitions = $this->jiraService->getTransitions($resolvedKey);
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]));
 
@@ -85,6 +102,14 @@ class ItemTransitionHandler
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.success', ['key' => $resolvedKey]));
 
             return 0;
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]));
 

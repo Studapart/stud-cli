@@ -120,7 +120,9 @@ class JiraServiceTest extends TestCase
             ->with('GET', "/rest/api/3/issue/{$key}")
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $responseMock->method('getContent')->willReturn('Not Found');
+
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not find Jira issue with key \"{$key}\".");
 
         $this->jiraService->getIssue($key);
@@ -210,12 +212,13 @@ class JiraServiceTest extends TestCase
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->method('getContent')->willReturn('Bad Request');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage('Failed to search for issues.');
 
         $this->jiraService->searchIssues($jql);
@@ -272,12 +275,13 @@ class JiraServiceTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
+        $responseMock->method('getContent')->willReturn('Internal Server Error');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage('Failed to fetch projects.');
 
         $this->jiraService->getProjects();
@@ -361,12 +365,13 @@ class JiraServiceTest extends TestCase
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(500);
+        $responseMock->method('getContent')->willReturn('Internal Server Error');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage('Failed to fetch filters.');
 
         $this->jiraService->getFilters();
@@ -571,13 +576,14 @@ echo 'hello';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn('Not Found');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->with('GET', "/rest/api/3/issue/{$key}/transitions")
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not fetch transitions for issue \"{$key}\".");
 
         $this->jiraService->getTransitions($key);
@@ -614,12 +620,13 @@ echo 'hello';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->method('getContent')->willReturn('Bad Request');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not execute transition {$transitionId} for issue \"{$key}\".");
 
         $this->jiraService->transitionIssue($key, $transitionId);
@@ -676,13 +683,14 @@ echo 'hello';
     {
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(401);
+        $responseMock->method('getContent')->willReturn('Unauthorized');
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->with('GET', '/rest/api/3/myself')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage('Could not retrieve current user information.');
 
         $this->callPrivateMethod($this->jiraService, 'getCurrentUserAccountId');
@@ -779,6 +787,7 @@ echo 'hello';
 
         $assignResponseMock = $this->createMock(ResponseInterface::class);
         $assignResponseMock->method('getStatusCode')->willReturn(403);
+        $assignResponseMock->method('getContent')->willReturn('Forbidden');
 
         $this->httpClientMock->expects($this->exactly(2))
             ->method('request')
@@ -790,7 +799,7 @@ echo 'hello';
                 return $assignResponseMock;
             });
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\ApiException::class);
         $this->expectExceptionMessage("Could not assign issue \"{$key}\" to user.");
 
         $this->jiraService->assignIssue($key);

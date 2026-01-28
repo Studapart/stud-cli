@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -83,6 +84,14 @@ class CommitHandler
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.fetching_jira', ['key' => $key])}");
             // The getIssue method now fetches components as well
             $issue = $this->jiraService->getIssue($key);
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('commit.error_not_found', ['key' => $key]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.error_not_found', ['key' => $key]));
 

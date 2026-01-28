@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
+use App\Exception\ApiException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JiraService
@@ -28,7 +29,13 @@ class JiraService
         $response = $this->client->request('GET', $url);
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException("Could not find Jira issue with key \"{$key}\".");
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not find Jira issue with key \"{$key}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $this->mapToWorkItem($response->toArray());
@@ -47,7 +54,13 @@ class JiraService
         ]);
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException('Failed to search for issues.');
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                'Failed to search for issues.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $data = $response->toArray();
@@ -64,7 +77,13 @@ class JiraService
         $response = $this->client->request('GET', '/rest/api/3/project/search');
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException('Failed to fetch projects.');
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                'Failed to fetch projects.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $paginatedResponse = $response->toArray(false);
@@ -81,7 +100,13 @@ class JiraService
         $response = $this->client->request('GET', '/rest/api/3/filter/search');
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException('Failed to fetch filters.');
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                'Failed to fetch filters.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $paginatedResponse = $response->toArray(false);
@@ -170,7 +195,13 @@ class JiraService
         $response = $this->client->request('GET', $url);
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException("Could not fetch transitions for issue \"{$key}\".");
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not fetch transitions for issue \"{$key}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $data = $response->toArray();
@@ -193,7 +224,13 @@ class JiraService
         ]);
 
         if ($response->getStatusCode() !== 204) {
-            throw new \RuntimeException("Could not execute transition {$transitionId} for issue \"{$key}\".");
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not execute transition {$transitionId} for issue \"{$key}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
     }
 
@@ -213,7 +250,13 @@ class JiraService
         $response = $this->client->request('GET', '/rest/api/3/myself');
 
         if ($response->getStatusCode() !== 200) {
-            throw new \RuntimeException('Could not retrieve current user information.');
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                'Could not retrieve current user information.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $data = $response->toArray();
@@ -226,6 +269,32 @@ class JiraService
         $this->currentUserAccountId = $accountId;
 
         return $this->currentUserAccountId;
+    }
+
+    /**
+     * Extracts technical details from an HTTP response for error reporting.
+     * Truncates response body to 500 characters to avoid overwhelming output.
+     *
+     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response
+     * @return string Technical details including status code and response body
+     */
+    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response): string
+    {
+        $statusCode = $response->getStatusCode();
+        $responseBody = 'No response body';
+
+        try {
+            $content = $response->getContent(false);
+            if (! empty($content)) {
+                $responseBody = mb_strlen($content) > 500
+                    ? mb_substr($content, 0, 500) . '... (truncated)'
+                    : $content;
+            }
+        } catch (\Exception $e) {
+            $responseBody = 'Unable to read response body: ' . $e->getMessage();
+        }
+
+        return sprintf('HTTP %d: %s', $statusCode, $responseBody);
     }
 
     /**
@@ -246,7 +315,13 @@ class JiraService
         ]);
 
         if ($response->getStatusCode() !== 204) {
-            throw new \RuntimeException("Could not assign issue \"{$key}\" to user.");
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not assign issue \"{$key}\" to user.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
     }
 }

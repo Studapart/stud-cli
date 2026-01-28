@@ -534,8 +534,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturnCallback(fn ($html) => $html);
 
         $this->githubProvider->method('createPullRequest')->willThrowException(
-            new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                          'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            new \App\Exception\ApiException(
+                'Failed to create pull request.',
+                'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                422
+            )
         );
 
         $output = new BufferedOutput();
@@ -1609,7 +1613,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('updatePullRequest')
-            ->willThrowException(new \Exception('Draft API Error'));
+            ->willThrowException(new \App\Exception\ApiException('Failed to update pull request #123.', 'Draft API Error', 500));
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
