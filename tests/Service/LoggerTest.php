@@ -604,4 +604,95 @@ class LoggerTest extends CommandTestCase
 
         $this->assertNull($result);
     }
+
+    public function testErrorWithDetailsDisplaysBothMessages(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('error')
+            ->with('User-friendly error message');
+
+        $io->expects($this->once())
+            ->method('text')
+            ->with(['', ' Technical details: Technical error details']);
+
+        $logger = new Logger($io, []);
+        $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', 'Technical error details');
+    }
+
+    public function testErrorWithDetailsRespectsVerbosity(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->never())
+            ->method('error');
+
+        $io->expects($this->never())
+            ->method('text');
+
+        $logger = new Logger($io, []);
+        $logger->errorWithDetails(Logger::VERBOSITY_VERBOSE, 'User-friendly error message', 'Technical error details');
+    }
+
+    public function testErrorWithDetailsSuppressedWhenQuiet(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(true);
+
+        $io->expects($this->never())
+            ->method('error');
+
+        $io->expects($this->never())
+            ->method('text');
+
+        $logger = new Logger($io, []);
+        $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', 'Technical error details');
+    }
+
+    public function testErrorWithDetailsSkipsEmptyTechnicalDetails(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('error')
+            ->with('User-friendly error message');
+
+        $io->expects($this->never())
+            ->method('text');
+
+        $logger = new Logger($io, []);
+        $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', '');
+    }
+
+    public function testErrorWithDetailsSkipsWhitespaceOnlyTechnicalDetails(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('error')
+            ->with('User-friendly error message');
+
+        $io->expects($this->never())
+            ->method('text');
+
+        $logger = new Logger($io, []);
+        $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', '   ');
+    }
 }

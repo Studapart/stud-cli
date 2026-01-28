@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\GitException;
 use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Service\TranslationService;
@@ -50,6 +51,14 @@ class FlattenHandler
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.success'));
 
             return 0;
+        } catch (GitException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('flatten.error_rebase', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.error_rebase', ['error' => $e->getMessage()]));
 

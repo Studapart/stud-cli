@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -35,6 +36,14 @@ class ItemStartHandler
 
         try {
             $issue = $this->jiraService->getIssue($key);
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('item.start.error_not_found', ['key' => $key]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.error_not_found', ['key' => $key]));
 
@@ -74,6 +83,10 @@ class ItemStartHandler
         try {
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.assigning', ['key' => $key])}");
             $this->jiraService->assignIssue($key);
+        } catch (ApiException $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            // Continue even if assignment fails
         } catch (\Exception $e) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
             // Continue even if assignment fails
@@ -135,6 +148,11 @@ class ItemStartHandler
                     ]);
                     $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}");
                 }
+            } catch (ApiException $e) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+                $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+
+                return 0; // Skip transition, continue with branch creation
             } catch (\Exception $e) {
                 $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
 
@@ -149,6 +167,10 @@ class ItemStartHandler
             try {
                 $this->jiraService->transitionIssue($key, $transitionId);
                 $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_success', ['key' => $key]));
+            } catch (ApiException $e) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+                $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+                // Continue with branch creation even if transition fails
             } catch (\Exception $e) {
                 $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
                 // Continue with branch creation even if transition fails

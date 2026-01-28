@@ -368,6 +368,31 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testHandleWithIssueNotFoundApiException(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('item.transition.error_not_found'),
+                'HTTP 404: Not Found'
+            );
+        $this->logger->method('section');
+        $this->logger->method('jiraWriteln');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithNoTransitions(): void
     {
         $workItem = new WorkItem(
@@ -448,6 +473,48 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testHandleWithTransitionFetchErrorApiException(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Could not fetch transitions for issue "TPW-35".', 'HTTP 500: Internal Server Error', 500));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('item.transition.error_fetch'),
+                'HTTP 500: Internal Server Error'
+            );
+        $this->logger->method('section');
+        $this->logger->method('jiraWriteln');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithTransitionExecutionError(): void
     {
         $workItem = new WorkItem(
@@ -504,6 +571,75 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
         $handler = $this->createHandlerWithRealLogger($io);
         $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testHandleWithTransitionExecutionErrorApiException(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $transitions = [
+            [
+                'id' => 11,
+                'name' => 'Start Progress',
+                'to' => [
+                    'name' => 'In Progress',
+                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
+                ],
+            ],
+        ];
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willReturn($transitions);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 11)
+            ->willThrowException(new \App\Exception\ApiException('Could not execute transition 11 for issue "TPW-35".', 'HTTP 400: Bad Request', 400));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('item.transition.error_execute'),
+                'HTTP 400: Bad Request'
+            );
+        $this->logger->method('section');
+        $this->logger->method('jiraWriteln');
+        $this->logger->method('listing');
+        $this->logger->method('choice')
+            ->willReturn('Start Progress (ID: 11)');
+        $this->logger->method('success');
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // choice() for transition selection - select first option (index 0)
+        fwrite($inputStream, "0\n");
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
 
         $this->assertSame(1, $result);
     }

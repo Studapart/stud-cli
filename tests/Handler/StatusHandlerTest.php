@@ -83,6 +83,35 @@ class StatusHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
+    public function testHandleWithJiraServiceApiException(): void
+    {
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn("");
+
+        $this->jiraService->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('writeln');
+        $logger->expects($this->once())
+            ->method('text')
+            ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->callback(function ($arg) {
+                return is_array($arg) && isset($arg[1]) && str_contains($arg[1], 'Technical details:');
+            }));
+
+        $handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService, $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithCleanWorkingDirectory(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
