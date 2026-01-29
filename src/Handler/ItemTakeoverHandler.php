@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -41,6 +42,14 @@ class ItemTakeoverHandler
         // Step 2: Fetch issue from Jira
         try {
             $issue = $this->jiraService->getIssue($key);
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('item.takeover.error_not_found', ['key' => $key]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.error_not_found', ['key' => $key]));
 
@@ -83,6 +92,9 @@ class ItemTakeoverHandler
         try {
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.takeover.assigning', ['key' => $key])}");
             $this->jiraService->assignIssue($key);
+        } catch (ApiException $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.assign_warning', ['error' => $e->getMessage()]));
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.assign_warning', ['error' => $e->getMessage()]));
         }

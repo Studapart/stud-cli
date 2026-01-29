@@ -86,6 +86,34 @@ class ItemStartHandlerTest extends CommandTestCase
         // Test intent: error() was called, verified by return value
     }
 
+    public function testHandleWithIssueNotFoundApiException(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('item.start.error_not_found'),
+                'HTTP 404: Not Found'
+            );
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+
+        $handler = new \App\Handler\ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithVerboseOutput(): void
     {
         $workItem = new WorkItem(
@@ -854,6 +882,323 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithTransitionEnabledAndAssignmentApiExceptionVerbose(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls (like 'item.start.fetching_changes')
+                if ($verbosity === Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+        $logger->method('gitWriteln');
+        $logger->method('warning');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 11);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithTransitionEnabledAndGetTransitionsApiExceptionVerbose(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls (like 'item.start.fetching_changes')
+                if ($verbosity === Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+        $logger->method('gitWriteln');
+        $logger->method('warning');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $this->jiraService->expects($this->once())
+            ->method('getTransitions')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Failed to get transitions.', 'HTTP 500: Internal Server Error', 500));
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithTransitionEnabledAndTransitionExecutionApiExceptionVerbose(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls (like 'item.start.fetching_changes')
+                if ($verbosity === Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+        $logger->method('gitWriteln');
+        $logger->method('warning');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 11)
+            ->willThrowException(new \App\Exception\ApiException('Failed to execute transition.', 'HTTP 400: Bad Request', 400));
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithTransitionEnabledAndCachedTransitionVerbose(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'To Do',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Check for cached transition message
+                if ($verbosity === Logger::VERBOSITY_VERBOSE && str_contains($message, 'item.start.using_cached_transition')) {
+                    return;
+                }
+
+                // Allow other jiraWriteln calls
+                return;
+            });
+        $logger->method('text');
+        $logger->method('gitWriteln');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('TPW-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('TPW-35')
+            ->willReturn('TPW');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
+
+        $this->jiraService->expects($this->once())
+            ->method('transitionIssue')
+            ->with('TPW-35', 11);
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $result = $handler->handle($io, 'TPW-35');
 

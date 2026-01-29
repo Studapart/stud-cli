@@ -133,4 +133,48 @@ class FlattenHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
         // Test intent: error() was called for rebase failure, verified by return value
     }
+
+    public function testHandleWithRebaseFailureGitException(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getMergeBase')
+            ->with($this->baseBranch, 'HEAD')
+            ->willReturn('abc123');
+
+        $this->gitRepository->expects($this->once())
+            ->method('hasFixupCommits')
+            ->with('abc123')
+            ->willReturn(true);
+
+        $this->gitRepository->expects($this->once())
+            ->method('rebaseAutosquash')
+            ->with('abc123')
+            ->willThrowException(new \App\Exception\GitException('Git command failed: git rebase', 'fatal: could not read object', null));
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('flatten.error_rebase'),
+                'fatal: could not read object'
+            );
+        $logger->method('section');
+        $logger->method('note');
+        $logger->method('warning');
+        $logger->method('success');
+
+        $handler = new \App\Handler\FlattenHandler($this->gitRepository, $this->baseBranch, $this->translationService, $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io);
+
+        $this->assertSame(1, $result);
+    }
 }

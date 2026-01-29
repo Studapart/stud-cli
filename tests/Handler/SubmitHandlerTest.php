@@ -418,6 +418,119 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
+    public function testHandleWithPullRequestCreationApiExceptionNon422(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 500) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Internal Server Error"}',
+                    500
+                )
+            );
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('submit.error_create_pr'),
+                $this->stringContains('GitHub API Error (Status: 500)')
+            );
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('gitWriteln');
+        $this->logger->method('jiraWriteln');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testHandleWithJiraFetchApiExceptionVerbose(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+
+        $this->jiraService->method('getIssue')
+            ->with('TPW-35', true)
+            ->willThrowException(new \App\Exception\ApiException('Failed to fetch Jira issue.', 'HTTP 500: Internal Server Error', 500));
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $this->logger->method('section');
+        $this->logger->method('jiraWriteln');
+        $this->logger->method('gitWriteln');
+        $this->logger->method('warning');
+        $this->logger->method('success');
+        $this->logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls
+                if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === \App\Service\Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithNoGitProviderConfigured(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -534,8 +647,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturnCallback(fn ($html) => $html);
 
         $this->githubProvider->method('createPullRequest')->willThrowException(
-            new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                          'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+            new \App\Exception\ApiException(
+                'Failed to create pull request.',
+                'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                422
+            )
         );
 
         $output = new BufferedOutput();
@@ -835,6 +952,66 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testHandleWithLabelsFetchErrorApiException(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willThrowException(new \App\Exception\ApiException('Failed to get labels.', 'HTTP 500: Internal Server Error', 500));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('submit.error_fetch_labels'),
+                'HTTP 500: Internal Server Error'
+            );
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('gitWriteln');
+        $this->logger->method('jiraWriteln');
+        $this->logger->method('success');
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "0\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $result = $this->handler->handle($io, false, 'bug');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testValidateAndProcessLabelsCreateMissingLabel(): void
     {
         $remoteLabels = [
@@ -983,6 +1160,51 @@ class SubmitHandlerTest extends CommandTestCase
         $this->logger->expects($this->once())
             ->method('error')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'bug,new-label');
+
+        $this->assertNull($result);
+    }
+
+    public function testValidateAndProcessLabelsCreateLabelFailsApiException(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createLabel')
+            ->willThrowException(new \App\Exception\ApiException("Failed to create label 'new-label'.", 'HTTP 422: Validation Failed', 422));
+
+        $output = new BufferedOutput();
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->exactly(2))
+            ->method('text')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $this->logger->expects($this->once())
+            ->method('choice')
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
+            ->willReturn($this->translationService->trans('submit.label_create_option'));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('submit.error_create_label'),
+                'HTTP 422: Validation Failed'
+            );
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1183,8 +1405,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         // Should find existing PR
@@ -1251,8 +1477,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         // Should find existing PR (not draft)
@@ -1322,8 +1552,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         // Should find existing PR (not draft)
@@ -1396,8 +1630,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         // Should find existing PR (already draft)
@@ -1457,15 +1695,19 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         // Finding PR fails
         $this->githubProvider
             ->expects($this->once())
             ->method('findPullRequestByBranch')
-            ->willThrowException(new \Exception('API Error'));
+            ->willThrowException(new \App\Exception\ApiException('Failed to find pull request by branch.', 'API Error', 500));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1523,8 +1765,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         $existingPr = [
@@ -1542,7 +1788,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('addLabelsToPullRequest')
-            ->willThrowException(new \Exception('Label API Error'));
+            ->willThrowException(new \App\Exception\ApiException("Failed to add labels to pull request #42.", 'Label API Error', 500));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1590,8 +1836,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('createPullRequest')
             ->willThrowException(
-                new \Exception('GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
-                              'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}')
+                new \App\Exception\ApiException(
+                    'Failed to create pull request.',
+                    'GitHub API Error (Status: 422) when calling \'POST https://api.github.com/repos/owner/repo/pulls\'.' . "\n" .
+                    'Response: {"message":"Validation Failed","errors":[{"resource":"PullRequest","code":"custom","message":"A pull request already exists for owner:branch."}]}',
+                    422
+                )
             );
 
         $existingPr = [
@@ -1609,7 +1859,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider
             ->expects($this->once())
             ->method('updatePullRequest')
-            ->willThrowException(new \Exception('Draft API Error'));
+            ->willThrowException(new \App\Exception\ApiException('Failed to update pull request #123.', 'Draft API Error', 500));
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);

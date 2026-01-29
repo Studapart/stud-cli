@@ -537,6 +537,92 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->run('my command');
     }
 
+    public function testRunThrowsGitExceptionOnFailure(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('my command')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun')
+            ->willThrowException(new \Symfony\Component\Process\Exception\ProcessFailedException($process));
+
+        $process->expects($this->once())
+            ->method('getErrorOutput')
+            ->willReturn('Error: command failed');
+
+        $this->expectException(\App\Exception\GitException::class);
+        $this->expectExceptionMessage('Git command failed: my command');
+
+        $this->gitRepository->run('my command');
+    }
+
+    public function testRunThrowsGitExceptionWithOutputWhenErrorOutputEmpty(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('my command')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun')
+            ->willThrowException(new \Symfony\Component\Process\Exception\ProcessFailedException($process));
+
+        $process->expects($this->once())
+            ->method('getErrorOutput')
+            ->willReturn('');
+
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('Some output');
+
+        $this->expectException(\App\Exception\GitException::class);
+        $this->expectExceptionMessage('Git command failed: my command');
+
+        try {
+            $this->gitRepository->run('my command');
+        } catch (\App\Exception\GitException $e) {
+            $this->assertSame('Some output', $e->getTechnicalDetails());
+
+            throw $e;
+        }
+    }
+
+    public function testRunThrowsGitExceptionWithDefaultMessageWhenBothOutputsEmpty(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('my command')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun')
+            ->willThrowException(new \Symfony\Component\Process\Exception\ProcessFailedException($process));
+
+        $process->expects($this->once())
+            ->method('getErrorOutput')
+            ->willReturn('');
+
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('');
+
+        $this->expectException(\App\Exception\GitException::class);
+        $this->expectExceptionMessage('Git command failed: my command');
+
+        try {
+            $this->gitRepository->run('my command');
+        } catch (\App\Exception\GitException $e) {
+            $this->assertSame('Command failed with no error output', $e->getTechnicalDetails());
+
+            throw $e;
+        }
+    }
+
     public function testRunQuietly(): void
     {
         $process = $this->createMock(Process::class);

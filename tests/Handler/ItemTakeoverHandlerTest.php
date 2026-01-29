@@ -101,6 +101,46 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testHandleWithIssueNotFoundApiException(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('PROJ-123')
+            ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('item.takeover.error_not_found'),
+                'HTTP 404: Not Found'
+            );
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+
+        $handler = new \App\Handler\ItemTakeoverHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            $this->itemStartHandler,
+            'origin/develop',
+            $this->translationService,
+            [],
+            $logger
+        );
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'PROJ-123');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithAssignmentFailure(): void
     {
         $workItem = new WorkItem(
@@ -205,6 +245,89 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
+        $result = $handler->handle($io, 'PROJ-123');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithAssignmentApiExceptionVerbose(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'PROJ-123',
+            title: 'Test issue',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story'
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('PROJ-123')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('PROJ-123')
+            ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls
+                if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === \App\Service\Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+        $logger->method('warning');
+        $logger->method('confirm')
+            ->willReturn(true); // User confirms to start fresh
+
+        $handler = new \App\Handler\ItemTakeoverHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            $this->itemStartHandler,
+            'origin/develop',
+            $this->translationService,
+            [],
+            $logger
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('PROJ-123')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $this->itemStartHandler->expects($this->once())
+            ->method('handle')
+            ->willReturn(0);
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        // confirm() for starting fresh - yes
+        fwrite($inputStream, "y\n");
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
         $result = $handler->handle($io, 'PROJ-123');
 
         $this->assertSame(0, $result);

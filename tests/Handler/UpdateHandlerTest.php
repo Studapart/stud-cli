@@ -1266,10 +1266,30 @@ CHANGELOG;
 
         $changelogErrorResponse = $this->createMock(ResponseInterface::class);
         $changelogErrorResponse->method('getStatusCode')->willReturn(500);
-        $changelogErrorResponse->method('getContent')->willReturn('Internal Server Error');
+        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
 
         $downloadResponse = $this->createMock(ResponseInterface::class);
         $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->method('section');
+        $logger->method('writeln');
+        $logger->method('text');
+        $logger->method('success');
+        $logger->method('error');
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient
+        );
 
         $this->httpClient->expects($this->exactly(3))
             ->method('request')
@@ -1288,8 +1308,93 @@ CHANGELOG;
         $input = new ArrayInput([]);
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $handler->handle($io);
+
+        // Should still succeed even if changelog fetch fails
+        $this->assertSame(0, $result);
+
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testDisplayChangelogWhenFetchFailsApiExceptionVerbose(): void
+    {
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $changelogErrorResponse = $this->createMock(ResponseInterface::class);
+        $changelogErrorResponse->method('getStatusCode')->willReturn(500);
+        $changelogErrorResponse->method('getContent')->with(false)->willReturn('Internal Server Error');
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->method('section');
+        $logger->method('writeln');
+        $logger->method('text')
+            ->willReturnCallback(function ($verbosity, $message) {
+                // Allow normal verbosity calls
+                if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
+                    return;
+                }
+                // Check for verbose technical details
+                if ($verbosity === \App\Service\Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
+                    return;
+                }
+            });
+        $logger->method('success');
+        $logger->method('error');
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient
+        );
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogErrorResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogErrorResponse;
+                }
+
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io);
 
         // Should still succeed even if changelog fetch fails
         $this->assertSame(0, $result);
@@ -1939,6 +2044,168 @@ CHANGELOG;
 
         // Verify binary was NOT updated
         $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
+    }
+
+    public function testHandleWithGetLatestReleaseGenericExceptionWith404Message(): void
+    {
+        $errorResponse = $this->createMock(ResponseInterface::class);
+        $errorResponse->method('getStatusCode')->willReturn(200);
+        $errorResponse->method('toArray')
+            ->willThrowException(new \Exception('GitHub API Error (Status: 404) when calling \'GET https://api.github.com/repos/studapart/stud-cli/releases/latest\'.'));
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($errorResponse);
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient
+        );
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+
+        $result = $handler->handle($io);
+
+        // Should succeed even if release fetch fails with 404
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithGetLatestReleaseGenericExceptionWithout404Message(): void
+    {
+        $errorResponse = $this->createMock(ResponseInterface::class);
+        $errorResponse->method('getStatusCode')->willReturn(200);
+        $errorResponse->method('toArray')
+            ->willThrowException(new \Exception('Network error occurred'));
+
+        $this->httpClient->expects($this->once())
+            ->method('request')
+            ->with('GET', '/repos/studapart/stud-cli/releases/latest')
+            ->willReturn($errorResponse);
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient
+        );
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+
+        $result = $handler->handle($io);
+
+        // Should fail if release fetch fails (non-404 error)
+        $this->assertSame(1, $result);
+    }
+
+    public function testDisplayChangelogWhenFetchFailsGenericException(): void
+    {
+        // Use real parser for this integration test
+        $this->setupRealChangelogParser();
+
+        $pharContent = 'phar binary content';
+        $pharHash = hash('sha256', $pharContent);
+
+        $releaseData = [
+            'tag_name' => 'v1.0.1',
+            'assets' => [
+                [
+                    'id' => 12345678,
+                    'name' => 'stud.phar',
+                    'digest' => 'sha256:' . $pharHash,
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        // Create a response that throws Exception when toArray() is called
+        // This will trigger the generic Exception catch block in displayChangelog
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(200);
+        $changelogResponse->method('toArray')
+            ->willThrowException(new \Exception('Failed to parse JSON response'));
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn($pharContent);
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->method('section');
+        $logger->method('writeln'); // Allow all writeln calls (including logVerbose which calls writeln)
+        $logger->method('text');
+        $logger->method('success');
+        $logger->method('error');
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient
+        );
+
+        $this->httpClient->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $changelogResponse, $downloadResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+
+                return $downloadResponse;
+            });
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+
+        $result = $handler->handle($io);
+
+        // Should still succeed even if changelog fetch fails
+        $this->assertSame(0, $result);
+
+        @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
 
     public function testHandleWithHashVerificationSuccess(): void

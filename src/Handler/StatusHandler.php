@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -34,6 +35,9 @@ class StatusHandler
                 $issue = $this->jiraService->getIssue($key);
                 $statusText = $this->translator->trans('status.jira_status', ['status' => $issue->status, 'key' => $issue->key, 'title' => $issue->title]);
                 $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}");
+            } catch (ApiException $e) {
+                $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=red>{$this->translator->trans('status.jira_error', ['error' => $e->getMessage()])}</>");
+                $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
             } catch (\Exception $e) {
                 $this->logger->writeln(Logger::VERBOSITY_NORMAL, "Jira:   <fg=red>{$this->translator->trans('status.jira_error', ['error' => $e->getMessage()])}</>");
             }
