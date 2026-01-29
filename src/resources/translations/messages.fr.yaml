@@ -13,12 +13,12 @@ config:
       email_prompt: Entrez votre adresse e-mail Jira
       token_prompt: Entrez votre jeton API Jira (laissez vide pour conserver l'existant)
     git:
-      title: Configuration du fournisseur Git
-      description: Ceci est requis pour la commande `stud submit` afin de créer des Pull Requests.
-      token_help: 'Vous pouvez générer un jeton ici : https://github.com/settings/tokens'
-      auto_detect_note: 'Note : Le propriétaire et le nom du dépôt seront automatiquement détectés depuis votre remote git.'
-      provider_prompt: Sélectionnez votre fournisseur Git
-      token_prompt: Entrez votre PAT du fournisseur Git (laissez vide pour conserver l'existant)
+      title: Configuration des jetons du fournisseur Git
+      description: Configurez les jetons pour GitHub et/ou GitLab. Ce sont des valeurs par défaut globales qui peuvent être remplacées par dépôt.
+      token_help: 'Vous pouvez générer des jetons ici :\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Note : Vous pouvez configurer les deux jetons, ou seulement ceux dont vous avez besoin. Le fournisseur sera configuré par dépôt.'
+      github_token_prompt: Entrez votre PAT GitHub (laissez vide pour conserver l'existant ou ignorer)
+      gitlab_token_prompt: Entrez votre PAT GitLab (laissez vide pour conserver l'existant ou ignorer)
     jira_transition:
       title: Configuration de transition Jira
       description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Branche de base configurée: %branch%"
   base_branch_invalid: "La branche de base '%branch%' n'existe pas sur le dépôt distant. Veuillez vérifier le nom de la branche."
   base_branch_required: La branche de base est requise. La commande ne peut pas continuer sans une branche de base valide.
+  git_provider_not_configured: Fournisseur Git non configuré pour ce dépôt.
+  git_provider_prompt: Sélectionnez le fournisseur Git pour ce dépôt
+  git_provider_detected: "Fournisseur Git détecté: %provider%"
+  git_provider_saving: Enregistrement de la configuration du fournisseur Git...
+  git_provider_saved: "Fournisseur Git configuré: %provider%"
+  git_provider_required: Le fournisseur Git est requis. La commande ne peut pas continuer sans un fournisseur Git valide.
+  git_token_not_configured: Jeton Git non configuré pour ce dépôt.
+  git_token_prompt: Entrez votre PAT %provider% (laissez vide pour ignorer)
+  git_token_saving: Enregistrement de la configuration du jeton Git...
+  git_token_saved: "Jeton Git configuré pour %provider%"
+  git_token_required: Le jeton Git est requis. La commande ne peut pas continuer sans un jeton Git valide.
+  git_token_global_suggestion: "Astuce: Vous pouvez configurer des jetons globaux en exécutant 'stud config:init'"
+  git_token_type_mismatch: "Le fournisseur est défini sur '%provider%' mais seul le jeton %opposite% est configuré. Veuillez configurer un jeton %provider% ou changer le fournisseur."
+  git_token_no_tokens: Aucun jeton Git configuré. Veuillez exécuter 'stud config:init' pour configurer les jetons globaux, ou configurer un jeton local pour ce dépôt.
+  migration:
+    git_token_detected: Ancien format de jeton Git détecté. Migration requise.
+    git_provider_prompt: Sélectionnez le fournisseur Git pour votre jeton
+    git_migration_complete: "Configuration Git migrée avec succès. Jeton configuré pour %provider%."
 item:
   start:
     section: Démarrage du travail sur %key%

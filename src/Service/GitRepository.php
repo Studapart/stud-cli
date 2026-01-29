@@ -290,25 +290,25 @@ SCRIPT;
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['owner'] ?? null;
     }
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['name'] ?? null;
     }
 
     /**
-     * Parses GitHub repository owner and name from a remote URL.
+     * Parses repository owner and name from a remote URL (supports GitHub and GitLab).
      *
      * @param string $remote The remote name (default: 'origin')
-     * @return array{owner?: string, name?: string} Array with 'owner' and 'name' keys, or empty array if parsing fails
+     * @return array{owner?: string, name?: string, provider?: string} Array with 'owner', 'name', and 'provider' keys, or empty array if parsing fails
      */
-    protected function parseGithubUrl(string $remote = 'origin'): array
+    protected function parseGitUrl(string $remote = 'origin'): array
     {
         $remoteUrl = $this->getRemoteUrl($remote);
 
@@ -316,14 +316,43 @@ SCRIPT;
             return [];
         }
 
-        // Parse owner and name from different Git URL formats
+        // Parse GitHub URLs
         // SSH format: git@github.com:owner/repo.git
         // HTTPS format: https://github.com/owner/repo.git
         if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return [
                 'owner' => $matches[1],
                 'name' => $matches[2],
+                'provider' => 'github',
             ];
+        }
+
+        // Parse GitLab URLs
+        // SSH format: git@gitlab.com:owner/repo.git
+        // HTTPS format: https://gitlab.com/owner/repo.git
+        // Custom instance: https://git.example.com/owner/repo.git
+        if (preg_match('#gitlab\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            return [
+                'owner' => $matches[1],
+                'name' => $matches[2],
+                'provider' => 'gitlab',
+            ];
+        }
+
+        // Parse custom GitLab instance URLs (e.g., self-hosted)
+        // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
+        // This is a fallback that matches any host that isn't github.com
+        // We check for the common GitLab URL structure: host/owner/repo
+        if (preg_match('#(?:git@|https?://)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            $host = $matches[1];
+            // Only treat as GitLab if it's not github.com (already handled above)
+            if ($host !== 'github.com') {
+                return [
+                    'owner' => $matches[2],
+                    'name' => $matches[3],
+                    'provider' => 'gitlab',
+                ];
+            }
         }
 
         return [];
@@ -390,7 +419,7 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string}
      */
     public function readProjectConfig(): array
     {
@@ -412,7 +441,7 @@ SCRIPT;
     /**
      * Writes the project-specific config file.
      *
-     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
@@ -934,5 +963,209 @@ SCRIPT;
         );
 
         return 'origin/' . $enteredBranch;
+    }
+
+    /**
+     * Gets the configured git provider from project config.
+     * Attempts auto-detection from remote URL if not configured.
+     *
+     * @return string|null The provider type ('github' or 'gitlab'), or null if not configured and cannot be detected
+     */
+    public function getGitProvider(): ?string
+    {
+        $config = $this->readProjectConfig();
+        $provider = $config['gitProvider'] ?? null;
+
+        if ($provider !== null && is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
+            return $provider;
+        }
+
+        // Try auto-detection from remote URL
+        $parsed = $this->parseGitUrl('origin');
+        if (isset($parsed['provider'])) {
+            return $parsed['provider'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Ensures the git provider is configured in project config.
+     * If not configured, attempts auto-detection from remote URL and prompts user if needed.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @return string The provider type ('github' or 'gitlab')
+     * @throws \RuntimeException If not in a git repository or if provider cannot be determined
+     */
+    public function ensureGitProviderConfigured(
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.git_provider_required'));
+        }
+
+        $config = $this->readProjectConfig();
+        $provider = $config['gitProvider'] ?? null;
+
+        // If configured and valid, return it
+        if (is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
+            return $provider;
+        }
+
+        // Try auto-detection from remote URL
+        $parsed = $this->parseGitUrl('origin');
+        $detected = $parsed['provider'] ?? null;
+
+        if ($detected !== null) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_provider_detected', ['provider' => $detected])
+            );
+        }
+
+        // Prompt user for provider
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_not_configured')
+        );
+
+        $defaultSuggestion = $detected ?? 'github';
+        $enteredProvider = $logger->choice(
+            $translator->trans('config.git_provider_prompt'),
+            ['github', 'gitlab'],
+            $defaultSuggestion
+        );
+
+        if ($enteredProvider === null || ! in_array($enteredProvider, ['github', 'gitlab'], true)) {
+            throw new \RuntimeException($translator->trans('config.git_provider_required'));
+        }
+
+        // Save to config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_saving')
+        );
+
+        $config['gitProvider'] = $enteredProvider;
+        $this->writeProjectConfig($config);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_saved', ['provider' => $enteredProvider])
+        );
+
+        return $enteredProvider;
+    }
+
+    /**
+     * Ensures the git token is configured for the given provider.
+     * Checks project config first, then global config.
+     * If not found, prompts user to configure it.
+     *
+     * @param string $providerType The provider type ('github' or 'gitlab')
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @param array<string, mixed> $globalConfig The global configuration array
+     * @return string|null The token string, or null if user skipped or error occurred
+     * @throws \RuntimeException If not in a git repository
+     */
+    public function ensureGitTokenConfigured(
+        string $providerType,
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator,
+        array $globalConfig
+    ): ?string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.git_token_required'));
+        }
+
+        $projectConfig = $this->readProjectConfig();
+
+        // Determine token key based on provider
+        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
+        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+        $oppositeTokenKey = $providerType === 'github' ? 'GITLAB_TOKEN' : 'GITHUB_TOKEN';
+        $oppositeLocalKey = $providerType === 'github' ? 'gitlabToken' : 'githubToken';
+        $oppositeProvider = $providerType === 'github' ? 'GitLab' : 'GitHub';
+
+        // Check if token already exists in project config
+        $token = $projectConfig[$tokenKey] ?? null;
+        if ($token !== null && is_string($token) && trim($token) !== '') {
+            return trim($token);
+        }
+
+        // Check if token exists in global config
+        $globalToken = $globalConfig[$globalTokenKey] ?? null;
+        if ($globalToken !== null && is_string($globalToken) && trim($globalToken) !== '') {
+            return trim($globalToken);
+        }
+
+        // Check for token type mismatch (opposite token exists)
+        $oppositeToken = $projectConfig[$oppositeLocalKey] ?? $globalConfig[$oppositeTokenKey] ?? null;
+        if ($oppositeToken !== null && is_string($oppositeToken) && trim($oppositeToken) !== '') {
+            $logger->warning(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_token_type_mismatch', [
+                    'provider' => ucfirst($providerType),
+                    'opposite' => $oppositeProvider,
+                ])
+            );
+        }
+
+        // No token found - prompt user
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_not_configured')
+        );
+
+        // Check if any tokens exist globally
+        $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
+            || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
+
+        if (! $hasAnyGlobalToken) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_token_global_suggestion')
+            );
+        }
+
+        $enteredToken = $logger->askHidden(
+            $translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)])
+        );
+
+        if ($enteredToken === null || empty(trim($enteredToken))) {
+            // User skipped - return null
+            return null;
+        }
+
+        $enteredToken = trim($enteredToken);
+
+        // Save to project config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_saving')
+        );
+
+        $projectConfig[$tokenKey] = $enteredToken;
+        $this->writeProjectConfig($projectConfig);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)])
+        );
+
+        return $enteredToken;
     }
 }

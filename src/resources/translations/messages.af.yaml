@@ -13,12 +13,12 @@ config:
       email_prompt: Voer jou Jira e-pos adres in
       token_prompt: Voer jou Jira API token in (laat leeg om bestaande te behou)
     git:
-      title: Git Verskaffer Konfigurasie
-      description: Dit is nodig vir die `stud submit` opdrag om Pull Requests te skep.
-      token_help: 'Jy kan ''n token hier genereer: https://github.com/settings/tokens'
-      auto_detect_note: 'Nota: Repository eienaar en naam sal outomaties vanaf jou git remote gedetecteer word.'
-      provider_prompt: Kies jou Git verskaffer
-      token_prompt: Voer jou Git verskaffer PAT in (laat leeg om bestaande te behou)
+      title: Git Verskaffer Token Konfigurasie
+      description: Stel tokens vir GitHub en/of GitLab op. Dit is globale verstekwaardes wat per repository oorskryf kan word.
+      token_help: 'Jy kan tokens hier genereer:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Nota: Jy kan albei tokens opstel, of net die wat jy nodig het. Die verskaffer sal per repository opgestel word.'
+      github_token_prompt: Voer jou GitHub PAT in (laat leeg om bestaande te behou of slaan oor)
+      gitlab_token_prompt: Voer jou GitLab PAT in (laat leeg om bestaande te behou of slaan oor)
     jira_transition:
       title: Jira Oorgang Konfigurasie
       description: Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Basis tak gekonfigureer: %branch%"
   base_branch_invalid: Basis tak '%branch%' bestaan nie op remote nie. Gaan asseblief die tak naam na.
   base_branch_required: Basis tak is vereis. Opdrag kan nie voortgaan sonder 'n geldige basis tak nie.
+  git_provider_not_configured: Git verskaffer nie gekonfigureer vir hierdie repository nie.
+  git_provider_prompt: Kies Git verskaffer vir hierdie repository
+  git_provider_detected: "Git verskaffer gedetecteer: %provider%"
+  git_provider_saving: Stoor Git verskaffer konfigurasie...
+  git_provider_saved: "Git verskaffer gekonfigureer: %provider%"
+  git_provider_required: Git verskaffer is vereis. Opdrag kan nie voortgaan sonder 'n geldige Git verskaffer nie.
+  git_token_not_configured: Git token nie gekonfigureer vir hierdie repository nie.
+  git_token_prompt: Voer jou %provider% PAT in (laat leeg om oor te slaan)
+  git_token_saving: Stoor Git token konfigurasie...
+  git_token_saved: "Git token gekonfigureer vir %provider%"
+  git_token_required: Git token is vereis. Opdrag kan nie voortgaan sonder 'n geldige Git token nie.
+  git_token_global_suggestion: "Wenk: Jy kan globale tokens opstel deur 'stud config:init' uit te voer"
+  git_token_type_mismatch: "Verskaffer is ingestel op '%provider%' maar net %opposite% token is gekonfigureer. Stel asseblief 'n %provider% token op of verander die verskaffer."
+  git_token_no_tokens: Geen Git tokens gekonfigureer nie. Voer asseblief 'stud config:init' uit om globale tokens op te stel, of stel 'n plaaslike token op vir hierdie repository.
+  migration:
+    git_token_detected: Ou Git token formaat gedetecteer. Migrasie vereis.
+    git_provider_prompt: Kies Git verskaffer vir jou token
+    git_migration_complete: "Git konfigurasie suksesvol gemigreer. Token gekonfigureer vir %provider%."
 item:
   start:
     section: Begin werk aan %key%

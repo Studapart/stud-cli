@@ -65,10 +65,10 @@ class InitHandler
         $this->logger->text(Logger::VERBOSITY_NORMAL, [
             $this->translator->trans('config.init.git.description'),
             $this->translator->trans('config.init.git.token_help'),
-            $this->translator->trans('config.init.git.auto_detect_note'),
+            $this->translator->trans('config.init.git.multiple_tokens_note'),
         ]);
-        $gitProvider = $this->logger->choice($this->translator->trans('config.init.git.provider_prompt'), ['github', 'gitlab'], $existingConfig['GIT_PROVIDER'] ?? 'github');
-        $gitToken = $this->logger->askHidden($this->translator->trans('config.init.git.token_prompt'));
+        $githubToken = $this->logger->askHidden($this->translator->trans('config.init.git.github_token_prompt'));
+        $gitlabToken = $this->logger->askHidden($this->translator->trans('config.init.git.gitlab_token_prompt'));
 
         // Jira Transition Configuration
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.title'));
@@ -83,8 +83,8 @@ class InitHandler
             'JIRA_URL' => rtrim($jiraUrl, '/'),
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
-            'GIT_PROVIDER' => $gitProvider,
-            'GIT_TOKEN' => $gitToken ?: ($existingConfig['GIT_TOKEN'] ?? null),
+            'GITHUB_TOKEN' => $githubToken ?: ($existingConfig['GITHUB_TOKEN'] ?? null),
+            'GITLAB_TOKEN' => $gitlabToken ?: ($existingConfig['GITLAB_TOKEN'] ?? null),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 

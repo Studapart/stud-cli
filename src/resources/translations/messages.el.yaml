@@ -13,12 +13,12 @@ config:
       email_prompt: Εισάγετε τη διεύθυνση email σας Jira
       token_prompt: Εισάγετε το token API σας Jira (αφήστε κενό για να διατηρήσετε το υπάρχον)
     git:
-      title: Ρύθμιση Παροχέα Git
-      description: Αυτό απαιτείται για την εντολή `stud submit` για να δημιουργήσει Pull Requests.
-      token_help: 'Μπορείτε να δημιουργήσετε ένα token εδώ: https://github.com/settings/tokens'
-      auto_detect_note: 'Σημείωση: Ο κάτοχος και το όνομα του αποθετηρίου θα εντοπιστούν αυτόματα από το git remote σας.'
-      provider_prompt: Επιλέξτε τον παροχέα Git σας
-      token_prompt: Εισάγετε το PAT του παροχέα Git σας (αφήστε κενό για να διατηρήσετε το υπάρχον)
+      title: Ρύθμιση Τoken Παροχέα Git
+      description: Ρυθμίστε tokens για GitHub και/ή GitLab. Αυτές είναι καθολικές προεπιλογές που μπορούν να παρακαμφθούν ανά αποθετήριο.
+      token_help: 'Μπορείτε να δημιουργήσετε tokens εδώ:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Σημείωση: Μπορείτε να ρυθμίσετε και τα δύο tokens, ή μόνο αυτά που χρειάζεστε. Ο παροχέας θα ρυθμιστεί ανά αποθετήριο.'
+      github_token_prompt: Εισάγετε το PAT GitHub σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
+      gitlab_token_prompt: Εισάγετε το PAT GitLab σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
     jira_transition:
       title: Ρύθμιση Μετάβασης Jira
       description: Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Βασικός κλάδος ρυθμισμένος: %branch%"
   base_branch_invalid: Ο βασικός κλάδος '%branch%' δεν υπάρχει στο απομακρυσμένο. Παρακαλώ ελέγξτε το όνομα του κλάδου.
   base_branch_required: Ο βασικός κλάδος είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο βασικό κλάδο.
+  git_provider_not_configured: Ο παροχέας Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
+  git_provider_prompt: Επιλέξτε τον παροχέα Git για αυτό το αποθετήριο
+  git_provider_detected: "Ανιχνεύτηκε παροχέας Git: %provider%"
+  git_provider_saving: Αποθήκευση ρύθμισης παροχέα Git...
+  git_provider_saved: "Παροχέας Git ρυθμισμένος: %provider%"
+  git_provider_required: Ο παροχέας Git είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο παροχέα Git.
+  git_token_not_configured: Το token Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
+  git_token_prompt: Εισάγετε το PAT %provider% σας (αφήστε κενό για παράλειψη)
+  git_token_saving: Αποθήκευση ρύθμισης token Git...
+  git_token_saved: "Token Git ρυθμισμένο για %provider%"
+  git_token_required: Το token Git είναι απαραίτητο. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο token Git.
+  git_token_global_suggestion: "Συμβουλή: Μπορείτε να ρυθμίσετε καθολικά tokens εκτελώντας 'stud config:init'"
+  git_token_type_mismatch: "Ο παροχέας είναι ρυθμισμένος σε '%provider%' αλλά έχει ρυθμιστεί μόνο το token %opposite%. Παρακαλώ ρυθμίστε ένα token %provider% ή αλλάξτε τον παροχέα."
+  git_token_no_tokens: Δεν έχουν ρυθμιστεί tokens Git. Παρακαλώ εκτελέστε 'stud config:init' για να ρυθμίσετε καθολικά tokens, ή ρυθμίστε ένα τοπικό token για αυτό το αποθετήριο.
+  migration:
+    git_token_detected: Ανιχνεύτηκε παλιά μορφή token Git. Απαιτείται μετάβαση.
+    git_provider_prompt: Επιλέξτε τον παροχέα Git για το token σας
+    git_migration_complete: "Η ρύθμιση Git μεταφέρθηκε με επιτυχία. Το token ρυθμίστηκε για %provider%."
 item:
   start:
     section: Έναρξη εργασίας στο %key%

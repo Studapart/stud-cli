@@ -14,12 +14,12 @@ config:
       email_prompt: "Enter your Jira email address"
       token_prompt: "Enter your Jira API token (leave blank to keep existing)"
     git:
-      title: "Git Provider Configuration"
-      description: "This is required for the `stud submit` command to create Pull Requests."
-      token_help: "You can generate a token here: https://github.com/settings/tokens"
-      auto_detect_note: "Note: Repository owner and name will be automatically detected from your git remote."
-      provider_prompt: "Select your Git provider"
-      token_prompt: "Enter your Git provider PAT (leave blank to keep existing)"
+      title: "Git Provider Token Configuration"
+      description: "Configure tokens for GitHub and/or GitLab. These are global defaults that can be overridden per repository."
+      token_help: "You can generate tokens here:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens"
+      multiple_tokens_note: "Note: You can configure both tokens, or just the ones you need. The provider will be configured per repository."
+      github_token_prompt: "Enter your GitHub PAT (leave blank to keep existing or skip)"
+      gitlab_token_prompt: "Enter your GitLab PAT (leave blank to keep existing or skip)"
     jira_transition:
       title: "Jira Transition Configuration"
       description: "Enable automatic transition to 'In Progress' when starting work on an issue."
@@ -38,7 +38,7 @@ config:
   error:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
-    missing_git_keys: "Your configuration file is missing required Git provider keys: %keys%\nPlease run \"stud config:init\" again."
+    missing_git_keys: "Your configuration file is missing required Git provider keys: %keys%\nPlease run \"stud config:init\" again.\nNote: At least one of GITHUB_TOKEN or GITLAB_TOKEN should be configured."
     missing_setup: "Configuration file not found. Please set up stud-cli before using this command."
     run_init_instruction: "Run 'stud config:init' to create your configuration file."
   base_branch_not_configured: "Base branch not configured for this repository."
@@ -48,6 +48,24 @@ config:
   base_branch_saved: "Base branch configured: %branch%"
   base_branch_invalid: "Base branch '%branch%' does not exist on remote. Please check the branch name."
   base_branch_required: "Base branch is required. Command cannot proceed without a valid base branch."
+  git_provider_not_configured: "Git provider not configured for this repository."
+  git_provider_prompt: "Select Git provider for this repository"
+  git_provider_detected: "Detected Git provider: %provider%"
+  git_provider_saving: "Saving Git provider configuration..."
+  git_provider_saved: "Git provider configured: %provider%"
+  git_provider_required: "Git provider is required. Command cannot proceed without a valid Git provider."
+  git_token_not_configured: "Git token not configured for this repository."
+  git_token_prompt: "Enter your %provider% PAT (leave blank to skip)"
+  git_token_saving: "Saving Git token configuration..."
+  git_token_saved: "Git token configured for %provider%"
+  git_token_required: "Git token is required. Command cannot proceed without a valid Git token."
+  git_token_global_suggestion: "Tip: You can configure global tokens by running 'stud config:init'"
+  git_token_type_mismatch: "Provider is set to '%provider%' but only %opposite% token is configured. Please configure a %provider% token or change the provider."
+  git_token_no_tokens: "No Git tokens configured. Please run 'stud config:init' to configure global tokens, or configure a local token for this repository."
+  migration:
+    git_token_detected: "Detected old Git token format. Migration required."
+    git_provider_prompt: "Select Git provider for your token"
+    git_migration_complete: "Git configuration migrated successfully. Token configured for %provider%."
 
 # Item Start Handler
 item:
