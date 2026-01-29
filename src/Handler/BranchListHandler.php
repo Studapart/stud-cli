@@ -15,6 +15,7 @@ class BranchListHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GithubProvider $githubProvider,
+        private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
     ) {
@@ -78,8 +79,8 @@ class BranchListHandler
     protected function determineBranchStatus(string $branch, bool $remoteExists): string
     {
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Checking merge status for {$branch}...</>");
-        $isMerged = $this->gitRepository->isBranchMergedInto($branch, 'develop');
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Branch {$branch} merged into develop: " . ($isMerged ? 'yes' : 'no') . "</>");
+        $isMerged = $this->gitRepository->isBranchMergedInto($branch, $this->baseBranch);
+        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Branch {$branch} merged into {$this->baseBranch}: " . ($isMerged ? 'yes' : 'no') . "</>");
 
         $hasPr = $this->hasPullRequest($branch);
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Branch {$branch} has PR: " . ($hasPr ? 'yes' : 'no') . "</>");

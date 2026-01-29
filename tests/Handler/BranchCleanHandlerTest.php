@@ -36,7 +36,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         // Note: confirm() expectations should be set per-test as needed
         // Quiet mode tests don't call confirm(), so no default expectation needed
 
-        $this->handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, $this->translationService, $this->logger);
+        $this->handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
     }
 
     public function testHandleWithNoBranchesToClean(): void
@@ -61,7 +61,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
-            return $branch === 'feat/PROJ-123' && $base === 'develop';
+            return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
         $this->gitRepository->expects($this->once())
@@ -83,7 +83,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main', 'feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
-            return $branch === 'feat/PROJ-123' && $base === 'develop';
+            return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
         $this->githubProvider->method('findPullRequestByBranchName')->willReturnCallback(function ($branch) {
             // Return closed PR for feat/PROJ-123, null for others
@@ -188,7 +188,7 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleWithGithubProviderNull(): void
     {
-        $handler = new BranchCleanHandler($this->gitRepository, null, $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $this->logger);
 
         $branches = ['feat/PROJ-123'];
         $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
@@ -535,7 +535,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willReturn($successfulProcess);
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly to avoid the full handle() flow
         $reflection = new \ReflectionClass($handler);
@@ -626,7 +626,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willReturn($successfulProcess);
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly
         $reflection = new \ReflectionClass($handler);
@@ -675,7 +675,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Force delete failed'));
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly
         $reflection = new \ReflectionClass($handler);

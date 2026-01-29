@@ -13,6 +13,7 @@ class DeployHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
     ) {
@@ -39,11 +40,12 @@ class DeployHandler
         $this->gitRepository->pushTags('origin');
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.deployed'));
 
-        // Update develop
-        $this->gitRepository->checkout('develop');
-        $this->gitRepository->pull('origin', 'develop');
+        // Update base branch
+        $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+        $this->gitRepository->checkout($baseBranchName);
+        $this->gitRepository->pull('origin', $baseBranchName);
         $this->gitRepository->rebase('main');
-        $this->gitRepository->forcePushWithLeaseRemote('origin', 'develop');
+        $this->gitRepository->forcePushWithLeaseRemote('origin', $baseBranchName);
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.updated_develop'));
 
         // Cleanup

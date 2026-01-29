@@ -22,7 +22,7 @@ class BranchListHandlerTest extends CommandTestCase
 
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $logger = $this->createMock(Logger::class);
-        $this->handler = new BranchListHandler($this->gitRepository, $this->githubProvider, $this->translationService, $logger);
+        $this->handler = new BranchListHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $logger);
     }
 
     public function testHandleWithNoBranches(): void
@@ -44,7 +44,7 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
-            return $branch === 'feat/PROJ-123' && $base === 'develop';
+            return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
 
@@ -76,7 +76,7 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithGithubProviderNull(): void
     {
         $logger = $this->createMock(Logger::class);
-        $handler = new BranchListHandler($this->gitRepository, null, $this->translationService, $logger);
+        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $logger);
 
         $branches = ['feat/PROJ-123'];
         $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);

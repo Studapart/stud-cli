@@ -41,6 +41,13 @@ config:
     missing_git_keys: "Your configuration file is missing required Git provider keys: %keys%\nPlease run \"stud config:init\" again."
     missing_setup: "Configuration file not found. Please set up stud-cli before using this command."
     run_init_instruction: "Run 'stud config:init' to create your configuration file."
+  base_branch_not_configured: "Base branch not configured for this repository."
+  base_branch_prompt: "Enter base branch name"
+  base_branch_detected: "Detected base branch: %branch%"
+  base_branch_saving: "Saving base branch configuration..."
+  base_branch_saved: "Base branch configured: %branch%"
+  base_branch_invalid: "Base branch '%branch%' does not exist on remote. Please check the branch name."
+  base_branch_required: "Base branch is required. Command cannot proceed without a valid base branch."
 
 # Item Start Handler
 item:

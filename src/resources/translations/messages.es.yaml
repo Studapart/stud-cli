@@ -46,6 +46,13 @@ config:
       Por favor ejecute "stud config:init" nuevamente.'
     missing_setup: Archivo de configuración no encontrado. Por favor configure stud-cli antes de usar este comando.
     run_init_instruction: Ejecute 'stud config:init' para crear su archivo de configuración.
+  base_branch_not_configured: Rama base no configurada para este repositorio.
+  base_branch_prompt: Ingrese el nombre de la rama base
+  base_branch_detected: "Rama base detectada: %branch%"
+  base_branch_saving: Guardando configuración de rama base...
+  base_branch_saved: "Rama base configurada: %branch%"
+  base_branch_invalid: La rama base '%branch%' no existe en el remoto. Por favor verifique el nombre de la rama.
+  base_branch_required: La rama base es requerida. El comando no puede continuar sin una rama base válida.
 item:
   start:
     section: Iniciando trabajo en %key%

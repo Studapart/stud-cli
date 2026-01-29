@@ -327,6 +327,24 @@ function _get_logger(): Logger
 }
 
 /**
+ * Gets the configured base branch for the repository.
+ * Auto-detects or prompts user if not configured.
+ * Returns branch name with 'origin/' prefix for consistency.
+ */
+function _get_base_branch(): string
+{
+    static $baseBranch = null;
+    if ($baseBranch === null) {
+        $gitRepository = _get_git_repository();
+        $logger = _get_logger();
+        $translator = _get_translation_service();
+        $baseBranch = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator);
+    }
+
+    return $baseBranch;
+}
+
+/**
  * Gets the ErrorResponder instance.
  */
 function _get_error_responder(): ErrorResponder
@@ -637,7 +655,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 function config_init(): void
 {
     _load_constants();
-    $handler = new InitHandler(new FileSystem(), _get_config_path(), _get_translation_service(), _get_logger());
+    $handler = new InitHandler(FileSystem::createLocal(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -773,7 +791,7 @@ function items_start(
     string $key,
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
     $handler->handle(io(), $key);
 }
 
@@ -783,8 +801,9 @@ function items_takeover(
     string $key,
 ): void {
     _load_constants();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    $baseBranch = _get_base_branch();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
     exit($handler->handle(io(), $key));
 }
 
@@ -837,7 +856,7 @@ function branch_rename(
         $githubProvider,
         _get_translation_service(),
         _get_jira_config(),
-        DEFAULT_BASE_BRANCH,
+        _get_base_branch(),
         _get_logger(),
         _get_html_converter()
     );
@@ -850,7 +869,7 @@ function branches_list(): int
     _load_constants();
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
 
     return $handler->handle(io());
 }
@@ -863,7 +882,8 @@ function branches_clean(
     _load_constants();
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchCleanHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+    $baseBranch = _get_base_branch();
+    $handler = new BranchCleanHandler($gitRepository, $githubProvider, $baseBranch, _get_translation_service(), _get_logger());
 
     return $handler->handle(io(), $quiet);
 }
@@ -884,7 +904,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
     $handler->handle(io(), $isNew, $message);
 }
 
@@ -902,7 +922,7 @@ function flatten(
 
 ): void {
     _load_constants();
-    $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
+    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     exit($handler->handle(io()));
 }
 
@@ -963,7 +983,7 @@ function submit(
         _get_jira_service(),
         $githubProvider,
         _get_jira_config(),
-        DEFAULT_BASE_BRANCH,
+        _get_base_branch(),
         _get_translation_service(),
         _get_logger(),
         _get_html_converter()
@@ -1318,14 +1338,14 @@ function deploy(
     bool $clean = false
 ): void {
     _load_constants();
-    $handler = new DeployHandler(_get_git_repository(), _get_translation_service(), _get_logger());
+    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 
     // Clean up merged branches if requested (after deployment cleanup)
     if ($clean) {
         $gitRepository = _get_git_repository();
         $githubProvider = _get_github_provider();
-        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_translation_service(), _get_logger());
+        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
         $cleanHandler->handle(io(), true); // true = quiet mode (non-interactive)
     }
 }

@@ -46,6 +46,13 @@ config:
       Veuillez exécuter "stud config:init" à nouveau.'
     missing_setup: Fichier de configuration introuvable. Veuillez configurer stud-cli avant d'utiliser cette commande.
     run_init_instruction: Exécutez 'stud config:init' pour créer votre fichier de configuration.
+  base_branch_not_configured: Branche de base non configurée pour ce dépôt.
+  base_branch_prompt: Entrez le nom de la branche de base
+  base_branch_detected: "Branche de base détectée: %branch%"
+  base_branch_saving: Enregistrement de la configuration de la branche de base...
+  base_branch_saved: "Branche de base configurée: %branch%"
+  base_branch_invalid: "La branche de base '%branch%' n'existe pas sur le dépôt distant. Veuillez vérifier le nom de la branche."
+  base_branch_required: La branche de base est requise. La commande ne peut pas continuer sans une branche de base valide.
 item:
   start:
     section: Démarrage du travail sur %key%

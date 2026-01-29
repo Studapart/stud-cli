@@ -46,6 +46,13 @@ config:
       Voer asseblief "stud config:init" weer uit.'
     missing_setup: Konfigurasielêer nie gevind nie. Stel asseblief stud-cli op voordat u hierdie opdrag gebruik.
     run_init_instruction: Voer 'stud config:init' uit om jou konfigurasielêer te skep.
+  base_branch_not_configured: Basis tak nie gekonfigureer vir hierdie repository nie.
+  base_branch_prompt: Voer basis tak naam in
+  base_branch_detected: "Basis tak gedetecteer: %branch%"
+  base_branch_saving: Stoor basis tak konfigurasie...
+  base_branch_saved: "Basis tak gekonfigureer: %branch%"
+  base_branch_invalid: Basis tak '%branch%' bestaan nie op remote nie. Gaan asseblief die tak naam na.
+  base_branch_required: Basis tak is vereis. Opdrag kan nie voortgaan sonder 'n geldige basis tak nie.
 item:
   start:
     section: Begin werk aan %key%

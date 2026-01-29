@@ -46,6 +46,13 @@ config:
       Пожалуйста, выполните "stud config:init" снова.'
     missing_setup: Файл конфигурации не найден. Пожалуйста, настройте stud-cli перед использованием этой команды.
     run_init_instruction: Выполните 'stud config:init' для создания файла конфигурации.
+  base_branch_not_configured: Базовая ветка не настроена для этого репозитория.
+  base_branch_prompt: Введите имя базовой ветки
+  base_branch_detected: "Обнаружена базовая ветка: %branch%"
+  base_branch_saving: Сохранение конфигурации базовой ветки...
+  base_branch_saved: "Базовая ветка настроена: %branch%"
+  base_branch_invalid: Базовая ветка '%branch%' не существует в удаленном репозитории. Пожалуйста, проверьте имя ветки.
+  base_branch_required: Базовая ветка обязательна. Команда не может продолжить работу без действительной базовой ветки.
 item:
   start:
     section: Начало работы над %key%
