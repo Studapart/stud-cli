@@ -46,6 +46,13 @@ config:
       Vui lòng chạy "stud config:init" lại.'
     missing_setup: Không tìm thấy tệp cấu hình. Vui lòng thiết lập stud-cli trước khi sử dụng lệnh này.
     run_init_instruction: Chạy 'stud config:init' để tạo tệp cấu hình của bạn.
+  base_branch_not_configured: Nhánh cơ sở chưa được cấu hình cho kho lưu trữ này.
+  base_branch_prompt: Nhập tên nhánh cơ sở
+  base_branch_detected: "Đã phát hiện nhánh cơ sở: %branch%"
+  base_branch_saving: Đang lưu cấu hình nhánh cơ sở...
+  base_branch_saved: "Nhánh cơ sở đã được cấu hình: %branch%"
+  base_branch_invalid: "Nhánh cơ sở '%branch%' không tồn tại trên remote. Vui lòng kiểm tra tên nhánh."
+  base_branch_required: Nhánh cơ sở là bắt buộc. Lệnh không thể tiếp tục mà không có nhánh cơ sở hợp lệ.
 item:
   start:
     section: Bắt đầu làm việc trên %key%

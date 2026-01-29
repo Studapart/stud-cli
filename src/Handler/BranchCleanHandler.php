@@ -18,6 +18,7 @@ class BranchCleanHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GithubProvider $githubProvider,
+        private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
     ) {
@@ -273,18 +274,18 @@ class BranchCleanHandler
     }
 
     /**
-     * Checks if a branch is merged into develop.
+     * Checks if a branch is merged into the base branch.
      *
      * @param string $branch Branch name to check
      * @return bool True if branch is merged, false otherwise
      */
     protected function isBranchMerged(string $branch): bool
     {
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking if merged into develop...</>");
+        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking if merged into {$this->baseBranch}...</>");
 
         try {
-            $isMerged = $this->gitRepository->isBranchMergedInto($branch, 'develop');
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Merged into develop: " . ($isMerged ? 'yes' : 'no') . "</>");
+            $isMerged = $this->gitRepository->isBranchMergedInto($branch, $this->baseBranch);
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Merged into {$this->baseBranch}: " . ($isMerged ? 'yes' : 'no') . "</>");
 
             return $isMerged;
         } catch (\Exception $e) {

@@ -390,7 +390,7 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string}
      */
     public function readProjectConfig(): array
     {
@@ -412,7 +412,7 @@ SCRIPT;
     /**
      * Writes the project-specific config file.
      *
-     * @param array{projectKey?: string, transitionId?: int} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
@@ -778,5 +778,161 @@ SCRIPT;
         }
 
         return $branches;
+    }
+
+    /**
+     * Auto-detects the most likely base branch from remote branches.
+     * Checks branches in priority order: develop, main, master, dev, trunk.
+     *
+     * @return string|null The detected base branch name (without origin/ prefix), or null if none found
+     */
+    protected function detectBaseBranch(): ?string
+    {
+        $candidates = ['develop', 'main', 'master', 'dev', 'trunk'];
+        $remoteBranches = $this->getAllRemoteBranches('origin');
+        $remoteBranchesSet = array_flip($remoteBranches);
+
+        foreach ($candidates as $candidate) {
+            if (isset($remoteBranchesSet[$candidate])) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the configured base branch from project config.
+     * Returns the branch name with 'origin/' prefix for consistency with git commands.
+     *
+     * @return string The base branch name with 'origin/' prefix
+     * @throws \RuntimeException If base branch is not configured and cannot be auto-detected
+     */
+    protected function getBaseBranch(): string
+    {
+        $config = $this->readProjectConfig();
+        $baseBranchValue = $config['baseBranch'] ?? null;
+        if ($baseBranchValue !== null && is_string($baseBranchValue) && trim($baseBranchValue) !== '') {
+            $baseBranch = $baseBranchValue;
+            // Ensure origin/ prefix for consistency
+            if (! str_starts_with($baseBranch, 'origin/')) {
+                return 'origin/' . $baseBranch;
+            }
+
+            return $baseBranch;
+        }
+
+        // Try auto-detection
+        $detected = $this->detectBaseBranch();
+        if ($detected !== null) {
+            return 'origin/' . $detected;
+        }
+
+        throw new \RuntimeException('Base branch not configured and could not be auto-detected.');
+    }
+
+    /**
+     * Ensures the base branch is configured in project config.
+     * If not configured, attempts auto-detection and prompts user if needed.
+     * Validates that the configured branch exists on remote before saving.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @return string The base branch name with 'origin/' prefix
+     * @throws \RuntimeException If not in a git repository or if base branch validation fails
+     */
+    public function ensureBaseBranchConfigured(
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.base_branch_required'));
+        }
+
+        $config = $this->readProjectConfig();
+        $baseBranch = $config['baseBranch'] ?? null;
+
+        // If configured, validate it exists on remote
+        if ($baseBranch !== null && is_string($baseBranch) && ! empty($baseBranch)) {
+            // Remove origin/ prefix if present for validation
+            $branchName = str_replace('origin/', '', $baseBranch);
+            if ($this->remoteBranchExists('origin', $branchName)) {
+                // Return with origin/ prefix for consistency
+                if (! str_starts_with($baseBranch, 'origin/')) {
+                    return 'origin/' . $baseBranch;
+                }
+
+                return $baseBranch;
+            }
+
+            // Configured branch doesn't exist on remote, need to reconfigure
+            $logger->warning(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
+            );
+        }
+
+        // Try auto-detection
+        $detected = $this->detectBaseBranch();
+        $defaultSuggestion = $detected ?? 'develop';
+
+        if ($detected !== null) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.base_branch_detected', ['branch' => $detected])
+            );
+        }
+
+        // Prompt user for base branch
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_not_configured')
+        );
+
+        $enteredBranch = $logger->ask(
+            $translator->trans('config.base_branch_prompt'),
+            $defaultSuggestion,
+            function (?string $value): string {
+                if (empty(trim($value ?? ''))) {
+                    throw new \RuntimeException('Base branch name cannot be empty.');
+                }
+
+                return trim($value);
+            }
+        );
+
+        if ($enteredBranch === null || empty(trim($enteredBranch))) {
+            throw new \RuntimeException($translator->trans('config.base_branch_required'));
+        }
+
+        $enteredBranch = trim($enteredBranch);
+
+        // Validate branch exists on remote
+        if (! $this->remoteBranchExists('origin', $enteredBranch)) {
+            throw new \RuntimeException(
+                $translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch])
+            );
+        }
+
+        // Save to config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_saving')
+        );
+
+        $config['baseBranch'] = $enteredBranch;
+        $this->writeProjectConfig($config);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_saved', ['branch' => $enteredBranch])
+        );
+
+        return 'origin/' . $enteredBranch;
     }
 }

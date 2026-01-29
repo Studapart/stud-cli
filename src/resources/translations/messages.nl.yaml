@@ -46,6 +46,13 @@ config:
       Voer alstublieft "stud config:init" opnieuw uit.'
     missing_setup: Configuratiebestand niet gevonden. Stel alstublieft stud-cli in voordat u deze opdracht gebruikt.
     run_init_instruction: Voer 'stud config:init' uit om uw configuratiebestand te maken.
+  base_branch_not_configured: Basisbranch niet geconfigureerd voor deze repository.
+  base_branch_prompt: Voer basisbranchnaam in
+  base_branch_detected: "Basisbranch gedetecteerd: %branch%"
+  base_branch_saving: Basisbranchconfiguratie opslaan...
+  base_branch_saved: "Basisbranch geconfigureerd: %branch%"
+  base_branch_invalid: Basisbranch '%branch%' bestaat niet op remote. Controleer alstublieft de branchnaam.
+  base_branch_required: Basisbranch is vereist. Opdracht kan niet doorgaan zonder een geldige basisbranch.
 item:
   start:
     section: Werk starten op %key%

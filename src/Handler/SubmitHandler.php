@@ -45,7 +45,8 @@ class SubmitHandler
 
         // 2. Get current branch name and check if it is a base branch
         $branch = $this->gitRepository->getCurrentBranchName();
-        if (in_array($branch, ['develop', 'main', 'master'])) {
+        $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+        if ($branch === $baseBranchName || in_array($branch, ['main', 'master'])) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_base_branch'));
 
             return 1;
@@ -161,7 +162,8 @@ class SubmitHandler
 
         try {
             if ($this->githubProvider) {
-                $prRequestData = new PullRequestData($prTitle, $headBranch, 'develop', $prBody, $draft);
+                $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+                $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $draft);
                 $prData = $this->githubProvider->createPullRequest($prRequestData);
 
                 // Add labels to PR if any were provided

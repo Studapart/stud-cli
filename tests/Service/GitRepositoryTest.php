@@ -2262,4 +2262,572 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->assertSame([], $result);
     }
+
+    public function testDetectBaseBranchReturnsDevelopWhenPresent(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("abc123\trefs/heads/develop\n");
+
+        $reflection = new \ReflectionClass($this->gitRepository);
+        $method = $reflection->getMethod('detectBaseBranch');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gitRepository);
+
+        $this->assertSame('develop', $result);
+    }
+
+    public function testDetectBaseBranchReturnsMainWhenDevelopNotPresent(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("abc123\trefs/heads/main\n");
+
+        $reflection = new \ReflectionClass($this->gitRepository);
+        $method = $reflection->getMethod('detectBaseBranch');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gitRepository);
+
+        $this->assertSame('main', $result);
+    }
+
+    public function testDetectBaseBranchReturnsNullWhenNoCandidatesFound(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git ls-remote --heads origin')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("abc123\trefs/heads/feature-branch\n");
+
+        $reflection = new \ReflectionClass($this->gitRepository);
+        $method = $reflection->getMethod('detectBaseBranch');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gitRepository);
+
+        $this->assertNull($result);
+    }
+
+    public function testGetBaseBranchReturnsFromConfig(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['baseBranch' => 'main'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $process = $this->createMock(Process::class);
+            $this->processFactory->expects($this->once())
+                ->method('create')
+                ->with('git rev-parse --git-dir')
+                ->willReturn($process);
+
+            $process->expects($this->once())
+                ->method('run');
+            $process->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $reflection = new \ReflectionClass($this->gitRepository);
+            $method = $reflection->getMethod('getBaseBranch');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->gitRepository);
+
+            $this->assertSame('origin/main', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetBaseBranchReturnsFromConfigWithOriginPrefix(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['baseBranch' => 'origin/main'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $process = $this->createMock(Process::class);
+            $this->processFactory->expects($this->once())
+                ->method('create')
+                ->with('git rev-parse --git-dir')
+                ->willReturn($process);
+
+            $process->expects($this->once())
+                ->method('run');
+            $process->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $reflection = new \ReflectionClass($this->gitRepository);
+            $method = $reflection->getMethod('getBaseBranch');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->gitRepository);
+
+            $this->assertSame('origin/main', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetBaseBranchAutoDetectsWhenNotInConfig(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $process1 = $this->createMock(Process::class);
+            $process1->expects($this->once())
+                ->method('run');
+            $process1->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process1->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $process2 = $this->createMock(Process::class);
+            $process2->expects($this->once())
+                ->method('run');
+            $process2->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process2->expects($this->once())
+                ->method('getOutput')
+                ->willReturn("abc123\trefs/heads/develop\n");
+
+            $this->processFactory->expects($this->exactly(2))
+                ->method('create')
+                ->willReturnCallback(function ($command) use ($process1, $process2) {
+                    if (str_contains($command, 'rev-parse')) {
+                        return $process1;
+                    } elseif (str_contains($command, 'ls-remote')) {
+                        return $process2;
+                    }
+
+                    return $process1;
+                });
+
+            $reflection = new \ReflectionClass($this->gitRepository);
+            $method = $reflection->getMethod('getBaseBranch');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->gitRepository);
+
+            $this->assertSame('origin/develop', $result);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetBaseBranchThrowsExceptionWhenNotConfiguredAndCannotDetect(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $process1 = $this->createMock(Process::class);
+            $process1->expects($this->once())
+                ->method('run');
+            $process1->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process1->expects($this->once())
+                ->method('getOutput')
+                ->willReturn($configDir);
+
+            $process2 = $this->createMock(Process::class);
+            $process2->expects($this->once())
+                ->method('run');
+            $process2->expects($this->once())
+                ->method('isSuccessful')
+                ->willReturn(true);
+            $process2->expects($this->once())
+                ->method('getOutput')
+                ->willReturn('');
+
+            $this->processFactory->expects($this->exactly(2))
+                ->method('create')
+                ->willReturnCallback(function ($command) use ($process1, $process2) {
+                    if (str_contains($command, 'rev-parse')) {
+                        return $process1;
+                    } elseif (str_contains($command, 'ls-remote')) {
+                        return $process2;
+                    }
+
+                    return $process1;
+                });
+
+            $reflection = new \ReflectionClass($this->gitRepository);
+            $method = $reflection->getMethod('getBaseBranch');
+            $method->setAccessible(true);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Base branch not configured and could not be auto-detected.');
+
+            $method->invoke($this->gitRepository);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredReturnsConfiguredBranchWhenValid(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['baseBranch' => 'main'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/main\n");
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+
+            $this->assertSame('origin/main', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredReturnsConfiguredBranchWithOriginPrefix(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['baseBranch' => 'origin/main'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/main\n");
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+
+            $this->assertSame('origin/main', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredPromptsWhenConfiguredBranchInvalid(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['baseBranch' => 'nonexistent'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote --heads origin nonexistent')) {
+                    $process->method('getOutput')->willReturn(''); // remoteBranchExists returns false
+                } elseif (str_contains($command, 'ls-remote --heads origin')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/develop\n"); // detectBaseBranch finds develop
+                } elseif (str_contains($command, 'ls-remote --heads origin develop')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/develop\n"); // remoteBranchExists confirms develop
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('warning');
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            $logger->method('ask')->willReturn('develop');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+
+            $this->assertSame('origin/develop', $result);
+            $savedConfig = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+            $this->assertSame('develop', $savedConfig['baseBranch']);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredPromptsWhenNotConfiguredWithAutoDetection(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote --heads origin') && ! str_contains($command, 'main')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/main\n"); // detectBaseBranch finds main
+                } elseif (str_contains($command, 'ls-remote --heads origin main')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/main\n"); // remoteBranchExists confirms main
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            $logger->method('ask')->willReturn('main');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+
+            $this->assertSame('origin/main', $result);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredThrowsWhenNotInGitRepo(): void
+    {
+        $process = $this->createMock(Process::class);
+        $process->method('run');
+        $process->method('isSuccessful')->willReturn(false);
+
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturn('config.base_branch_required');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('config.base_branch_required');
+
+        $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+    }
+
+    public function testEnsureBaseBranchConfiguredThrowsWhenUserEntersInvalidBranch(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote --heads origin') && ! str_contains($command, 'invalid-branch')) {
+                    $process->method('getOutput')->willReturn(''); // detectBaseBranch finds nothing
+                } elseif (str_contains($command, 'ls-remote --heads origin invalid-branch')) {
+                    $process->method('getOutput')->willReturn(''); // remoteBranchExists returns false
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('ask')->willReturn('invalid-branch');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('config.base_branch_invalid');
+
+            $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredThrowsWhenUserEntersEmptyBranch(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote --heads origin')) {
+                    $process->method('getOutput')->willReturn(''); // detectBaseBranch finds nothing
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('ask')->willReturn(null);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('config.base_branch_required');
+
+            $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureBaseBranchConfiguredValidatorRejectsEmptyInput(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+
+        try {
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'ls-remote --heads origin develop')) {
+                    $process->method('getOutput')->willReturn("abc123\trefs/heads/develop\n");
+                } elseif (str_contains($command, 'ls-remote --heads origin')) {
+                    $process->method('getOutput')->willReturn(''); // detectBaseBranch finds nothing
+                }
+
+                return $process;
+            });
+
+            // Use real Logger to actually execute the validator closure
+            // We need to test the validator with empty input to cover lines 901-902
+            // Create a custom IO that will call the validator with empty string
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            // Mock ask() to actually call the validator with empty string first (to cover lines 901-902)
+            // then with a valid string (to cover line 905)
+            $logger->method('ask')->willReturnCallback(function ($question, $default, $validator) {
+                if ($validator !== null) {
+                    // First call validator with empty string to cover lines 901-902
+                    try {
+                        $validator('');
+                        $this->fail('Validator should throw for empty string');
+                    } catch (\RuntimeException $e) {
+                        $this->assertSame('Base branch name cannot be empty.', $e->getMessage());
+                    }
+
+                    // Then call with valid input to cover line 905
+                    return $validator('develop');
+                }
+
+                return 'develop';
+            });
+
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator);
+
+            $this->assertSame('origin/develop', $result);
+        } finally {
+            @rmdir($configDir);
+        }
+    }
 }
