@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Optimized
+- Optimize PR lookups for branch management commands to reduce GitHub API calls [SCi-45]
+  - `branches:list` and `branches:clean` now fetch all PRs once (1-2 API calls) instead of per-branch calls (20-40 calls)
+  - Added `GithubProvider::getAllPullRequests()` method with pagination support (handles 100+ PRs)
+  - Added `GithubProvider::hasNextPage()` helper to parse GitHub API Link headers for pagination
+  - `BranchListHandler` and `BranchCleanHandler` now use cached PR map for efficient lookups
+  - Graceful fallback to per-branch API calls if bulk fetch fails
+  - Maintains backward compatibility and handles edge cases (fork PRs, missing repo info)
+  - 100% test coverage for new code paths
+
 ### Added
 - Display technical error details from Git and API errors alongside user-friendly messages [SCI-41]
   - Created `GitException` and `ApiException` classes with `getTechnicalDetails()` method

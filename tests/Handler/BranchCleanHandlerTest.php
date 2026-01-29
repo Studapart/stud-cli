@@ -63,7 +63,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
             return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
-        $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
+        $this->githubProvider->method('getAllPullRequests')->willReturn([]);
         $this->gitRepository->expects($this->once())
             ->method('deleteBranch')
             ->with('feat/PROJ-123');
@@ -85,14 +85,17 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
             return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
-        $this->githubProvider->method('findPullRequestByBranchName')->willReturnCallback(function ($branch) {
-            // Return closed PR for feat/PROJ-123, null for others
-            if ($branch === 'feat/PROJ-123') {
-                return ['state' => 'closed', 'number' => 123];
-            }
-
-            return null;
-        });
+        $this->githubProvider->method('getAllPullRequests')->willReturn([
+            [
+                'number' => 123,
+                'state' => 'closed',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ]);
         // First confirm is for deleting branches, second is for deleting remote
         $this->logger->method('confirm')
             ->willReturnOnConsecutiveCalls(true, false); // Confirm deletion, but don't delete remote
@@ -155,7 +158,17 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
-        $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'open', 'number' => 123]);
+        $this->githubProvider->method('getAllPullRequests')->willReturn([
+            [
+                'number' => 123,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ]);
         $this->gitRepository->expects($this->never())
             ->method('deleteBranch');
 
@@ -214,6 +227,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willThrowException(new \Exception('API error'));
         // Should continue with merge-based logic when PR check fails
         $this->gitRepository->expects($this->once())
@@ -235,7 +249,17 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
-        $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
+        $this->githubProvider->method('getAllPullRequests')->willReturn([
+            [
+                'number' => 123,
+                'state' => 'closed',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ]);
         $this->logger->method('confirm')
             ->willReturnOnConsecutiveCalls(true, true); // Confirm deletion and remote deletion
 
@@ -687,5 +711,367 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         // Branch deletion failed, count should be 0
         $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithPrMapOptimization(): void
+    {
+        $branches = ['feat/PROJ-123', 'feat/PROJ-456'];
+        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
+        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+
+        // Mock getAllPullRequests to return PRs
+        $allPrs = [
+            [
+                'number' => 123,
+                'state' => 'open', // Open PR - should skip deletion
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+            [
+                'number' => 456,
+                'state' => 'closed', // Closed PR - can be deleted
+                'head' => [
+                    'ref' => 'feat/PROJ-456',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ];
+
+        $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
+        // Should not call findPullRequestByBranchName when PR map is used
+        $this->githubProvider->expects($this->never())->method('findPullRequestByBranchName');
+
+        $this->logger->method('confirm')->willReturn(true);
+        $this->gitRepository->expects($this->once())
+            ->method('deleteBranch')
+            ->with('feat/PROJ-456'); // Only closed PR branch should be deleted
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithPrMapFallbackOnError(): void
+    {
+        $branches = ['feat/PROJ-123'];
+        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
+        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+
+        // getAllPullRequests fails, should fall back to per-branch calls
+        $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
+        $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
+
+        $this->logger->method('confirm')->willReturn(true);
+        $this->gitRepository->expects($this->once())
+            ->method('deleteBranch')
+            ->with('feat/PROJ-123');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testBuildPrMapExcludesForkPrs(): void
+    {
+        $allPrs = [
+            [
+                'number' => 123,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+            [
+                'number' => 456,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-456',
+                    'repo' => ['full_name' => 'fork_owner/test_repo'], // Fork PR
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ];
+
+        $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('buildPrMap');
+        $method->setAccessible(true);
+
+        $prMap = $method->invoke($this->handler);
+
+        // Should only include PR from same repo, exclude fork PR
+        $this->assertCount(1, $prMap);
+        $this->assertArrayHasKey('feat/PROJ-123', $prMap);
+        $this->assertArrayNotHasKey('feat/PROJ-456', $prMap);
+    }
+
+    public function testBuildPrMapSkipsPrsWithoutHeadRef(): void
+    {
+        $allPrs = [
+            [
+                'number' => 123,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+            [
+                'number' => 456,
+                'state' => 'open',
+                'head' => [], // Missing ref
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+        ];
+
+        $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('buildPrMap');
+        $method->setAccessible(true);
+
+        $prMap = $method->invoke($this->handler);
+
+        // Should only include PR with head.ref
+        $this->assertCount(1, $prMap);
+        $this->assertArrayHasKey('feat/PROJ-123', $prMap);
+    }
+
+    public function testHasOpenPullRequestWithPrMap(): void
+    {
+        $prMap = [
+            'feat/PROJ-123' => [
+                'number' => 123,
+                'state' => 'open',
+                'head' => ['ref' => 'feat/PROJ-123'],
+            ],
+            'feat/PROJ-456' => [
+                'number' => 456,
+                'state' => 'closed',
+                'head' => ['ref' => 'feat/PROJ-456'],
+            ],
+        ];
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        // Branch with open PR
+        $this->assertTrue($method->invoke($this->handler, 'feat/PROJ-123', $prMap));
+
+        // Branch with closed PR
+        $this->assertFalse($method->invoke($this->handler, 'feat/PROJ-456', $prMap));
+
+        // Branch without PR
+        $this->assertFalse($method->invoke($this->handler, 'feat/PROJ-789', $prMap));
+    }
+
+    public function testBuildPrMapHandlesException(): void
+    {
+        // Test that buildPrMap handles exceptions gracefully
+        $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('buildPrMap');
+        $method->setAccessible(true);
+
+        $prMap = $method->invoke($this->handler);
+
+        // Should return empty map on exception
+        $this->assertSame([], $prMap);
+    }
+
+    public function testBuildPrMapSkipsPrsWithMissingRepoInfo(): void
+    {
+        $allPrs = [
+            [
+                'number' => 123,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-123',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+            [
+                'number' => 456,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-456',
+                    // Missing repo info
+                ],
+                'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
+            ],
+            [
+                'number' => 789,
+                'state' => 'open',
+                'head' => [
+                    'ref' => 'feat/PROJ-789',
+                    'repo' => ['full_name' => 'test_owner/test_repo'],
+                ],
+                // Missing base repo info
+            ],
+        ];
+
+        $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('buildPrMap');
+        $method->setAccessible(true);
+
+        $prMap = $method->invoke($this->handler);
+
+        // Should only include PR with complete repo info
+        $this->assertCount(1, $prMap);
+        $this->assertArrayHasKey('feat/PROJ-123', $prMap);
+        $this->assertArrayNotHasKey('feat/PROJ-456', $prMap);
+        $this->assertArrayNotHasKey('feat/PROJ-789', $prMap);
+    }
+
+    public function testHasOpenPullRequestWithNullGithubProvider(): void
+    {
+        $handler = new BranchCleanHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $this->logger);
+
+        $reflection = new \ReflectionClass($handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($handler, 'feat/PROJ-123', null);
+
+        $this->assertFalse($result);
+    }
+
+    public function testHasOpenPullRequestWithFallbackPathOpenPr(): void
+    {
+        // Test hasOpenPullRequest fallback when PR is open
+        $pr = [
+            'number' => 123,
+            'state' => 'open',
+            'head' => ['ref' => 'feat/PROJ-123'],
+        ];
+
+        $this->githubProvider->method('findPullRequestByBranchName')
+            ->with('feat/PROJ-123', 'all')
+            ->willReturn($pr);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+
+        $this->assertTrue($result);
+    }
+
+    public function testHasOpenPullRequestWithFallbackPathClosedPr(): void
+    {
+        // Test hasOpenPullRequest fallback when PR is closed
+        $pr = [
+            'number' => 123,
+            'state' => 'closed',
+            'head' => ['ref' => 'feat/PROJ-123'],
+        ];
+
+        $this->githubProvider->method('findPullRequestByBranchName')
+            ->with('feat/PROJ-123', 'all')
+            ->willReturn($pr);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+
+        $this->assertFalse($result);
+    }
+
+    public function testHasOpenPullRequestWithFallbackPathNoPr(): void
+    {
+        // Test hasOpenPullRequest fallback when no PR is found
+        $this->githubProvider->method('findPullRequestByBranchName')
+            ->with('feat/PROJ-123', 'all')
+            ->willReturn(null);
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+
+        $this->assertFalse($result);
+    }
+
+    public function testHasOpenPullRequestWithFallbackPathException(): void
+    {
+        // Test hasOpenPullRequest fallback when API call throws exception
+        $this->githubProvider->method('findPullRequestByBranchName')
+            ->with('feat/PROJ-123', 'all')
+            ->willThrowException(new \Exception('API error'));
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+
+        $this->assertFalse($result);
+    }
+
+    public function testHasOpenPullRequestWithPrMapOpenPr(): void
+    {
+        // Test hasOpenPullRequest with PR map when PR is open
+        $prMap = [
+            'feat/PROJ-123' => [
+                'number' => 123,
+                'state' => 'open',
+                'head' => ['ref' => 'feat/PROJ-123'],
+            ],
+        ];
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', $prMap);
+
+        $this->assertTrue($result);
+    }
+
+    public function testHasOpenPullRequestWithPrMapClosedPr(): void
+    {
+        // Test hasOpenPullRequest with PR map when PR is closed
+        $prMap = [
+            'feat/PROJ-123' => [
+                'number' => 123,
+                'state' => 'closed',
+                'head' => ['ref' => 'feat/PROJ-123'],
+            ],
+        ];
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('hasOpenPullRequest');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'feat/PROJ-123', $prMap);
+
+        $this->assertFalse($result);
     }
 }

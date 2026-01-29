@@ -178,6 +178,9 @@ class BranchCleanHandler
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>");
 
+        // Fetch all PRs once and build PR map for optimized lookups
+        $prMap = $this->buildPrMap();
+
         $branchesToCleanLocal = [];
         $branchesToCleanRemote = [];
         $currentBranchSkipped = false;
@@ -193,7 +196,7 @@ class BranchCleanHandler
                 continue;
             }
 
-            if ($this->hasOpenPullRequest($branch)) {
+            if ($this->hasOpenPullRequest($branch, $prMap)) {
                 continue;
             }
 
@@ -300,14 +303,36 @@ class BranchCleanHandler
      * Checks if a branch has an open pull request.
      *
      * @param string $branch Branch name to check
+     * @param array<string, array<string, mixed>>|null $prMap Optional PR map for optimized lookups
      * @return bool True if branch has an open PR, false otherwise
      */
-    protected function hasOpenPullRequest(string $branch): bool
+    protected function hasOpenPullRequest(string $branch, ?array $prMap = null): bool
     {
         if ($this->githubProvider === null) {
             return false;
         }
 
+        // Use PR map if provided (optimized path)
+        if ($prMap !== null) {
+            if (! isset($prMap[$branch])) {
+                return false;
+            }
+
+            $pr = $prMap[$branch];
+            $prState = $pr['state'] ?? 'unknown';
+            $prNumber = $pr['number'] ?? '?';
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>PR #{$prNumber} found (state: {$prState})</>");
+
+            if ($prState === 'open') {
+                $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=yellow>Open PR found, skipping deletion</>");
+
+                return true;
+            }
+
+            return false;
+        }
+
+        // Fallback to per-branch API call (backward compatibility)
         try {
             $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking PR status...</>");
             $pr = $this->githubProvider->findPullRequestByBranchName($branch, 'all');
@@ -331,6 +356,54 @@ class BranchCleanHandler
             $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=red>PR check exception: {$e->getMessage()}</>");
 
             return false;
+        }
+    }
+
+    /**
+     * Builds a map of branch names to PR data for optimized lookups.
+     *
+     * @return array<string, array<string, mixed>> Map of branch name => PR data, or empty array if fetch fails
+     */
+    protected function buildPrMap(): array
+    {
+        if (! $this->githubProvider) {
+            return [];
+        }
+
+        try {
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Fetching all PRs for optimized lookups...</>");
+            $allPrs = $this->githubProvider->getAllPullRequests('all');
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Fetched " . count($allPrs) . " PRs</>");
+
+            $prMap = [];
+            foreach ($allPrs as $pr) {
+                // Extract branch name from head.ref
+                if (! isset($pr['head']['ref'])) {
+                    continue;
+                }
+
+                $branchName = $pr['head']['ref'];
+
+                // Only map PRs from the same repository (exclude fork PRs)
+                // PRs from the same repo have head.repo.full_name === base.repo.full_name
+                $headRepoFullName = $pr['head']['repo']['full_name'] ?? null;
+                $baseRepoFullName = $pr['base']['repo']['full_name'] ?? null;
+                if ($headRepoFullName === null || $baseRepoFullName === null || $headRepoFullName !== $baseRepoFullName) {
+                    continue;
+                }
+
+                $prMap[$branchName] = $pr;
+            }
+
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Built PR map with " . count($prMap) . " entries</>");
+
+            return $prMap;
+        } catch (\Exception $e) {
+            // Log warning and return empty map (will fall back to per-branch calls)
+            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Warning: Failed to fetch all PRs, falling back to per-branch lookups: {$e->getMessage()}</>");
+            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>PR map build exception: {$e->getMessage()}</>");
+
+            return [];
         }
     }
 
