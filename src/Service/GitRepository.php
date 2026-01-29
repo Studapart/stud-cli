@@ -290,25 +290,25 @@ SCRIPT;
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['owner'] ?? null;
     }
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['name'] ?? null;
     }
 
     /**
-     * Parses GitHub repository owner and name from a remote URL.
+     * Parses repository owner and name from a remote URL (supports GitHub and GitLab).
      *
      * @param string $remote The remote name (default: 'origin')
-     * @return array{owner?: string, name?: string} Array with 'owner' and 'name' keys, or empty array if parsing fails
+     * @return array{owner?: string, name?: string, provider?: string} Array with 'owner', 'name', and 'provider' keys, or empty array if parsing fails
      */
-    protected function parseGithubUrl(string $remote = 'origin'): array
+    protected function parseGitUrl(string $remote = 'origin'): array
     {
         $remoteUrl = $this->getRemoteUrl($remote);
 
@@ -316,14 +316,43 @@ SCRIPT;
             return [];
         }
 
-        // Parse owner and name from different Git URL formats
+        // Parse GitHub URLs
         // SSH format: git@github.com:owner/repo.git
         // HTTPS format: https://github.com/owner/repo.git
         if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return [
                 'owner' => $matches[1],
                 'name' => $matches[2],
+                'provider' => 'github',
             ];
+        }
+
+        // Parse GitLab URLs
+        // SSH format: git@gitlab.com:owner/repo.git
+        // HTTPS format: https://gitlab.com/owner/repo.git
+        // Custom instance: https://git.example.com/owner/repo.git
+        if (preg_match('#gitlab\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            return [
+                'owner' => $matches[1],
+                'name' => $matches[2],
+                'provider' => 'gitlab',
+            ];
+        }
+
+        // Parse custom GitLab instance URLs (e.g., self-hosted)
+        // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
+        // This is a fallback that matches any host that isn't github.com
+        // We check for the common GitLab URL structure: host/owner/repo
+        if (preg_match('#(?:git@|https?://)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            $host = $matches[1];
+            // Only treat as GitLab if it's not github.com (already handled above)
+            if ($host !== 'github.com') {
+                return [
+                    'owner' => $matches[2],
+                    'name' => $matches[3],
+                    'provider' => 'gitlab',
+                ];
+            }
         }
 
         return [];

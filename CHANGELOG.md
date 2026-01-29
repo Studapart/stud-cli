@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- GitLab support for Merge Requests and Git operations [SCI-43]
+  - Added `GitProviderInterface` to abstract GitHub and GitLab provider implementations
+  - Created `GitLabProvider` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
+  - Refactored `GitRepository` to support both GitHub and GitLab URL parsing (SSH and HTTPS formats)
+  - Updated all handlers to use `GitProviderInterface` instead of concrete `GithubProvider`
+  - Added provider factory function `_get_git_provider()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
+  - Support for self-hosted GitLab instances via optional `GITLAB_INSTANCE_URL` config
+  - All existing GitHub functionality remains intact (no regression)
+  - Comprehensive test coverage for GitLabProvider and updated GitRepository tests
+  - Updated documentation with GitLab token setup and configuration instructions
+
 ### Optimized
 - Optimize PR lookups for branch management commands to reduce GitHub API calls [SCi-45]
   - `branches:list` and `branches:clean` now fetch all PRs once (1-2 API calls) instead of per-branch calls (20-40 calls)

@@ -239,11 +239,18 @@ function _get_git_repository(): GitRepository
     return new GitRepository(_get_process_factory());
 }
 
-function _get_github_provider(): ?GithubProvider
+/**
+ * Gets the appropriate Git provider based on configuration.
+ *
+ * @return \App\Service\GitProviderInterface|null The provider instance or null if not configured
+ */
+function _get_git_provider(): ?\App\Service\GitProviderInterface
 {
     try {
         $gitConfig = _get_git_config();
-        if ($gitConfig['GIT_PROVIDER'] !== 'github') {
+        $providerType = $gitConfig['GIT_PROVIDER'] ?? null;
+
+        if (! $providerType || ! in_array($providerType, ['github', 'gitlab'], true)) {
             return null;
         }
 
@@ -255,15 +262,37 @@ function _get_github_provider(): ?GithubProvider
             return null;
         }
 
-        return new GithubProvider(
+        if ($providerType === 'github') {
+            return new GithubProvider(
+                $gitConfig['GIT_TOKEN'],
+                $repoOwner,
+                $repoName
+            );
+        }
+
+        // Support custom GitLab instance URL if provided
+        $instanceUrl = $gitConfig['GITLAB_INSTANCE_URL'] ?? null;
+
+        return new \App\Service\GitLabProvider(
             $gitConfig['GIT_TOKEN'],
             $repoOwner,
-            $repoName
+            $repoName,
+            $instanceUrl
         );
     } catch (\Exception $e) {
-        // Config might not exist or GitHub provider not configured
+        // Config might not exist or provider not configured
         return null;
     }
+}
+
+/**
+ * @deprecated Use _get_git_provider() instead. This function is kept for backward compatibility.
+ */
+function _get_github_provider(): ?GithubProvider
+{
+    $provider = _get_git_provider();
+
+    return $provider instanceof GithubProvider ? $provider : null;
 }
 
 function _get_translation_service(): TranslationService
@@ -817,43 +846,13 @@ function branch_rename(
     ?string $explicitName = null,
 ): void {
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
-
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        $repoOwner = $gitRepository->getRepositoryOwner();
-        $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
-
-        if (! $repoOwner || ! $repoName) {
-            io()->error([
-                'Could not determine repository owner or name from git remote.',
-                'Please ensure your repository has a remote named "origin" configured.',
-                'You can check with: git remote -v',
-            ]);
-            exit(1);
-        }
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
-    }
+    $gitProvider = _get_git_provider();
 
     $handler = new BranchRenameHandler(
         $gitRepository,
         _get_jira_service(),
-        $githubProvider,
+        $gitProvider,
         _get_translation_service(),
         _get_jira_config(),
         _get_base_branch(),
@@ -881,9 +880,9 @@ function branches_clean(
 ): int {
     _load_constants();
     $gitRepository = _get_git_repository();
-    $githubProvider = _get_github_provider();
+    $gitProvider = _get_git_provider();
     $baseBranch = _get_base_branch();
-    $handler = new BranchCleanHandler($gitRepository, $githubProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $handler = new BranchCleanHandler($gitRepository, $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
 
     return $handler->handle(io(), $quiet);
 }
@@ -944,19 +943,13 @@ function submit(
 ): void {
     _load_constants();
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
+    $gitProvider = _get_git_provider();
 
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        // Get repository owner and name from git remote at runtime
+    if ($gitProvider === null) {
+        $gitConfig = _get_git_config();
         $repoOwner = $gitRepository->getRepositoryOwner();
         $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
 
         if (! $repoOwner || ! $repoName) {
             io()->error([
@@ -967,21 +960,18 @@ function submit(
             exit(1);
         }
 
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
+        $providerType = $gitConfig['GIT_PROVIDER'] ?? 'unknown';
+        io()->error([
+            "Git provider '{$providerType}' is not supported or not properly configured.",
+            'Please check your configuration file and ensure GIT_PROVIDER is set to "github" or "gitlab".',
+        ]);
+        exit(1);
     }
 
     $handler = new SubmitHandler(
         $gitRepository,
         _get_jira_service(),
-        $githubProvider,
+        $gitProvider,
         _get_jira_config(),
         _get_base_branch(),
         _get_translation_service(),
@@ -997,43 +987,12 @@ function pr_comment(
     ?string $message = null,
 ): void {
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
-
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        // Get repository owner and name from git remote at runtime
-        $repoOwner = $gitRepository->getRepositoryOwner();
-        $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
-
-        if (! $repoOwner || ! $repoName) {
-            io()->error([
-                'Could not determine repository owner or name from git remote.',
-                'Please ensure your repository has a remote named "origin" configured.',
-                'You can check with: git remote -v',
-            ]);
-            exit(1);
-        }
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
-    }
+    $gitProvider = _get_git_provider();
 
     $handler = new PrCommentHandler(
         $gitRepository,
-        $githubProvider,
+        $gitProvider,
         _get_translation_service(),
         _get_logger()
     );

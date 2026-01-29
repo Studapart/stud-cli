@@ -9,7 +9,7 @@ use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class GithubProvider
+class GithubProvider implements GitProviderInterface
 {
     public function __construct(
         private readonly string $token,

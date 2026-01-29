@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
-use App\Service\GithubProvider;
+use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Service\TranslationService;
@@ -17,7 +17,7 @@ class BranchCleanHandler
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly ?GithubProvider $githubProvider,
+        private readonly ?GitProviderInterface $githubProvider,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger

@@ -1073,7 +1073,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertNull($owner);
     }
 
-    public function testGetRepositoryOwnerReturnsNullIfUrlDoesNotMatchPattern(): void
+    public function testGetRepositoryOwnerWithGitLabSshUrl(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -1089,6 +1089,73 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('getOutput')
             ->willReturn('git@gitlab.com:studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRepositoryOwnerWithGitLabHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://gitlab.com/studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRepositoryNameWithGitLabSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@gitlab.com:studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
+    public function testGetRepositoryOwnerReturnsNullIfUrlDoesNotMatchPattern(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        // Use a URL format that doesn't match any known pattern (file:// or invalid format)
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('file:///path/to/repo.git');
 
         $owner = $this->gitRepository->getRepositoryOwner('origin');
 
@@ -1193,9 +1260,10 @@ class GitRepositoryTest extends CommandTestCase
         $process->expects($this->once())
             ->method('isSuccessful')
             ->willReturn(true);
+        // Use a URL format that doesn't match any known pattern (file:// or invalid format)
         $process->expects($this->once())
             ->method('getOutput')
-            ->willReturn('git@gitlab.com:studapart/stud-cli.git');
+            ->willReturn('file:///path/to/repo.git');
 
         $name = $this->gitRepository->getRepositoryName('origin');
 
