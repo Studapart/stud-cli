@@ -13,12 +13,12 @@ config:
       email_prompt: Voer uw Jira e-mailadres in
       token_prompt: Voer uw Jira API-token in (laat leeg om bestaande te behouden)
     git:
-      title: Git Provider Configuratie
-      description: Dit is vereist voor het `stud submit` commando om Pull Requests te maken.
-      token_help: 'U kunt hier een token genereren: https://github.com/settings/tokens'
-      auto_detect_note: 'Opmerking: Repository eigenaar en naam worden automatisch gedetecteerd vanuit uw git remote.'
-      provider_prompt: Selecteer uw Git provider
-      token_prompt: Voer uw Git provider PAT in (laat leeg om bestaande te behouden)
+      title: Git Provider Token Configuratie
+      description: Configureer tokens voor GitHub en/of GitLab. Dit zijn globale standaardinstellingen die per repository kunnen worden overschreven.
+      token_help: 'U kunt hier tokens genereren:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Opmerking: U kunt beide tokens configureren, of alleen de tokens die u nodig heeft. De provider wordt per repository geconfigureerd.'
+      github_token_prompt: Voer uw GitHub PAT in (laat leeg om bestaande te behouden of overslaan)
+      gitlab_token_prompt: Voer uw GitLab PAT in (laat leeg om bestaande te behouden of overslaan)
     jira_transition:
       title: Jira Transitie Configuratie
       description: Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Basisbranch geconfigureerd: %branch%"
   base_branch_invalid: Basisbranch '%branch%' bestaat niet op remote. Controleer alstublieft de branchnaam.
   base_branch_required: Basisbranch is vereist. Opdracht kan niet doorgaan zonder een geldige basisbranch.
+  git_provider_not_configured: Git provider niet geconfigureerd voor deze repository.
+  git_provider_prompt: Selecteer Git provider voor deze repository
+  git_provider_detected: "Git provider gedetecteerd: %provider%"
+  git_provider_saving: Git providerconfiguratie opslaan...
+  git_provider_saved: "Git provider geconfigureerd: %provider%"
+  git_provider_required: Git provider is vereist. Opdracht kan niet doorgaan zonder een geldige Git provider.
+  git_token_not_configured: Git token niet geconfigureerd voor deze repository.
+  git_token_prompt: Voer uw %provider% PAT in (laat leeg om over te slaan)
+  git_token_saving: Git tokenconfiguratie opslaan...
+  git_token_saved: "Git token geconfigureerd voor %provider%"
+  git_token_required: Git token is vereist. Opdracht kan niet doorgaan zonder een geldige Git token.
+  git_token_global_suggestion: "Tip: U kunt globale tokens configureren door 'stud config:init' uit te voeren"
+  git_token_type_mismatch: "Provider is ingesteld op '%provider%' maar alleen %opposite% token is geconfigureerd. Configureer alstublieft een %provider% token of wijzig de provider."
+  git_token_no_tokens: Geen Git tokens geconfigureerd. Voer alstublieft 'stud config:init' uit om globale tokens te configureren, of configureer een lokale token voor deze repository.
+  migration:
+    git_token_detected: Oude Git token formaat gedetecteerd. Migratie vereist.
+    git_provider_prompt: Selecteer Git provider voor uw token
+    git_migration_complete: "Git configuratie succesvol gemigreerd. Token geconfigureerd voor %provider%."
 item:
   start:
     section: Werk starten op %key%

@@ -116,10 +116,94 @@ function _get_config_path(): string
 }
 
 /**
+ * Migrates old Git configuration format to new format.
+ * Old format: GIT_PROVIDER + GIT_TOKEN
+ * New format: GITHUB_TOKEN + GITLAB_TOKEN (provider is per-repository)
+ *
+ * @param array<string, mixed> $config The current config array
+ * @return array<string, mixed> The migrated config array
+ */
+function _migrate_git_config(array $config): array
+{
+    // Check if migration is needed
+    $hasOldToken = isset($config['GIT_TOKEN']) && is_string($config['GIT_TOKEN']) && trim($config['GIT_TOKEN']) !== '';
+    $hasOldProvider = isset($config['GIT_PROVIDER']) && in_array($config['GIT_PROVIDER'], ['github', 'gitlab'], true);
+
+    // No old token, nothing to migrate
+    if (! $hasOldToken) {
+        return $config;
+    }
+
+    $oldToken = trim($config['GIT_TOKEN']);
+
+    // Case 1: Token + Provider -> Migrate automatically
+    if ($hasOldProvider) {
+        $provider = $config['GIT_PROVIDER'];
+        $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+        // Only migrate if new token key doesn't already exist
+        if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
+            $config[$newTokenKey] = $oldToken;
+        }
+
+        // Remove old keys
+        unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
+
+        // Save migrated config
+        $configPath = _get_config_path();
+        file_put_contents($configPath, Yaml::dump($config));
+
+        return $config;
+    }
+
+    // Case 2: Token but no Provider -> Prompt user
+    $translator = _get_translation_service();
+    $logger = _get_logger();
+
+    $logger->note(
+        Logger::VERBOSITY_NORMAL,
+        $translator->trans('config.migration.git_token_detected')
+    );
+
+    $provider = $logger->choice(
+        $translator->trans('config.migration.git_provider_prompt'),
+        ['github', 'gitlab'],
+        'github'
+    );
+
+    if ($provider === null || ! in_array($provider, ['github', 'gitlab'], true)) {
+        // User cancelled, don't migrate
+        return $config;
+    }
+
+    $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+    // Only migrate if new token key doesn't already exist
+    if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
+        $config[$newTokenKey] = $oldToken;
+    }
+
+    // Remove old keys
+    unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
+
+    // Save migrated config
+    $configPath = _get_config_path();
+    file_put_contents($configPath, Yaml::dump($config));
+
+    $logger->success(
+        Logger::VERBOSITY_NORMAL,
+        $translator->trans('config.migration.git_migration_complete', ['provider' => ucfirst($provider)])
+    );
+
+    return $config;
+}
+
+/**
  * Reads configuration from the YAML file.
  * Throws an exception if the config is not found.
  *
  * This function also triggers the version check on first call (after app initialization).
+ * It also performs migration from old config format if needed.
  *
  * @return array<string, mixed>
  */
@@ -145,7 +229,16 @@ function _get_config(): array
         exit(1);
     }
 
-    return Yaml::parseFile($configPath);
+    $config = Yaml::parseFile($configPath);
+
+    // Perform migration from old format if needed (only once per session)
+    static $migrationDone = false;
+    if (! $migrationDone) {
+        $migrationDone = true;
+        $config = _migrate_git_config($config);
+    }
+
+    return $config;
 }
 
 /**
@@ -168,22 +261,22 @@ function _get_jira_config(): array
 }
 
 /**
- * Gets and validates the Git provider configuration.
+ * Gets the Git provider token configuration from global config.
+ * Tokens are optional - at least one should be configured for Git operations.
  *
- * @return array<string, mixed>
+ * @return array<string, mixed> Global git token configuration
  */
 function _get_git_config(): array
 {
     $config = _get_config();
-    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN'], array_keys($config));
 
-    if (! empty($missingKeys)) {
-        $translator = _get_translation_service();
-        io()->error(explode("\n", $translator->trans('config.error.missing_git_keys', ['keys' => implode(', ', $missingKeys)])));
-        exit(1);
-    }
-
-    return $config;
+    // Tokens are optional - we don't require them to be present
+    // The provider will be determined per-repository
+    return [
+        'GITHUB_TOKEN' => $config['GITHUB_TOKEN'] ?? null,
+        'GITLAB_TOKEN' => $config['GITLAB_TOKEN'] ?? null,
+        'GITLAB_INSTANCE_URL' => $config['GITLAB_INSTANCE_URL'] ?? null,
+    ];
 }
 
 function _get_html_converter(): \App\Service\JiraHtmlConverter
@@ -241,20 +334,33 @@ function _get_git_repository(): GitRepository
 
 /**
  * Gets the appropriate Git provider based on configuration.
+ * Reads provider from project config, tokens from project config (with global fallback).
+ * Prompts user to configure provider and/or token if missing.
  *
  * @return \App\Service\GitProviderInterface|null The provider instance or null if not configured
  */
 function _get_git_provider(): ?\App\Service\GitProviderInterface
 {
     try {
-        $gitConfig = _get_git_config();
-        $providerType = $gitConfig['GIT_PROVIDER'] ?? null;
+        $gitRepository = _get_git_repository();
+        $logger = _get_logger();
+        $translator = _get_translation_service();
 
-        if (! $providerType || ! in_array($providerType, ['github', 'gitlab'], true)) {
+        // Get provider from project config (with auto-detection)
+        $providerType = $gitRepository->getGitProvider();
+        if ($providerType === null) {
+            // Try to ensure it's configured (will prompt if needed)
+            $providerType = $gitRepository->ensureGitProviderConfigured(
+                io(),
+                $logger,
+                $translator
+            );
+        }
+
+        if (! in_array($providerType, ['github', 'gitlab'], true)) {
             return null;
         }
 
-        $gitRepository = _get_git_repository();
         $repoOwner = $gitRepository->getRepositoryOwner();
         $repoName = $gitRepository->getRepositoryName();
 
@@ -262,19 +368,60 @@ function _get_git_provider(): ?\App\Service\GitProviderInterface
             return null;
         }
 
+        // Get tokens: project config first, then global config fallback
+        $projectConfig = $gitRepository->readProjectConfig();
+        $globalConfig = _get_git_config();
+
+        // Determine token keys based on provider
+        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
+        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+        // Check if token exists
+        $token = $projectConfig[$tokenKey] ?? $globalConfig[$globalTokenKey] ?? null;
+
+        // If token is missing, try to ensure it's configured (will prompt if needed)
+        if ($token === null || (is_string($token) && trim($token) === '')) {
+            $token = $gitRepository->ensureGitTokenConfigured(
+                $providerType,
+                io(),
+                $logger,
+                $translator,
+                $globalConfig
+            );
+
+            // If user skipped or token is still null, return null
+            if ($token === null || trim($token) === '') {
+                // Check if any tokens exist globally to provide helpful message
+                $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
+                    || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
+
+                if (! $hasAnyGlobalToken) {
+                    $logger->error(
+                        \App\Service\Logger::VERBOSITY_NORMAL,
+                        $translator->trans('config.git_token_no_tokens')
+                    );
+                }
+
+                return null;
+            }
+        }
+
+        $token = is_string($token) ? trim($token) : '';
+
         if ($providerType === 'github') {
             return new GithubProvider(
-                $gitConfig['GIT_TOKEN'],
+                $token,
                 $repoOwner,
                 $repoName
             );
         }
 
-        // Support custom GitLab instance URL if provided
-        $instanceUrl = $gitConfig['GITLAB_INSTANCE_URL'] ?? null;
+        // GitLab provider
+        // Instance URL: project config first, then global config fallback
+        $instanceUrl = $projectConfig['gitlabInstanceUrl'] ?? $globalConfig['GITLAB_INSTANCE_URL'] ?? null;
 
         return new \App\Service\GitLabProvider(
-            $gitConfig['GIT_TOKEN'],
+            $token,
             $repoOwner,
             $repoName,
             $instanceUrl
@@ -463,7 +610,8 @@ function _version_check_bootstrap(): void
 
     [$repoOwner, $repoName] = $nameParts;
 
-    // Get Git token from config if available (needed for private repositories)
+    // Get GitHub token from config if available (needed for private repositories)
+    // UpdateHandler is specifically for GitHub (updating stud-cli itself)
     // Read config file directly to avoid circular dependency with _get_config()
     $gitToken = null;
 
@@ -471,7 +619,8 @@ function _version_check_bootstrap(): void
         $configPath = _get_config_path();
         if (file_exists($configPath)) {
             $config = Yaml::parseFile($configPath);
-            $gitToken = $config['GIT_TOKEN'] ?? null;
+            // Try new format first, then fallback to old format for migration compatibility
+            $gitToken = $config['GITHUB_TOKEN'] ?? $config['GIT_TOKEN'] ?? null;
         }
     } catch (\Throwable $e) {
         // Config might not exist or be unreadable, that's okay - we'll try without token
@@ -1325,12 +1474,13 @@ function update(
         $binaryPath = __FILE__;
     }
 
-    // Get Git token from config if available (needed for private repositories)
+    // Get GitHub token from config if available (needed for private repositories)
+    // UpdateHandler is specifically for GitHub (updating stud-cli itself)
     $gitToken = null;
 
     try {
         $gitConfig = _get_git_config();
-        $gitToken = $gitConfig['GIT_TOKEN'] ?? null;
+        $gitToken = $gitConfig['GITHUB_TOKEN'] ?? null;
     } catch (\Exception $e) {
         // Config might not exist, that's okay - we'll try without token
     }

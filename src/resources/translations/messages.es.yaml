@@ -13,12 +13,12 @@ config:
       email_prompt: Ingrese su dirección de correo electrónico de Jira
       token_prompt: Ingrese su token de API de Jira (deje en blanco para mantener el existente)
     git:
-      title: Configuración del proveedor Git
-      description: Esto es necesario para el comando `stud submit` para crear Pull Requests.
-      token_help: 'Puede generar un token aquí: https://github.com/settings/tokens'
-      auto_detect_note: 'Nota: El propietario y el nombre del repositorio se detectarán automáticamente desde su remote git.'
-      provider_prompt: Seleccione su proveedor Git
-      token_prompt: Ingrese su PAT del proveedor Git (deje en blanco para mantener el existente)
+      title: Configuración de tokens del proveedor Git
+      description: Configure tokens para GitHub y/o GitLab. Estos son valores predeterminados globales que pueden ser sobrescritos por repositorio.
+      token_help: 'Puede generar tokens aquí:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Nota: Puede configurar ambos tokens, o solo los que necesite. El proveedor se configurará por repositorio.'
+      github_token_prompt: Ingrese su PAT de GitHub (deje en blanco para mantener el existente o omitir)
+      gitlab_token_prompt: Ingrese su PAT de GitLab (deje en blanco para mantener el existente o omitir)
     jira_transition:
       title: Configuración de transición de Jira
       description: Habilitar transición automática a 'En progreso' al iniciar trabajo en un ticket.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Rama base configurada: %branch%"
   base_branch_invalid: La rama base '%branch%' no existe en el remoto. Por favor verifique el nombre de la rama.
   base_branch_required: La rama base es requerida. El comando no puede continuar sin una rama base válida.
+  git_provider_not_configured: Proveedor Git no configurado para este repositorio.
+  git_provider_prompt: Seleccione el proveedor Git para este repositorio
+  git_provider_detected: "Proveedor Git detectado: %provider%"
+  git_provider_saving: Guardando configuración del proveedor Git...
+  git_provider_saved: "Proveedor Git configurado: %provider%"
+  git_provider_required: El proveedor Git es requerido. El comando no puede continuar sin un proveedor Git válido.
+  git_token_not_configured: Token Git no configurado para este repositorio.
+  git_token_prompt: Ingrese su PAT de %provider% (deje en blanco para omitir)
+  git_token_saving: Guardando configuración del token Git...
+  git_token_saved: "Token Git configurado para %provider%"
+  git_token_required: El token Git es requerido. El comando no puede continuar sin un token Git válido.
+  git_token_global_suggestion: "Consejo: Puede configurar tokens globales ejecutando 'stud config:init'"
+  git_token_type_mismatch: "El proveedor está configurado como '%provider%' pero solo el token %opposite% está configurado. Por favor configure un token %provider% o cambie el proveedor."
+  git_token_no_tokens: No hay tokens Git configurados. Por favor ejecute 'stud config:init' para configurar tokens globales, o configure un token local para este repositorio.
+  migration:
+    git_token_detected: Formato de token Git antiguo detectado. Migración requerida.
+    git_provider_prompt: Seleccione el proveedor Git para su token
+    git_migration_complete: "Configuración Git migrada exitosamente. Token configurado para %provider%."
 item:
   start:
     section: Iniciando trabajo en %key%

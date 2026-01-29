@@ -1247,6 +1247,94 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertNull($name);
     }
 
+    public function testGetRepositoryOwnerWithCustomGitLabInstanceSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@git.example.com:studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRepositoryOwnerWithCustomGitLabInstanceHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://git.example.com/studapart/stud-cli.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('studapart', $owner);
+    }
+
+    public function testGetRepositoryNameWithCustomGitLabInstanceSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@git.example.com:studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
+    public function testGetRepositoryNameWithCustomGitLabInstanceHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://git.example.com/studapart/stud-cli.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('stud-cli', $name);
+    }
+
     public function testGetRepositoryNameReturnsNullIfUrlDoesNotMatchPattern(): void
     {
         $process = $this->createMock(Process::class);
@@ -2895,6 +2983,622 @@ class GitRepositoryTest extends CommandTestCase
 
             $this->assertSame('origin/develop', $result);
         } finally {
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetGitProviderReturnsConfiguredProvider(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['gitProvider' => 'github'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $result = $this->gitRepository->getGitProvider();
+
+            $this->assertSame('github', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetGitProviderReturnsNullWhenNotConfigured(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                    $process->method('getOutput')->willReturn('file:///path/to/repo.git');
+                }
+
+                return $process;
+            });
+
+            $result = $this->gitRepository->getGitProvider();
+
+            $this->assertNull($result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredReturnsTokenFromProjectConfig(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['githubToken' => 'test_token'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                []
+            );
+
+            $this->assertSame('test_token', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredReturnsTokenFromGlobalConfig(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+
+            $globalConfig = ['GITHUB_TOKEN' => 'global_token'];
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                $globalConfig
+            );
+
+            $this->assertSame('global_token', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testGetGitProviderReturnsAutoDetectedProvider(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                    $process->method('getOutput')->willReturn('git@github.com:owner/repo.git');
+                }
+
+                return $process;
+            });
+
+            $result = $this->gitRepository->getGitProvider();
+
+            $this->assertSame('github', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitProviderConfiguredReturnsConfiguredProvider(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            $config = ['gitProvider' => 'gitlab'];
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+
+            $this->assertSame('gitlab', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitProviderConfiguredThrowsWhenNotInGitRepo(): void
+    {
+        $this->processFactory->method('create')->willReturnCallback(function ($command) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(false);
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturn('Git provider is required');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Git provider is required');
+
+        $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+    }
+
+    public function testEnsureGitTokenConfiguredReturnsTokenFromGlobalConfigForGitLab(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+
+            $globalConfig = ['GITLAB_TOKEN' => 'gitlab_token'];
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'gitlab',
+                $io,
+                $logger,
+                $translator,
+                $globalConfig
+            );
+
+            $this->assertSame('gitlab_token', $result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredThrowsWhenNotInGitRepo(): void
+    {
+        $this->processFactory->method('create')->willReturnCallback(function ($command) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(false);
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturn('Git token is required');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Git token is required');
+
+        $this->gitRepository->ensureGitTokenConfigured('github', $io, $logger, $translator, []);
+    }
+
+    public function testEnsureGitTokenConfiguredWarnsOnTokenTypeMismatch(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->expects($this->once())
+                ->method('warning')
+                ->with(
+                    \App\Service\Logger::VERBOSITY_NORMAL,
+                    $this->stringContains('Provider is set to')
+                );
+            $logger->expects($this->once())
+                ->method('note')
+                ->with(
+                    \App\Service\Logger::VERBOSITY_NORMAL,
+                    $this->anything()
+                );
+            $logger->expects($this->once())
+                ->method('askHidden')
+                ->willReturn(null);
+
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'config.git_token_type_mismatch') {
+                    return "Provider is set to '{$params['provider']}' but only {$params['opposite']} token is configured.";
+                }
+
+                return $key;
+            });
+
+            $globalConfig = ['GITLAB_TOKEN' => 'gitlab_token'];
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                $globalConfig
+            );
+
+            $this->assertNull($result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredShowsGlobalSuggestionWhenNoTokens(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->expects($this->exactly(2))
+                ->method('note')
+                ->with(
+                    \App\Service\Logger::VERBOSITY_NORMAL,
+                    $this->anything()
+                );
+            $logger->expects($this->once())
+                ->method('askHidden')
+                ->willReturn(null);
+
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                []
+            );
+
+            $this->assertNull($result);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitProviderConfiguredPromptsWhenNotConfiguredWithAutoDetection(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                    $process->method('getOutput')->willReturn('git@gitlab.com:owner/repo.git');
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            $logger->method('choice')->willReturn('gitlab');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+
+            $this->assertSame('gitlab', $result);
+            $savedConfig = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+            $this->assertSame('gitlab', $savedConfig['gitProvider']);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitProviderConfiguredPromptsWhenNotConfiguredWithoutAutoDetection(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                    $process->method('getOutput')->willReturn('file:///path/to/repo.git');
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            $logger->method('choice')->willReturn('github');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+
+            $this->assertSame('github', $result);
+            $savedConfig = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+            $this->assertSame('github', $savedConfig['gitProvider']);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitProviderConfiguredThrowsWhenInvalidChoice(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                    $process->method('getOutput')->willReturn('file:///path/to/repo.git');
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('choice')->willReturn(null);
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturn('Git provider is required');
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Git provider is required');
+
+            $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredPromptsAndSavesToken(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('text');
+            $logger->method('success');
+            $logger->method('askHidden')->willReturn('new_token');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                []
+            );
+
+            $this->assertSame('new_token', $result);
+            $savedConfig = \Symfony\Component\Yaml\Yaml::parseFile($configPath);
+            $this->assertSame('new_token', $savedConfig['githubToken']);
+        } finally {
+            @unlink($configPath);
+            @rmdir($configDir);
+        }
+    }
+
+    public function testEnsureGitTokenConfiguredReturnsNullWhenUserSkips(): void
+    {
+        $configDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($configDir, 0755, true);
+        $configPath = $configDir . '/stud.config';
+
+        try {
+            file_put_contents($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
+
+            $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+                $process = $this->createMock(Process::class);
+                $process->method('run');
+                $process->method('isSuccessful')->willReturn(true);
+                if (str_contains($command, 'rev-parse')) {
+                    $process->method('getOutput')->willReturn($configDir);
+                }
+
+                return $process;
+            });
+
+            $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('note');
+            $logger->method('askHidden')->willReturn('');
+            $translator = $this->createMock(\App\Service\TranslationService::class);
+            $translator->method('trans')->willReturnArgument(0);
+
+            $result = $this->gitRepository->ensureGitTokenConfigured(
+                'github',
+                $io,
+                $logger,
+                $translator,
+                []
+            );
+
+            $this->assertNull($result);
+        } finally {
+            @unlink($configPath);
             @rmdir($configDir);
         }
     }

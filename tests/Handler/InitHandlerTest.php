@@ -84,8 +84,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
@@ -105,8 +105,8 @@ class InitHandlerTest extends CommandTestCase
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'existing@example.com',
             'JIRA_API_TOKEN' => 'existing_jira_token',
-            'GIT_PROVIDER' => 'github',
-            'GIT_TOKEN' => 'existing_git_token',
+            'GITHUB_TOKEN' => 'existing_github_token',
+            'GITLAB_TOKEN' => 'existing_gitlab_token',
         ];
 
         $this->fileSystem->expects($this->once())
@@ -123,8 +123,8 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_URL' => 'https://new-jira.example.com',
                     'JIRA_EMAIL' => 'new@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token', // Should remain unchanged
-                    'GIT_PROVIDER' => 'gitlab',
-                    'GIT_TOKEN' => 'existing_git_token', // Should remain unchanged
+                    'GITHUB_TOKEN' => 'new_github_token',
+                    'GITLAB_TOKEN' => 'existing_gitlab_token', // Should remain unchanged
                 ])
             );
 
@@ -151,8 +151,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "https://new-jira.example.com/\n"); // New Jira URL
         fwrite($inputStream, "new@example.com\n"); // New Jira Email
         fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden)
-        fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
-        fwrite($inputStream, "existing_git_token\n"); // Git token (askHidden)
+        fwrite($inputStream, "new_github_token\n"); // GitHub token (askHidden)
+        fwrite($inputStream, "\n"); // GitLab token (skip, should preserve existing)
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -197,8 +197,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
@@ -218,8 +218,8 @@ class InitHandlerTest extends CommandTestCase
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'existing@example.com',
             'JIRA_API_TOKEN' => 'existing_jira_token',
-            'GIT_PROVIDER' => 'github',
-            'GIT_TOKEN' => 'existing_git_token',
+            'GITHUB_TOKEN' => 'existing_github_token',
+            'GITLAB_TOKEN' => 'existing_gitlab_token',
         ];
 
         $this->fileSystem->expects($this->once())
@@ -236,8 +236,8 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_URL' => 'https://jira.example.com',
                     'JIRA_EMAIL' => 'existing@example.com',
                     'JIRA_API_TOKEN' => 'existing_jira_token',
-                    'GIT_PROVIDER' => 'github',
-                    'GIT_TOKEN' => 'existing_git_token',
+                    'GITHUB_TOKEN' => 'existing_github_token',
+                    'GITLAB_TOKEN' => 'existing_gitlab_token',
                 ])
             );
 
@@ -264,8 +264,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
         fwrite($inputStream, "\n"); // Press Enter without input for Jira token (askHidden returns null/empty, should preserve existing)
-        fwrite($inputStream, "\n"); // Keep existing Git provider
-        fwrite($inputStream, "\n"); // Press Enter without input for Git token (askHidden returns null/empty, should preserve existing)
+        fwrite($inputStream, "\n"); // Press Enter without input for GitHub token (askHidden returns null/empty, should preserve existing)
+        fwrite($inputStream, "\n"); // Press Enter without input for GitLab token (askHidden returns null/empty, should preserve existing)
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -295,8 +295,8 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_URL' => 'https://jira.example.com',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
-                    'GIT_PROVIDER' => 'github',
-                    'GIT_TOKEN' => 'git_token',
+                    'GITHUB_TOKEN' => 'github_token',
+                    'GITLAB_TOKEN' => 'gitlab_token',
                 ])
             );
 
@@ -317,8 +317,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "https://jira.example.com/\n"); // Jira URL with trailing slash
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "gitlab_token\n"); // GitLab token
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
@@ -332,7 +332,7 @@ class InitHandlerTest extends CommandTestCase
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
 
-    public function testHandleWithGitlabProvider(): void
+    public function testHandleWithBothTokens(): void
     {
         $this->fileSystem->expects($this->once())
             ->method('fileExists')
@@ -348,8 +348,8 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_URL' => 'jira_url',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
-                    'GIT_PROVIDER' => 'gitlab',
-                    'GIT_TOKEN' => 'git_token',
+                    'GITHUB_TOKEN' => 'github_token',
+                    'GITLAB_TOKEN' => 'gitlab_token',
                 ])
             );
 
@@ -370,8 +370,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "1\n"); // Git provider: gitlab is second option (index 1)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "gitlab_token\n"); // GitLab token
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
@@ -401,8 +401,7 @@ class InitHandlerTest extends CommandTestCase
                     'JIRA_URL' => 'jira_url',
                     'JIRA_EMAIL' => 'jira_email',
                     'JIRA_API_TOKEN' => 'jira_token',
-                    'GIT_PROVIDER' => 'github',
-                    'GIT_TOKEN' => 'git_token',
+                    'GITHUB_TOKEN' => 'github_token',
                 ])
             );
 
@@ -424,8 +423,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
@@ -470,8 +469,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
@@ -526,8 +525,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "0\n"); // Completion prompt: Yes is first option (index 0)
         rewind($inputStream);
@@ -582,8 +581,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         // No completion prompt expected for unsupported shell, but provide input as safeguard
         // in case environment variable wasn't properly reset from previous test
@@ -671,8 +670,8 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "0\n"); // Git provider: github is first option (index 0)
-        fwrite($inputStream, "git_token\n");
+        fwrite($inputStream, "github_token\n"); // GitHub token
+        fwrite($inputStream, "\n"); // GitLab token (skip)
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);

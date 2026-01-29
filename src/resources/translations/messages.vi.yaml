@@ -13,12 +13,12 @@ config:
       email_prompt: Nhập địa chỉ email Jira của bạn
       token_prompt: Nhập token API Jira của bạn (để trống để giữ nguyên giá trị hiện có)
     git:
-      title: Cấu hình nhà cung cấp Git
-      description: Điều này được yêu cầu cho lệnh `stud submit` để tạo Pull Requests.
-      token_help: 'Bạn có thể tạo token tại đây: https://github.com/settings/tokens'
-      auto_detect_note: 'Lưu ý: Chủ sở hữu và tên kho lưu trữ sẽ được tự động phát hiện từ git remote của bạn.'
-      provider_prompt: Chọn nhà cung cấp Git của bạn
-      token_prompt: Nhập PAT nhà cung cấp Git của bạn (để trống để giữ nguyên giá trị hiện có)
+      title: Cấu hình token nhà cung cấp Git
+      description: Cấu hình token cho GitHub và/hoặc GitLab. Đây là các giá trị mặc định toàn cục có thể được ghi đè theo từng kho lưu trữ.
+      token_help: 'Bạn có thể tạo token tại đây:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Lưu ý: Bạn có thể cấu hình cả hai token, hoặc chỉ những token bạn cần. Nhà cung cấp sẽ được cấu hình theo từng kho lưu trữ.'
+      github_token_prompt: Nhập PAT GitHub của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
+      gitlab_token_prompt: Nhập PAT GitLab của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
     jira_transition:
       title: Cấu hình chuyển đổi Jira
       description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Nhánh cơ sở đã được cấu hình: %branch%"
   base_branch_invalid: "Nhánh cơ sở '%branch%' không tồn tại trên remote. Vui lòng kiểm tra tên nhánh."
   base_branch_required: Nhánh cơ sở là bắt buộc. Lệnh không thể tiếp tục mà không có nhánh cơ sở hợp lệ.
+  git_provider_not_configured: Nhà cung cấp Git chưa được cấu hình cho kho lưu trữ này.
+  git_provider_prompt: Chọn nhà cung cấp Git cho kho lưu trữ này
+  git_provider_detected: "Đã phát hiện nhà cung cấp Git: %provider%"
+  git_provider_saving: Đang lưu cấu hình nhà cung cấp Git...
+  git_provider_saved: "Nhà cung cấp Git đã được cấu hình: %provider%"
+  git_provider_required: Nhà cung cấp Git là bắt buộc. Lệnh không thể tiếp tục mà không có nhà cung cấp Git hợp lệ.
+  git_token_not_configured: Token Git chưa được cấu hình cho kho lưu trữ này.
+  git_token_prompt: Nhập PAT %provider% của bạn (để trống để bỏ qua)
+  git_token_saving: Đang lưu cấu hình token Git...
+  git_token_saved: "Token Git đã được cấu hình cho %provider%"
+  git_token_required: Token Git là bắt buộc. Lệnh không thể tiếp tục mà không có token Git hợp lệ.
+  git_token_global_suggestion: "Mẹo: Bạn có thể cấu hình token toàn cục bằng cách chạy 'stud config:init'"
+  git_token_type_mismatch: "Nhà cung cấp được đặt thành '%provider%' nhưng chỉ có token %opposite% được cấu hình. Vui lòng cấu hình token %provider% hoặc thay đổi nhà cung cấp."
+  git_token_no_tokens: Không có token Git nào được cấu hình. Vui lòng chạy 'stud config:init' để cấu hình token toàn cục, hoặc cấu hình token cục bộ cho kho lưu trữ này.
+  migration:
+    git_token_detected: Đã phát hiện định dạng token Git cũ. Yêu cầu di chuyển.
+    git_provider_prompt: Chọn nhà cung cấp Git cho token của bạn
+    git_migration_complete: "Cấu hình Git đã được di chuyển thành công. Token đã được cấu hình cho %provider%."
 item:
   start:
     section: Bắt đầu làm việc trên %key%

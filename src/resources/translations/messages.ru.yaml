@@ -13,12 +13,12 @@ config:
       email_prompt: Введите ваш адрес электронной почты Jira
       token_prompt: Введите ваш API-токен Jira (оставьте пустым, чтобы сохранить существующий)
     git:
-      title: Настройка провайдера Git
-      description: Это необходимо для команды `stud submit` для создания Pull Requests.
-      token_help: 'Вы можете создать токен здесь: https://github.com/settings/tokens'
-      auto_detect_note: 'Примечание: Владелец и имя репозитория будут автоматически определены из вашего git remote.'
-      provider_prompt: Выберите ваш провайдер Git
-      token_prompt: Введите ваш PAT провайдера Git (оставьте пустым, чтобы сохранить существующий)
+      title: Настройка токенов провайдера Git
+      description: Настройте токены для GitHub и/или GitLab. Это глобальные значения по умолчанию, которые могут быть переопределены для каждого репозитория.
+      token_help: 'Вы можете создать токены здесь:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Примечание: Вы можете настроить оба токена или только те, которые вам нужны. Провайдер будет настроен для каждого репозитория.'
+      github_token_prompt: Введите ваш PAT GitHub (оставьте пустым, чтобы сохранить существующий или пропустить)
+      gitlab_token_prompt: Введите ваш PAT GitLab (оставьте пустым, чтобы сохранить существующий или пропустить)
     jira_transition:
       title: Настройка перехода Jira
       description: Включить автоматический переход в 'В работе' при начале работы над задачей.
@@ -53,6 +53,24 @@ config:
   base_branch_saved: "Базовая ветка настроена: %branch%"
   base_branch_invalid: Базовая ветка '%branch%' не существует в удаленном репозитории. Пожалуйста, проверьте имя ветки.
   base_branch_required: Базовая ветка обязательна. Команда не может продолжить работу без действительной базовой ветки.
+  git_provider_not_configured: Провайдер Git не настроен для этого репозитория.
+  git_provider_prompt: Выберите провайдера Git для этого репозитория
+  git_provider_detected: "Обнаружен провайдер Git: %provider%"
+  git_provider_saving: Сохранение конфигурации провайдера Git...
+  git_provider_saved: "Провайдер Git настроен: %provider%"
+  git_provider_required: Провайдер Git обязателен. Команда не может продолжить работу без действительного провайдера Git.
+  git_token_not_configured: Токен Git не настроен для этого репозитория.
+  git_token_prompt: Введите ваш PAT %provider% (оставьте пустым, чтобы пропустить)
+  git_token_saving: Сохранение конфигурации токена Git...
+  git_token_saved: "Токен Git настроен для %provider%"
+  git_token_required: Токен Git обязателен. Команда не может продолжить работу без действительного токена Git.
+  git_token_global_suggestion: "Совет: Вы можете настроить глобальные токены, выполнив 'stud config:init'"
+  git_token_type_mismatch: "Провайдер установлен на '%provider%', но настроен только токен %opposite%. Пожалуйста, настройте токен %provider% или измените провайдера."
+  git_token_no_tokens: Токены Git не настроены. Пожалуйста, выполните 'stud config:init' для настройки глобальных токенов или настройте локальный токен для этого репозитория.
+  migration:
+    git_token_detected: Обнаружен старый формат токена Git. Требуется миграция.
+    git_provider_prompt: Выберите провайдера Git для вашего токена
+    git_migration_complete: "Конфигурация Git успешно мигрирована. Токен настроен для %provider%."
 item:
   start:
     section: Начало работы над %key%
