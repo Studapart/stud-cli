@@ -253,6 +253,102 @@ class GithubProvider
     }
 
     /**
+     * Fetches all pull requests for the repository.
+     *
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'all')
+     * @return array<int, array<string, mixed>> Array of PR data arrays
+     */
+    public function getAllPullRequests(string $state = 'all'): array
+    {
+        if ($state === 'all') {
+            $openPrs = $this->getAllPullRequestsByState('open');
+            $closedPrs = $this->getAllPullRequestsByState('closed');
+
+            return array_merge($openPrs, $closedPrs);
+        }
+
+        return $this->getAllPullRequestsByState($state);
+    }
+
+    /**
+     * Fetches all pull requests for a specific state with pagination support.
+     *
+     * @param string $state The PR state: 'open' or 'closed'
+     * @return array<int, array<string, mixed>> Array of PR data arrays
+     */
+    protected function getAllPullRequestsByState(string $state): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
+        $queryParams = http_build_query(['state' => $state, 'per_page' => 100]);
+        $apiUrl .= '?' . $queryParams;
+
+        $allPrs = [];
+        $page = 1;
+
+        while (true) {
+            $pageUrl = $apiUrl . '&page=' . $page;
+            $response = $this->client->request('GET', $pageUrl);
+
+            if ($response->getStatusCode() !== 200) {
+                $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
+
+                throw new ApiException(
+                    'Failed to get all pull requests.',
+                    $technicalDetails,
+                    $response->getStatusCode()
+                );
+            }
+
+            $prs = $response->toArray();
+            $allPrs = array_merge($allPrs, $prs);
+
+            // Stop if no results
+            if (empty($prs)) {
+                break;
+            }
+
+            // Check for pagination - if no next page, stop before incrementing
+            if (! $this->hasNextPage($response)) {
+                break;
+            }
+
+            // There's a next page, increment for next iteration
+            ++$page;
+        }
+
+        return $allPrs;
+    }
+
+    /**
+     * Checks if there is a next page based on the Link header.
+     *
+     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response The HTTP response
+     * @return bool True if there is a next page, false otherwise
+     */
+    protected function hasNextPage(\Symfony\Contracts\HttpClient\ResponseInterface $response): bool
+    {
+        $headers = $response->getHeaders();
+
+        // If no 'link' header exists, there's no next page
+        if (! isset($headers['link'])) {
+            return false;
+        }
+
+        // If 'link' header is empty, there's no next page
+        if (empty($headers['link'])) {
+            return false;
+        }
+
+        // getHeaders() returns array<string, string|string[]>
+        // link header can be string or string[]
+        /** @var string|string[] $linkHeaderValue */
+        $linkHeaderValue = $headers['link'];
+        $linkHeader = is_array($linkHeaderValue) ? $linkHeaderValue[0] : $linkHeaderValue;
+
+        return str_contains($linkHeader, 'rel="next"');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function updatePullRequest(int $pullNumber, bool $draft): array
