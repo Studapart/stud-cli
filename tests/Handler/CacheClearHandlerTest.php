@@ -3,9 +3,12 @@
 namespace App\Tests\Handler;
 
 use App\Handler\CacheClearHandler;
+use App\Service\FileSystem;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -13,6 +16,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class CacheClearHandlerTest extends CommandTestCase
 {
     private CacheClearHandler $handler;
+    private FileSystem $fileSystem;
+    private FlysystemFilesystem $flysystem;
     private string $tempCacheDir;
     private string $tempCacheFile;
 
@@ -20,41 +25,29 @@ class CacheClearHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
+        // Create in-memory filesystem
+        $adapter = new InMemoryFilesystemAdapter();
+        $this->flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($this->flysystem);
+
         TestKernel::$translationService = $this->translationService;
         $logger = $this->createMock(Logger::class);
-        $this->handler = new CacheClearHandler($this->translationService, $logger);
+        $this->handler = new CacheClearHandler($this->translationService, $logger, $this->fileSystem);
 
-        // Create a temporary cache directory for testing
-        $this->tempCacheDir = sys_get_temp_dir() . '/stud-test-cache-' . uniqid();
+        // Use in-memory path for cache file
+        $this->tempCacheDir = '/test/home';
         $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
-        @mkdir(dirname($this->tempCacheFile), 0755, true);
-    }
 
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        // Clean up test files
-        if (file_exists($this->tempCacheFile)) {
-            @unlink($this->tempCacheFile);
-        }
-        if (is_dir(dirname($this->tempCacheFile))) {
-            @rmdir(dirname($this->tempCacheFile));
-        }
-        if (is_dir($this->tempCacheDir . '/.cache')) {
-            @rmdir($this->tempCacheDir . '/.cache');
-        }
-        if (is_dir($this->tempCacheDir)) {
-            @rmdir($this->tempCacheDir);
-        }
+        // Create directory structure in memory
+        $this->flysystem->createDirectory($this->tempCacheDir . '/.cache/stud');
     }
 
     public function testHandleWithExistingCacheFile(): void
     {
-        // Create cache file
-        file_put_contents($this->tempCacheFile, json_encode(['latest_version' => '1.0.0', 'timestamp' => time()]));
+        // Create cache file in in-memory filesystem
+        $this->flysystem->write($this->tempCacheFile, json_encode(['latest_version' => '1.0.0', 'timestamp' => time()]));
 
-        // Override HOME to use our temp directory
+        // Override HOME to use our test directory
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $this->tempCacheDir;
 
@@ -65,7 +58,7 @@ class CacheClearHandlerTest extends CommandTestCase
             $result = $this->handler->handle($io);
 
             $this->assertSame(0, $result);
-            $this->assertFileDoesNotExist($this->tempCacheFile);
+            $this->assertFalse($this->fileSystem->fileExists($this->tempCacheFile));
             // Test intent: success() was called, verified by return value and file deletion
         } finally {
             if ($originalHome !== null) {
@@ -78,12 +71,12 @@ class CacheClearHandlerTest extends CommandTestCase
 
     public function testHandleWithNonExistentCacheFile(): void
     {
-        // Ensure cache file doesn't exist
-        if (file_exists($this->tempCacheFile)) {
-            @unlink($this->tempCacheFile);
+        // Ensure cache file doesn't exist in in-memory filesystem
+        if ($this->flysystem->fileExists($this->tempCacheFile)) {
+            $this->flysystem->delete($this->tempCacheFile);
         }
 
-        // Override HOME to use our temp directory
+        // Override HOME to use our test directory
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $this->tempCacheDir;
 

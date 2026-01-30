@@ -118,14 +118,17 @@ class InitHandlerTest extends CommandTestCase
             ->method('filePutContents')
             ->with(
                 '/tmp/config.yml',
-                Yaml::dump([
-                    'LANGUAGE' => 'en',
-                    'JIRA_URL' => 'https://new-jira.example.com',
-                    'JIRA_EMAIL' => 'new@example.com',
-                    'JIRA_API_TOKEN' => 'existing_jira_token', // Should remain unchanged
-                    'GITHUB_TOKEN' => 'new_github_token',
-                    'GITLAB_TOKEN' => 'existing_gitlab_token', // Should remain unchanged
-                ])
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['LANGUAGE']) && $config['LANGUAGE'] === 'en'
+                        && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'https://new-jira.example.com'
+                        && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'new@example.com'
+                        && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'existing_jira_token'
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'new_github_token'
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token'
+                        && isset($config['migration_version']);
+                })
             );
 
         $this->fileSystem->expects($this->once())
@@ -231,14 +234,17 @@ class InitHandlerTest extends CommandTestCase
             ->method('filePutContents')
             ->with(
                 '/tmp/config.yml',
-                Yaml::dump([
-                    'LANGUAGE' => 'en',
-                    'JIRA_URL' => 'https://jira.example.com',
-                    'JIRA_EMAIL' => 'existing@example.com',
-                    'JIRA_API_TOKEN' => 'existing_jira_token',
-                    'GITHUB_TOKEN' => 'existing_github_token',
-                    'GITLAB_TOKEN' => 'existing_gitlab_token',
-                ])
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['LANGUAGE']) && $config['LANGUAGE'] === 'en'
+                        && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'https://jira.example.com'
+                        && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'existing@example.com'
+                        && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'existing_jira_token'
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'existing_github_token'
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token'
+                        && isset($config['migration_version']);
+                })
             );
 
         $this->fileSystem->expects($this->once())
@@ -290,14 +296,17 @@ class InitHandlerTest extends CommandTestCase
             ->method('filePutContents')
             ->with(
                 '/tmp/config.yml',
-                Yaml::dump([
-                    'LANGUAGE' => 'en',
-                    'JIRA_URL' => 'https://jira.example.com',
-                    'JIRA_EMAIL' => 'jira_email',
-                    'JIRA_API_TOKEN' => 'jira_token',
-                    'GITHUB_TOKEN' => 'github_token',
-                    'GITLAB_TOKEN' => 'gitlab_token',
-                ])
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['LANGUAGE']) && $config['LANGUAGE'] === 'en'
+                        && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'https://jira.example.com'
+                        && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
+                        && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token'
+                        && isset($config['migration_version']);
+                })
             );
 
         $this->fileSystem->expects($this->once())
@@ -343,14 +352,17 @@ class InitHandlerTest extends CommandTestCase
             ->method('filePutContents')
             ->with(
                 '/tmp/config.yml',
-                Yaml::dump([
-                    'LANGUAGE' => 'en',
-                    'JIRA_URL' => 'jira_url',
-                    'JIRA_EMAIL' => 'jira_email',
-                    'JIRA_API_TOKEN' => 'jira_token',
-                    'GITHUB_TOKEN' => 'github_token',
-                    'GITLAB_TOKEN' => 'gitlab_token',
-                ])
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['LANGUAGE']) && $config['LANGUAGE'] === 'en'
+                        && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'jira_url'
+                        && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
+                        && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token'
+                        && isset($config['migration_version']);
+                })
             );
 
         $this->fileSystem->expects($this->once())
@@ -396,13 +408,16 @@ class InitHandlerTest extends CommandTestCase
             ->method('filePutContents')
             ->with(
                 '/tmp/config.yml',
-                Yaml::dump([
-                    'LANGUAGE' => 'en',
-                    'JIRA_URL' => 'jira_url',
-                    'JIRA_EMAIL' => 'jira_email',
-                    'JIRA_API_TOKEN' => 'jira_token',
-                    'GITHUB_TOKEN' => 'github_token',
-                ])
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['LANGUAGE']) && $config['LANGUAGE'] === 'en'
+                        && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'jira_url'
+                        && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
+                        && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
+                        && isset($config['migration_version']);
+                })
             );
 
         $this->fileSystem->expects($this->once())
@@ -827,5 +842,16 @@ class InitHandlerTest extends CommandTestCase
                 putenv('LC_ALL');
             }
         }
+    }
+
+    public function testGetLatestMigrationIdWithEmptyArray(): void
+    {
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('getLatestMigrationId');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, []);
+
+        $this->assertNull($result);
     }
 }

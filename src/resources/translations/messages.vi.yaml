@@ -71,6 +71,18 @@ config:
     git_token_detected: Đã phát hiện định dạng token Git cũ. Yêu cầu di chuyển.
     git_provider_prompt: Chọn nhà cung cấp Git cho token của bạn
     git_migration_complete: "Cấu hình Git đã được di chuyển thành công. Token đã được cấu hình cho %provider%."
+    global:
+      running: "Đang chạy các di chuyển cấu hình toàn cục..."
+      complete: "Các di chuyển cấu hình toàn cục đã hoàn thành thành công."
+    project:
+      running: "Đang chạy các di chuyển cấu hình dự án..."
+      complete: "Các di chuyển cấu hình dự án đã hoàn thành thành công."
+    running: "Đang chạy di chuyển %id%: %description%"
+    error: "Di chuyển %id% thất bại: %error%"
+    version_updated: "Phiên bản di chuyển đã được cập nhật lên %version%"
+  missing_global_key: "Thiếu khóa cấu hình toàn cục bắt buộc: %key%"
+  missing_project_key: "Thiếu khóa cấu hình dự án bắt buộc: %key%"
+  auto_detected: "Tự động phát hiện %key%: %value%"
 item:
   start:
     section: Bắt đầu làm việc trên %key%

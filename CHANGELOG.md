@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Configuration migration system with automatic updates and config validation [SCI-46]
+  - Migration infrastructure: `MigrationInterface`, `AbstractMigration`, and `MigrationScope` enum for global and project migrations
+  - `MigrationRegistry` service discovers and filters migrations by version
+  - `MigrationExecutor` service executes migrations in order and updates version tracking
+  - `ConfigValidator` service validates command requirements and prompts for missing keys
+  - Global migrations run automatically during `stud update` (prerequisite migrations)
+  - Project migrations run on-demand when commands execute in a git repository (lazy migrations)
+  - Auto-detection for common configuration keys (e.g., `baseBranch` from git branches)
+  - Interactive prompting for missing mandatory configuration keys
+  - Non-interactive mode exits with helpful error messages for missing mandatory keys
+  - Existing Git token migration converted to proper migration class (`Migration202501150000001_GitTokenFormat`)
+  - Migration version tracking added to both global and project config files
+  - Config pass listener runs migrations and validates config before command execution
+  - Commands declare their required configuration keys
+  - Translation keys added for all supported languages (English, Greek, Afrikaans, Russian, Vietnamese, Spanish, Dutch, French)
+  - Comprehensive unit test coverage for all migration services and validators
+
 ## [3.3.0] - 2026-01-30
 
 ### Added

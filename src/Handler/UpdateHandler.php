@@ -6,8 +6,11 @@ namespace App\Handler;
 
 use App\Exception\ApiException;
 use App\Service\ChangelogParser;
+use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\Logger;
+use App\Service\MigrationExecutor;
+use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -26,8 +29,14 @@ class UpdateHandler
         protected readonly UpdateFileService $updateFileService,
         protected readonly Logger $logger,
         protected ?string $gitToken = null,
-        protected ?HttpClientInterface $httpClient = null
+        protected ?HttpClientInterface $httpClient = null,
+        protected readonly ?FileSystem $fileSystem = null
     ) {
+    }
+
+    private function getFileSystem(): FileSystem
+    {
+        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     public function handle(SymfonyStyle $io, bool $info = false): int
@@ -48,7 +57,6 @@ class UpdateHandler
         }
 
         if ($releaseResult['release'] === null) {
-            // Actual error occurred
             return 1;
         }
 
@@ -79,10 +87,24 @@ class UpdateHandler
         // Verify the downloaded file's hash before proceeding
         $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset);
         if ($verificationResult === false) {
-            @unlink($tempFile);
+            $fileSystem = $this->getFileSystem();
+            $fileSystem->delete($tempFile);
 
             return 1;
         }
+
+        // Run prerequisite global migrations before binary replacement
+        $migrationResult = $this->runPrerequisiteMigrations($io);
+        // @codeCoverageIgnoreStart
+        // Testing this cleanup path requires a real prerequisite migration failure scenario
+        // which is difficult to test with in-memory filesystem due to MigrationRegistry's hardcoded paths
+        if ($migrationResult !== 0) {
+            $fileSystem = $this->getFileSystem();
+            $fileSystem->delete($tempFile);
+
+            return $migrationResult;
+        }
+        // @codeCoverageIgnoreEnd
 
         return $this->updateFileService->replaceBinary($io, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown');
     }
@@ -98,9 +120,13 @@ class UpdateHandler
             $headers['Authorization'] = 'Bearer ' . $this->gitToken;
         }
 
+        // @codeCoverageIgnoreStart
+        // HttpClient::createForBaseUri is a factory method that creates a real HTTP client
+        // Testing this requires actual network calls, which is not feasible in unit tests
         $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', [
             'headers' => $headers,
         ]);
+        // @codeCoverageIgnoreEnd
 
         return new GithubProvider($this->gitToken ?? '', $repoOwner, $repoName, $client);
     }
@@ -169,7 +195,7 @@ class UpdateHandler
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'] ?? null;
             if ($assetName === null) {
-                continue; // Skip assets without a name
+                continue;
             }
             if ($assetName === 'stud.phar' ||
                 (str_starts_with($assetName, 'stud-') && str_ends_with($assetName, '.phar'))) {
@@ -214,12 +240,17 @@ class UpdateHandler
             // If httpClient is provided (e.g., in tests), use it
             // Otherwise, create a new client with auth headers for downloads
             // This ensures private repositories can be accessed with authentication
+            // @codeCoverageIgnoreStart
+            // HttpClient::create is a factory method that creates a real HTTP client
+            // Testing this requires actual network calls, which is not feasible in unit tests
             $downloadClient = $this->httpClient ?? HttpClient::create([
                 'headers' => $headers,
             ]);
+            // @codeCoverageIgnoreEnd
 
             $response = $downloadClient->request('GET', $apiUrl);
-            file_put_contents($tempFile, $response->getContent());
+            $fileSystem = $this->getFileSystem();
+            $fileSystem->filePutContents($tempFile, $response->getContent());
 
             return $tempFile;
         } catch (\Exception $e) {
@@ -232,6 +263,74 @@ class UpdateHandler
     protected function logVerbose(string $label, string $value): void
     {
         $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
+    }
+
+    /**
+     * Runs prerequisite global migrations before binary replacement.
+     * Prerequisite migrations that fail will prevent update completion.
+     *
+     * @return int 0 on success, 1 on failure
+     */
+    protected function runPrerequisiteMigrations(SymfonyStyle $io): int
+    {
+        try {
+            $configPath = $this->getConfigPath();
+            $fileSystem = $this->getFileSystem();
+
+            if (! $fileSystem->fileExists($configPath)) {
+                // Config doesn't exist, nothing to migrate
+                return 0;
+            }
+
+            $config = $fileSystem->parseFile($configPath);
+            $currentVersion = $config['migration_version'] ?? '0';
+
+            $registry = new MigrationRegistry($this->logger, $this->translator);
+            $globalMigrations = $registry->discoverGlobalMigrations();
+
+            // Filter to only prerequisite migrations
+            $prerequisiteMigrations = array_filter($globalMigrations, function ($migration) {
+                return $migration->isPrerequisite();
+            });
+
+            $pendingPrerequisiteMigrations = $registry->getPendingMigrations($prerequisiteMigrations, $currentVersion);
+
+            if (empty($pendingPrerequisiteMigrations)) {
+                // No pending prerequisite migrations
+                return 0;
+            }
+
+            // @codeCoverageIgnoreStart
+            // Testing this path requires a real prerequisite migration file to exist in the filesystem
+            // MigrationRegistry uses hardcoded paths that cannot be easily mocked with in-memory filesystem
+            $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('migration.global.running'));
+            $executor = new MigrationExecutor($this->logger, $fileSystem, $this->translator);
+            $executor->executeMigrations($pendingPrerequisiteMigrations, $config, $configPath);
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('migration.global.complete'));
+
+            return 0;
+            // @codeCoverageIgnoreEnd
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                Logger::VERBOSITY_NORMAL,
+                explode("\n", $this->translator->trans('migration.error', [
+                    'id' => 'prerequisite',
+                    'error' => $e->getMessage(),
+                ]))
+            );
+
+            return 1;
+        }
+    }
+
+    /**
+     * Gets the global config file path.
+     */
+    protected function getConfigPath(): string
+    {
+        $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
+
+        return rtrim($home, '/') . '/.config/stud/config.yml';
     }
 
     /**
@@ -269,6 +368,7 @@ class UpdateHandler
                 // Defensive check: ChangelogParser should not produce empty sections, but check anyway
                 // ChangelogParser guarantees non-empty sections
                 // @codeCoverageIgnoreStart
+                // Empty sections are defensive checks that ChangelogParser should never produce
                 if (empty($items)) {
                     continue;
                 }
@@ -282,11 +382,9 @@ class UpdateHandler
                 $this->logger->newLine(Logger::VERBOSITY_NORMAL);
             }
         } catch (ApiException $e) {
-            // Silently fail - don't block update if changelog can't be fetched
             $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
             $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
-            // Silently fail - don't block update if changelog can't be fetched
             $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
         }
     }

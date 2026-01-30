@@ -66,6 +66,18 @@ config:
     git_token_detected: "Detected old Git token format. Migration required."
     git_provider_prompt: "Select Git provider for your token"
     git_migration_complete: "Git configuration migrated successfully. Token configured for %provider%."
+    global:
+      running: "Running global configuration migrations..."
+      complete: "Global configuration migrations completed successfully."
+    project:
+      running: "Running project configuration migrations..."
+      complete: "Project configuration migrations completed successfully."
+    running: "Running migration %id%: %description%"
+    error: "Migration %id% failed: %error%"
+    version_updated: "Migration version updated to %version%"
+  missing_global_key: "Missing required global configuration key: %key%"
+  missing_project_key: "Missing required project configuration key: %key%"
+  auto_detected: "Auto-detected %key%: %value%"
 
 # Item Start Handler
 item:

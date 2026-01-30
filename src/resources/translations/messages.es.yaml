@@ -71,6 +71,18 @@ config:
     git_token_detected: Formato de token Git antiguo detectado. Migración requerida.
     git_provider_prompt: Seleccione el proveedor Git para su token
     git_migration_complete: "Configuración Git migrada exitosamente. Token configurado para %provider%."
+    global:
+      running: "Ejecutando migraciones de configuración global..."
+      complete: "Migraciones de configuración global completadas exitosamente."
+    project:
+      running: "Ejecutando migraciones de configuración del proyecto..."
+      complete: "Migraciones de configuración del proyecto completadas exitosamente."
+    running: "Ejecutando migración %id%: %description%"
+    error: "La migración %id% falló: %error%"
+    version_updated: "Versión de migración actualizada a %version%"
+  missing_global_key: "Falta la clave de configuración global requerida: %key%"
+  missing_project_key: "Falta la clave de configuración del proyecto requerida: %key%"
+  auto_detected: "Auto-detectado %key%: %value%"
 item:
   start:
     section: Iniciando trabajo en %key%

@@ -4,8 +4,11 @@ namespace App\Tests\Handler;
 
 use App\Handler\UpdateHandler;
 use App\Service\ChangelogParser;
+use App\Service\FileSystem;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -2745,5 +2748,612 @@ CHANGELOG;
         $this->assertNotNull($asset);
         $this->assertSame(2, $asset['id']);
         $this->assertSame('stud.phar', $asset['name']);
+    }
+
+    public function testRunPrerequisiteMigrationsWithNoConfigFile(): void
+    {
+        $input = new ArrayInput([]);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle($input, $output);
+
+        // Create handler with test config path that doesn't exist
+        $testConfigPath = '/test/config/that/does/not/exist.yml';
+        $testHandler = new class (
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $this->createMock(\App\Service\Logger::class),
+            null,
+            $this->httpClient,
+            $testConfigPath
+        ) extends UpdateHandler {
+            private string $testConfigPath;
+
+            public function __construct(
+                string $repoOwner,
+                string $repoName,
+                string $currentVersion,
+                string $binaryPath,
+                \App\Service\TranslationService $translator,
+                \App\Service\ChangelogParser $changelogParser,
+                \App\Service\UpdateFileService $updateFileService,
+                \App\Service\Logger $logger,
+                ?string $gitToken,
+                ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                string $testConfigPath,
+                ?\App\Service\FileSystem $testFileSystem = null
+            ) {
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                $this->testConfigPath = $testConfigPath;
+            }
+
+            protected function getConfigPath(): string
+            {
+                return $this->testConfigPath;
+            }
+        };
+
+        $reflection = new \ReflectionClass($testHandler);
+        $method = $reflection->getMethod('runPrerequisiteMigrations');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($testHandler, $io);
+
+        // Should return 0 when config doesn't exist
+        $this->assertSame(0, $result);
+    }
+
+    public function testRunPrerequisiteMigrationsWithException(): void
+    {
+        $input = new ArrayInput([]);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle($input, $output);
+
+        // Use in-memory filesystem with malformed YAML to trigger exception
+        $testConfigPath = '/test/config.yml';
+
+        // Create in-memory filesystem with invalid YAML
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $inMemoryFileSystem = new FileSystem($flysystem);
+
+        // Write invalid YAML to in-memory filesystem
+        $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->method('section')->willReturnCallback(function () {
+        });
+        $logger->method('error')->willReturnCallback(function () {
+        });
+
+        // Create handler that uses in-memory filesystem
+        $testHandler = new class (
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient,
+            $testConfigPath,
+            $inMemoryFileSystem
+        ) extends UpdateHandler {
+            private string $testConfigPath;
+            private FileSystem $testFileSystem;
+
+            public function __construct(
+                string $repoOwner,
+                string $repoName,
+                string $currentVersion,
+                string $binaryPath,
+                \App\Service\TranslationService $translator,
+                \App\Service\ChangelogParser $changelogParser,
+                \App\Service\UpdateFileService $updateFileService,
+                \App\Service\Logger $logger,
+                ?string $gitToken,
+                ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                string $testConfigPath,
+                FileSystem $testFileSystem
+            ) {
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                $this->testConfigPath = $testConfigPath;
+                $this->testFileSystem = $testFileSystem;
+            }
+
+            protected function getConfigPath(): string
+            {
+                return $this->testConfigPath;
+            }
+        };
+
+        $reflection = new \ReflectionClass($testHandler);
+        $method = $reflection->getMethod('runPrerequisiteMigrations');
+        $method->setAccessible(true);
+
+        // Should return 1 when exception occurs (invalid YAML)
+        $result = $method->invoke($testHandler, $io);
+        $this->assertSame(1, $result);
+    }
+
+    public function testHandleWithPrerequisiteMigrationFailure(): void
+    {
+        $input = new ArrayInput([]);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle($input, $output);
+
+        // Mock the release data
+        $releaseData = [
+            'tag_name' => '1.1.0',
+            'assets' => [
+                [
+                    'id' => 1,
+                    'name' => 'stud.phar',
+                    'browser_download_url' => 'https://example.com/stud.phar',
+                    'digest' => 'sha256:' . hash('sha256', 'fake phar content'),
+                ],
+            ],
+        ];
+
+        $releaseResponse = $this->createMock(ResponseInterface::class);
+        $releaseResponse->method('getStatusCode')->willReturn(200);
+        $releaseResponse->method('toArray')->willReturn($releaseData);
+
+        $downloadResponse = $this->createMock(ResponseInterface::class);
+        $downloadResponse->method('getContent')->willReturn('fake phar content');
+
+        $changelogResponse = $this->createMock(ResponseInterface::class);
+        $changelogResponse->method('getStatusCode')->willReturn(404);
+
+        $this->httpClient->expects($this->atLeast(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($releaseResponse, $downloadResponse, $changelogResponse) {
+                if (str_contains($url, '/releases/latest')) {
+                    return $releaseResponse;
+                }
+                if (str_contains($url, '/contents/CHANGELOG.md')) {
+                    return $changelogResponse;
+                }
+                if (str_contains($url, '/releases/assets/1')) {
+                    return $downloadResponse;
+                }
+
+                return $releaseResponse;
+            });
+
+        // Use in-memory filesystem with malformed YAML to trigger exception
+        $testConfigPath = '/test/config.yml';
+
+        // Create in-memory filesystem with invalid YAML
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $inMemoryFileSystem = new FileSystem($flysystem);
+
+        // Write invalid YAML to in-memory filesystem
+        $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
+
+        try {
+            $logger = $this->createMock(\App\Service\Logger::class);
+            $logger->method('section')->willReturnCallback(function () {
+            });
+            $logger->method('text')->willReturnCallback(function () {
+            });
+            $logger->method('error')->willReturnCallback(function () {
+            });
+            $logger->method('success')->willReturnCallback(function () {
+            });
+
+            $handler = new UpdateHandler(
+                'studapart',
+                'stud-cli',
+                '1.0.0',
+                $this->tempBinaryPath,
+                $this->translationService,
+                $this->changelogParser,
+                new UpdateFileService($this->translationService),
+                $logger,
+                null,
+                $this->httpClient
+            );
+
+            // Create a handler subclass that uses in-memory filesystem
+            $testHandler = new class (
+                'studapart',
+                'stud-cli',
+                '1.0.0',
+                $this->tempBinaryPath,
+                $this->translationService,
+                $this->changelogParser,
+                new UpdateFileService($this->translationService),
+                $logger,
+                null,
+                $this->httpClient,
+                $testConfigPath,
+                $inMemoryFileSystem
+            ) extends UpdateHandler {
+                private string $testConfigPath;
+                private FileSystem $testFileSystem;
+
+                public function __construct(
+                    string $repoOwner,
+                    string $repoName,
+                    string $currentVersion,
+                    string $binaryPath,
+                    \App\Service\TranslationService $translator,
+                    \App\Service\ChangelogParser $changelogParser,
+                    \App\Service\UpdateFileService $updateFileService,
+                    \App\Service\Logger $logger,
+                    ?string $gitToken,
+                    ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                    string $testConfigPath,
+                    FileSystem $testFileSystem
+                ) {
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                    $this->testConfigPath = $testConfigPath;
+                    $this->testFileSystem = $testFileSystem;
+                }
+
+                protected function getConfigPath(): string
+                {
+                    return $this->testConfigPath;
+                }
+            };
+
+            // Create a temp file in the in-memory filesystem that will be cleaned up
+            $tempFile = '/tmp/stud.phar.new';
+            $flysystem->write($tempFile, 'fake phar content');
+            $this->assertTrue($inMemoryFileSystem->fileExists($tempFile));
+
+            // Override downloadPhar to return our temp file path and verifyHash to return true
+            $updateFileService = $this->createMock(\App\Service\UpdateFileService::class);
+            $updateFileService->method('getBinaryPath')->willReturn($this->tempBinaryPath);
+            $updateFileService->method('verifyHash')->willReturn(true);
+
+            $testHandlerWithDownload = new class (
+                'studapart',
+                'stud-cli',
+                '1.0.0',
+                $this->tempBinaryPath,
+                $this->translationService,
+                $this->changelogParser,
+                $updateFileService,
+                $logger,
+                null,
+                $this->httpClient,
+                $testConfigPath,
+                $inMemoryFileSystem,
+                $tempFile
+            ) extends UpdateHandler {
+                private string $testConfigPath;
+                private string $tempFile;
+
+                public function __construct(
+                    string $repoOwner,
+                    string $repoName,
+                    string $currentVersion,
+                    string $binaryPath,
+                    \App\Service\TranslationService $translator,
+                    \App\Service\ChangelogParser $changelogParser,
+                    \App\Service\UpdateFileService $updateFileService,
+                    \App\Service\Logger $logger,
+                    ?string $gitToken,
+                    ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                    string $testConfigPath,
+                    \App\Service\FileSystem $testFileSystem,
+                    string $tempFile
+                ) {
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                    $this->testConfigPath = $testConfigPath;
+                    $this->tempFile = $tempFile;
+                }
+
+                protected function getConfigPath(): string
+                {
+                    return $this->testConfigPath;
+                }
+
+                protected function downloadPhar(array $pharAsset, string $repoOwner, string $repoName): ?string
+                {
+                    return $this->tempFile;
+                }
+            };
+
+            // Execute handle - this should trigger runPrerequisiteMigrations which will fail
+            // and return 1, causing handle to execute lines 99-102 (cleanup and return)
+            $result = $testHandlerWithDownload->handle($io);
+
+            // Should return 1 when prerequisite migration fails (lines 99-102)
+            $this->assertSame(1, $result);
+
+            // Verify temp file was cleaned up (line 100)
+            // The temp file should not exist since migration failed and cleanup was called
+            $this->assertFalse($inMemoryFileSystem->fileExists($tempFile));
+        } finally {
+            // No cleanup needed - using in-memory filesystem
+        }
+    }
+
+    public function testRunPrerequisiteMigrationsWithNoPendingMigrations(): void
+    {
+        $input = new ArrayInput([]);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle($input, $output);
+
+        // Create in-memory filesystem with config
+        // Since there are currently no prerequisite migrations (Migration202501150000001_GitTokenFormat
+        // has isPrerequisite() returning false), the prerequisiteMigrations array will be empty,
+        // which means pendingPrerequisiteMigrations will also be empty, triggering lines 281-283
+        $testConfigPath = '/test/config.yml';
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $inMemoryFileSystem = new FileSystem($flysystem);
+
+        $config = [
+            'migration_version' => '0', // Any version works since there are no prerequisite migrations
+            'GIT_TOKEN' => 'token',
+            'GIT_PROVIDER' => 'github',
+        ];
+        $flysystem->write($testConfigPath, \Symfony\Component\Yaml\Yaml::dump($config));
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        // Should NOT call section or success when there are no pending migrations
+        $logger->expects($this->never())
+            ->method('section');
+        $logger->expects($this->never())
+            ->method('success');
+
+        // Create handler that uses in-memory filesystem - this will use the REAL method
+        $testHandler = new class (
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient,
+            $testConfigPath,
+            $inMemoryFileSystem
+        ) extends UpdateHandler {
+            private string $testConfigPath;
+
+            public function __construct(
+                string $repoOwner,
+                string $repoName,
+                string $currentVersion,
+                string $binaryPath,
+                \App\Service\TranslationService $translator,
+                \App\Service\ChangelogParser $changelogParser,
+                \App\Service\UpdateFileService $updateFileService,
+                \App\Service\Logger $logger,
+                ?string $gitToken,
+                ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                string $testConfigPath,
+                \App\Service\FileSystem $testFileSystem
+            ) {
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                $this->testConfigPath = $testConfigPath;
+            }
+
+            protected function getConfigPath(): string
+            {
+                return $this->testConfigPath;
+            }
+        };
+
+        $reflection = new \ReflectionClass($testHandler);
+        $method = $reflection->getMethod('runPrerequisiteMigrations');
+        $method->setAccessible(true);
+
+        // Should return 0 when there are no pending migrations (lines 281-283)
+        // This tests the actual implementation with in-memory filesystem
+        $result = $method->invoke($testHandler, $io);
+        $this->assertSame(0, $result);
+    }
+
+    public function testGetFileSystemFallback(): void
+    {
+        // Test that getFileSystem() falls back to createLocal() when FileSystem is not injected
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $this->createMock(\App\Service\Logger::class),
+            null,
+            $this->httpClient,
+            null // No FileSystem injected
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $method = $reflection->getMethod('getFileSystem');
+        $method->setAccessible(true);
+
+        $fileSystem = $method->invoke($handler);
+        $this->assertInstanceOf(FileSystem::class, $fileSystem);
+    }
+
+    public function testDownloadPharWithAssetMissingId(): void
+    {
+        $pharAsset = [
+            'name' => 'stud.phar', // Missing 'id' key
+        ];
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem);
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient,
+            $fileSystem
+        );
+
+        $result = $this->callPrivateMethod($handler, 'downloadPhar', [$pharAsset, 'studapart', 'stud-cli']);
+        $this->assertNull($result);
+    }
+
+    public function testDownloadPharWithException(): void
+    {
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+        ];
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient->expects($this->once())
+            ->method('request')
+            ->willThrowException(new \Exception('Network error'));
+
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $fileSystem = new FileSystem($flysystem);
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $httpClient,
+            $fileSystem
+        );
+
+        $result = $this->callPrivateMethod($handler, 'downloadPhar', [$pharAsset, 'studapart', 'stud-cli']);
+        $this->assertNull($result);
+    }
+
+    public function testGetConfigPathWithHomeNotSet(): void
+    {
+        $originalHome = $_SERVER['HOME'] ?? null;
+        unset($_SERVER['HOME']);
+
+        try {
+            $handler = new UpdateHandler(
+                'studapart',
+                'stud-cli',
+                '1.0.0',
+                $this->tempBinaryPath,
+                $this->translationService,
+                $this->changelogParser,
+                new UpdateFileService($this->translationService),
+                $this->createMock(\App\Service\Logger::class),
+                null,
+                $this->httpClient
+            );
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Could not determine home directory.');
+
+            $reflection = new \ReflectionClass($handler);
+            $method = $reflection->getMethod('getConfigPath');
+            $method->setAccessible(true);
+            $method->invoke($handler);
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            }
+        }
+    }
+
+    public function testRunPrerequisiteMigrationsWithExceptionInRealMethod(): void
+    {
+        $input = new ArrayInput([]);
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle($input, $output);
+
+        $testConfigPath = '/test/config.yml';
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $inMemoryFileSystem = new FileSystem($flysystem);
+
+        // Write invalid YAML to trigger exception in parseFile
+        $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
+
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $testHandler = new class (
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $logger,
+            null,
+            $this->httpClient,
+            $testConfigPath,
+            $inMemoryFileSystem
+        ) extends UpdateHandler {
+            private string $testConfigPath;
+
+            public function __construct(
+                string $repoOwner,
+                string $repoName,
+                string $currentVersion,
+                string $binaryPath,
+                \App\Service\TranslationService $translator,
+                \App\Service\ChangelogParser $changelogParser,
+                \App\Service\UpdateFileService $updateFileService,
+                \App\Service\Logger $logger,
+                ?string $gitToken,
+                ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient,
+                string $testConfigPath,
+                \App\Service\FileSystem $testFileSystem
+            ) {
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $gitToken, $httpClient, $testFileSystem);
+                $this->testConfigPath = $testConfigPath;
+            }
+
+            protected function getConfigPath(): string
+            {
+                return $this->testConfigPath;
+            }
+        };
+
+        $reflection = new \ReflectionClass($testHandler);
+        $method = $reflection->getMethod('runPrerequisiteMigrations');
+        $method->setAccessible(true);
+
+        // Should return 1 when exception occurs (catch block)
+        $result = $method->invoke($testHandler, $io);
+        $this->assertSame(1, $result);
     }
 }

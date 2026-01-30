@@ -10,8 +10,15 @@ use Symfony\Component\Process\Process;
 
 class GitRepository
 {
-    public function __construct(private readonly ProcessFactory $processFactory)
+    public function __construct(
+        private readonly ProcessFactory $processFactory,
+        private readonly ?FileSystem $fileSystem = null
+    ) {
+    }
+
+    private function getFileSystem(): FileSystem
     {
+        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     public function getJiraKeyFromBranchName(): ?string
@@ -129,8 +136,9 @@ SCRIPT;
         }
         // @codeCoverageIgnoreEnd
 
-        file_put_contents($tempScript, $scriptContent);
-        chmod($tempScript, 0755);
+        $fileSystem = $this->getFileSystem();
+        $fileSystem->write($tempScript, $scriptContent);
+        $fileSystem->chmod($tempScript, 0755);
 
         try {
             // Set GIT_SEQUENCE_EDITOR to our script and run rebase
@@ -141,10 +149,10 @@ SCRIPT;
             $process->setEnv($env);
             $process->mustRun();
         } finally {
-            @unlink($tempScript);
+            $fileSystem->delete($tempScript);
             $backupFile = $tempScript . '.bak';
-            if (file_exists($backupFile)) {
-                @unlink($backupFile);
+            if ($fileSystem->fileExists($backupFile)) {
+                $fileSystem->delete($backupFile);
             }
         }
     }
@@ -419,41 +427,51 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string}
      */
     public function readProjectConfig(): array
     {
         $configPath = $this->getProjectConfigPath();
-        if (! file_exists($configPath)) {
+        $fileSystem = $this->getFileSystem();
+
+        if (! $fileSystem->fileExists($configPath)) {
             return [];
         }
 
-        $content = @file_get_contents($configPath);
-        if ($content === false) {
+        try {
+            $config = $fileSystem->parseFile($configPath);
+
+            return $config;
+        } catch (\Exception $e) {
             return [];
         }
-
-        $config = \Symfony\Component\Yaml\Yaml::parse($content);
-
-        return is_array($config) ? $config : [];
     }
 
     /**
      * Writes the project-specific config file.
+     * Preserves migration_version if it exists in the current config.
      *
-     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
         $configPath = $this->getProjectConfigPath();
         $configDir = dirname($configPath);
+        $fileSystem = $this->getFileSystem();
 
-        if (! is_dir($configDir)) {
+        if (! $fileSystem->isDir($configDir)) {
             throw new \RuntimeException("Git directory not found: {$configDir}");
         }
 
-        $yaml = \Symfony\Component\Yaml\Yaml::dump($config);
-        file_put_contents($configPath, $yaml);
+        // Preserve migration_version if it exists in current config
+        if ($fileSystem->fileExists($configPath)) {
+            $existingConfig = $this->readProjectConfig();
+            if (isset($existingConfig['migration_version'])) {
+                $config['migration_version'] = $existingConfig['migration_version'];
+            }
+        }
+
+        $fileSystem->dumpFile($configPath, $config);
     }
 
     /**

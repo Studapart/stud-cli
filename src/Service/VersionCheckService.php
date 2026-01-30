@@ -17,7 +17,8 @@ class VersionCheckService
         private readonly string $repoName,
         private readonly string $currentVersion,
         private ?string $gitToken = null,
-        private ?HttpClientInterface $httpClient = null
+        private ?HttpClientInterface $httpClient = null,
+        private ?FileSystem $fileSystem = null
     ) {
     }
 
@@ -60,10 +61,11 @@ class VersionCheckService
         $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
         $path = str_replace('~', $home, self::CACHE_FILE_PATH);
         $dir = dirname($path);
+        $fileSystem = $this->getFileSystem();
 
         // Ensure cache directory exists
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        if (! $fileSystem->isDir($dir)) {
+            $fileSystem->mkdir($dir, 0755, true);
         }
 
         return $path;
@@ -74,12 +76,15 @@ class VersionCheckService
      */
     protected function readCache(string $cachePath): ?array
     {
-        if (! file_exists($cachePath)) {
+        $fileSystem = $this->getFileSystem();
+
+        if (! $fileSystem->fileExists($cachePath)) {
             return null;
         }
 
-        $content = @file_get_contents($cachePath);
-        if ($content === false) {
+        try {
+            $content = $fileSystem->read($cachePath);
+        } catch (\RuntimeException $e) {
             return null;
         }
 
@@ -141,7 +146,16 @@ class VersionCheckService
             'timestamp' => time(),
         ];
 
-        @file_put_contents($cachePath, json_encode($data, JSON_PRETTY_PRINT));
+        $fileSystem = $this->getFileSystem();
+        $encoded = json_encode($data, JSON_PRETTY_PRINT);
+        // @codeCoverageIgnoreStart
+        // json_encode returning false is extremely rare (only with circular references or invalid UTF-8)
+        // and is difficult to test in isolation
+        if ($encoded === false) {
+            throw new \RuntimeException('Failed to encode cache data');
+        }
+        // @codeCoverageIgnoreEnd
+        $fileSystem->filePutContents($cachePath, $encoded);
     }
 
     protected function isNewerVersion(string $latestVersion): bool
@@ -150,5 +164,13 @@ class VersionCheckService
         $current = ltrim($this->currentVersion, 'v');
 
         return version_compare($latest, $current, '>');
+    }
+
+    /**
+     * Gets the FileSystem instance, creating one if not provided.
+     */
+    private function getFileSystem(): FileSystem
+    {
+        return $this->fileSystem ?? FileSystem::createLocal();
     }
 }

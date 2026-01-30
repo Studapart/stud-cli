@@ -122,6 +122,7 @@ class PrCommentHandler
         // @codeCoverageIgnoreEnd
 
         // Fallback: try file_get_contents on php://stdin
+        // NOTE: This is not a filesystem operation - we're reading from stdin stream
         // Reading from php://stdin in unit tests is not feasible as it requires actual process execution
         // @codeCoverageIgnoreStart
         if (! function_exists('posix_isatty') || ! posix_isatty(STDIN)) {

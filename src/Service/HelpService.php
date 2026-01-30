@@ -35,8 +35,14 @@ class HelpService
     ];
 
     public function __construct(
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly ?FileSystem $fileSystem = null
     ) {
+    }
+
+    private function getFileSystem(): FileSystem
+    {
+        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     /**
@@ -48,13 +54,16 @@ class HelpService
             return null;
         }
 
-        $readmeContent = @file_get_contents(self::README_PATH);
-        // File read failure is extremely rare and hard to simulate in tests
-        // @codeCoverageIgnoreStart
-        if ($readmeContent === false) {
+        $fileSystem = $this->getFileSystem();
+
+        try {
+            $readmeContent = $fileSystem->read(self::README_PATH);
+        } catch (\RuntimeException $e) {
+            // File read failure is extremely rare and hard to simulate in tests
+            // @codeCoverageIgnoreStart
             return null;
+            // @codeCoverageIgnoreEnd
         }
-        // @codeCoverageIgnoreEnd
 
         $pattern = self::COMMAND_PATTERNS[$commandName];
         $lines = explode("\n", $readmeContent);
