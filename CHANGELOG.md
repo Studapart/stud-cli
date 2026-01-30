@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-01-30
+
 ### Added
 - GitLab support for Merge Requests and Git operations [SCI-43]
   - Added `GitProviderInterface` to abstract GitHub and GitLab provider implementations
