@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Exception\GitException;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class GitRepository
@@ -147,9 +149,30 @@ SCRIPT;
         }
     }
 
-    public function deleteBranch(string $branch): void
+    public function deleteBranch(string $branch, ?bool $remoteExists = null): void
     {
+        // If remote state is explicitly false (remote doesn't exist), prune stale refs first
+        if ($remoteExists === false) {
+            $this->pruneRemoteTrackingRefs();
+        }
+
         $this->run("git branch -d {$branch}");
+    }
+
+    public function deleteBranchForce(string $branch): Process
+    {
+        return $this->run("git branch -D {$branch}");
+    }
+
+    /**
+     * Prunes stale remote-tracking references for the specified remote.
+     * This removes local refs for branches that no longer exist on the remote.
+     *
+     * @param string $remote The remote name (default: 'origin')
+     */
+    public function pruneRemoteTrackingRefs(string $remote = 'origin'): void
+    {
+        $this->run("git fetch --prune {$remote}");
     }
 
     public function deleteRemoteBranch(string $remote, string $branch): void
@@ -267,25 +290,25 @@ SCRIPT;
 
     public function getRepositoryOwner(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['owner'] ?? null;
     }
 
     public function getRepositoryName(string $remote = 'origin'): ?string
     {
-        $parsed = $this->parseGithubUrl($remote);
+        $parsed = $this->parseGitUrl($remote);
 
         return $parsed['name'] ?? null;
     }
 
     /**
-     * Parses GitHub repository owner and name from a remote URL.
+     * Parses repository owner and name from a remote URL (supports GitHub and GitLab).
      *
      * @param string $remote The remote name (default: 'origin')
-     * @return array{owner?: string, name?: string} Array with 'owner' and 'name' keys, or empty array if parsing fails
+     * @return array{owner?: string, name?: string, provider?: string} Array with 'owner', 'name', and 'provider' keys, or empty array if parsing fails
      */
-    protected function parseGithubUrl(string $remote = 'origin'): array
+    protected function parseGitUrl(string $remote = 'origin'): array
     {
         $remoteUrl = $this->getRemoteUrl($remote);
 
@@ -293,14 +316,43 @@ SCRIPT;
             return [];
         }
 
-        // Parse owner and name from different Git URL formats
+        // Parse GitHub URLs
         // SSH format: git@github.com:owner/repo.git
         // HTTPS format: https://github.com/owner/repo.git
         if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return [
                 'owner' => $matches[1],
                 'name' => $matches[2],
+                'provider' => 'github',
             ];
+        }
+
+        // Parse GitLab URLs
+        // SSH format: git@gitlab.com:owner/repo.git
+        // HTTPS format: https://gitlab.com/owner/repo.git
+        // Custom instance: https://git.example.com/owner/repo.git
+        if (preg_match('#gitlab\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            return [
+                'owner' => $matches[1],
+                'name' => $matches[2],
+                'provider' => 'gitlab',
+            ];
+        }
+
+        // Parse custom GitLab instance URLs (e.g., self-hosted)
+        // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
+        // This is a fallback that matches any host that isn't github.com
+        // We check for the common GitLab URL structure: host/owner/repo
+        if (preg_match('#(?:git@|https?://)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+            $host = $matches[1];
+            // Only treat as GitLab if it's not github.com (already handled above)
+            if ($host !== 'github.com') {
+                return [
+                    'owner' => $matches[2],
+                    'name' => $matches[3],
+                    'provider' => 'gitlab',
+                ];
+            }
         }
 
         return [];
@@ -324,7 +376,19 @@ SCRIPT;
     public function run(string $command): Process
     {
         $process = $this->processFactory->create($command);
-        $process->mustRun();
+
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $e) {
+            $errorOutput = $process->getErrorOutput() ?: $process->getOutput();
+            $technicalDetails = trim($errorOutput) ?: 'Command failed with no error output';
+
+            throw new GitException(
+                "Git command failed: {$command}",
+                $technicalDetails,
+                $e
+            );
+        }
 
         return $process;
     }
@@ -355,7 +419,7 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string}
      */
     public function readProjectConfig(): array
     {
@@ -377,7 +441,7 @@ SCRIPT;
     /**
      * Writes the project-specific config file.
      *
-     * @param array{projectKey?: string, transitionId?: int} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
@@ -654,5 +718,454 @@ SCRIPT;
         }
 
         return $branches;
+    }
+
+    /**
+     * Gets all local branch names.
+     *
+     * @return array<string> Array of local branch names (excluding current branch marker *)
+     */
+    public function getAllLocalBranches(): array
+    {
+        $process = $this->runQuietly("git branch --format='%(refname:short)'");
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return [];
+        }
+
+        $branches = array_filter(
+            array_map('trim', explode("\n", $output)),
+            fn (string $branch) => ! empty($branch)
+        );
+
+        return array_values($branches);
+    }
+
+    /**
+     * Checks if a branch is merged into the specified base branch.
+     *
+     * @param string $branch The branch to check
+     * @param string $baseBranch The base branch to check against
+     * @return bool True if branch is merged into baseBranch, false otherwise
+     */
+    public function isBranchMergedInto(string $branch, string $baseBranch): bool
+    {
+        $process = $this->runQuietly("git branch --merged {$baseBranch}");
+        if (! $process->isSuccessful()) {
+            return false;
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return false;
+        }
+
+        $mergedBranches = array_filter(
+            array_map('trim', explode("\n", $output)),
+            fn (string $line) => ! empty($line)
+        );
+
+        foreach ($mergedBranches as $mergedBranch) {
+            // Remove leading * marker if present
+            $cleanBranch = ltrim($mergedBranch, '* ');
+            if ($cleanBranch === $branch) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets all remote branch names.
+     *
+     * @param string $remote The remote name (default: 'origin')
+     * @return array<string> Array of remote branch names (without remote prefix)
+     */
+    public function getAllRemoteBranches(string $remote = 'origin'): array
+    {
+        $process = $this->runQuietly("git ls-remote --heads {$remote}");
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $output = trim($process->getOutput());
+        if (empty($output)) {
+            return [];
+        }
+
+        $branches = [];
+        $lines = explode("\n", $output);
+        foreach ($lines as $line) {
+            if (preg_match('#refs/heads/(.+)$#', $line, $matches)) {
+                $branches[] = $matches[1];
+            }
+        }
+
+        return $branches;
+    }
+
+    /**
+     * Auto-detects the most likely base branch from remote branches.
+     * Checks branches in priority order: develop, main, master, dev, trunk.
+     *
+     * @return string|null The detected base branch name (without origin/ prefix), or null if none found
+     */
+    protected function detectBaseBranch(): ?string
+    {
+        $candidates = ['develop', 'main', 'master', 'dev', 'trunk'];
+        $remoteBranches = $this->getAllRemoteBranches('origin');
+        $remoteBranchesSet = array_flip($remoteBranches);
+
+        foreach ($candidates as $candidate) {
+            if (isset($remoteBranchesSet[$candidate])) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the configured base branch from project config.
+     * Returns the branch name with 'origin/' prefix for consistency with git commands.
+     *
+     * @return string The base branch name with 'origin/' prefix
+     * @throws \RuntimeException If base branch is not configured and cannot be auto-detected
+     */
+    protected function getBaseBranch(): string
+    {
+        $config = $this->readProjectConfig();
+        $baseBranchValue = $config['baseBranch'] ?? null;
+        if ($baseBranchValue !== null && is_string($baseBranchValue) && trim($baseBranchValue) !== '') {
+            $baseBranch = $baseBranchValue;
+            // Ensure origin/ prefix for consistency
+            if (! str_starts_with($baseBranch, 'origin/')) {
+                return 'origin/' . $baseBranch;
+            }
+
+            return $baseBranch;
+        }
+
+        // Try auto-detection
+        $detected = $this->detectBaseBranch();
+        if ($detected !== null) {
+            return 'origin/' . $detected;
+        }
+
+        throw new \RuntimeException('Base branch not configured and could not be auto-detected.');
+    }
+
+    /**
+     * Ensures the base branch is configured in project config.
+     * If not configured, attempts auto-detection and prompts user if needed.
+     * Validates that the configured branch exists on remote before saving.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @return string The base branch name with 'origin/' prefix
+     * @throws \RuntimeException If not in a git repository or if base branch validation fails
+     */
+    public function ensureBaseBranchConfigured(
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.base_branch_required'));
+        }
+
+        $config = $this->readProjectConfig();
+        $baseBranch = $config['baseBranch'] ?? null;
+
+        // If configured, validate it exists on remote
+        if ($baseBranch !== null && is_string($baseBranch) && ! empty($baseBranch)) {
+            // Remove origin/ prefix if present for validation
+            $branchName = str_replace('origin/', '', $baseBranch);
+            if ($this->remoteBranchExists('origin', $branchName)) {
+                // Return with origin/ prefix for consistency
+                if (! str_starts_with($baseBranch, 'origin/')) {
+                    return 'origin/' . $baseBranch;
+                }
+
+                return $baseBranch;
+            }
+
+            // Configured branch doesn't exist on remote, need to reconfigure
+            $logger->warning(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
+            );
+        }
+
+        // Try auto-detection
+        $detected = $this->detectBaseBranch();
+        $defaultSuggestion = $detected ?? 'develop';
+
+        if ($detected !== null) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.base_branch_detected', ['branch' => $detected])
+            );
+        }
+
+        // Prompt user for base branch
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_not_configured')
+        );
+
+        $enteredBranch = $logger->ask(
+            $translator->trans('config.base_branch_prompt'),
+            $defaultSuggestion,
+            function (?string $value): string {
+                if (empty(trim($value ?? ''))) {
+                    throw new \RuntimeException('Base branch name cannot be empty.');
+                }
+
+                return trim($value);
+            }
+        );
+
+        if ($enteredBranch === null || empty(trim($enteredBranch))) {
+            throw new \RuntimeException($translator->trans('config.base_branch_required'));
+        }
+
+        $enteredBranch = trim($enteredBranch);
+
+        // Validate branch exists on remote
+        if (! $this->remoteBranchExists('origin', $enteredBranch)) {
+            throw new \RuntimeException(
+                $translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch])
+            );
+        }
+
+        // Save to config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_saving')
+        );
+
+        $config['baseBranch'] = $enteredBranch;
+        $this->writeProjectConfig($config);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.base_branch_saved', ['branch' => $enteredBranch])
+        );
+
+        return 'origin/' . $enteredBranch;
+    }
+
+    /**
+     * Gets the configured git provider from project config.
+     * Attempts auto-detection from remote URL if not configured.
+     *
+     * @return string|null The provider type ('github' or 'gitlab'), or null if not configured and cannot be detected
+     */
+    public function getGitProvider(): ?string
+    {
+        $config = $this->readProjectConfig();
+        $provider = $config['gitProvider'] ?? null;
+
+        if ($provider !== null && is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
+            return $provider;
+        }
+
+        // Try auto-detection from remote URL
+        $parsed = $this->parseGitUrl('origin');
+        if (isset($parsed['provider'])) {
+            return $parsed['provider'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Ensures the git provider is configured in project config.
+     * If not configured, attempts auto-detection from remote URL and prompts user if needed.
+     *
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @return string The provider type ('github' or 'gitlab')
+     * @throws \RuntimeException If not in a git repository or if provider cannot be determined
+     */
+    public function ensureGitProviderConfigured(
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.git_provider_required'));
+        }
+
+        $config = $this->readProjectConfig();
+        $provider = $config['gitProvider'] ?? null;
+
+        // If configured and valid, return it
+        if (is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
+            return $provider;
+        }
+
+        // Try auto-detection from remote URL
+        $parsed = $this->parseGitUrl('origin');
+        $detected = $parsed['provider'] ?? null;
+
+        if ($detected !== null) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_provider_detected', ['provider' => $detected])
+            );
+        }
+
+        // Prompt user for provider
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_not_configured')
+        );
+
+        $defaultSuggestion = $detected ?? 'github';
+        $enteredProvider = $logger->choice(
+            $translator->trans('config.git_provider_prompt'),
+            ['github', 'gitlab'],
+            $defaultSuggestion
+        );
+
+        if ($enteredProvider === null || ! in_array($enteredProvider, ['github', 'gitlab'], true)) {
+            throw new \RuntimeException($translator->trans('config.git_provider_required'));
+        }
+
+        // Save to config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_saving')
+        );
+
+        $config['gitProvider'] = $enteredProvider;
+        $this->writeProjectConfig($config);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_provider_saved', ['provider' => $enteredProvider])
+        );
+
+        return $enteredProvider;
+    }
+
+    /**
+     * Ensures the git token is configured for the given provider.
+     * Checks project config first, then global config.
+     * If not found, prompts user to configure it.
+     *
+     * @param string $providerType The provider type ('github' or 'gitlab')
+     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
+     * @param \App\Service\Logger $logger The logger instance
+     * @param \App\Service\TranslationService $translator The translation service
+     * @param array<string, mixed> $globalConfig The global configuration array
+     * @return string|null The token string, or null if user skipped or error occurred
+     * @throws \RuntimeException If not in a git repository
+     */
+    public function ensureGitTokenConfigured(
+        string $providerType,
+        \Symfony\Component\Console\Style\SymfonyStyle $io,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator,
+        array $globalConfig
+    ): ?string {
+        // Check if we're in a git repository
+        try {
+            $this->getProjectConfigPath();
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException($translator->trans('config.git_token_required'));
+        }
+
+        $projectConfig = $this->readProjectConfig();
+
+        // Determine token key based on provider
+        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
+        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+        $oppositeTokenKey = $providerType === 'github' ? 'GITLAB_TOKEN' : 'GITHUB_TOKEN';
+        $oppositeLocalKey = $providerType === 'github' ? 'gitlabToken' : 'githubToken';
+        $oppositeProvider = $providerType === 'github' ? 'GitLab' : 'GitHub';
+
+        // Check if token already exists in project config
+        $token = $projectConfig[$tokenKey] ?? null;
+        if ($token !== null && is_string($token) && trim($token) !== '') {
+            return trim($token);
+        }
+
+        // Check if token exists in global config
+        $globalToken = $globalConfig[$globalTokenKey] ?? null;
+        if ($globalToken !== null && is_string($globalToken) && trim($globalToken) !== '') {
+            return trim($globalToken);
+        }
+
+        // Check for token type mismatch (opposite token exists)
+        $oppositeToken = $projectConfig[$oppositeLocalKey] ?? $globalConfig[$oppositeTokenKey] ?? null;
+        if ($oppositeToken !== null && is_string($oppositeToken) && trim($oppositeToken) !== '') {
+            $logger->warning(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_token_type_mismatch', [
+                    'provider' => ucfirst($providerType),
+                    'opposite' => $oppositeProvider,
+                ])
+            );
+        }
+
+        // No token found - prompt user
+        $logger->note(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_not_configured')
+        );
+
+        // Check if any tokens exist globally
+        $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
+            || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
+
+        if (! $hasAnyGlobalToken) {
+            $logger->note(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $translator->trans('config.git_token_global_suggestion')
+            );
+        }
+
+        $enteredToken = $logger->askHidden(
+            $translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)])
+        );
+
+        if ($enteredToken === null || empty(trim($enteredToken))) {
+            // User skipped - return null
+            return null;
+        }
+
+        $enteredToken = trim($enteredToken);
+
+        // Save to project config
+        $logger->text(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_saving')
+        );
+
+        $projectConfig[$tokenKey] = $enteredToken;
+        $this->writeProjectConfig($projectConfig);
+
+        $logger->success(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)])
+        );
+
+        return $enteredToken;
     }
 }

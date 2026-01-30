@@ -1,434 +1,537 @@
-# Configuration
 config:
   init:
     wizard:
-      title: "Οδηγός Ρύθμισης Stud CLI"
-      description: "Αυτό θα δημιουργήσει ή θα ενημερώσει το αρχείο ρύθμισης σας στο: %path%"
+      title: Οδηγός Ρύθμισης Stud CLI
+      description: 'Αυτό θα δημιουργήσει ή θα ενημερώσει το αρχείο ρύθμισης σας στο: %path%'
     language:
-      title: "Ρύθμιση Γλώσσας"
-      prompt: "Επιλέξτε τη γλώσσα σας"
+      title: Ρύθμιση Γλώσσας
+      prompt: Επιλέξτε τη γλώσσα σας
     jira:
-      title: "Ρύθμιση Jira"
-      token_help: "Μπορείτε να δημιουργήσετε ένα token API εδώ: https://id.atlassian.com/manage-profile/security/api-tokens"
-      url_prompt: "Εισάγετε το URL σας Jira"
-      email_prompt: "Εισάγετε τη διεύθυνση email σας Jira"
-      token_prompt: "Εισάγετε το token API σας Jira (αφήστε κενό για να διατηρήσετε το υπάρχον)"
+      title: Ρύθμιση Jira
+      token_help: 'Μπορείτε να δημιουργήσετε ένα token API εδώ: https://id.atlassian.com/manage-profile/security/api-tokens'
+      url_prompt: Εισάγετε το URL σας Jira
+      email_prompt: Εισάγετε τη διεύθυνση email σας Jira
+      token_prompt: Εισάγετε το token API σας Jira (αφήστε κενό για να διατηρήσετε το υπάρχον)
     git:
-      title: "Ρύθμιση Παροχέα Git"
-      description: "Αυτό απαιτείται για την εντολή `stud submit` για να δημιουργήσει Pull Requests."
-      token_help: "Μπορείτε να δημιουργήσετε ένα token εδώ: https://github.com/settings/tokens"
-      auto_detect_note: "Σημείωση: Ο κάτοχος και το όνομα του αποθετηρίου θα εντοπιστούν αυτόματα από το git remote σας."
-      provider_prompt: "Επιλέξτε τον παροχέα Git σας"
-      token_prompt: "Εισάγετε το PAT του παροχέα Git σας (αφήστε κενό για να διατηρήσετε το υπάρχον)"
+      title: Ρύθμιση Τoken Παροχέα Git
+      description: Ρυθμίστε tokens για GitHub και/ή GitLab. Αυτές είναι καθολικές προεπιλογές που μπορούν να παρακαμφθούν ανά αποθετήριο.
+      token_help: 'Μπορείτε να δημιουργήσετε tokens εδώ:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Σημείωση: Μπορείτε να ρυθμίσετε και τα δύο tokens, ή μόνο αυτά που χρειάζεστε. Ο παροχέας θα ρυθμιστεί ανά αποθετήριο.'
+      github_token_prompt: Εισάγετε το PAT GitHub σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
+      gitlab_token_prompt: Εισάγετε το PAT GitLab σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
     jira_transition:
-      title: "Ρύθμιση Μετάβασης Jira"
-      description: "Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα."
-      prompt: "Ενεργοποίηση αυτόματης μετάβασης Jira σε 'Σε Εξέλιξη';"
-    success: "Η ρύθμιση αποθηκεύτηκε με επιτυχία!"
+      title: Ρύθμιση Μετάβασης Jira
+      description: Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα.
+      prompt: Ενεργοποίηση αυτόματης μετάβασης Jira σε 'Σε Εξέλιξη';
+    success: Η ρύθμιση αποθηκεύτηκε με επιτυχία!
     completion:
-      title: "Ρύθμιση Αυτόματης Συμπλήρωσης Shell"
-      prompt: "Εντοπίσαμε ότι χρησιμοποιείτε '%shell%'. Θα θέλατε να ρυθμίσετε την αυτόματη συμπλήρωση shell;"
-      yes: "Ναι"
-      no: "Όχι"
-      success_message: "✅ Τέλεια! Για να ολοκληρώσετε την εγκατάσταση, εκτελέστε αυτή την εντολή:"
-      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
-      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
-      reload_instruction: "Στη συνέχεια, κάντε επανεκκίνηση του shell σας ή εκτελέστε 'source ~/.%shellrc%'"
-      skipped: "Η ρύθμιση αυτόματης συμπλήρωσης shell παραλείφθηκε."
+      title: Ρύθμιση Αυτόματης Συμπλήρωσης Shell
+      prompt: Εντοπίσαμε ότι χρησιμοποιείτε '%shell%'. Θα θέλατε να ρυθμίσετε την αυτόματη συμπλήρωση shell;
+      yes: Ναι
+      no: Όχι
+      success_message: '✅ Τέλεια! Για να ολοκληρώσετε την εγκατάσταση, εκτελέστε αυτή την εντολή:'
+      bash_command: echo 'eval "$(stud completion bash)"' >> ~/.bashrc
+      zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
+      reload_instruction: Στη συνέχεια, κάντε επανεκκίνηση του shell σας ή εκτελέστε 'source ~/.%shellrc%'
+      skipped: Η ρύθμιση αυτόματης συμπλήρωσης shell παραλείφθηκε.
   error:
-    not_found: "Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%\nΠαρακαλώ εκτελέστε \"stud config:init\" για να δημιουργήσετε ένα."
-    missing_jira_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά Jira: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
-    missing_git_keys: "Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά παροχέα Git: %keys%\nΠαρακαλώ εκτελέστε \"stud config:init\" ξανά."
-    missing_setup: "Το αρχείο ρύθμισης δεν βρέθηκε. Παρακαλώ ρυθμίστε το stud-cli πριν χρησιμοποιήσετε αυτή την εντολή."
-    run_init_instruction: "Εκτελέστε 'stud config:init' για να δημιουργήσετε το αρχείο ρύθμισης."
+    not_found: 'Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%
 
-# Item Start Handler
+      Παρακαλώ εκτελέστε "stud config:init" για να δημιουργήσετε ένα.'
+    missing_jira_keys: 'Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά Jira: %keys%
+
+      Παρακαλώ εκτελέστε "stud config:init" ξανά.'
+    missing_git_keys: 'Το αρχείο ρύθμισης σας λείπει από τις απαιτούμενες κλειδιά παροχέα Git: %keys%
+
+      Παρακαλώ εκτελέστε "stud config:init" ξανά.'
+    missing_setup: Το αρχείο ρύθμισης δεν βρέθηκε. Παρακαλώ ρυθμίστε το stud-cli πριν χρησιμοποιήσετε αυτή την εντολή.
+    run_init_instruction: Εκτελέστε 'stud config:init' για να δημιουργήσετε το αρχείο ρύθμισης.
+  base_branch_not_configured: Ο βασικός κλάδος δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
+  base_branch_prompt: Εισαγάγετε το όνομα του βασικού κλάδου
+  base_branch_detected: "Ανιχνεύτηκε βασικός κλάδος: %branch%"
+  base_branch_saving: Αποθήκευση ρύθμισης βασικού κλάδου...
+  base_branch_saved: "Βασικός κλάδος ρυθμισμένος: %branch%"
+  base_branch_invalid: Ο βασικός κλάδος '%branch%' δεν υπάρχει στο απομακρυσμένο. Παρακαλώ ελέγξτε το όνομα του κλάδου.
+  base_branch_required: Ο βασικός κλάδος είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο βασικό κλάδο.
+  git_provider_not_configured: Ο παροχέας Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
+  git_provider_prompt: Επιλέξτε τον παροχέα Git για αυτό το αποθετήριο
+  git_provider_detected: "Ανιχνεύτηκε παροχέας Git: %provider%"
+  git_provider_saving: Αποθήκευση ρύθμισης παροχέα Git...
+  git_provider_saved: "Παροχέας Git ρυθμισμένος: %provider%"
+  git_provider_required: Ο παροχέας Git είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο παροχέα Git.
+  git_token_not_configured: Το token Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
+  git_token_prompt: Εισάγετε το PAT %provider% σας (αφήστε κενό για παράλειψη)
+  git_token_saving: Αποθήκευση ρύθμισης token Git...
+  git_token_saved: "Token Git ρυθμισμένο για %provider%"
+  git_token_required: Το token Git είναι απαραίτητο. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο token Git.
+  git_token_global_suggestion: "Συμβουλή: Μπορείτε να ρυθμίσετε καθολικά tokens εκτελώντας 'stud config:init'"
+  git_token_type_mismatch: "Ο παροχέας είναι ρυθμισμένος σε '%provider%' αλλά έχει ρυθμιστεί μόνο το token %opposite%. Παρακαλώ ρυθμίστε ένα token %provider% ή αλλάξτε τον παροχέα."
+  git_token_no_tokens: Δεν έχουν ρυθμιστεί tokens Git. Παρακαλώ εκτελέστε 'stud config:init' για να ρυθμίσετε καθολικά tokens, ή ρυθμίστε ένα τοπικό token για αυτό το αποθετήριο.
+  migration:
+    git_token_detected: Ανιχνεύτηκε παλιά μορφή token Git. Απαιτείται μετάβαση.
+    git_provider_prompt: Επιλέξτε τον παροχέα Git για το token σας
+    git_migration_complete: "Η ρύθμιση Git μεταφέρθηκε με επιτυχία. Το token ρυθμίστηκε για %provider%."
 item:
   start:
-    section: "Έναρξη εργασίας στο %key%"
-    fetching: "Λήψη λεπτομερειών για το θέμα: %key%"
-    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
-    generated_branch: "Δημιουργημένο όνομα κλάδου: %branch%"
-    fetching_changes: "Λήψη των τελευταίων αλλαγών από origin..."
-    creating_branch: "Δημιουργία νέου κλάδου: %branch%"
-    success: "Ο κλάδος '%branch%' δημιουργήθηκε από '%base%'."
-    assigning: "Ανάθεση θέματος %key% στον τρέχοντα χρήστη..."
-    assign_error: "Αποτυχία ανάθεσης θέματος: %error%"
-    no_transitions: "Δεν υπάρχουν μεταβάσεις 'Σε Εξέλιξη' διαθέσιμες για το θέμα %key%. Μετάβαση παραλείφθηκε."
-    select_transition: "Επιλέξτε τη μετάβαση σε 'Σε Εξέλιξη':"
-    invalid_selection: "Μη έγκυρη επιλογή μετάβασης."
-    save_transition: "Θα θέλατε να αποθηκεύσετε αυτή την επιλογή μετάβασης για το έργο '%project%';"
-    transition_saved: "Επιλογή μετάβασης αποθηκεύτηκε για το έργο '%project%'."
-    using_cached_transition: "Χρήση αποθηκευμένου ID μετάβασης: %id%"
-    transition_success: "✅ Το θέμα %key% μεταφέρθηκε σε 'Σε Εξέλιξη'"
-    transition_error: "Αποτυχία λήψης μεταβάσεων: %error%"
-    transition_exec_error: "Αποτυχία εκτέλεσης μετάβασης: %error%. Συνέχιση με δημιουργία κλάδου."
-    switching_branch: "Switching to existing branch: %branch%"
-    switching_remote_branch: "Switching to remote branch: %branch%"
-    success_switched: "Switched to branch '%branch%'."
+    section: Έναρξη εργασίας στο %key%
+    fetching: 'Λήψη λεπτομερειών για το θέμα: %key%'
+    error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+    generated_branch: 'Δημιουργημένο όνομα κλάδου: %branch%'
+    fetching_changes: Λήψη των τελευταίων αλλαγών από origin...
+    creating_branch: 'Δημιουργία νέου κλάδου: %branch%'
+    success: Ο κλάδος '%branch%' δημιουργήθηκε από '%base%'.
+    assigning: Ανάθεση θέματος %key% στον τρέχοντα χρήστη...
+    assign_error: 'Αποτυχία ανάθεσης θέματος: %error%'
+    no_transitions: Δεν υπάρχουν μεταβάσεις 'Σε Εξέλιξη' διαθέσιμες για το θέμα %key%. Μετάβαση παραλείφθηκε.
+    select_transition: 'Επιλέξτε τη μετάβαση σε ''Σε Εξέλιξη'':'
+    invalid_selection: Μη έγκυρη επιλογή μετάβασης.
+    save_transition: Θα θέλατε να αποθηκεύσετε αυτή την επιλογή μετάβασης για το έργο '%project%';
+    transition_saved: Επιλογή μετάβασης αποθηκεύτηκε για το έργο '%project%'.
+    using_cached_transition: 'Χρήση αποθηκευμένου ID μετάβασης: %id%'
+    transition_success: ✅ Το θέμα %key% μεταφέρθηκε σε 'Σε Εξέλιξη'
+    transition_error: 'Αποτυχία λήψης μεταβάσεων: %error%'
+    transition_exec_error: 'Αποτυχία εκτέλεσης μετάβασης: %error%. Συνέχιση με δημιουργία κλάδου.'
+    switching_branch: 'Switching to existing branch: %branch%'
+    switching_remote_branch: 'Switching to remote branch: %branch%'
+    success_switched: Switched to branch '%branch%'.
   takeover:
-    section: "Taking over issue %key%"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."
-    error_not_found: "Could not find Jira issue with key \"%key%\"."
-    assigning: "Assigning issue %key% to current user..."
-    assign_warning: "Failed to assign issue: %error%. Continuing anyway."
-    fetching: "Fetching from remote..."
-    searching_branches: "Searching for branches..."
-    branches_found: "Found %count% branch(es) for this issue:"
-    select_branch: "Select a branch to take over:"
-    branch_remote: "%branch% (remote)"
-    branch_local: "%branch% (local)"
-    confirm_branch: "Take over branch '%branch%'?"
-    switching: "Switching to branch %branch%..."
-    already_on_branch: "Already on branch %branch%. Checking status..."
-    status_behind_remote: "Branch is %count% commit(s) behind remote"
-    status_ahead_remote: "Branch is %count% commit(s) ahead of remote"
-    status_sync_remote: "Branch is in sync with remote"
-    status_behind_base: "Branch is %count% commit(s) behind %base%"
-    status_ahead_base: "Branch is %count% commit(s) ahead of %base%"
-    status_sync_base: "Branch is in sync with %base%"
-    warning_wrong_base: "⚠️ Warning: Branch is based on a different branch than expected (%base%)."
-    warning_diverged: "⚠️ Warning: Local branch has commits not on remote. Manual intervention required."
-    pulling: "Pulling latest changes from remote..."
-    no_branches: "No branches found for issue %key%."
-    start_fresh_prompt: "Would you like to start fresh? (This will create a new branch)"
-    success_took_over: "✅ Successfully took over %key%"
-    success_on_branch: "📍 You are now on branch: %branch%"
-    success_status_header: "📊 Branch status:"
-    success_status_remote: " - Remote: %status%"
-    success_status_base: " - %base%: %status%"
-    success_view_details: "ℹ️ View issue details: stud sh %key%"
-
-# Item Show Handler
+    section: Taking over issue %key%
+    error_dirty_working: Your working directory is not clean. Please commit your changes before taking over an issue.
+    error_not_found: Could not find Jira issue with key "%key%".
+    assigning: Assigning issue %key% to current user...
+    assign_warning: 'Failed to assign issue: %error%. Continuing anyway.'
+    fetching: Fetching from remote...
+    searching_branches: Searching for branches...
+    branches_found: 'Found %count% branch(es) for this issue:'
+    select_branch: 'Select a branch to take over:'
+    branch_remote: '%branch% (remote)'
+    branch_local: '%branch% (local)'
+    confirm_branch: Take over branch '%branch%'?
+    switching: Switching to branch %branch%...
+    already_on_branch: Already on branch %branch%. Checking status...
+    status_behind_remote: Branch is %count% commit(s) behind remote
+    status_ahead_remote: Branch is %count% commit(s) ahead of remote
+    status_sync_remote: Branch is in sync with remote
+    status_behind_base: Branch is %count% commit(s) behind %base%
+    status_ahead_base: Branch is %count% commit(s) ahead of %base%
+    status_sync_base: Branch is in sync with %base%
+    warning_wrong_base: '⚠️ Warning: Branch is based on a different branch than expected (%base%).'
+    warning_diverged: '⚠️ Warning: Local branch has commits not on remote. Manual intervention required.'
+    pulling: Pulling latest changes from remote...
+    no_branches: No branches found for issue %key%.
+    start_fresh_prompt: Would you like to start fresh? (This will create a new branch)
+    success_took_over: ✅ Successfully took over %key%
+    success_on_branch: '📍 You are now on branch: %branch%'
+    success_status_header: '📊 Branch status:'
+    success_status_remote: ' - Remote: %status%'
+    success_status_base: ' - %base%: %status%'
+    success_view_details: 'ℹ️ View issue details: stud sh %key%'
   show:
-    section: "Λεπτομέρειες για το θέμα %key%"
-    fetching: "Λήψη λεπτομερειών για το θέμα: %key%"
-    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
-    label_key: "Κλειδί"
-    label_title: "Τίτλος"
-    label_status: "Κατάσταση"
-    label_assignee: "Ανατεθειμένος"
-    label_type: "Τύπος"
-    label_labels: "Ετικέτες"
-    label_description: "Περιγραφή"
-    label_link: "Σύνδεσμος"
-    label_none: "Κανένα"
-# Item Transition Handler
+    section: Λεπτομέρειες για το θέμα %key%
+    fetching: 'Λήψη λεπτομερειών για το θέμα: %key%'
+    error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+    label_key: Κλειδί
+    label_title: Τίτλος
+    label_status: Κατάσταση
+    label_assignee: Ανατεθειμένος
+    label_type: Τύπος
+    label_labels: Ετικέτες
+    label_description: Περιγραφή
+    label_link: Σύνδεσμος
+    label_none: Κανένα
   transition:
-    section: "Μετάβαση θέματος Jira"
-    detected_key: "Εντοπισμένο κλειδί Jira '%key%' από τον τρέχοντα κλάδο. Χρήση αυτού του κλειδιού;"
-    prompt_key: "Εισαγάγετε το κλειδί θέματος Jira"
-    error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
-    error_invalid_key: "Μη έγκυρη μορφή κλειδιού Jira. Αναμενόμενη μορφή: PROJ-123"
-    fetching: "Λήψη διαθέσιμων μεταβάσεων για το θέμα: %key%"
-    no_transitions: "Δεν υπάρχουν διαθέσιμες μεταβάσεις για το θέμα %key%."
-    select_transition: "Επιλέξτε τη μετάβαση προς εφαρμογή:"
-    error_fetch: "Αποτυχία λήψης μεταβάσεων: %error%"
-    error_execute: "Αποτυχία εκτέλεσης μετάβασης: %error%"
-    success: "✅ Το θέμα %key% μεταφέρθηκε με επιτυχία"
-
-# Item List Handler
+    section: Μετάβαση θέματος Jira
+    detected_key: Εντοπισμένο κλειδί Jira '%key%' από τον τρέχοντα κλάδο. Χρήση αυτού του κλειδιού;
+    prompt_key: Εισαγάγετε το κλειδί θέματος Jira
+    error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+    error_invalid_key: 'Μη έγκυρη μορφή κλειδιού Jira. Αναμενόμενη μορφή: PROJ-123'
+    fetching: 'Λήψη διαθέσιμων μεταβάσεων για το θέμα: %key%'
+    no_transitions: Δεν υπάρχουν διαθέσιμες μεταβάσεις για το θέμα %key%.
+    select_transition: 'Επιλέξτε τη μετάβαση προς εφαρμογή:'
+    error_fetch: 'Αποτυχία λήψης μεταβάσεων: %error%'
+    error_execute: 'Αποτυχία εκτέλεσης μετάβασης: %error%'
+    success: ✅ Το θέμα %key% μεταφέρθηκε με επιτυχία
   list:
-    section: "Λήψη Θεμάτων Jira"
-    error_fetch: "Αποτυχία λήψης θεμάτων: %error%"
-    no_items: "Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας."
-    error_invalid_sort: "Μη έγκυρη τιμή ταξινόμησης '%value%'. Επιτρεπόμενες τιμές: Key, Status"
-
-# Project List Handler
+    section: Λήψη Θεμάτων Jira
+    error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
+    no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
+    error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
 project:
   list:
-    section: "Λήψη Έργων Jira"
-    error_fetch: "Αποτυχία λήψης έργων: %error%"
-    no_projects: "Δεν βρέθηκαν έργα."
-
-# Search Handler
+    section: Λήψη Έργων Jira
+    error_fetch: 'Αποτυχία λήψης έργων: %error%'
+    no_projects: Δεν βρέθηκαν έργα.
 search:
-  section: "Αναζήτηση θεμάτων Jira με JQL"
-  jql_query: "JQL Query: %jql%"
-  error_search: "Αποτυχία αναζήτησης θεμάτων: %error%"
-  no_results: "Δεν βρέθηκαν θέματα που να ταιριάζουν με το JQL query σας."
-
-# Filter Show Handler
+  section: Αναζήτηση θεμάτων Jira με JQL
+  jql_query: 'JQL Query: %jql%'
+  error_search: 'Αποτυχία αναζήτησης θεμάτων: %error%'
+  no_results: Δεν βρέθηκαν θέματα που να ταιριάζουν με το JQL query σας.
 filter:
   show:
-    section: "Λήψη θεμάτων από το φίλτρο '%filterName%'"
-    jql_query: "JQL Query: %jql%"
-    error_fetch: "Αποτυχία λήψης θεμάτων από το φίλτρο: %error%"
-    no_results: "Δεν βρέθηκαν θέματα στο φίλτρο '%filterName%'."
+    section: Λήψη θεμάτων από το φίλτρο '%filterName%'
+    jql_query: 'JQL Query: %jql%'
+    error_fetch: 'Αποτυχία λήψης θεμάτων από το φίλτρο: %error%'
+    no_results: Δεν βρέθηκαν θέματα στο φίλτρο '%filterName%'.
   list:
-    section: "Λήψη φίλτρων Jira"
-    error_fetch: "Αποτυχία λήψης φίλτρων: %error%"
-    no_filters: "Δεν βρέθηκαν φίλτρα."
-
-# Status Handler
+    section: Λήψη φίλτρων Jira
+    error_fetch: 'Αποτυχία λήψης φίλτρων: %error%'
+    no_filters: Δεν βρέθηκαν φίλτρα.
 status:
-  section: "Τρέχουσα Κατάσταση"
-  fetching: "Λήψη κατάστασης για το θέμα Jira: %key%"
-  jira_status: "[%status%] %key%: %title%"
-  jira_error: "Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira: %error%"
-  jira_no_key: "Δεν βρέθηκε κλειδί Jira στο όνομα του κλάδου."
-  git_branch: "Στον κλάδο '%branch%'"
-  local_changes: "Έχετε %count% μη-committed αλλαγές."
-  local_clean: "Ο κατάλογος εργασίας είναι καθαρός."
-
-# Please Handler
+  section: Τρέχουσα Κατάσταση
+  fetching: 'Λήψη κατάστασης για το θέμα Jira: %key%'
+  jira_status: '[%status%] %key%: %title%'
+  jira_error: 'Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira: %error%'
+  jira_no_key: Δεν βρέθηκε κλειδί Jira στο όνομα του κλάδου.
+  git_branch: Στον κλάδο '%branch%'
+  local_changes: Έχετε %count% μη-committed αλλαγές.
+  local_clean: Ο κατάλογος εργασίας είναι καθαρός.
 please:
-  error_no_upstream: "Ο τρέχων κλάδος σας δεν έχει ρυθμισμένο upstream remote.\nΓια την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε \"stud submit\"."
-  warning_force: "⚠️  Εξαναγκασμός με lease..."
+  error_no_upstream: 'Ο τρέχων κλάδος σας δεν έχει ρυθμισμένο upstream remote.
 
-# Flatten Handler
+    Για την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε "stud submit".'
+  warning_force: ⚠️  Εξαναγκασμός με lease...
 flatten:
-  section: "Εξομάλυνση fixup commits"
-  error_dirty_working: "Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την εξομάλυνση."
-  warning_rewrite: "⚠️  Αυτό θα ξαναγράψει το ιστορικό των commits σας. Μπορεί να χρειαστεί να εκτελέσετε 'stud please' για force-push μετά."
-  success: "✅ Όλα τα fixup! commits έχουν συγχωνευθεί στα commits στόχους τους."
-  error_rebase: "Αποτυχία rebase: %error%"
-  no_fixups: "Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση."
-
-# Cache Clear Handler
+  section: Εξομάλυνση fixup commits
+  error_dirty_working: Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την εξομάλυνση.
+  warning_rewrite: ⚠️  Αυτό θα ξαναγράψει το ιστορικό των commits σας. Μπορεί να χρειαστεί να εκτελέσετε 'stud please' για force-push μετά.
+  success: ✅ Όλα τα fixup! commits έχουν συγχωνευθεί στα commits στόχους τους.
+  error_rebase: 'Αποτυχία rebase: %error%'
+  no_fixups: Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση.
 cache:
   clear:
-    section: "Εκκαθάριση cache ελέγχου ενημέρωσης"
-    success: "✅ Cache ελέγχου ενημέρωσης εκκαθαρίστηκε με επιτυχία."
-    already_clear: "Το cache ήταν ήδη άδειο."
-    error_delete: "Σφάλμα κατά τη διαγραφή του αρχείου cache."
-
-# Submit Handler
+    section: Εκκαθάριση cache ελέγχου ενημέρωσης
+    success: ✅ Cache ελέγχου ενημέρωσης εκκαθαρίστηκε με επιτυχία.
+    already_clear: Το cache ήταν ήδη άδειο.
+    error_delete: Σφάλμα κατά τη διαγραφή του αρχείου cache.
 submit:
-  section: "Υποβολή Pull Request"
-  error_dirty_working: "Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την υποβολή."
-  error_base_branch: "Δεν μπορεί να δημιουργηθεί Pull Request από τον βασικό κλάδο."
-  pushing: "Push του κλάδου %branch%..."
-  error_push: "Η push απέτυχε. Ο κλάδος σας μπορεί να έχει ξαναγράψει το ιστορικό.\nΔοκιμάστε να εκτελέσετε 'stud please' για force-push."
-  finding_commit: "Εύρεση πρώτου λογικού commit για χρήση σε λεπτομέρειες PR..."
-  fetching_jira: "Λήψη θέματος Jira για το σώμα PR: %key%"
-  error_no_logical: "Δεν ήταν δυνατή η εύρεση λογικού commit σε αυτόν τον κλάδο. Δεν μπορεί να δημιουργηθεί PR."
-  error_no_jira_key: "Δεν ήταν δυνατή η ανάλυση κλειδιού Jira από το μήνυμα commit. Δεν μπορεί να δημιουργηθεί PR."
-  warning_jira_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
-  creating: "Δημιουργία Pull Request..."
-  success_created: "✅ Pull Request δημιουργήθηκε: %url%"
-  warning_no_provider: "Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο."
-  note_pr_exists: "Υπάρχει ήδη Pull Request για αυτόν τον κλάδο."
-  success_pushed: "✅ Οι αλλαγές έχουν σταλεί στο GitHub"
-  error_create_pr: "Αποτυχία δημιουργίας Pull Request.\nΣφάλμα: %error%"
-  using_head: "Χρήση head κλάδου: %head%"
-  fetching_labels: "Λήψη ετικετών αποθετηρίου..."
-  label_unknown_prompt: "Η ετικέτα '%label%' δεν υπάρχει στο αποθετήριο. Τι θα θέλατε να κάνετε;"
-  label_create_option: "Δημιουργία: Δημιουργήστε την ετικέτα στο GitHub και προσθέστε την στο PR"
-  label_ignore_option: "Αγνόηση: Παραλείψτε αυτή την ετικέτα και αφαιρέστε την από την τελική λίστα"
-  label_retry_option: "Επανάληψη: Ακυρώστε την εντολή και εκτελέστε ξανά με διορθωμένη λίστα"
-  label_creating: "Δημιουργία ετικέτας '%label%'..."
-  label_created: "✅ Η ετικέτα '%label%' δημιουργήθηκε επιτυχώς"
-  label_ignored: "Η ετικέτα '%label%' θα αγνοηθεί"
-  error_fetch_labels: "Αποτυχία λήψης ετικετών από το GitHub.\nΣφάλμα: %error%"
-  error_create_label: "Αποτυχία δημιουργίας ετικέτας '%label%'.\nΣφάλμα: %error%"
-  error_add_labels: "Αποτυχία προσθήκης ετικετών στο Pull Request.\nΣφάλμα: %error%"
-  adding_labels: "Προσθήκη ετικετών στο Pull Request..."
-  updating_to_draft: "Ενημέρωση Pull Request σε κατάσταση προσχεδίου..."
-  error_update_draft: "Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.\nΣφάλμα: %error%"
+  section: Υποβολή Pull Request
+  error_dirty_working: Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την υποβολή.
+  error_base_branch: Δεν μπορεί να δημιουργηθεί Pull Request από τον βασικό κλάδο.
+  pushing: Push του κλάδου %branch%...
+  error_push: 'Η push απέτυχε. Ο κλάδος σας μπορεί να έχει ξαναγράψει το ιστορικό.
 
-# PR Comment Handler
+    Δοκιμάστε να εκτελέσετε ''stud please'' για force-push.'
+  finding_commit: Εύρεση πρώτου λογικού commit για χρήση σε λεπτομέρειες PR...
+  fetching_jira: 'Λήψη θέματος Jira για το σώμα PR: %key%'
+  error_no_logical: Δεν ήταν δυνατή η εύρεση λογικού commit σε αυτόν τον κλάδο. Δεν μπορεί να δημιουργηθεί PR.
+  error_no_jira_key: Δεν ήταν δυνατή η ανάλυση κλειδιού Jira από το μήνυμα commit. Δεν μπορεί να δημιουργηθεί PR.
+  warning_jira_fetch: 'Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira για το σώμα PR: %error%
+
+    Επιστροφή σε απλό σύνδεσμο.'
+  creating: Δημιουργία Pull Request...
+  success_created: '✅ Pull Request δημιουργήθηκε: %url%'
+  warning_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.
+  note_pr_exists: Υπάρχει ήδη Pull Request για αυτόν τον κλάδο.
+  success_pushed: ✅ Οι αλλαγές έχουν σταλεί στο GitHub
+  error_create_pr: 'Αποτυχία δημιουργίας Pull Request.
+
+    Σφάλμα: %error%'
+  using_head: 'Χρήση head κλάδου: %head%'
+  fetching_labels: Λήψη ετικετών αποθετηρίου...
+  label_unknown_prompt: Η ετικέτα '%label%' δεν υπάρχει στο αποθετήριο. Τι θα θέλατε να κάνετε;
+  label_create_option: 'Δημιουργία: Δημιουργήστε την ετικέτα στο GitHub και προσθέστε την στο PR'
+  label_ignore_option: 'Αγνόηση: Παραλείψτε αυτή την ετικέτα και αφαιρέστε την από την τελική λίστα'
+  label_retry_option: 'Επανάληψη: Ακυρώστε την εντολή και εκτελέστε ξανά με διορθωμένη λίστα'
+  label_creating: Δημιουργία ετικέτας '%label%'...
+  label_created: ✅ Η ετικέτα '%label%' δημιουργήθηκε επιτυχώς
+  label_ignored: Η ετικέτα '%label%' θα αγνοηθεί
+  error_fetch_labels: 'Αποτυχία λήψης ετικετών από το GitHub.
+
+    Σφάλμα: %error%'
+  error_create_label: 'Αποτυχία δημιουργίας ετικέτας ''%label%''.
+
+    Σφάλμα: %error%'
+  error_add_labels: 'Αποτυχία προσθήκης ετικετών στο Pull Request.
+
+    Σφάλμα: %error%'
+  adding_labels: Προσθήκη ετικετών στο Pull Request...
+  updating_to_draft: Ενημέρωση Pull Request σε κατάσταση προσχεδίου...
+  error_update_draft: 'Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.
+
+    Σφάλμα: %error%'
 pr:
   comment:
-    section: "Δημοσίευση σχολίου στο Pull Request"
-    error_no_provider: "Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο."
-    error_no_input: "Δεν παρέχεται περιεχόμενο σχολίου.\nΠαρακαλώ παρέχετε περιεχόμενο μέσω STDIN (σωλήνωση) ή ως άμεσο όρισμα.\nΠαράδειγμα: echo \"Κείμενο σχολίου\" | stud pr:comment\nΠαράδειγμα: stud pr:comment \"Κείμενο σχολίου\""
-    error_no_pr: "Δεν ήταν δυνατή η εύρεση ενεργού Pull Request για τον τρέχοντα κλάδο."
-    error_post: "Αποτυχία δημοσίευσης σχολίου στο Pull Request.\nΣφάλμα: %error%"
-    finding_pr: "Εύρεση Pull Request για τον κλάδο: %branch%"
-    posting: "Δημοσίευση σχολίου στο Pull Request #%number%..."
-    success: "✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%"
-    using_stdin: "Ανάγνωση σχολίου από STDIN..."
-    using_argument: "Χρήση σχολίου από όρισμα..."
+    section: Δημοσίευση σχολίου στο Pull Request
+    error_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.
+    error_no_input: 'Δεν παρέχεται περιεχόμενο σχολίου.
 
-# Branch Rename Handler
+      Παρακαλώ παρέχετε περιεχόμενο μέσω STDIN (σωλήνωση) ή ως άμεσο όρισμα.
+
+      Παράδειγμα: echo "Κείμενο σχολίου" | stud pr:comment
+
+      Παράδειγμα: stud pr:comment "Κείμενο σχολίου"'
+    error_no_pr: Δεν ήταν δυνατή η εύρεση ενεργού Pull Request για τον τρέχοντα κλάδο.
+    error_post: 'Αποτυχία δημοσίευσης σχολίου στο Pull Request.
+
+      Σφάλμα: %error%'
+    finding_pr: 'Εύρεση Pull Request για τον κλάδο: %branch%'
+    posting: 'Δημοσίευση σχολίου στο Pull Request #%number%...'
+    success: '✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%'
+    using_stdin: Ανάγνωση σχολίου από STDIN...
+    using_argument: Χρήση σχολίου από όρισμα...
 branch:
   rename:
-    section: "Renaming branch"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before renaming a branch."
-    error_branch_not_found: "Branch '%branch%' not found (local or remote)."
-    error_new_name_exists: "Branch '%name%' already exists (local or remote). Cannot rename."
-    error_invalid_name: "Invalid branch name: %name%. Branch names must follow Git naming rules."
-    error_key_not_found: "Could not find Jira issue with key \"%key%\"."
-    error_no_key_in_branch: "Could not extract Jira key from branch name '%branch%'."
-    fetching_issue: "Fetching issue details from Jira..."
-    generating_name: "Generating new branch name from issue..."
-    checking_branches: "Checking branch existence..."
-    local_not_found_remote_exists: "Local branch '%branch%' not found, but remote branch exists."
-    rename_remote_only_prompt: "Rename only the remote branch? (Y/n)"
-    remote_not_found: "Remote branch not found. Only local branch will be renamed."
-    checking_sync: "Checking branch synchronization..."
-    remote_ahead_prompt: "Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)"
-    rebasing: "Rebasing local branch onto remote..."
-    rebase_failed: "Rebase failed. Please resolve conflicts manually and try again."
-    rebase_suggestion: "Suggested commands: git rebase origin/%branch%, resolve conflicts, then run 'stud rn' again."
-    finding_pr: "Checking for associated Pull Request..."
-    confirmation_header: "Current branch: %oldName%"
-    confirmation_new: "Proposed name: %newName%"
-    confirmation_actions: "The following will be renamed:"
-    confirmation_local: " - Local branch: %oldName% → %newName%"
-    confirmation_remote: " - Remote branch: origin/%oldName% → origin/%newName%"
-    confirmation_pr: " - Pull Request: #%number% (will be updated and commented)"
-    confirm_prompt: "Are you sure you want to rename this branch? (Y/n)"
-    renaming_local: "Renaming local branch..."
-    renaming_remote: "Renaming remote branch..."
-    updating_pr: "Updating Pull Request..."
-    creating_new_pr: "Creating new Pull Request for renamed branch..."
+    section: Renaming branch
+    error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.
+    error_branch_not_found: Branch '%branch%' not found (local or remote).
+    error_new_name_exists: Branch '%name%' already exists (local or remote). Cannot rename.
+    error_invalid_name: 'Invalid branch name: %name%. Branch names must follow Git naming rules.'
+    error_key_not_found: Could not find Jira issue with key "%key%".
+    error_no_key_in_branch: Could not extract Jira key from branch name '%branch%'.
+    fetching_issue: Fetching issue details from Jira...
+    generating_name: Generating new branch name from issue...
+    checking_branches: Checking branch existence...
+    local_not_found_remote_exists: Local branch '%branch%' not found, but remote branch exists.
+    rename_remote_only_prompt: Rename only the remote branch? (Y/n)
+    remote_not_found: Remote branch not found. Only local branch will be renamed.
+    checking_sync: Checking branch synchronization...
+    remote_ahead_prompt: Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)
+    rebasing: Rebasing local branch onto remote...
+    rebase_failed: Rebase failed. Please resolve conflicts manually and try again.
+    rebase_suggestion: 'Suggested commands: git rebase origin/%branch%, resolve conflicts, then run ''stud rn'' again.'
+    finding_pr: Checking for associated Pull Request...
+    confirmation_header: 'Current branch: %oldName%'
+    confirmation_new: 'Proposed name: %newName%'
+    confirmation_actions: 'The following will be renamed:'
+    confirmation_local: ' - Local branch: %oldName% → %newName%'
+    confirmation_remote: ' - Remote branch: origin/%oldName% → origin/%newName%'
+    confirmation_pr: ' - Pull Request: #%number% (will be updated and commented)'
+    confirm_prompt: Are you sure you want to rename this branch? (Y/n)
+    renaming_local: Renaming local branch...
+    renaming_remote: Renaming remote branch...
+    updating_pr: Updating Pull Request...
+    creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: "⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually."
-    commenting_pr: "Adding comment to Pull Request..."
-    success: "✅ Branch renamed successfully from %oldName% to %newName%"
-    no_pr_found: "No Pull Request found for this branch."
-    create_pr_prompt: "Would you like to create a Pull Request? (Y/n)"
-    switching_for_submit: "Switching to renamed branch to create PR..."
-
-# Commit Handler
+    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
+    commenting_pr: Adding comment to Pull Request...
+    success: ✅ Branch renamed successfully from %oldName% to %newName%
+    no_pr_found: No Pull Request found for this branch.
+    create_pr_prompt: Would you like to create a Pull Request? (Y/n)
+    switching_for_submit: Switching to renamed branch to create PR...
 commit:
-  section: "Βοηθός Συμβατικού Commit"
-  staging: "Staging όλων των αλλαγών..."
-  committing: "Commit με το παρεχόμενο μήνυμα..."
-  committing_simple: "Commit..."
-  success: "Το commit δημιουργήθηκε με επιτυχία!"
-  checking_logical: "Έλεγχος για προηγούμενο λογικό commit..."
-  found_logical: "Βρέθηκε λογικό commit SHA: %sha%"
-  creating_fixup: "Δημιουργία fixup commit για %sha%..."
-  fixup_success: "✅ Οι αλλαγές αποθηκεύτηκαν ως fixup για το commit %sha%."
-  note_no_logical: "Δεν βρέθηκε προηγούμενο λογικό commit ή χρησιμοποιήθηκε το flag --new. Έναρξη διαδραστικού βοηθού..."
-  note_clean_working_tree: "Το δέντρο εργασίας είναι καθαρό. Ακύρωση commit."
-  error_no_key: "Δεν ήταν δυνατή η εύρεση κλειδιού Jira στο όνομα του τρέχοντος κλάδου σας.\nΠαρακαλώ χρησιμοποιήστε \"stud start <key>\" για να δημιουργήσετε έναν κλάδο."
-  fetching_jira: "Λήψη θέματος Jira: %key%"
-  error_not_found: "Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί \"%key%\"."
-  jira_details: "Λεπτομέρειες Θέματος Jira:"
-  jira_title: "Τίτλος: %title%"
-  jira_type: "Τύπος: %type% -> %commit_type%"
-  jira_components: "Συστατικά: %components%"
-  scope_prompt: "Εμβέλεια (προαιρετικό)"
-  scope_auto: "Εμβέλεια (αυτόματη ανίχνευση '%scope%')"
-  type_prompt: "Τύπος Commit (αυτόματη ανίχνευση '%type%')"
-  summary_prompt: "Σύντομο Μήνυμα (αυτόματη συμπλήρωση από Jira)"
-  generated_message: "Δημιουργημένο μήνυμα commit:\n%message%"
+  section: Βοηθός Συμβατικού Commit
+  staging: Staging όλων των αλλαγών...
+  committing: Commit με το παρεχόμενο μήνυμα...
+  committing_simple: Commit...
+  success: Το commit δημιουργήθηκε με επιτυχία!
+  checking_logical: Έλεγχος για προηγούμενο λογικό commit...
+  found_logical: 'Βρέθηκε λογικό commit SHA: %sha%'
+  creating_fixup: Δημιουργία fixup commit για %sha%...
+  fixup_success: ✅ Οι αλλαγές αποθηκεύτηκαν ως fixup για το commit %sha%.
+  note_no_logical: Δεν βρέθηκε προηγούμενο λογικό commit ή χρησιμοποιήθηκε το flag --new. Έναρξη διαδραστικού βοηθού...
+  note_clean_working_tree: Το δέντρο εργασίας είναι καθαρό. Ακύρωση commit.
+  error_no_key: 'Δεν ήταν δυνατή η εύρεση κλειδιού Jira στο όνομα του τρέχοντος κλάδου σας.
 
-# Update Handler
+    Παρακαλώ χρησιμοποιήστε "stud start <key>" για να δημιουργήσετε έναν κλάδο.'
+  fetching_jira: 'Λήψη θέματος Jira: %key%'
+  error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+  jira_details: 'Λεπτομέρειες Θέματος Jira:'
+  jira_title: 'Τίτλος: %title%'
+  jira_type: 'Τύπος: %type% -> %commit_type%'
+  jira_components: 'Συστατικά: %components%'
+  scope_prompt: Εμβέλεια (προαιρετικό)
+  scope_auto: Εμβέλεια (αυτόματη ανίχνευση '%scope%')
+  type_prompt: Τύπος Commit (αυτόματη ανίχνευση '%type%')
+  summary_prompt: Σύντομο Μήνυμα (αυτόματη συμπλήρωση από Jira)
+  generated_message: 'Δημιουργημένο μήνυμα commit:
+
+    %message%'
 update:
-  section: "Έλεγχος για ενημερώσεις"
-  binary_path: "Διαδρομή δυαδικού"
-  repository: "Αποθετήριο"
-  current_version: "Τρέχουσα έκδοση"
-  latest_version: "Τελευταία έκδοση"
-  downloading_from: "Λήψη από"
-  warning_no_releases: "Δεν βρέθηκαν releases για αυτό το αποθετήριο.\nΤο αποθετήριο μπορεί να μην έχει δημοσιευμένες releases ακόμα."
-  error_fetch: "Αποτυχία λήψης πληροφοριών τελευταίας release.\nΣφάλμα: %error%"
-  success_latest: "Είστε ήδη στην τελευταία έκδοση (%version%)."
-  new_version: "Μια νέα έκδοση (%version%) είναι διαθέσιμη. Ενημέρωση..."
-  error_no_phar: "Δεν ήταν δυνατή η εύρεση asset stud.phar στην τελευταία release.\nAssets release: %assets%"
-  error_download: "Αποτυχία λήψης νέας έκδοσης.\nΣφάλμα: %error%"
-  error_asset_id: "Αποτυχία λήψης νέας έκδοσης.\nΣφάλμα: Το ID asset δεν βρέθηκε στο asset release."
-  error_not_writable: "Η ενημέρωση απέτυχε: Το αρχείο δεν είναι εγγράψιμο.\nΠαρακαλώ εκτελέστε ξανά με αυξημένα δικαιώματα: sudo stud update"
-  error_backup: "Αποτυχία δημιουργίας αντιγράφου ασφαλείας της τρέχουσας έκδοσης.\nΣφάλμα: %error%"
-  error_rollback: "Η ενημέρωση απέτυχε και επανήλθε.\nΣφάλμα: %error%"
-  error_rollback_failed: "Η ενημέρωση απέτυχε και η επαναφορά απέτυχε επίσης!\nΑρχικό σφάλμα: %original_error%\nΣφάλμα επαναφοράς: %rollback_error%\nΠαρακαλώ επαναφέρετε χειροκίνητα από: %backup_path%"
-  changelog_section: "Αλλαγές στην έκδοση %version%"
-  breaking_changes_detected: "⚠️  Ανιχνεύθηκαν κρίσιμες αλλαγές σε αυτή την ενημέρωση:"
-  changelog_error: "Δεν ήταν δυνατή η λήψη του changelog"
-  success_hash_verified: "✅ Επαλήθευση hash επιτυχής. Το δυαδικό είναι αυθεντικό."
-  error_hash_not_found: "Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατή η εύρεση του αρχείου checksum στην release.\nΤο δυαδικό δεν μπορεί να επαληθευτεί. Η ενημέρωση ακυρώθηκε για λόγους ασφαλείας."
-  error_hash_calculation: "Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατός ο υπολογισμός του hash του κατεβασμένου αρχείου.\nΗ ενημέρωση ακυρώθηκε για λόγους ασφαλείας."
-  error_hash_mismatch: "Σφάλμα επαλήθευσης ασφαλείας: Ανιχνεύθηκε ασυνέπεια hash!\n\nΑναμενόμενο hash: %expected%\nΥπολογισμένο hash: %calculated%\n\nΤο κατεβασμένο δυαδικό αρχείο μπορεί να είναι κατεστραμμένο ή να έχει τροποποιηθεί."
-  error_digest_not_found: "Σφάλμα επαλήθευσης ασφαλείας: Δεν βρέθηκε digest στην απάντηση του GitHub API.\nΤο δυαδικό αρχείο δεν μπορεί να επαληθευτεί."
-  prompt_continue_on_verification_failure: "⚠️ Προειδοποίηση: Η επαλήθευση checksum απέτυχε.\nΘέλετε να συνεχίσετε με την εγκατάσταση ούτως ή άλλως;"
-  downloading_checksum: "Λήψη αρχείου checksum από"
-  checksum_download_error: "Σφάλμα κατά τη λήψη του αρχείου checksum"
+  section: Έλεγχος για ενημερώσεις
+  binary_path: Διαδρομή δυαδικού
+  repository: Αποθετήριο
+  current_version: Τρέχουσα έκδοση
+  latest_version: Τελευταία έκδοση
+  downloading_from: Λήψη από
+  warning_no_releases: 'Δεν βρέθηκαν releases για αυτό το αποθετήριο.
 
-# Release Handler
+    Το αποθετήριο μπορεί να μην έχει δημοσιευμένες releases ακόμα.'
+  error_fetch: 'Αποτυχία λήψης πληροφοριών τελευταίας release.
+
+    Σφάλμα: %error%'
+  success_latest: Είστε ήδη στην τελευταία έκδοση (%version%).
+  new_version: Μια νέα έκδοση (%version%) είναι διαθέσιμη. Ενημέρωση...
+  error_no_phar: 'Δεν ήταν δυνατή η εύρεση asset stud.phar στην τελευταία release.
+
+    Assets release: %assets%'
+  error_download: 'Αποτυχία λήψης νέας έκδοσης.
+
+    Σφάλμα: %error%'
+  error_asset_id: 'Αποτυχία λήψης νέας έκδοσης.
+
+    Σφάλμα: Το ID asset δεν βρέθηκε στο asset release.'
+  error_not_writable: 'Η ενημέρωση απέτυχε: Το αρχείο δεν είναι εγγράψιμο.
+
+    Παρακαλώ εκτελέστε ξανά με αυξημένα δικαιώματα: sudo stud update'
+  error_backup: 'Αποτυχία δημιουργίας αντιγράφου ασφαλείας της τρέχουσας έκδοσης.
+
+    Σφάλμα: %error%'
+  error_rollback: 'Η ενημέρωση απέτυχε και επανήλθε.
+
+    Σφάλμα: %error%'
+  error_rollback_failed: 'Η ενημέρωση απέτυχε και η επαναφορά απέτυχε επίσης!
+
+    Αρχικό σφάλμα: %original_error%
+
+    Σφάλμα επαναφοράς: %rollback_error%
+
+    Παρακαλώ επαναφέρετε χειροκίνητα από: %backup_path%'
+  changelog_section: Αλλαγές στην έκδοση %version%
+  breaking_changes_detected: '⚠️  Ανιχνεύθηκαν κρίσιμες αλλαγές σε αυτή την ενημέρωση:'
+  changelog_error: Δεν ήταν δυνατή η λήψη του changelog
+  success_hash_verified: ✅ Επαλήθευση hash επιτυχής. Το δυαδικό είναι αυθεντικό.
+  error_hash_not_found: 'Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατή η εύρεση του αρχείου checksum στην release.
+
+    Το δυαδικό δεν μπορεί να επαληθευτεί. Η ενημέρωση ακυρώθηκε για λόγους ασφαλείας.'
+  error_hash_calculation: 'Σφάλμα επαλήθευσης ασφαλείας: Δεν ήταν δυνατός ο υπολογισμός του hash του κατεβασμένου αρχείου.
+
+    Η ενημέρωση ακυρώθηκε για λόγους ασφαλείας.'
+  error_hash_mismatch: 'Σφάλμα επαλήθευσης ασφαλείας: Ανιχνεύθηκε ασυνέπεια hash!
+
+
+    Αναμενόμενο hash: %expected%
+
+    Υπολογισμένο hash: %calculated%
+
+
+    Το κατεβασμένο δυαδικό αρχείο μπορεί να είναι κατεστραμμένο ή να έχει τροποποιηθεί.'
+  error_digest_not_found: 'Σφάλμα επαλήθευσης ασφαλείας: Δεν βρέθηκε digest στην απάντηση του GitHub API.
+
+    Το δυαδικό αρχείο δεν μπορεί να επαληθευτεί.'
+  prompt_continue_on_verification_failure: '⚠️ Προειδοποίηση: Η επαλήθευση checksum απέτυχε.
+
+    Θέλετε να συνεχίσετε με την εγκατάσταση ούτως ή άλλως;'
+  downloading_checksum: Λήψη αρχείου checksum από
+  checksum_download_error: Σφάλμα κατά τη λήψη του αρχείου checksum
 release:
-  section: "Έναρξη διαδικασίας release για έκδοση %version%"
-  fetched: "Λήφθηκαν οι τελευταίες αλλαγές από origin."
-  created_branch: "Δημιουργήθηκε κλάδος release: %branch%"
-  updated_composer: "Η έκδοση ενημερώθηκε στο composer.json σε %version%"
-  updated_lock: "Το composer.lock ενημερώθηκε"
-  dumped_config: "Η ρύθμιση αποθηκεύτηκε στο config/app.php"
-  updated_changelog: "Το CHANGELOG.md ενημερώθηκε με έκδοση %version%"
-  staged: "Οι αλλαγές προετοιμάστηκαν."
-  committed: "Η αύξηση έκδοσης commit."
-  published: "Ο κλάδος release δημοσιεύτηκε στο remote."
-  confirm_publish: "Θέλετε να δημοσιεύσετε τον κλάδο release στο remote?"
-  success: "Το release %version% είναι έτοιμο για ανάπτυξη."
-
-# Deploy Handler
+  section: Έναρξη διαδικασίας release για έκδοση %version%
+  fetched: Λήφθηκαν οι τελευταίες αλλαγές από origin.
+  created_branch: 'Δημιουργήθηκε κλάδος release: %branch%'
+  updated_composer: Η έκδοση ενημερώθηκε στο composer.json σε %version%
+  updated_lock: Το composer.lock ενημερώθηκε
+  dumped_config: Η ρύθμιση αποθηκεύτηκε στο config/app.php
+  updated_changelog: Το CHANGELOG.md ενημερώθηκε με έκδοση %version%
+  staged: Οι αλλαγές προετοιμάστηκαν.
+  committed: Η αύξηση έκδοσης commit.
+  published: Ο κλάδος release δημοσιεύτηκε στο remote.
+  confirm_publish: Θέλετε να δημοσιεύσετε τον κλάδο release στο remote?
+  success: Το release %version% είναι έτοιμο για ανάπτυξη.
 deploy:
-  section: "Έναρξη διαδικασίας ανάπτυξης"
-  error_not_release: "Πρέπει να είστε σε κλάδο release για ανάπτυξη."
-  deployed: "Αναπτύχθηκε στο main και επισημάνθηκε."
-  updated_develop: "Ο κλάδος develop ενημερώθηκε."
-  cleaned: "Ο κλάδος release καθαρίστηκε."
-  success: "Το release v%version% αναπτύχθηκε με επιτυχία στο main. Το develop rebase και force-push. Οι κλάδοι καθαρίστηκαν."
-
-# Table Headers
+  section: Έναρξη διαδικασίας ανάπτυξης
+  error_not_release: Πρέπει να είστε σε κλάδο release για ανάπτυξη.
+  deployed: Αναπτύχθηκε στο main και επισημάνθηκε.
+  updated_develop: Ο κλάδος develop ενημερώθηκε.
+  cleaned: Ο κλάδος release καθαρίστηκε.
+  success: Το release v%version% αναπτύχθηκε με επιτυχία στο main. Το develop rebase και force-push. Οι κλάδοι καθαρίστηκαν.
+  warning_branch_cleanup: 'Προειδοποίηση: Δεν ήταν δυνατή η διαγραφή του κλάδου release %branch%: %error%'
 table:
-  key: "Κλειδί"
-  status: "Κατάσταση"
-  summary: "Περίληψη"
-  name: "Όνομα"
-  command: "Εντολή"
-  alias: "Ψευδώνυμο"
-  description: "Περιγραφή"
-  priority: "Προτεραιότητα"
-  jira_url: "URL Jira"
-
-# Help Command
+  key: Κλειδί
+  status: Κατάσταση
+  summary: Περίληψη
+  name: Όνομα
+  command: Εντολή
+  alias: Ψευδώνυμο
+  description: Περιγραφή
+  priority: Προτεραιότητα
+  jira_url: URL Jira
 help:
-  title: "Εγχειρίδιο"
-  description_section: "ΠΕΡΙΓΡΑΦΗ"
-  description_text: "Το `stud-cli` είναι ένα εργαλείο διεπαφής γραμμής εντολών σχεδιασμένο να απλοποιεί την καθημερινή ροή εργασίας ενός προγραμματιστή ενσωματώνοντας στενά τα στοιχεία εργασίας Jira με τις λειτουργίες του τοπικού αποθετηρίου Git. Σας καθοδηγεί μέσα από το \"χρυσό μονοπάτι\" της έναρξης μιας εργασίας, της δημιουργίας συμβατικών commits και της προετοιμασίας της εργασίας σας για υποβολή, όλα από τη γραμμή εντολών."
-  global_options_section: "ΚΑΘΟΛΙΚΕΣ ΕΠΙΛΟΓΕΣ"
-  commands_section: "ΕΝΤΟΛΕΣ"
-  global_option_help: "Εμφάνιση βοήθειας για την δεδομένη εντολή. Όταν δεν δίνεται εντολή, εμφάνιση βοήθειας για την εντολή list."
-  global_option_silent: "Να μην εμφανίζονται μηνύματα."
-  global_option_quiet: "Εμφανίζονται μόνο σφάλματα. Όλη η άλλη έξοδος καταστέλλεται."
-  global_option_verbose: "Αύξηση της λεπτομέρειας των μηνυμάτων: 1 για κανονική έξοδο, 2 για πιο λεπτομερή έξοδο και 3 για debug."
-  category_configuration: "Ρύθμιση"
-  category_jira_information: "Πληροφορίες Jira"
-  category_git_workflow: "Ροή Εργασίας Git"
-  category_release_commands: "Εντολές Release"
-  example_prefix: "Παράδειγμα: %example%"
-  command_config_init: "Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git."
-  command_completion: "Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh."
-  command_projects_list: "Λίστα όλων των ορατών έργων Jira."
-  command_items_list: "Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας)."
-  command_items_show: "Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας."
-  command_items_search: "Αναζήτηση issues με JQL."
-  command_items_transition: "Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο."
-  command_filters_list: "Λίστα όλων των διαθέσιμων φίλτρων Jira."
-  command_filters_show: "Λήψη issues από ένα αποθηκευμένο φίλτρο Jira."
-  command_items_start: "Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira."
-  command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
-  command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
-  command_commit: "Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit."
-  command_please: "Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease)."
-  command_flatten: "Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους."
-  command_cache_clear: "Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή."
-  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request."
-  command_pr_comment: "Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα."
-  command_status: "Ένας γρήγορος πίνακας ελέγχου \"πού είμαι;\"."
-  command_release: "Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση."
-  command_deploy: "Αναπτύσσει τον τρέχοντα κλάδο release."
-  command_update: "Ελέγχει και εγκαθιστά νέες εκδόσεις του εργαλείου."
-  universal_help_note: "Συμβουλή: Χρησιμοποιήστε --help (ή -h) με οποιαδήποτε εντολή για να δείτε λεπτομερή βοήθεια. Για παράδειγμα: stud commit --help"
-  command_specific_help_note: "Συμβουλή: Εκτελέστε 'stud help <εντολή>' για να δείτε λεπτομερή βοήθεια για μια συγκεκριμένη εντολή. Για παράδειγμα: stud help commit"
-  command_help_title: "Βοήθεια: %command%"
-  see_readme_note: "Για περισσότερες πληροφορίες, δείτε την πλήρη τεκμηρίωση στο README.md"
-  command_not_found: "Κείμενο βοήθειας δεν είναι διαθέσιμο για την εντολή: %command%"
-  option_all: "Λίστα στοιχείων για όλους τους χρήστες (παρακάμπτει το προεπιλεγμένο φίλτρο αναθέτη)"
-  option_project: "Φιλτράρισμα στοιχείων με συγκεκριμένο κλειδί έργου (π.χ., PROJ)"
-  option_items_list_sort: "Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)"
-  option_commit_new: "Δημιουργία νέου λογικού commit αντί για fixup"
-  option_commit_message: "Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit"
-  option_submit_draft: "Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως \"Draft\" στο GitHub)"
-  option_submit_labels: "Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα"
-  option_update_info: "Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση"
-  option_release_major: "Αύξηση κύριας έκδοσης (X.0.0)"
-  option_release_minor: "Αύξηση δευτερεύουσας έκδοσης (X.Y.0)"
-  option_release_patch: "Αύξηση έκδοσης patch (X.Y.Z). Αυτή είναι η προεπιλογή εάν δεν παρέχονται σημαίες"
-  option_release_publish: "Δημοσίευση του κλάδου release στον απομακρυσμένο αποθετήριο"
-  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
-
+  title: Εγχειρίδιο
+  description_section: ΠΕΡΙΓΡΑΦΗ
+  description_text: Το `stud-cli` είναι ένα εργαλείο διεπαφής γραμμής εντολών σχεδιασμένο να απλοποιεί την καθημερινή ροή εργασίας ενός προγραμματιστή ενσωματώνοντας στενά τα στοιχεία εργασίας Jira με τις λειτουργίες του τοπικού αποθετηρίου Git. Σας καθοδηγεί μέσα από το "χρυσό μονοπάτι" της έναρξης μιας εργασίας, της δημιουργίας συμβατικών commits και της προετοιμασίας της εργασίας σας για υποβολή, όλα από τη γραμμή εντολών.
+  global_options_section: ΚΑΘΟΛΙΚΕΣ ΕΠΙΛΟΓΕΣ
+  commands_section: ΕΝΤΟΛΕΣ
+  global_option_help: Εμφάνιση βοήθειας για την δεδομένη εντολή. Όταν δεν δίνεται εντολή, εμφάνιση βοήθειας για την εντολή list.
+  global_option_silent: Να μην εμφανίζονται μηνύματα.
+  global_option_quiet: Εμφανίζονται μόνο σφάλματα. Όλη η άλλη έξοδος καταστέλλεται.
+  global_option_verbose: 'Αύξηση της λεπτομέρειας των μηνυμάτων: 1 για κανονική έξοδο, 2 για πιο λεπτομερή έξοδο και 3 για debug.'
+  category_configuration: Ρύθμιση
+  category_jira_information: Πληροφορίες Jira
+  category_git_workflow: Ροή Εργασίας Git
+  category_release_commands: Εντολές Release
+  example_prefix: 'Παράδειγμα: %example%'
+  command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
+  command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
+  command_projects_list: Λίστα όλων των ορατών έργων Jira.
+  command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).
+  command_items_show: Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας.
+  command_items_search: Αναζήτηση issues με JQL.
+  command_items_transition: Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο.
+  command_filters_list: Λίστα όλων των διαθέσιμων φίλτρων Jira.
+  command_filters_show: Λήψη issues από ένα αποθηκευμένο φίλτρο Jira.
+  command_items_start: Δημιουργεί έναν νέο κλάδο git από ένα στοιχείο Jira.
+  command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
+  command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
+  command_commit: Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit.
+  command_please: Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease).
+  command_flatten: Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους.
+  command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
+  command_submit: Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request.
+  command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
+  command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".
+  command_release: Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση.
+  command_deploy: Αναπτύσσει τον τρέχοντα κλάδο release.
+  command_update: Ελέγχει και εγκαθιστά νέες εκδόσεις του εργαλείου.
+  universal_help_note: 'Συμβουλή: Χρησιμοποιήστε --help (ή -h) με οποιαδήποτε εντολή για να δείτε λεπτομερή βοήθεια. Για παράδειγμα: stud commit --help'
+  command_specific_help_note: 'Συμβουλή: Εκτελέστε ''stud help <εντολή>'' για να δείτε λεπτομερή βοήθεια για μια συγκεκριμένη εντολή. Για παράδειγμα: stud help commit'
+  command_help_title: 'Βοήθεια: %command%'
+  see_readme_note: Για περισσότερες πληροφορίες, δείτε την πλήρη τεκμηρίωση στο README.md
+  command_not_found: 'Κείμενο βοήθειας δεν είναι διαθέσιμο για την εντολή: %command%'
+  option_all: Λίστα στοιχείων για όλους τους χρήστες (παρακάμπτει το προεπιλεγμένο φίλτρο αναθέτη)
+  option_project: Φιλτράρισμα στοιχείων με συγκεκριμένο κλειδί έργου (π.χ., PROJ)
+  option_items_list_sort: Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)
+  option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
+  option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
+  option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
+  option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
+  option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση
+  option_release_major: Αύξηση κύριας έκδοσης (X.0.0)
+  option_release_minor: Αύξηση δευτερεύουσας έκδοσης (X.Y.0)
+  option_release_patch: Αύξηση έκδοσης patch (X.Y.Z). Αυτή είναι η προεπιλογή εάν δεν παρέχονται σημαίες
+  option_release_publish: Δημοσίευση του κλάδου release στον απομακρυσμένο αποθετήριο
+  option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
+  command_branches_list: Λίστα τοπικών/απομακρυσμένων κλάδων με κατάσταση (συγχωνευμένος, ξεπερασμένος, ενεργό PR)
+  command_branches_clean: Διαδραστικός καθαρισμός συγχωνευμένων/ξεπερασμένων κλάδων
+  option_branches_clean_quiet: Αφαίρεση όλων των αντίστοιχων κλάδων χωρίς ερώτηση
+  option_deploy_clean: Καθαρισμός συγχωνευμένων κλάδων μετά την ανάπτυξη
+branches:
+  list:
+    section: Λίστα Κλάδων
+    no_branches: Δεν βρέθηκαν κλάδοι
+    column:
+      branch: Κλάδος
+      status: Κατάσταση
+      remote: Απομακρυσμένος
+      pr: PR
+    status:
+      merged: συγχωνευμένος
+      stale: ξεπερασμένος
+      active_pr: ενεργό-pr
+      active: ενεργός
+    fetching_local: Λήψη τοπικών κλάδων...
+    fetching_remote: Λήψη απομακρυσμένων κλάδων για %count% τοπικούς κλάδους...
+    note_origin: 'Σημείωση: Ελέγχεται μόνο ο απομακρυσμένος αποθετήριος ''origin''. Άλλοι αποθετήριοι αγνοούνται.'
+  clean:
+    section: Καθαρισμός Κλάδων
+    scanning: Σάρωση κλάδων προς καθαρισμό...
+    found: 'Βρέθηκαν %count% κλάδος(οι) προς καθαρισμό:'
+    confirm: Διαγραφή %count% κλάδος(οι)? (Ν/ο)
+    cancelled: Ο καθαρισμός ακυρώθηκε.
+    deleting: 'Διαγραφή κλάδου: %branch%'
+    deleted: Διαγράφηκαν %count% κλάδος(οι)
+    none: Δεν υπάρχουν κλάδοι προς καθαρισμό
+    protected: 'Προστατευμένος κλάδος παραλείφθηκε: %branch%'
+    error: 'Σφάλμα κατά τη διαγραφή του κλάδου %branch%: %error%'
+    note_origin: 'Σημείωση: Ελέγχεται μόνο ο απομακρυσμένος αποθετήριος ''origin''. Άλλοι αποθετήριοι αγνοούνται.'
+    fetching_local: Λήψη τοπικών κλάδων...
+    fetching_remote: Λήψη απομακρυσμένων κλάδων...
+    local_only_header: 'Μόνο τοπικοί κλάδοι (%count%):'
+    with_remote_header: 'Κλάδοι με απομακρυσμένο αποθετήριο (%count%):'
+    with_remote_note: Αυτοί οι κλάδοι υπάρχουν στον απομακρυσμένο αποθετήριο. Θα σας ζητηθεί να τους διαγράψετε επίσης από τον απομακρυσμένο αποθετήριο.
+    current_branch_skipped: Ο τρέχων κλάδος '%branch%' είναι υποψήφιος για διαγραφή αλλά θα παραλειφθεί. Αλλάξτε πρώτα σε άλλον κλάδο αν θέλετε να τον διαγράψετε.
+    delete_remote_confirm: Διαγραφή επίσης του απομακρυσμένου κλάδου 'origin/%branch%'? (Ν/ο)
+    deleted_remote: Ο απομακρυσμένος κλάδος 'origin/%branch%' διαγράφηκε
+    error_remote: 'Σφάλμα κατά τη διαγραφή του απομακρυσμένου κλάδου ''origin/%branch%'': %error%'
+    remote_kept: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (δεν διαγράφηκε)
+    remote_kept_quiet: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (χρησιμοποιήστε τη διαδραστική λειτουργία για διαγραφή απομακρυσμένων κλάδων)
+    pruning_refs: Καθαρισμός παλιών αναφορών απομακρυσμένων παρακολούθησης...
+    force_delete_warning: Χρήση αναγκαστικής διαγραφής για τον κλάδο %branch% (ο απομακρυσμένος κλάδος διαγράφηκε)

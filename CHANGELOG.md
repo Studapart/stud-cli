@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-01-30
+
+### Added
+- GitLab support for Merge Requests and Git operations [SCI-43]
+  - Added `GitProviderInterface` to abstract GitHub and GitLab provider implementations
+  - Created `GitLabProvider` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
+  - Refactored `GitRepository` to support both GitHub and GitLab URL parsing (SSH and HTTPS formats)
+  - Updated all handlers to use `GitProviderInterface` instead of concrete `GithubProvider`
+  - Added provider factory function `_get_git_provider()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
+  - Support for self-hosted GitLab instances via optional `GITLAB_INSTANCE_URL` config
+  - All existing GitHub functionality remains intact (no regression)
+  - Comprehensive test coverage for GitLabProvider and updated GitRepository tests
+  - Updated documentation with GitLab token setup and configuration instructions
+
+### Optimized
+- Optimize PR lookups for branch management commands to reduce GitHub API calls [SCi-45]
+  - `branches:list` and `branches:clean` now fetch all PRs once (1-2 API calls) instead of per-branch calls (20-40 calls)
+  - Added `GithubProvider::getAllPullRequests()` method with pagination support (handles 100+ PRs)
+  - Added `GithubProvider::hasNextPage()` helper to parse GitHub API Link headers for pagination
+  - `BranchListHandler` and `BranchCleanHandler` now use cached PR map for efficient lookups
+  - Graceful fallback to per-branch API calls if bulk fetch fails
+  - Maintains backward compatibility and handles edge cases (fork PRs, missing repo info)
+  - 100% test coverage for new code paths
+
+### Added
+- Display technical error details from Git and API errors alongside user-friendly messages [SCI-41]
+  - Created `GitException` and `ApiException` classes with `getTechnicalDetails()` method
+  - `GitRepository::run()` now captures Git error output and throws `GitException` with technical details
+  - `JiraService` methods now throw `ApiException` with API response body and status code
+  - `GithubProvider` methods now throw `ApiException` with API response details
+  - Added `Logger::errorWithDetails()` method to display both user-friendly and technical error messages
+  - All handlers now catch `GitException` and `ApiException` and display both messages using `errorWithDetails()`
+  - Technical details are truncated to 500 characters to avoid overwhelming output
+  - Error messages maintain backward compatibility with existing translations
+
+### Fixed
+- Fix branch deletion failures due to stale remote-tracking references [SCI-44]
+  - `GitRepository::deleteBranch()` now accepts optional `$remoteExists` parameter to handle stale refs
+  - When remote branch doesn't exist, stale remote-tracking refs are pruned before deletion
+  - Added `GitRepository::deleteBranchForce()` method for force delete fallback
+  - Added `GitRepository::pruneRemoteTrackingRefs()` method to remove stale refs
+  - `BranchCleanHandler` and `DeployHandler` now handle deletion failures gracefully with force delete fallback
+  - Branch deletion now works correctly even when remote branch was deleted externally (e.g., via GitHub UI)
+
+### Added
+- Add branch management commands: `branches:list` and `branches:clean` [SCI-40]
+  - `stud branches:list` (alias `bl`) lists all local branches with status (merged, stale, active-pr, active)
+  - `stud branches:clean` (alias `bc`) interactively cleans up merged/stale branches with `--quiet` option for non-interactive mode
+  - Add `--clean` option to `stud deploy` to clean up merged branches after deployment
+  - GitRepository methods: `getAllLocalBranches()`, `isBranchMergedInto()`, `getAllRemoteBranches()`
+  - GithubProvider: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
+  - GithubProvider: `findPullRequestByBranchName()` helper method for finding PRs by branch name
+  - BranchListHandler and BranchCleanHandler following ADR pattern
+  - Protected branches (develop, main, master) are never deleted by `branches:clean`
+  - All user-facing text uses TranslationService
+  - Comprehensive unit and integration tests with 100% coverage
+
 ## [3.2.0] - 2026-01-13
 
 ### Added

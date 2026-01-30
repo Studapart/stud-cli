@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "3.2.0",
+    "version": "3.3.0",
     "authors": [
         {
             "name": "Pierre-Emmanuel Manteau",
@@ -60,7 +60,9 @@
         "phpunit/phpunit": "^11.0",
         "phpspec/prophecy-phpunit": "^2.4",
         "friendsofphp/php-cs-fixer": "^3.0",
-        "phpstan/phpstan": "^1.10"
+        "phpstan/phpstan": "^1.10",
+        "league/flysystem": "^3.0",
+        "league/flysystem-memory": "^3.31"
     },
     "scripts": {
         "dump-config": "php scripts/dump-config.php"

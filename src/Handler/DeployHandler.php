@@ -13,6 +13,7 @@ class DeployHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
     ) {
@@ -39,16 +40,35 @@ class DeployHandler
         $this->gitRepository->pushTags('origin');
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.deployed'));
 
-        // Update develop
-        $this->gitRepository->checkout('develop');
-        $this->gitRepository->pull('origin', 'develop');
+        // Update base branch
+        $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+        $this->gitRepository->checkout($baseBranchName);
+        $this->gitRepository->pull('origin', $baseBranchName);
         $this->gitRepository->rebase('main');
-        $this->gitRepository->forcePushWithLeaseRemote('origin', 'develop');
+        $this->gitRepository->forcePushWithLeaseRemote('origin', $baseBranchName);
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.updated_develop'));
 
         // Cleanup
         if ($this->gitRepository->localBranchExists($currentBranch)) {
-            $this->gitRepository->deleteBranch($currentBranch);
+            $remoteExists = $this->gitRepository->remoteBranchExists('origin', $currentBranch);
+
+            try {
+                $this->gitRepository->deleteBranch($currentBranch, $remoteExists);
+            } catch (\Exception $e) {
+                // If deletion fails, try force delete as fallback when remote doesn't exist
+                if (! $remoteExists) {
+                    try {
+                        $this->gitRepository->deleteBranchForce($currentBranch);
+                        $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.force_delete_warning', ['branch' => $currentBranch]));
+                    } catch (\Exception $forceException) {
+                        // If force delete also fails, log warning but continue (deployment succeeded)
+                        $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.warning_branch_cleanup', ['branch' => $currentBranch, 'error' => $forceException->getMessage()]));
+                    }
+                } else {
+                    // If remote exists and deletion fails, log warning but continue
+                    $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.warning_branch_cleanup', ['branch' => $currentBranch, 'error' => $e->getMessage()]));
+                }
+            }
         }
         if ($this->gitRepository->remoteBranchExists('origin', $currentBranch)) {
             $this->gitRepository->deleteRemoteBranch('origin', $currentBranch);

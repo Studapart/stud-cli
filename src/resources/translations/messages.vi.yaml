@@ -1,434 +1,537 @@
-# Configuration
 config:
   init:
     wizard:
-      title: "Trình hướng dẫn cấu hình Stud CLI"
-      description: "Điều này sẽ tạo hoặc cập nhật tệp cấu hình của bạn tại: %path%"
+      title: Trình hướng dẫn cấu hình Stud CLI
+      description: 'Điều này sẽ tạo hoặc cập nhật tệp cấu hình của bạn tại: %path%'
     language:
-      title: "Cấu hình ngôn ngữ"
-      prompt: "Chọn ngôn ngữ của bạn"
+      title: Cấu hình ngôn ngữ
+      prompt: Chọn ngôn ngữ của bạn
     jira:
-      title: "Cấu hình Jira"
-      token_help: "Bạn có thể tạo token API tại đây: https://id.atlassian.com/manage-profile/security/api-tokens"
-      url_prompt: "Nhập URL Jira của bạn"
-      email_prompt: "Nhập địa chỉ email Jira của bạn"
-      token_prompt: "Nhập token API Jira của bạn (để trống để giữ nguyên giá trị hiện có)"
+      title: Cấu hình Jira
+      token_help: 'Bạn có thể tạo token API tại đây: https://id.atlassian.com/manage-profile/security/api-tokens'
+      url_prompt: Nhập URL Jira của bạn
+      email_prompt: Nhập địa chỉ email Jira của bạn
+      token_prompt: Nhập token API Jira của bạn (để trống để giữ nguyên giá trị hiện có)
     git:
-      title: "Cấu hình nhà cung cấp Git"
-      description: "Điều này được yêu cầu cho lệnh `stud submit` để tạo Pull Requests."
-      token_help: "Bạn có thể tạo token tại đây: https://github.com/settings/tokens"
-      auto_detect_note: "Lưu ý: Chủ sở hữu và tên kho lưu trữ sẽ được tự động phát hiện từ git remote của bạn."
-      provider_prompt: "Chọn nhà cung cấp Git của bạn"
-      token_prompt: "Nhập PAT nhà cung cấp Git của bạn (để trống để giữ nguyên giá trị hiện có)"
+      title: Cấu hình token nhà cung cấp Git
+      description: Cấu hình token cho GitHub và/hoặc GitLab. Đây là các giá trị mặc định toàn cục có thể được ghi đè theo từng kho lưu trữ.
+      token_help: 'Bạn có thể tạo token tại đây:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Lưu ý: Bạn có thể cấu hình cả hai token, hoặc chỉ những token bạn cần. Nhà cung cấp sẽ được cấu hình theo từng kho lưu trữ.'
+      github_token_prompt: Nhập PAT GitHub của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
+      gitlab_token_prompt: Nhập PAT GitLab của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
     jira_transition:
-      title: "Cấu hình chuyển đổi Jira"
-      description: "Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue."
-      prompt: "Bật chuyển đổi tự động Jira sang 'Đang thực hiện'?"
-    success: "Cấu hình đã được lưu thành công!"
+      title: Cấu hình chuyển đổi Jira
+      description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
+      prompt: Bật chuyển đổi tự động Jira sang 'Đang thực hiện'?
+    success: Cấu hình đã được lưu thành công!
     completion:
-      title: "Thiết lập Tự động hoàn thành Shell"
-      prompt: "Chúng tôi phát hiện bạn đang sử dụng '%shell%'. Bạn có muốn thiết lập tự động hoàn thành shell không?"
-      yes: "Có"
-      no: "Không"
-      success_message: "✅ Tuyệt vời! Để hoàn tất cài đặt, hãy chạy lệnh này:"
-      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
-      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
-      reload_instruction: "Sau đó, khởi động lại shell của bạn hoặc chạy 'source ~/.%shellrc%'"
-      skipped: "Thiết lập tự động hoàn thành shell đã bị bỏ qua."
+      title: Thiết lập Tự động hoàn thành Shell
+      prompt: Chúng tôi phát hiện bạn đang sử dụng '%shell%'. Bạn có muốn thiết lập tự động hoàn thành shell không?
+      yes: Có
+      no: Không
+      success_message: '✅ Tuyệt vời! Để hoàn tất cài đặt, hãy chạy lệnh này:'
+      bash_command: echo 'eval "$(stud completion bash)"' >> ~/.bashrc
+      zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
+      reload_instruction: Sau đó, khởi động lại shell của bạn hoặc chạy 'source ~/.%shellrc%'
+      skipped: Thiết lập tự động hoàn thành shell đã bị bỏ qua.
   error:
-    not_found: "Không tìm thấy tệp cấu hình tại: %path%\nVui lòng chạy \"stud config:init\" để tạo một tệp."
-    missing_jira_keys: "Tệp cấu hình của bạn thiếu các khóa Jira bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
-    missing_git_keys: "Tệp cấu hình của bạn thiếu các khóa nhà cung cấp Git bắt buộc: %keys%\nVui lòng chạy \"stud config:init\" lại."
-    missing_setup: "Không tìm thấy tệp cấu hình. Vui lòng thiết lập stud-cli trước khi sử dụng lệnh này."
-    run_init_instruction: "Chạy 'stud config:init' để tạo tệp cấu hình của bạn."
+    not_found: 'Không tìm thấy tệp cấu hình tại: %path%
 
-# Item Start Handler
+      Vui lòng chạy "stud config:init" để tạo một tệp.'
+    missing_jira_keys: 'Tệp cấu hình của bạn thiếu các khóa Jira bắt buộc: %keys%
+
+      Vui lòng chạy "stud config:init" lại.'
+    missing_git_keys: 'Tệp cấu hình của bạn thiếu các khóa nhà cung cấp Git bắt buộc: %keys%
+
+      Vui lòng chạy "stud config:init" lại.'
+    missing_setup: Không tìm thấy tệp cấu hình. Vui lòng thiết lập stud-cli trước khi sử dụng lệnh này.
+    run_init_instruction: Chạy 'stud config:init' để tạo tệp cấu hình của bạn.
+  base_branch_not_configured: Nhánh cơ sở chưa được cấu hình cho kho lưu trữ này.
+  base_branch_prompt: Nhập tên nhánh cơ sở
+  base_branch_detected: "Đã phát hiện nhánh cơ sở: %branch%"
+  base_branch_saving: Đang lưu cấu hình nhánh cơ sở...
+  base_branch_saved: "Nhánh cơ sở đã được cấu hình: %branch%"
+  base_branch_invalid: "Nhánh cơ sở '%branch%' không tồn tại trên remote. Vui lòng kiểm tra tên nhánh."
+  base_branch_required: Nhánh cơ sở là bắt buộc. Lệnh không thể tiếp tục mà không có nhánh cơ sở hợp lệ.
+  git_provider_not_configured: Nhà cung cấp Git chưa được cấu hình cho kho lưu trữ này.
+  git_provider_prompt: Chọn nhà cung cấp Git cho kho lưu trữ này
+  git_provider_detected: "Đã phát hiện nhà cung cấp Git: %provider%"
+  git_provider_saving: Đang lưu cấu hình nhà cung cấp Git...
+  git_provider_saved: "Nhà cung cấp Git đã được cấu hình: %provider%"
+  git_provider_required: Nhà cung cấp Git là bắt buộc. Lệnh không thể tiếp tục mà không có nhà cung cấp Git hợp lệ.
+  git_token_not_configured: Token Git chưa được cấu hình cho kho lưu trữ này.
+  git_token_prompt: Nhập PAT %provider% của bạn (để trống để bỏ qua)
+  git_token_saving: Đang lưu cấu hình token Git...
+  git_token_saved: "Token Git đã được cấu hình cho %provider%"
+  git_token_required: Token Git là bắt buộc. Lệnh không thể tiếp tục mà không có token Git hợp lệ.
+  git_token_global_suggestion: "Mẹo: Bạn có thể cấu hình token toàn cục bằng cách chạy 'stud config:init'"
+  git_token_type_mismatch: "Nhà cung cấp được đặt thành '%provider%' nhưng chỉ có token %opposite% được cấu hình. Vui lòng cấu hình token %provider% hoặc thay đổi nhà cung cấp."
+  git_token_no_tokens: Không có token Git nào được cấu hình. Vui lòng chạy 'stud config:init' để cấu hình token toàn cục, hoặc cấu hình token cục bộ cho kho lưu trữ này.
+  migration:
+    git_token_detected: Đã phát hiện định dạng token Git cũ. Yêu cầu di chuyển.
+    git_provider_prompt: Chọn nhà cung cấp Git cho token của bạn
+    git_migration_complete: "Cấu hình Git đã được di chuyển thành công. Token đã được cấu hình cho %provider%."
 item:
   start:
-    section: "Bắt đầu làm việc trên %key%"
-    fetching: "Đang lấy chi tiết cho issue: %key%"
-    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
-    generated_branch: "Tên nhánh đã tạo: %branch%"
-    fetching_changes: "Đang lấy các thay đổi mới nhất từ origin..."
-    creating_branch: "Đang tạo nhánh mới: %branch%"
-    success: "Nhánh '%branch%' đã được tạo từ '%base%'."
-    assigning: "Đang gán issue %key% cho người dùng hiện tại..."
-    assign_error: "Lỗi gán issue: %error%"
-    no_transitions: "Không có chuyển đổi 'Đang thực hiện' nào có sẵn cho issue %key%. Bỏ qua chuyển đổi."
-    select_transition: "Chọn chuyển đổi sang 'Đang thực hiện':"
-    invalid_selection: "Lựa chọn chuyển đổi không hợp lệ."
-    save_transition: "Bạn có muốn lưu lựa chọn chuyển đổi này cho dự án '%project%' không?"
-    transition_saved: "Lựa chọn chuyển đổi đã được lưu cho dự án '%project%'."
-    using_cached_transition: "Đang sử dụng ID chuyển đổi đã lưu: %id%"
-    transition_success: "✅ Issue %key% đã chuyển sang 'Đang thực hiện'"
-    transition_error: "Lỗi lấy chuyển đổi: %error%"
-    transition_exec_error: "Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh."
-    switching_branch: "Switching to existing branch: %branch%"
-    switching_remote_branch: "Switching to remote branch: %branch%"
-    success_switched: "Switched to branch '%branch%'."
+    section: Bắt đầu làm việc trên %key%
+    fetching: 'Đang lấy chi tiết cho issue: %key%'
+    error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    generated_branch: 'Tên nhánh đã tạo: %branch%'
+    fetching_changes: Đang lấy các thay đổi mới nhất từ origin...
+    creating_branch: 'Đang tạo nhánh mới: %branch%'
+    success: Nhánh '%branch%' đã được tạo từ '%base%'.
+    assigning: Đang gán issue %key% cho người dùng hiện tại...
+    assign_error: 'Lỗi gán issue: %error%'
+    no_transitions: Không có chuyển đổi 'Đang thực hiện' nào có sẵn cho issue %key%. Bỏ qua chuyển đổi.
+    select_transition: 'Chọn chuyển đổi sang ''Đang thực hiện'':'
+    invalid_selection: Lựa chọn chuyển đổi không hợp lệ.
+    save_transition: Bạn có muốn lưu lựa chọn chuyển đổi này cho dự án '%project%' không?
+    transition_saved: Lựa chọn chuyển đổi đã được lưu cho dự án '%project%'.
+    using_cached_transition: 'Đang sử dụng ID chuyển đổi đã lưu: %id%'
+    transition_success: ✅ Issue %key% đã chuyển sang 'Đang thực hiện'
+    transition_error: 'Lỗi lấy chuyển đổi: %error%'
+    transition_exec_error: 'Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh.'
+    switching_branch: 'Switching to existing branch: %branch%'
+    switching_remote_branch: 'Switching to remote branch: %branch%'
+    success_switched: Switched to branch '%branch%'.
   takeover:
-    section: "Taking over issue %key%"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."
-    error_not_found: "Could not find Jira issue with key \"%key%\"."
-    assigning: "Assigning issue %key% to current user..."
-    assign_warning: "Failed to assign issue: %error%. Continuing anyway."
-    fetching: "Fetching from remote..."
-    searching_branches: "Searching for branches..."
-    branches_found: "Found %count% branch(es) for this issue:"
-    select_branch: "Select a branch to take over:"
-    branch_remote: "%branch% (remote)"
-    branch_local: "%branch% (local)"
-    confirm_branch: "Take over branch '%branch%'?"
-    switching: "Switching to branch %branch%..."
-    already_on_branch: "Already on branch %branch%. Checking status..."
-    status_behind_remote: "Branch is %count% commit(s) behind remote"
-    status_ahead_remote: "Branch is %count% commit(s) ahead of remote"
-    status_sync_remote: "Branch is in sync with remote"
-    status_behind_base: "Branch is %count% commit(s) behind %base%"
-    status_ahead_base: "Branch is %count% commit(s) ahead of %base%"
-    status_sync_base: "Branch is in sync with %base%"
-    warning_wrong_base: "⚠️ Warning: Branch is based on a different branch than expected (%base%)."
-    warning_diverged: "⚠️ Warning: Local branch has commits not on remote. Manual intervention required."
-    pulling: "Pulling latest changes from remote..."
-    no_branches: "No branches found for issue %key%."
-    start_fresh_prompt: "Would you like to start fresh? (This will create a new branch)"
-    success_took_over: "✅ Successfully took over %key%"
-    success_on_branch: "📍 You are now on branch: %branch%"
-    success_status_header: "📊 Branch status:"
-    success_status_remote: " - Remote: %status%"
-    success_status_base: " - %base%: %status%"
-    success_view_details: "ℹ️ View issue details: stud sh %key%"
-
-# Item Show Handler
+    section: Taking over issue %key%
+    error_dirty_working: Your working directory is not clean. Please commit your changes before taking over an issue.
+    error_not_found: Could not find Jira issue with key "%key%".
+    assigning: Assigning issue %key% to current user...
+    assign_warning: 'Failed to assign issue: %error%. Continuing anyway.'
+    fetching: Fetching from remote...
+    searching_branches: Searching for branches...
+    branches_found: 'Found %count% branch(es) for this issue:'
+    select_branch: 'Select a branch to take over:'
+    branch_remote: '%branch% (remote)'
+    branch_local: '%branch% (local)'
+    confirm_branch: Take over branch '%branch%'?
+    switching: Switching to branch %branch%...
+    already_on_branch: Already on branch %branch%. Checking status...
+    status_behind_remote: Branch is %count% commit(s) behind remote
+    status_ahead_remote: Branch is %count% commit(s) ahead of remote
+    status_sync_remote: Branch is in sync with remote
+    status_behind_base: Branch is %count% commit(s) behind %base%
+    status_ahead_base: Branch is %count% commit(s) ahead of %base%
+    status_sync_base: Branch is in sync with %base%
+    warning_wrong_base: '⚠️ Warning: Branch is based on a different branch than expected (%base%).'
+    warning_diverged: '⚠️ Warning: Local branch has commits not on remote. Manual intervention required.'
+    pulling: Pulling latest changes from remote...
+    no_branches: No branches found for issue %key%.
+    start_fresh_prompt: Would you like to start fresh? (This will create a new branch)
+    success_took_over: ✅ Successfully took over %key%
+    success_on_branch: '📍 You are now on branch: %branch%'
+    success_status_header: '📊 Branch status:'
+    success_status_remote: ' - Remote: %status%'
+    success_status_base: ' - %base%: %status%'
+    success_view_details: 'ℹ️ View issue details: stud sh %key%'
   show:
-    section: "Chi tiết cho issue %key%"
-    fetching: "Đang lấy chi tiết cho issue: %key%"
-    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
-    label_key: "Khóa"
-    label_title: "Tiêu đề"
-    label_status: "Trạng thái"
-    label_assignee: "Người được giao"
-    label_type: "Loại"
-    label_labels: "Nhãn"
-    label_description: "Mô tả"
-    label_link: "Liên kết"
-    label_none: "Không có"
-# Item Transition Handler
+    section: Chi tiết cho issue %key%
+    fetching: 'Đang lấy chi tiết cho issue: %key%'
+    error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    label_key: Khóa
+    label_title: Tiêu đề
+    label_status: Trạng thái
+    label_assignee: Người được giao
+    label_type: Loại
+    label_labels: Nhãn
+    label_description: Mô tả
+    label_link: Liên kết
+    label_none: Không có
   transition:
-    section: "Chuyển đổi issue Jira"
-    detected_key: "Phát hiện khóa Jira '%key%' từ nhánh hiện tại. Sử dụng khóa này?"
-    prompt_key: "Nhập khóa issue Jira"
-    error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
-    error_invalid_key: "Định dạng khóa Jira không hợp lệ. Định dạng mong đợi: PROJ-123"
-    fetching: "Đang lấy các chuyển đổi có sẵn cho issue: %key%"
-    no_transitions: "Không có chuyển đổi nào có sẵn cho issue %key%."
-    select_transition: "Chọn chuyển đổi để áp dụng:"
-    error_fetch: "Lỗi khi lấy chuyển đổi: %error%"
-    error_execute: "Lỗi khi thực thi chuyển đổi: %error%"
-    success: "✅ Issue %key% đã được chuyển đổi thành công"
-
-# Item List Handler
+    section: Chuyển đổi issue Jira
+    detected_key: Phát hiện khóa Jira '%key%' từ nhánh hiện tại. Sử dụng khóa này?
+    prompt_key: Nhập khóa issue Jira
+    error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    error_invalid_key: 'Định dạng khóa Jira không hợp lệ. Định dạng mong đợi: PROJ-123'
+    fetching: 'Đang lấy các chuyển đổi có sẵn cho issue: %key%'
+    no_transitions: Không có chuyển đổi nào có sẵn cho issue %key%.
+    select_transition: 'Chọn chuyển đổi để áp dụng:'
+    error_fetch: 'Lỗi khi lấy chuyển đổi: %error%'
+    error_execute: 'Lỗi khi thực thi chuyển đổi: %error%'
+    success: ✅ Issue %key% đã được chuyển đổi thành công
   list:
-    section: "Đang lấy các mục Jira"
-    error_fetch: "Không thể lấy các mục: %error%"
-    no_items: "Không tìm thấy mục nào phù hợp với tiêu chí của bạn."
-    error_invalid_sort: "Giá trị sắp xếp không hợp lệ '%value%'. Giá trị được chấp nhận: Key, Status"
-
-# Project List Handler
+    section: Đang lấy các mục Jira
+    error_fetch: 'Không thể lấy các mục: %error%'
+    no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
+    error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
 project:
   list:
-    section: "Đang lấy các dự án Jira"
-    error_fetch: "Không thể lấy các dự án: %error%"
-    no_projects: "Không tìm thấy dự án nào."
-
-# Search Handler
+    section: Đang lấy các dự án Jira
+    error_fetch: 'Không thể lấy các dự án: %error%'
+    no_projects: Không tìm thấy dự án nào.
 search:
-  section: "Tìm kiếm các issue Jira với JQL"
-  jql_query: "Truy vấn JQL: %jql%"
-  error_search: "Không thể tìm kiếm các issue: %error%"
-  no_results: "Không tìm thấy issue nào phù hợp với truy vấn JQL của bạn."
-
-# Filter Show Handler
+  section: Tìm kiếm các issue Jira với JQL
+  jql_query: 'Truy vấn JQL: %jql%'
+  error_search: 'Không thể tìm kiếm các issue: %error%'
+  no_results: Không tìm thấy issue nào phù hợp với truy vấn JQL của bạn.
 filter:
   show:
-    section: "Lấy các issue từ bộ lọc '%filterName%'"
-    jql_query: "Truy vấn JQL: %jql%"
-    error_fetch: "Không thể lấy các issue từ bộ lọc: %error%"
-    no_results: "Không tìm thấy issue nào trong bộ lọc '%filterName%'."
+    section: Lấy các issue từ bộ lọc '%filterName%'
+    jql_query: 'Truy vấn JQL: %jql%'
+    error_fetch: 'Không thể lấy các issue từ bộ lọc: %error%'
+    no_results: Không tìm thấy issue nào trong bộ lọc '%filterName%'.
   list:
-    section: "Lấy các bộ lọc Jira"
-    error_fetch: "Không thể lấy các bộ lọc: %error%"
-    no_filters: "Không tìm thấy bộ lọc nào."
-
-# Status Handler
+    section: Lấy các bộ lọc Jira
+    error_fetch: 'Không thể lấy các bộ lọc: %error%'
+    no_filters: Không tìm thấy bộ lọc nào.
 status:
-  section: "Trạng thái hiện tại"
-  fetching: "Đang lấy trạng thái cho issue Jira: %key%"
-  jira_status: "[%status%] %key%: %title%"
-  jira_error: "Không thể lấy chi tiết issue Jira: %error%"
-  jira_no_key: "Không tìm thấy khóa Jira trong tên nhánh."
-  git_branch: "Trên nhánh '%branch%'"
-  local_changes: "Bạn có %count% thay đổi chưa commit."
-  local_clean: "Thư mục làm việc sạch sẽ."
-
-# Please Handler
+  section: Trạng thái hiện tại
+  fetching: 'Đang lấy trạng thái cho issue Jira: %key%'
+  jira_status: '[%status%] %key%: %title%'
+  jira_error: 'Không thể lấy chi tiết issue Jira: %error%'
+  jira_no_key: Không tìm thấy khóa Jira trong tên nhánh.
+  git_branch: Trên nhánh '%branch%'
+  local_changes: Bạn có %count% thay đổi chưa commit.
+  local_clean: Thư mục làm việc sạch sẽ.
 please:
-  error_no_upstream: "Nhánh hiện tại của bạn chưa được cấu hình upstream remote.\nĐể push lần đầu và tạo Pull Request, vui lòng sử dụng \"stud submit\"."
-  warning_force: "⚠️  Đang ép buộc với lease..."
+  error_no_upstream: 'Nhánh hiện tại của bạn chưa được cấu hình upstream remote.
 
-# Flatten Handler
+    Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
+  warning_force: ⚠️  Đang ép buộc với lease...
 flatten:
-  section: "Làm phẳng các commit fixup"
-  error_dirty_working: "Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi làm phẳng."
-  warning_rewrite: "⚠️  Điều này sẽ viết lại lịch sử commit của bạn. Bạn có thể cần chạy 'stud please' để force-push sau đó."
-  success: "✅ Tất cả các commit fixup! đã được gộp vào các commit mục tiêu của chúng."
-  error_rebase: "Rebase thất bại: %error%"
-  no_fixups: "Không tìm thấy commit fixup! hoặc squash!. Không có gì để làm phẳng."
-
-# Cache Clear Handler
+  section: Làm phẳng các commit fixup
+  error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi làm phẳng.
+  warning_rewrite: ⚠️  Điều này sẽ viết lại lịch sử commit của bạn. Bạn có thể cần chạy 'stud please' để force-push sau đó.
+  success: ✅ Tất cả các commit fixup! đã được gộp vào các commit mục tiêu của chúng.
+  error_rebase: 'Rebase thất bại: %error%'
+  no_fixups: Không tìm thấy commit fixup! hoặc squash!. Không có gì để làm phẳng.
 cache:
   clear:
-    section: "Xóa bộ nhớ cache kiểm tra cập nhật"
-    success: "✅ Bộ nhớ cache kiểm tra cập nhật đã được xóa thành công."
-    already_clear: "Bộ nhớ cache đã trống."
-    error_delete: "Lỗi khi xóa tệp cache."
-
-# Submit Handler
+    section: Xóa bộ nhớ cache kiểm tra cập nhật
+    success: ✅ Bộ nhớ cache kiểm tra cập nhật đã được xóa thành công.
+    already_clear: Bộ nhớ cache đã trống.
+    error_delete: Lỗi khi xóa tệp cache.
 submit:
-  section: "Gửi Pull Request"
-  error_dirty_working: "Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi gửi."
-  error_base_branch: "Không thể tạo Pull Request từ nhánh cơ sở."
-  pushing: "Đang push nhánh %branch%..."
-  error_push: "Push thất bại. Nhánh của bạn có thể đã viết lại lịch sử.\nThử chạy 'stud please' để force-push."
-  finding_commit: "Đang tìm commit logic đầu tiên để sử dụng cho chi tiết PR..."
-  fetching_jira: "Đang lấy issue Jira cho nội dung PR: %key%"
-  error_no_logical: "Không tìm thấy commit logic trên nhánh này. Không thể tạo PR."
-  error_no_jira_key: "Không thể phân tích khóa Jira từ thông báo commit. Không thể tạo PR."
-  warning_jira_fetch: "Không thể lấy chi tiết issue Jira cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
-  creating: "Đang tạo Pull Request..."
-  success_created: "✅ Pull Request đã được tạo: %url%"
-  warning_no_provider: "Chưa cấu hình nhà cung cấp Git cho dự án này."
-  note_pr_exists: "Đã tồn tại Pull Request cho nhánh này."
-  success_pushed: "✅ Các thay đổi đã được push lên GitHub"
-  error_create_pr: "Không thể tạo Pull Request.\nLỗi: %error%"
-  using_head: "Đang sử dụng nhánh head: %head%"
-  fetching_labels: "Đang lấy nhãn từ kho lưu trữ..."
-  label_unknown_prompt: "Nhãn '%label%' không tồn tại trong kho lưu trữ. Bạn muốn làm gì?"
-  label_create_option: "Tạo: Tạo nhãn trên GitHub và thêm vào PR"
-  label_ignore_option: "Bỏ qua: Bỏ qua nhãn này và xóa khỏi danh sách cuối cùng"
-  label_retry_option: "Thử lại: Hủy lệnh và chạy lại với danh sách đã sửa"
-  label_creating: "Đang tạo nhãn '%label%'..."
-  label_created: "✅ Nhãn '%label%' đã được tạo thành công"
-  label_ignored: "Nhãn '%label%' sẽ bị bỏ qua"
-  error_fetch_labels: "Không thể lấy nhãn từ GitHub.\nLỗi: %error%"
-  error_create_label: "Không thể tạo nhãn '%label%'.\nLỗi: %error%"
-  error_add_labels: "Không thể thêm nhãn vào Pull Request.\nLỗi: %error%"
-  adding_labels: "Đang thêm nhãn vào Pull Request..."
-  updating_to_draft: "Đang cập nhật Pull Request sang trạng thái bản nháp..."
-  error_update_draft: "Không thể cập nhật trạng thái bản nháp của Pull Request.\nLỗi: %error%"
+  section: Gửi Pull Request
+  error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi gửi.
+  error_base_branch: Không thể tạo Pull Request từ nhánh cơ sở.
+  pushing: Đang push nhánh %branch%...
+  error_push: 'Push thất bại. Nhánh của bạn có thể đã viết lại lịch sử.
 
-# PR Comment Handler
+    Thử chạy ''stud please'' để force-push.'
+  finding_commit: Đang tìm commit logic đầu tiên để sử dụng cho chi tiết PR...
+  fetching_jira: 'Đang lấy issue Jira cho nội dung PR: %key%'
+  error_no_logical: Không tìm thấy commit logic trên nhánh này. Không thể tạo PR.
+  error_no_jira_key: Không thể phân tích khóa Jira từ thông báo commit. Không thể tạo PR.
+  warning_jira_fetch: 'Không thể lấy chi tiết issue Jira cho nội dung PR: %error%
+
+    Quay lại liên kết đơn giản.'
+  creating: Đang tạo Pull Request...
+  success_created: '✅ Pull Request đã được tạo: %url%'
+  warning_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.
+  note_pr_exists: Đã tồn tại Pull Request cho nhánh này.
+  success_pushed: ✅ Các thay đổi đã được push lên GitHub
+  error_create_pr: 'Không thể tạo Pull Request.
+
+    Lỗi: %error%'
+  using_head: 'Đang sử dụng nhánh head: %head%'
+  fetching_labels: Đang lấy nhãn từ kho lưu trữ...
+  label_unknown_prompt: Nhãn '%label%' không tồn tại trong kho lưu trữ. Bạn muốn làm gì?
+  label_create_option: 'Tạo: Tạo nhãn trên GitHub và thêm vào PR'
+  label_ignore_option: 'Bỏ qua: Bỏ qua nhãn này và xóa khỏi danh sách cuối cùng'
+  label_retry_option: 'Thử lại: Hủy lệnh và chạy lại với danh sách đã sửa'
+  label_creating: Đang tạo nhãn '%label%'...
+  label_created: ✅ Nhãn '%label%' đã được tạo thành công
+  label_ignored: Nhãn '%label%' sẽ bị bỏ qua
+  error_fetch_labels: 'Không thể lấy nhãn từ GitHub.
+
+    Lỗi: %error%'
+  error_create_label: 'Không thể tạo nhãn ''%label%''.
+
+    Lỗi: %error%'
+  error_add_labels: 'Không thể thêm nhãn vào Pull Request.
+
+    Lỗi: %error%'
+  adding_labels: Đang thêm nhãn vào Pull Request...
+  updating_to_draft: Đang cập nhật Pull Request sang trạng thái bản nháp...
+  error_update_draft: 'Không thể cập nhật trạng thái bản nháp của Pull Request.
+
+    Lỗi: %error%'
 pr:
   comment:
-    section: "Đăng bình luận trên Pull Request"
-    error_no_provider: "Chưa cấu hình nhà cung cấp Git cho dự án này."
-    error_no_input: "Không có nội dung bình luận được cung cấp.\nVui lòng cung cấp nội dung qua STDIN (ống dẫn) hoặc như một đối số trực tiếp.\nVí dụ: echo \"Văn bản bình luận\" | stud pr:comment\nVí dụ: stud pr:comment \"Văn bản bình luận\""
-    error_no_pr: "Không tìm thấy Pull Request đang hoạt động cho nhánh hiện tại."
-    error_post: "Không thể đăng bình luận trên Pull Request.\nLỗi: %error%"
-    finding_pr: "Đang tìm Pull Request cho nhánh: %branch%"
-    posting: "Đang đăng bình luận trên Pull Request #%number%..."
-    success: "✅ Bình luận đã được đăng thành công trên Pull Request #%number%"
-    using_stdin: "Đang đọc bình luận từ STDIN..."
-    using_argument: "Đang sử dụng bình luận từ đối số..."
+    section: Đăng bình luận trên Pull Request
+    error_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.
+    error_no_input: 'Không có nội dung bình luận được cung cấp.
 
-# Branch Rename Handler
+      Vui lòng cung cấp nội dung qua STDIN (ống dẫn) hoặc như một đối số trực tiếp.
+
+      Ví dụ: echo "Văn bản bình luận" | stud pr:comment
+
+      Ví dụ: stud pr:comment "Văn bản bình luận"'
+    error_no_pr: Không tìm thấy Pull Request đang hoạt động cho nhánh hiện tại.
+    error_post: 'Không thể đăng bình luận trên Pull Request.
+
+      Lỗi: %error%'
+    finding_pr: 'Đang tìm Pull Request cho nhánh: %branch%'
+    posting: 'Đang đăng bình luận trên Pull Request #%number%...'
+    success: '✅ Bình luận đã được đăng thành công trên Pull Request #%number%'
+    using_stdin: Đang đọc bình luận từ STDIN...
+    using_argument: Đang sử dụng bình luận từ đối số...
 branch:
   rename:
-    section: "Renaming branch"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before renaming a branch."
-    error_branch_not_found: "Branch '%branch%' not found (local or remote)."
-    error_new_name_exists: "Branch '%name%' already exists (local or remote). Cannot rename."
-    error_invalid_name: "Invalid branch name: %name%. Branch names must follow Git naming rules."
-    error_key_not_found: "Could not find Jira issue with key \"%key%\"."
-    error_no_key_in_branch: "Could not extract Jira key from branch name '%branch%'."
-    fetching_issue: "Fetching issue details from Jira..."
-    generating_name: "Generating new branch name from issue..."
-    checking_branches: "Checking branch existence..."
-    local_not_found_remote_exists: "Local branch '%branch%' not found, but remote branch exists."
-    rename_remote_only_prompt: "Rename only the remote branch? (Y/n)"
-    remote_not_found: "Remote branch not found. Only local branch will be renamed."
-    checking_sync: "Checking branch synchronization..."
-    remote_ahead_prompt: "Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)"
-    rebasing: "Rebasing local branch onto remote..."
-    rebase_failed: "Rebase failed. Please resolve conflicts manually and try again."
-    rebase_suggestion: "Suggested commands: git rebase origin/%branch%, resolve conflicts, then run 'stud rn' again."
-    finding_pr: "Checking for associated Pull Request..."
-    confirmation_header: "Current branch: %oldName%"
-    confirmation_new: "Proposed name: %newName%"
-    confirmation_actions: "The following will be renamed:"
-    confirmation_local: " - Local branch: %oldName% → %newName%"
-    confirmation_remote: " - Remote branch: origin/%oldName% → origin/%newName%"
-    confirmation_pr: " - Pull Request: #%number% (will be updated and commented)"
-    confirm_prompt: "Are you sure you want to rename this branch? (Y/n)"
-    renaming_local: "Renaming local branch..."
-    renaming_remote: "Renaming remote branch..."
-    updating_pr: "Updating Pull Request..."
-    creating_new_pr: "Creating new Pull Request for renamed branch..."
+    section: Renaming branch
+    error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.
+    error_branch_not_found: Branch '%branch%' not found (local or remote).
+    error_new_name_exists: Branch '%name%' already exists (local or remote). Cannot rename.
+    error_invalid_name: 'Invalid branch name: %name%. Branch names must follow Git naming rules.'
+    error_key_not_found: Could not find Jira issue with key "%key%".
+    error_no_key_in_branch: Could not extract Jira key from branch name '%branch%'.
+    fetching_issue: Fetching issue details from Jira...
+    generating_name: Generating new branch name from issue...
+    checking_branches: Checking branch existence...
+    local_not_found_remote_exists: Local branch '%branch%' not found, but remote branch exists.
+    rename_remote_only_prompt: Rename only the remote branch? (Y/n)
+    remote_not_found: Remote branch not found. Only local branch will be renamed.
+    checking_sync: Checking branch synchronization...
+    remote_ahead_prompt: Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)
+    rebasing: Rebasing local branch onto remote...
+    rebase_failed: Rebase failed. Please resolve conflicts manually and try again.
+    rebase_suggestion: 'Suggested commands: git rebase origin/%branch%, resolve conflicts, then run ''stud rn'' again.'
+    finding_pr: Checking for associated Pull Request...
+    confirmation_header: 'Current branch: %oldName%'
+    confirmation_new: 'Proposed name: %newName%'
+    confirmation_actions: 'The following will be renamed:'
+    confirmation_local: ' - Local branch: %oldName% → %newName%'
+    confirmation_remote: ' - Remote branch: origin/%oldName% → origin/%newName%'
+    confirmation_pr: ' - Pull Request: #%number% (will be updated and commented)'
+    confirm_prompt: Are you sure you want to rename this branch? (Y/n)
+    renaming_local: Renaming local branch...
+    renaming_remote: Renaming remote branch...
+    updating_pr: Updating Pull Request...
+    creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: "⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually."
-    commenting_pr: "Adding comment to Pull Request..."
-    success: "✅ Branch renamed successfully from %oldName% to %newName%"
-    no_pr_found: "No Pull Request found for this branch."
-    create_pr_prompt: "Would you like to create a Pull Request? (Y/n)"
-    switching_for_submit: "Switching to renamed branch to create PR..."
-
-# Commit Handler
+    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
+    commenting_pr: Adding comment to Pull Request...
+    success: ✅ Branch renamed successfully from %oldName% to %newName%
+    no_pr_found: No Pull Request found for this branch.
+    create_pr_prompt: Would you like to create a Pull Request? (Y/n)
+    switching_for_submit: Switching to renamed branch to create PR...
 commit:
-  section: "Trợ lý Commit thông thường"
-  staging: "Đang staging tất cả các thay đổi..."
-  committing: "Đang commit với thông báo được cung cấp..."
-  committing_simple: "Đang commit..."
-  success: "Commit đã được tạo thành công!"
-  checking_logical: "Đang kiểm tra commit logic trước đó..."
-  found_logical: "Đã tìm thấy commit logic SHA: %sha%"
-  creating_fixup: "Đang tạo commit fixup cho %sha%..."
-  fixup_success: "✅ Các thay đổi đã được lưu dưới dạng fixup cho commit %sha%."
-  note_no_logical: "Không tìm thấy commit logic trước đó hoặc đã sử dụng cờ --new. Đang bắt đầu trình nhắc tương tác..."
-  note_clean_working_tree: "Cây làm việc sạch. Hủy commit."
-  error_no_key: "Không tìm thấy khóa Jira trong tên nhánh hiện tại của bạn.\nVui lòng sử dụng \"stud start <key>\" để tạo nhánh."
-  fetching_jira: "Đang lấy issue Jira: %key%"
-  error_not_found: "Không tìm thấy issue Jira với khóa \"%key%\"."
-  jira_details: "Chi tiết Issue Jira:"
-  jira_title: "Tiêu đề: %title%"
-  jira_type: "Loại: %type% -> %commit_type%"
-  jira_components: "Các thành phần: %components%"
-  scope_prompt: "Phạm vi (tùy chọn)"
-  scope_auto: "Phạm vi (tự động phát hiện '%scope%')"
-  type_prompt: "Loại Commit (tự động phát hiện '%type%')"
-  summary_prompt: "Thông báo ngắn (tự động điền từ Jira)"
-  generated_message: "Thông báo commit đã tạo:\n%message%"
+  section: Trợ lý Commit thông thường
+  staging: Đang staging tất cả các thay đổi...
+  committing: Đang commit với thông báo được cung cấp...
+  committing_simple: Đang commit...
+  success: Commit đã được tạo thành công!
+  checking_logical: Đang kiểm tra commit logic trước đó...
+  found_logical: 'Đã tìm thấy commit logic SHA: %sha%'
+  creating_fixup: Đang tạo commit fixup cho %sha%...
+  fixup_success: ✅ Các thay đổi đã được lưu dưới dạng fixup cho commit %sha%.
+  note_no_logical: Không tìm thấy commit logic trước đó hoặc đã sử dụng cờ --new. Đang bắt đầu trình nhắc tương tác...
+  note_clean_working_tree: Cây làm việc sạch. Hủy commit.
+  error_no_key: 'Không tìm thấy khóa Jira trong tên nhánh hiện tại của bạn.
 
-# Update Handler
+    Vui lòng sử dụng "stud start <key>" để tạo nhánh.'
+  fetching_jira: 'Đang lấy issue Jira: %key%'
+  error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+  jira_details: 'Chi tiết Issue Jira:'
+  jira_title: 'Tiêu đề: %title%'
+  jira_type: 'Loại: %type% -> %commit_type%'
+  jira_components: 'Các thành phần: %components%'
+  scope_prompt: Phạm vi (tùy chọn)
+  scope_auto: Phạm vi (tự động phát hiện '%scope%')
+  type_prompt: Loại Commit (tự động phát hiện '%type%')
+  summary_prompt: Thông báo ngắn (tự động điền từ Jira)
+  generated_message: 'Thông báo commit đã tạo:
+
+    %message%'
 update:
-  section: "Đang kiểm tra cập nhật"
-  binary_path: "Đường dẫn nhị phân"
-  repository: "Kho lưu trữ"
-  current_version: "Phiên bản hiện tại"
-  latest_version: "Phiên bản mới nhất"
-  downloading_from: "Đang tải xuống từ"
-  warning_no_releases: "Không tìm thấy bản phát hành cho kho lưu trữ này.\nKho lưu trữ có thể chưa có bản phát hành nào được xuất bản."
-  error_fetch: "Không thể lấy thông tin bản phát hành mới nhất.\nLỗi: %error%"
-  success_latest: "Bạn đã ở phiên bản mới nhất (%version%)."
-  new_version: "Có phiên bản mới (%version%) sẵn có. Đang cập nhật..."
-  error_no_phar: "Không tìm thấy asset stud.phar trong bản phát hành mới nhất.\nAssets bản phát hành: %assets%"
-  error_download: "Không thể tải xuống phiên bản mới.\nLỗi: %error%"
-  error_asset_id: "Không thể tải xuống phiên bản mới.\nLỗi: Không tìm thấy ID asset trong asset bản phát hành."
-  error_not_writable: "Cập nhật thất bại: Tệp không thể ghi được.\nVui lòng chạy lại với quyền nâng cao: sudo stud update"
-  error_backup: "Không thể tạo bản sao lưu của phiên bản hiện tại.\nLỗi: %error%"
-  error_rollback: "Cập nhật thất bại và đã được hoàn nguyên.\nLỗi: %error%"
-  error_rollback_failed: "Cập nhật thất bại và hoàn nguyên cũng thất bại!\nLỗi ban đầu: %original_error%\nLỗi hoàn nguyên: %rollback_error%\nVui lòng khôi phục thủ công từ: %backup_path%"
-  changelog_section: "Thay đổi trong phiên bản %version%"
-  breaking_changes_detected: "⚠️  Phát hiện thay đổi phá vỡ trong bản cập nhật này:"
-  changelog_error: "Không thể lấy changelog"
-  success_hash_verified: "✅ Xác minh hash thành công. Tệp nhị phân là xác thực."
-  error_hash_not_found: "Lỗi xác minh bảo mật: Không tìm thấy tệp checksum trong bản phát hành.\nTệp nhị phân không thể được xác minh. Cập nhật đã bị hủy vì lý do bảo mật."
-  error_hash_calculation: "Lỗi xác minh bảo mật: Không thể tính toán hash của tệp đã tải xuống.\nCập nhật đã bị hủy vì lý do bảo mật."
-  error_hash_mismatch: "Lỗi xác minh bảo mật: Phát hiện không khớp hash!\n\nHash mong đợi: %expected%\nHash đã tính: %calculated%\n\nTệp nhị phân đã tải xuống có thể bị hỏng hoặc đã bị sửa đổi."
-  error_digest_not_found: "Lỗi xác minh bảo mật: Không tìm thấy digest trong phản hồi GitHub API.\nTệp nhị phân không thể được xác minh."
-  prompt_continue_on_verification_failure: "⚠️ Cảnh báo: Xác minh checksum thất bại.\nBạn có muốn tiếp tục cài đặt không?"
-  downloading_checksum: "Đang tải xuống tệp checksum từ"
-  checksum_download_error: "Lỗi khi tải xuống tệp checksum"
+  section: Đang kiểm tra cập nhật
+  binary_path: Đường dẫn nhị phân
+  repository: Kho lưu trữ
+  current_version: Phiên bản hiện tại
+  latest_version: Phiên bản mới nhất
+  downloading_from: Đang tải xuống từ
+  warning_no_releases: 'Không tìm thấy bản phát hành cho kho lưu trữ này.
 
-# Release Handler
+    Kho lưu trữ có thể chưa có bản phát hành nào được xuất bản.'
+  error_fetch: 'Không thể lấy thông tin bản phát hành mới nhất.
+
+    Lỗi: %error%'
+  success_latest: Bạn đã ở phiên bản mới nhất (%version%).
+  new_version: Có phiên bản mới (%version%) sẵn có. Đang cập nhật...
+  error_no_phar: 'Không tìm thấy asset stud.phar trong bản phát hành mới nhất.
+
+    Assets bản phát hành: %assets%'
+  error_download: 'Không thể tải xuống phiên bản mới.
+
+    Lỗi: %error%'
+  error_asset_id: 'Không thể tải xuống phiên bản mới.
+
+    Lỗi: Không tìm thấy ID asset trong asset bản phát hành.'
+  error_not_writable: 'Cập nhật thất bại: Tệp không thể ghi được.
+
+    Vui lòng chạy lại với quyền nâng cao: sudo stud update'
+  error_backup: 'Không thể tạo bản sao lưu của phiên bản hiện tại.
+
+    Lỗi: %error%'
+  error_rollback: 'Cập nhật thất bại và đã được hoàn nguyên.
+
+    Lỗi: %error%'
+  error_rollback_failed: 'Cập nhật thất bại và hoàn nguyên cũng thất bại!
+
+    Lỗi ban đầu: %original_error%
+
+    Lỗi hoàn nguyên: %rollback_error%
+
+    Vui lòng khôi phục thủ công từ: %backup_path%'
+  changelog_section: Thay đổi trong phiên bản %version%
+  breaking_changes_detected: '⚠️  Phát hiện thay đổi phá vỡ trong bản cập nhật này:'
+  changelog_error: Không thể lấy changelog
+  success_hash_verified: ✅ Xác minh hash thành công. Tệp nhị phân là xác thực.
+  error_hash_not_found: 'Lỗi xác minh bảo mật: Không tìm thấy tệp checksum trong bản phát hành.
+
+    Tệp nhị phân không thể được xác minh. Cập nhật đã bị hủy vì lý do bảo mật.'
+  error_hash_calculation: 'Lỗi xác minh bảo mật: Không thể tính toán hash của tệp đã tải xuống.
+
+    Cập nhật đã bị hủy vì lý do bảo mật.'
+  error_hash_mismatch: 'Lỗi xác minh bảo mật: Phát hiện không khớp hash!
+
+
+    Hash mong đợi: %expected%
+
+    Hash đã tính: %calculated%
+
+
+    Tệp nhị phân đã tải xuống có thể bị hỏng hoặc đã bị sửa đổi.'
+  error_digest_not_found: 'Lỗi xác minh bảo mật: Không tìm thấy digest trong phản hồi GitHub API.
+
+    Tệp nhị phân không thể được xác minh.'
+  prompt_continue_on_verification_failure: '⚠️ Cảnh báo: Xác minh checksum thất bại.
+
+    Bạn có muốn tiếp tục cài đặt không?'
+  downloading_checksum: Đang tải xuống tệp checksum từ
+  checksum_download_error: Lỗi khi tải xuống tệp checksum
 release:
-  section: "Bắt đầu quy trình phát hành cho phiên bản %version%"
-  fetched: "Đã lấy các thay đổi mới nhất từ origin."
-  created_branch: "Đã tạo nhánh phát hành: %branch%"
-  updated_composer: "Đã cập nhật phiên bản trong composer.json thành %version%"
-  updated_lock: "Đã cập nhật composer.lock"
-  dumped_config: "Đã dump cấu hình vào config/app.php"
-  updated_changelog: "Đã cập nhật CHANGELOG.md với phiên bản %version%"
-  staged: "Đã staging các thay đổi."
-  committed: "Đã commit tăng phiên bản."
-  published: "Nhánh phát hành đã được xuất bản lên remote."
-  confirm_publish: "Bạn có muốn xuất bản nhánh phát hành lên remote không?"
-  success: "Bản phát hành %version% đã sẵn sàng để triển khai."
-
-# Deploy Handler
+  section: Bắt đầu quy trình phát hành cho phiên bản %version%
+  fetched: Đã lấy các thay đổi mới nhất từ origin.
+  created_branch: 'Đã tạo nhánh phát hành: %branch%'
+  updated_composer: Đã cập nhật phiên bản trong composer.json thành %version%
+  updated_lock: Đã cập nhật composer.lock
+  dumped_config: Đã dump cấu hình vào config/app.php
+  updated_changelog: Đã cập nhật CHANGELOG.md với phiên bản %version%
+  staged: Đã staging các thay đổi.
+  committed: Đã commit tăng phiên bản.
+  published: Nhánh phát hành đã được xuất bản lên remote.
+  confirm_publish: Bạn có muốn xuất bản nhánh phát hành lên remote không?
+  success: Bản phát hành %version% đã sẵn sàng để triển khai.
 deploy:
-  section: "Bắt đầu quy trình triển khai"
-  error_not_release: "Bạn phải ở trên nhánh phát hành để triển khai."
-  deployed: "Đã triển khai lên main và đã gắn thẻ."
-  updated_develop: "Đã cập nhật nhánh develop."
-  cleaned: "Đã dọn dẹp nhánh phát hành."
-  success: "Bản phát hành v%version% đã được triển khai thành công lên main. develop đã được rebase và force-push. Các nhánh đã được dọn dẹp."
-
-# Table Headers
+  section: Bắt đầu quy trình triển khai
+  error_not_release: Bạn phải ở trên nhánh phát hành để triển khai.
+  deployed: Đã triển khai lên main và đã gắn thẻ.
+  updated_develop: Đã cập nhật nhánh develop.
+  cleaned: Đã dọn dẹp nhánh phát hành.
+  success: Bản phát hành v%version% đã được triển khai thành công lên main. develop đã được rebase và force-push. Các nhánh đã được dọn dẹp.
+  warning_branch_cleanup: 'Cảnh báo: Không thể xóa nhánh phát hành %branch%: %error%'
 table:
-  key: "Khóa"
-  status: "Trạng thái"
-  summary: "Tóm tắt"
-  name: "Tên"
-  command: "Lệnh"
-  alias: "Bí danh"
-  description: "Mô tả"
-  priority: "Ưu tiên"
-  jira_url: "URL Jira"
-
-# Help Command
+  key: Khóa
+  status: Trạng thái
+  summary: Tóm tắt
+  name: Tên
+  command: Lệnh
+  alias: Bí danh
+  description: Mô tả
+  priority: Ưu tiên
+  jira_url: URL Jira
 help:
-  title: "Hướng dẫn"
-  description_section: "MÔ TẢ"
-  description_text: "`stud-cli` là một công cụ giao diện dòng lệnh được thiết kế để tối ưu hóa quy trình làm việc hàng ngày của nhà phát triển bằng cách tích hợp chặt chẽ các mục công việc Jira với các thao tác kho lưu trữ Git cục bộ. Nó hướng dẫn bạn qua \"con đường vàng\" của việc bắt đầu một nhiệm vụ, tạo các commit thông thường và chuẩn bị công việc của bạn để gửi, tất cả từ dòng lệnh."
-  global_options_section: "TÙY CHỌN TOÀN CỤC"
-  commands_section: "LỆNH"
-  global_option_help: "Hiển thị trợ giúp cho lệnh đã cho. Khi không có lệnh nào được đưa ra, hiển thị trợ giúp cho lệnh danh sách."
-  global_option_silent: "Không xuất bất kỳ thông báo nào."
-  global_option_quiet: "Chỉ hiển thị lỗi. Tất cả các đầu ra khác bị ẩn."
-  global_option_verbose: "Tăng mức chi tiết của thông báo: 1 cho đầu ra bình thường, 2 cho đầu ra chi tiết hơn và 3 cho debug."
-  category_configuration: "Cấu hình"
-  category_jira_information: "Thông tin Jira"
-  category_git_workflow: "Quy trình Git"
-  category_release_commands: "Lệnh Phát hành"
-  example_prefix: "Ví dụ: %example%"
-  command_config_init: "Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git."
-  command_completion: "Tạo script tự động hoàn thành shell cho bash hoặc zsh."
-  command_projects_list: "Liệt kê tất cả các dự án Jira có thể nhìn thấy."
-  command_items_list: "Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn)."
-  command_items_show: "Hiển thị thông tin chi tiết cho một mục công việc."
-  command_items_search: "Tìm kiếm các issue bằng JQL."
-  command_items_transition: "Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại."
-  command_filters_list: "Liệt kê tất cả các bộ lọc Jira có sẵn."
-  command_filters_show: "Lấy các issue từ bộ lọc Jira đã lưu."
-  command_items_start: "Tạo một nhánh git mới từ một mục Jira."
-  command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
-  command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
-  command_commit: "Hướng dẫn bạn tạo một commit thông thường."
-  command_please: "Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease)."
-  command_flatten: "Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng."
-  command_cache_clear: "Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo."
-  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request."
-  command_pr_comment: "Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp."
-  command_status: "Bảng điều khiển \"tôi đang ở đâu?\" nhanh."
-  command_release: "Tạo nhánh phát hành mới và tăng phiên bản."
-  command_deploy: "Triển khai nhánh phát hành hiện tại."
-  command_update: "Kiểm tra và cài đặt phiên bản mới của công cụ."
-  universal_help_note: "Mẹo: Sử dụng --help (hoặc -h) với bất kỳ lệnh nào để xem trợ giúp chi tiết. Ví dụ: stud commit --help"
-  command_specific_help_note: "Mẹo: Chạy 'stud help <lệnh>' để xem trợ giúp chi tiết cho một lệnh cụ thể. Ví dụ: stud help commit"
-  command_help_title: "Trợ giúp: %command%"
-  see_readme_note: "Để biết thêm thông tin, xem tài liệu đầy đủ trong README.md"
-  command_not_found: "Văn bản trợ giúp không có sẵn cho lệnh: %command%"
-  option_all: "Liệt kê các mục cho tất cả người dùng (ghi đè bộ lọc người được gán mặc định)"
-  option_project: "Lọc các mục theo khóa dự án cụ thể (ví dụ: PROJ)"
-  option_items_list_sort: "Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)"
-  option_commit_new: "Tạo một commit logic mới thay vì fixup"
-  option_commit_message: "Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit"
-  option_submit_draft: "Tạo Pull Request ở chế độ nháp (được đánh dấu là \"Draft\" trên GitHub)"
-  option_submit_labels: "Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa"
-  option_update_info: "Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật"
-  option_release_major: "Tăng phiên bản chính (X.0.0)"
-  option_release_minor: "Tăng phiên bản phụ (X.Y.0)"
-  option_release_patch: "Tăng phiên bản bản vá (X.Y.Z). Đây là mặc định nếu không có cờ nào được cung cấp"
-  option_release_publish: "Xuất bản nhánh phát hành đến kho lưu trữ từ xa"
-  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
-
+  title: Hướng dẫn
+  description_section: MÔ TẢ
+  description_text: '`stud-cli` là một công cụ giao diện dòng lệnh được thiết kế để tối ưu hóa quy trình làm việc hàng ngày của nhà phát triển bằng cách tích hợp chặt chẽ các mục công việc Jira với các thao tác kho lưu trữ Git cục bộ. Nó hướng dẫn bạn qua "con đường vàng" của việc bắt đầu một nhiệm vụ, tạo các commit thông thường và chuẩn bị công việc của bạn để gửi, tất cả từ dòng lệnh.'
+  global_options_section: TÙY CHỌN TOÀN CỤC
+  commands_section: LỆNH
+  global_option_help: Hiển thị trợ giúp cho lệnh đã cho. Khi không có lệnh nào được đưa ra, hiển thị trợ giúp cho lệnh danh sách.
+  global_option_silent: Không xuất bất kỳ thông báo nào.
+  global_option_quiet: Chỉ hiển thị lỗi. Tất cả các đầu ra khác bị ẩn.
+  global_option_verbose: 'Tăng mức chi tiết của thông báo: 1 cho đầu ra bình thường, 2 cho đầu ra chi tiết hơn và 3 cho debug.'
+  category_configuration: Cấu hình
+  category_jira_information: Thông tin Jira
+  category_git_workflow: Quy trình Git
+  category_release_commands: Lệnh Phát hành
+  example_prefix: 'Ví dụ: %example%'
+  command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
+  command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
+  command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
+  command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
+  command_items_show: Hiển thị thông tin chi tiết cho một mục công việc.
+  command_items_search: Tìm kiếm các issue bằng JQL.
+  command_items_transition: Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại.
+  command_filters_list: Liệt kê tất cả các bộ lọc Jira có sẵn.
+  command_filters_show: Lấy các issue từ bộ lọc Jira đã lưu.
+  command_items_start: Tạo một nhánh git mới từ một mục Jira.
+  command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
+  command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
+  command_commit: Hướng dẫn bạn tạo một commit thông thường.
+  command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
+  command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
+  command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
+  command_submit: Đẩy nhánh hiện tại và tạo Pull Request.
+  command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
+  command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
+  command_release: Tạo nhánh phát hành mới và tăng phiên bản.
+  command_deploy: Triển khai nhánh phát hành hiện tại.
+  command_update: Kiểm tra và cài đặt phiên bản mới của công cụ.
+  universal_help_note: 'Mẹo: Sử dụng --help (hoặc -h) với bất kỳ lệnh nào để xem trợ giúp chi tiết. Ví dụ: stud commit --help'
+  command_specific_help_note: 'Mẹo: Chạy ''stud help <lệnh>'' để xem trợ giúp chi tiết cho một lệnh cụ thể. Ví dụ: stud help commit'
+  command_help_title: 'Trợ giúp: %command%'
+  see_readme_note: Để biết thêm thông tin, xem tài liệu đầy đủ trong README.md
+  command_not_found: 'Văn bản trợ giúp không có sẵn cho lệnh: %command%'
+  option_all: Liệt kê các mục cho tất cả người dùng (ghi đè bộ lọc người được gán mặc định)
+  option_project: 'Lọc các mục theo khóa dự án cụ thể (ví dụ: PROJ)'
+  option_items_list_sort: Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)
+  option_commit_new: Tạo một commit logic mới thay vì fixup
+  option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
+  option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
+  option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
+  option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật
+  option_release_major: Tăng phiên bản chính (X.0.0)
+  option_release_minor: Tăng phiên bản phụ (X.Y.0)
+  option_release_patch: Tăng phiên bản bản vá (X.Y.Z). Đây là mặc định nếu không có cờ nào được cung cấp
+  option_release_publish: Xuất bản nhánh phát hành đến kho lưu trữ từ xa
+  option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
+  command_branches_list: Liệt kê các nhánh local/remote với trạng thái (đã hợp nhất, lỗi thời, PR đang hoạt động)
+  command_branches_clean: Dọn dẹp tương tác các nhánh đã hợp nhất/lỗi thời
+  option_branches_clean_quiet: Xóa tất cả các nhánh khớp mà không hỏi
+  option_deploy_clean: Dọn dẹp các nhánh đã hợp nhất sau khi triển khai
+branches:
+  list:
+    section: Danh Sách Nhánh
+    no_branches: Không tìm thấy nhánh nào
+    column:
+      branch: Nhánh
+      status: Trạng thái
+      remote: Remote
+      pr: PR
+    status:
+      merged: đã hợp nhất
+      stale: lỗi thời
+      active_pr: pr-đang hoạt động
+      active: đang hoạt động
+    fetching_local: Đang lấy các nhánh local...
+    fetching_remote: Đang lấy các nhánh remote cho %count% nhánh local...
+    note_origin: 'Lưu ý: Chỉ kiểm tra remote ''origin''. Các remote khác bị bỏ qua.'
+  clean:
+    section: Dọn Dẹp Nhánh
+    scanning: Đang quét các nhánh để dọn dẹp...
+    found: 'Tìm thấy %count% nhánh để dọn dẹp:'
+    confirm: Xóa %count% nhánh? (Y/n)
+    cancelled: Đã hủy dọn dẹp.
+    deleting: 'Đang xóa nhánh: %branch%'
+    deleted: Đã xóa %count% nhánh
+    none: Không có nhánh nào để dọn dẹp
+    protected: 'Bỏ qua nhánh được bảo vệ: %branch%'
+    error: 'Lỗi khi xóa nhánh %branch%: %error%'
+    note_origin: 'Lưu ý: Chỉ kiểm tra remote ''origin''. Các remote khác bị bỏ qua.'
+    fetching_local: Đang lấy các nhánh local...
+    fetching_remote: Đang lấy các nhánh remote...
+    local_only_header: 'Chỉ nhánh local (%count%):'
+    with_remote_header: 'Nhánh có remote (%count%):'
+    with_remote_note: Các nhánh này tồn tại trên remote. Bạn sẽ được nhắc xóa chúng khỏi remote.
+    current_branch_skipped: Nhánh hiện tại '%branch%' là ứng viên để xóa nhưng sẽ bị bỏ qua. Chuyển sang nhánh khác trước nếu bạn muốn xóa nó.
+    delete_remote_confirm: Cũng xóa nhánh remote 'origin/%branch%'? (y/N)
+    deleted_remote: Đã xóa nhánh remote 'origin/%branch%'
+    error_remote: 'Lỗi khi xóa nhánh remote ''origin/%branch%'': %error%'
+    remote_kept: Giữ lại nhánh remote 'origin/%branch%' (không xóa)
+    remote_kept_quiet: Giữ lại nhánh remote 'origin/%branch%' (sử dụng chế độ tương tác để xóa nhánh remote)
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"

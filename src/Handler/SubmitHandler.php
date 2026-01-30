@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\PullRequestData;
+use App\Exception\ApiException;
 use App\Service\CanConvertToMarkdownInterface;
-use App\Service\GithubProvider;
+use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -21,7 +22,7 @@ class SubmitHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly ?GithubProvider $githubProvider,
+        private readonly ?GitProviderInterface $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
@@ -44,7 +45,8 @@ class SubmitHandler
 
         // 2. Get current branch name and check if it is a base branch
         $branch = $this->gitRepository->getCurrentBranchName();
-        if (in_array($branch, ['develop', 'main', 'master'])) {
+        $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+        if ($branch === $baseBranchName || in_array($branch, ['main', 'master'])) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_base_branch'));
 
             return 1;
@@ -98,6 +100,9 @@ class SubmitHandler
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('submit.fetching_jira', ['key' => $jiraKey])}");
             $issue = $this->jiraService->getIssue($jiraKey, true); // Request rendered fields
             $prBody = $issue->renderedDescription;
+        } catch (ApiException $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.warning_jira_fetch', ['error' => $e->getMessage()])));
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.warning_jira_fetch', ['error' => $e->getMessage()])));
         }
@@ -157,7 +162,8 @@ class SubmitHandler
 
         try {
             if ($this->githubProvider) {
-                $prRequestData = new PullRequestData($prTitle, $headBranch, 'develop', $prBody, $draft);
+                $baseBranchName = str_replace('origin/', '', $this->baseBranch);
+                $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $draft);
                 $prData = $this->githubProvider->createPullRequest($prRequestData);
 
                 // Add labels to PR if any were provided
@@ -170,14 +176,14 @@ class SubmitHandler
             } else {
                 $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.warning_no_provider'));
             }
-        } catch (\Exception $e) {
+        } catch (ApiException $e) {
             // Check if PR already exists (GitHub returns 422 status)
-            $errorMessage = $e->getMessage();
-            $lowerMessage = strtolower($errorMessage);
+            $statusCode = $e->getStatusCode();
+            $technicalDetails = strtolower($e->getTechnicalDetails());
 
-            // GitHub returns 422 with "A pull request already exists" message
-            if (str_contains($errorMessage, 'Status: 422') &&
-                str_contains($lowerMessage, 'pull request already exists')) {
+            // GitHub returns 422 with "A pull request already exists" message in technical details
+            if ($statusCode === 422 &&
+                str_contains($technicalDetails, 'pull request already exists')) {
                 $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.note_pr_exists'));
 
                 // Find the existing PR and apply labels/draft if needed
@@ -221,7 +227,15 @@ class SubmitHandler
                 return 0;
             }
 
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_pr', ['error' => $errorMessage])));
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('submit.error_create_pr', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return 1;
+        } catch (\Exception $e) {
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_pr', ['error' => $e->getMessage()])));
 
             return 1;
         }
@@ -262,6 +276,14 @@ class SubmitHandler
 
         try {
             $remoteLabels = $this->githubProvider->getLabels();
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()]),
+                $e->getTechnicalDetails()
+            );
+
+            return null;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()])));
 
@@ -315,6 +337,14 @@ class SubmitHandler
                     $this->githubProvider->createLabel($unknownLabel, $color);
                     $finalLabels[] = $unknownLabel;
                     $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.label_created', ['label' => $unknownLabel]));
+                } catch (ApiException $e) {
+                    $this->logger->errorWithDetails(
+                        Logger::VERBOSITY_NORMAL,
+                        $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]),
+                        $e->getTechnicalDetails()
+                    );
+
+                    return null;
                 } catch (\Exception $e) {
                     $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()])));
 

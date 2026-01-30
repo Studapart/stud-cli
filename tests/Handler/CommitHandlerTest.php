@@ -236,6 +236,41 @@ class CommitHandlerTest extends CommandTestCase
         // Test intent: error() was called, verified by return value
     }
 
+    public function testHandleWithJiraServiceApiException(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->willReturn(null);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn('TPW-35');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+
+        $this->logger->expects($this->once())
+            ->method('errorWithDetails')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->stringContains('commit.error_not_found'),
+                'HTTP 404: Not Found'
+            );
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, null);
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithVeryVerboseOutput(): void
     {
         $this->gitRepository->expects($this->once())

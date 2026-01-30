@@ -1,434 +1,537 @@
-# Configuration
 config:
   init:
     wizard:
-      title: "Asistente de configuración de Stud CLI"
-      description: "Esto creará o actualizará su archivo de configuración en: %path%"
+      title: Asistente de configuración de Stud CLI
+      description: 'Esto creará o actualizará su archivo de configuración en: %path%'
     language:
-      title: "Configuración de idioma"
-      prompt: "Seleccione su idioma"
+      title: Configuración de idioma
+      prompt: Seleccione su idioma
     jira:
-      title: "Configuración de Jira"
-      token_help: "Puede generar un token de API aquí: https://id.atlassian.com/manage-profile/security/api-tokens"
-      url_prompt: "Ingrese su URL de Jira"
-      email_prompt: "Ingrese su dirección de correo electrónico de Jira"
-      token_prompt: "Ingrese su token de API de Jira (deje en blanco para mantener el existente)"
+      title: Configuración de Jira
+      token_help: 'Puede generar un token de API aquí: https://id.atlassian.com/manage-profile/security/api-tokens'
+      url_prompt: Ingrese su URL de Jira
+      email_prompt: Ingrese su dirección de correo electrónico de Jira
+      token_prompt: Ingrese su token de API de Jira (deje en blanco para mantener el existente)
     git:
-      title: "Configuración del proveedor Git"
-      description: "Esto es necesario para el comando `stud submit` para crear Pull Requests."
-      token_help: "Puede generar un token aquí: https://github.com/settings/tokens"
-      auto_detect_note: "Nota: El propietario y el nombre del repositorio se detectarán automáticamente desde su remote git."
-      provider_prompt: "Seleccione su proveedor Git"
-      token_prompt: "Ingrese su PAT del proveedor Git (deje en blanco para mantener el existente)"
+      title: Configuración de tokens del proveedor Git
+      description: Configure tokens para GitHub y/o GitLab. Estos son valores predeterminados globales que pueden ser sobrescritos por repositorio.
+      token_help: 'Puede generar tokens aquí:\n  GitHub: https://github.com/settings/tokens\n  GitLab: https://gitlab.com/-/user_settings/personal_access_tokens'
+      multiple_tokens_note: 'Nota: Puede configurar ambos tokens, o solo los que necesite. El proveedor se configurará por repositorio.'
+      github_token_prompt: Ingrese su PAT de GitHub (deje en blanco para mantener el existente o omitir)
+      gitlab_token_prompt: Ingrese su PAT de GitLab (deje en blanco para mantener el existente o omitir)
     jira_transition:
-      title: "Configuración de transición de Jira"
-      description: "Habilitar transición automática a 'En progreso' al iniciar trabajo en un ticket."
-      prompt: "¿Habilitar transición automática de Jira a 'En progreso'?"
-    success: "¡Configuración guardada exitosamente!"
+      title: Configuración de transición de Jira
+      description: Habilitar transición automática a 'En progreso' al iniciar trabajo en un ticket.
+      prompt: ¿Habilitar transición automática de Jira a 'En progreso'?
+    success: ¡Configuración guardada exitosamente!
     completion:
-      title: "Configuración de auto-completado del shell"
-      prompt: "Hemos detectado que está usando '%shell%'. ¿Le gustaría configurar el auto-completado del shell?"
-      yes: "Sí"
-      no: "No"
-      success_message: "✅ ¡Excelente! Para completar la instalación, ejecute este comando:"
-      bash_command: "echo 'eval \"$(stud completion bash)\"' >> ~/.bashrc"
-      zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
-      reload_instruction: "Luego, reinicie su shell o ejecute 'source ~/.%shellrc%'"
-      skipped: "Configuración de auto-completado del shell omitida."
+      title: Configuración de auto-completado del shell
+      prompt: Hemos detectado que está usando '%shell%'. ¿Le gustaría configurar el auto-completado del shell?
+      yes: Sí
+      no: 'No'
+      success_message: '✅ ¡Excelente! Para completar la instalación, ejecute este comando:'
+      bash_command: echo 'eval "$(stud completion bash)"' >> ~/.bashrc
+      zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
+      reload_instruction: Luego, reinicie su shell o ejecute 'source ~/.%shellrc%'
+      skipped: Configuración de auto-completado del shell omitida.
   error:
-    not_found: "Archivo de configuración no encontrado en: %path%\nPor favor ejecute \"stud config:init\" para crear uno."
-    missing_jira_keys: "Su archivo de configuración falta las claves de Jira requeridas: %keys%\nPor favor ejecute \"stud config:init\" nuevamente."
-    missing_git_keys: "Su archivo de configuración falta las claves del proveedor Git requeridas: %keys%\nPor favor ejecute \"stud config:init\" nuevamente."
-    missing_setup: "Archivo de configuración no encontrado. Por favor configure stud-cli antes de usar este comando."
-    run_init_instruction: "Ejecute 'stud config:init' para crear su archivo de configuración."
+    not_found: 'Archivo de configuración no encontrado en: %path%
 
-# Item Start Handler
+      Por favor ejecute "stud config:init" para crear uno.'
+    missing_jira_keys: 'Su archivo de configuración falta las claves de Jira requeridas: %keys%
+
+      Por favor ejecute "stud config:init" nuevamente.'
+    missing_git_keys: 'Su archivo de configuración falta las claves del proveedor Git requeridas: %keys%
+
+      Por favor ejecute "stud config:init" nuevamente.'
+    missing_setup: Archivo de configuración no encontrado. Por favor configure stud-cli antes de usar este comando.
+    run_init_instruction: Ejecute 'stud config:init' para crear su archivo de configuración.
+  base_branch_not_configured: Rama base no configurada para este repositorio.
+  base_branch_prompt: Ingrese el nombre de la rama base
+  base_branch_detected: "Rama base detectada: %branch%"
+  base_branch_saving: Guardando configuración de rama base...
+  base_branch_saved: "Rama base configurada: %branch%"
+  base_branch_invalid: La rama base '%branch%' no existe en el remoto. Por favor verifique el nombre de la rama.
+  base_branch_required: La rama base es requerida. El comando no puede continuar sin una rama base válida.
+  git_provider_not_configured: Proveedor Git no configurado para este repositorio.
+  git_provider_prompt: Seleccione el proveedor Git para este repositorio
+  git_provider_detected: "Proveedor Git detectado: %provider%"
+  git_provider_saving: Guardando configuración del proveedor Git...
+  git_provider_saved: "Proveedor Git configurado: %provider%"
+  git_provider_required: El proveedor Git es requerido. El comando no puede continuar sin un proveedor Git válido.
+  git_token_not_configured: Token Git no configurado para este repositorio.
+  git_token_prompt: Ingrese su PAT de %provider% (deje en blanco para omitir)
+  git_token_saving: Guardando configuración del token Git...
+  git_token_saved: "Token Git configurado para %provider%"
+  git_token_required: El token Git es requerido. El comando no puede continuar sin un token Git válido.
+  git_token_global_suggestion: "Consejo: Puede configurar tokens globales ejecutando 'stud config:init'"
+  git_token_type_mismatch: "El proveedor está configurado como '%provider%' pero solo el token %opposite% está configurado. Por favor configure un token %provider% o cambie el proveedor."
+  git_token_no_tokens: No hay tokens Git configurados. Por favor ejecute 'stud config:init' para configurar tokens globales, o configure un token local para este repositorio.
+  migration:
+    git_token_detected: Formato de token Git antiguo detectado. Migración requerida.
+    git_provider_prompt: Seleccione el proveedor Git para su token
+    git_migration_complete: "Configuración Git migrada exitosamente. Token configurado para %provider%."
 item:
   start:
-    section: "Iniciando trabajo en %key%"
-    fetching: "Obteniendo detalles del ticket: %key%"
-    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
-    generated_branch: "Nombre de rama generado: %branch%"
-    fetching_changes: "Obteniendo los últimos cambios desde origin..."
-    creating_branch: "Creando nueva rama: %branch%"
-    success: "Rama '%branch%' creada desde '%base%'."
-    assigning: "Asignando ticket %key% al usuario actual..."
-    assign_error: "Error al asignar ticket: %error%"
-    no_transitions: "No hay transiciones a 'En progreso' disponibles para el ticket %key%. Transición omitida."
-    select_transition: "Seleccione la transición a 'En progreso':"
-    invalid_selection: "Selección de transición inválida."
-    save_transition: "¿Desea guardar esta elección de transición para el proyecto '%project%'?"
-    transition_saved: "Elección de transición guardada para el proyecto '%project%'."
-    using_cached_transition: "Usando ID de transición en caché: %id%"
-    transition_success: "✅ Ticket %key% transitado a 'En progreso'"
-    transition_error: "Error al obtener transiciones: %error%"
-    transition_exec_error: "Error al ejecutar transición: %error%. Continuando con la creación de rama."
-    switching_branch: "Switching to existing branch: %branch%"
-    switching_remote_branch: "Switching to remote branch: %branch%"
-    success_switched: "Switched to branch '%branch%'."
+    section: Iniciando trabajo en %key%
+    fetching: 'Obteniendo detalles del ticket: %key%'
+    error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+    generated_branch: 'Nombre de rama generado: %branch%'
+    fetching_changes: Obteniendo los últimos cambios desde origin...
+    creating_branch: 'Creando nueva rama: %branch%'
+    success: Rama '%branch%' creada desde '%base%'.
+    assigning: Asignando ticket %key% al usuario actual...
+    assign_error: 'Error al asignar ticket: %error%'
+    no_transitions: No hay transiciones a 'En progreso' disponibles para el ticket %key%. Transición omitida.
+    select_transition: 'Seleccione la transición a ''En progreso'':'
+    invalid_selection: Selección de transición inválida.
+    save_transition: ¿Desea guardar esta elección de transición para el proyecto '%project%'?
+    transition_saved: Elección de transición guardada para el proyecto '%project%'.
+    using_cached_transition: 'Usando ID de transición en caché: %id%'
+    transition_success: ✅ Ticket %key% transitado a 'En progreso'
+    transition_error: 'Error al obtener transiciones: %error%'
+    transition_exec_error: 'Error al ejecutar transición: %error%. Continuando con la creación de rama.'
+    switching_branch: 'Switching to existing branch: %branch%'
+    switching_remote_branch: 'Switching to remote branch: %branch%'
+    success_switched: Switched to branch '%branch%'.
   takeover:
-    section: "Taking over issue %key%"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."
-    error_not_found: "Could not find Jira issue with key \"%key%\"."
-    assigning: "Assigning issue %key% to current user..."
-    assign_warning: "Failed to assign issue: %error%. Continuing anyway."
-    fetching: "Fetching from remote..."
-    searching_branches: "Searching for branches..."
-    branches_found: "Found %count% branch(es) for this issue:"
-    select_branch: "Select a branch to take over:"
-    branch_remote: "%branch% (remote)"
-    branch_local: "%branch% (local)"
-    confirm_branch: "Take over branch '%branch%'?"
-    switching: "Switching to branch %branch%..."
-    already_on_branch: "Already on branch %branch%. Checking status..."
-    status_behind_remote: "Branch is %count% commit(s) behind remote"
-    status_ahead_remote: "Branch is %count% commit(s) ahead of remote"
-    status_sync_remote: "Branch is in sync with remote"
-    status_behind_base: "Branch is %count% commit(s) behind %base%"
-    status_ahead_base: "Branch is %count% commit(s) ahead of %base%"
-    status_sync_base: "Branch is in sync with %base%"
-    warning_wrong_base: "⚠️ Warning: Branch is based on a different branch than expected (%base%)."
-    warning_diverged: "⚠️ Warning: Local branch has commits not on remote. Manual intervention required."
-    pulling: "Pulling latest changes from remote..."
-    no_branches: "No branches found for issue %key%."
-    start_fresh_prompt: "Would you like to start fresh? (This will create a new branch)"
-    success_took_over: "✅ Successfully took over %key%"
-    success_on_branch: "📍 You are now on branch: %branch%"
-    success_status_header: "📊 Branch status:"
-    success_status_remote: " - Remote: %status%"
-    success_status_base: " - %base%: %status%"
-    success_view_details: "ℹ️ View issue details: stud sh %key%"
-
-# Item Show Handler
+    section: Taking over issue %key%
+    error_dirty_working: Your working directory is not clean. Please commit your changes before taking over an issue.
+    error_not_found: Could not find Jira issue with key "%key%".
+    assigning: Assigning issue %key% to current user...
+    assign_warning: 'Failed to assign issue: %error%. Continuing anyway.'
+    fetching: Fetching from remote...
+    searching_branches: Searching for branches...
+    branches_found: 'Found %count% branch(es) for this issue:'
+    select_branch: 'Select a branch to take over:'
+    branch_remote: '%branch% (remote)'
+    branch_local: '%branch% (local)'
+    confirm_branch: Take over branch '%branch%'?
+    switching: Switching to branch %branch%...
+    already_on_branch: Already on branch %branch%. Checking status...
+    status_behind_remote: Branch is %count% commit(s) behind remote
+    status_ahead_remote: Branch is %count% commit(s) ahead of remote
+    status_sync_remote: Branch is in sync with remote
+    status_behind_base: Branch is %count% commit(s) behind %base%
+    status_ahead_base: Branch is %count% commit(s) ahead of %base%
+    status_sync_base: Branch is in sync with %base%
+    warning_wrong_base: '⚠️ Warning: Branch is based on a different branch than expected (%base%).'
+    warning_diverged: '⚠️ Warning: Local branch has commits not on remote. Manual intervention required.'
+    pulling: Pulling latest changes from remote...
+    no_branches: No branches found for issue %key%.
+    start_fresh_prompt: Would you like to start fresh? (This will create a new branch)
+    success_took_over: ✅ Successfully took over %key%
+    success_on_branch: '📍 You are now on branch: %branch%'
+    success_status_header: '📊 Branch status:'
+    success_status_remote: ' - Remote: %status%'
+    success_status_base: ' - %base%: %status%'
+    success_view_details: 'ℹ️ View issue details: stud sh %key%'
   show:
-    section: "Detalles del ticket %key%"
-    fetching: "Obteniendo detalles del ticket: %key%"
-    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
-    label_key: "Clave"
-    label_title: "Título"
-    label_status: "Estado"
-    label_assignee: "Asignado"
-    label_type: "Tipo"
-    label_labels: "Etiquetas"
-    label_description: "Descripción"
-    label_link: "Enlace"
-    label_none: "Ninguno"
-# Item Transition Handler
+    section: Detalles del ticket %key%
+    fetching: 'Obteniendo detalles del ticket: %key%'
+    error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+    label_key: Clave
+    label_title: Título
+    label_status: Estado
+    label_assignee: Asignado
+    label_type: Tipo
+    label_labels: Etiquetas
+    label_description: Descripción
+    label_link: Enlace
+    label_none: Ninguno
   transition:
-    section: "Transición de ticket Jira"
-    detected_key: "Clave Jira detectada '%key%' desde la rama actual. ¿Usar esta clave?"
-    prompt_key: "Ingrese la clave del ticket Jira"
-    error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
-    error_invalid_key: "Formato de clave Jira inválido. Formato esperado: PROJ-123"
-    fetching: "Obteniendo transiciones disponibles para el ticket: %key%"
-    no_transitions: "No hay transiciones disponibles para el ticket %key%."
-    select_transition: "Seleccione la transición a aplicar:"
-    error_fetch: "Error al obtener transiciones: %error%"
-    error_execute: "Error al ejecutar transición: %error%"
-    success: "✅ Ticket %key% transitado exitosamente"
-
-# Item List Handler
+    section: Transición de ticket Jira
+    detected_key: Clave Jira detectada '%key%' desde la rama actual. ¿Usar esta clave?
+    prompt_key: Ingrese la clave del ticket Jira
+    error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+    error_invalid_key: 'Formato de clave Jira inválido. Formato esperado: PROJ-123'
+    fetching: 'Obteniendo transiciones disponibles para el ticket: %key%'
+    no_transitions: No hay transiciones disponibles para el ticket %key%.
+    select_transition: 'Seleccione la transición a aplicar:'
+    error_fetch: 'Error al obtener transiciones: %error%'
+    error_execute: 'Error al ejecutar transición: %error%'
+    success: ✅ Ticket %key% transitado exitosamente
   list:
-    section: "Obteniendo tickets de Jira"
-    error_fetch: "Error al obtener tickets: %error%"
-    no_items: "No se encontraron tickets que coincidan con sus criterios."
-    error_invalid_sort: "Valor de ordenación inválido '%value%'. Valores aceptados: Key, Status"
-
-# Project List Handler
+    section: Obteniendo tickets de Jira
+    error_fetch: 'Error al obtener tickets: %error%'
+    no_items: No se encontraron tickets que coincidan con sus criterios.
+    error_invalid_sort: 'Valor de ordenación inválido ''%value%''. Valores aceptados: Key, Status'
 project:
   list:
-    section: "Obteniendo proyectos de Jira"
-    error_fetch: "Error al obtener proyectos: %error%"
-    no_projects: "No se encontraron proyectos."
-
-# Search Handler
+    section: Obteniendo proyectos de Jira
+    error_fetch: 'Error al obtener proyectos: %error%'
+    no_projects: No se encontraron proyectos.
 search:
-  section: "Buscando tickets de Jira con JQL"
-  jql_query: "Consulta JQL: %jql%"
-  error_search: "Error al buscar tickets: %error%"
-  no_results: "No se encontraron tickets que coincidan con su consulta JQL."
-
-# Filter Show Handler
+  section: Buscando tickets de Jira con JQL
+  jql_query: 'Consulta JQL: %jql%'
+  error_search: 'Error al buscar tickets: %error%'
+  no_results: No se encontraron tickets que coincidan con su consulta JQL.
 filter:
   show:
-    section: "Obteniendo tickets del filtro '%filterName%'"
-    jql_query: "Consulta JQL: %jql%"
-    error_fetch: "Error al obtener tickets del filtro: %error%"
-    no_results: "No se encontraron tickets en el filtro '%filterName%'."
+    section: Obteniendo tickets del filtro '%filterName%'
+    jql_query: 'Consulta JQL: %jql%'
+    error_fetch: 'Error al obtener tickets del filtro: %error%'
+    no_results: No se encontraron tickets en el filtro '%filterName%'.
   list:
-    section: "Obteniendo filtros de Jira"
-    error_fetch: "Error al obtener filtros: %error%"
-    no_filters: "No se encontraron filtros."
-
-# Status Handler
+    section: Obteniendo filtros de Jira
+    error_fetch: 'Error al obtener filtros: %error%'
+    no_filters: No se encontraron filtros.
 status:
-  section: "Estado actual"
-  fetching: "Obteniendo estado del ticket de Jira: %key%"
-  jira_status: "[%status%] %key%: %title%"
-  jira_error: "No se pudieron obtener los detalles del ticket de Jira: %error%"
-  jira_no_key: "No se encontró una clave de Jira en el nombre de la rama."
-  git_branch: "En la rama '%branch%'"
-  local_changes: "Tiene %count% cambios sin commitear."
-  local_clean: "El directorio de trabajo está limpio."
-
-# Please Handler
+  section: Estado actual
+  fetching: 'Obteniendo estado del ticket de Jira: %key%'
+  jira_status: '[%status%] %key%: %title%'
+  jira_error: 'No se pudieron obtener los detalles del ticket de Jira: %error%'
+  jira_no_key: No se encontró una clave de Jira en el nombre de la rama.
+  git_branch: En la rama '%branch%'
+  local_changes: Tiene %count% cambios sin commitear.
+  local_clean: El directorio de trabajo está limpio.
 please:
-  error_no_upstream: "Su rama actual no tiene un remote upstream configurado.\nPara el push inicial y para crear una Pull Request, por favor use \"stud submit\"."
-  warning_force: "⚠️  Forzando con lease..."
+  error_no_upstream: 'Su rama actual no tiene un remote upstream configurado.
 
-# Flatten Handler
+    Para el push inicial y para crear una Pull Request, por favor use "stud submit".'
+  warning_force: ⚠️  Forzando con lease...
 flatten:
-  section: "Aplanando commits fixup"
-  error_dirty_working: "Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de aplanar."
-  warning_rewrite: "⚠️  Esto reescribirá el historial de sus commits. Es posible que necesite ejecutar 'stud please' para force-push después."
-  success: "✅ Todos los commits fixup! han sido fusionados en sus commits objetivo."
-  error_rebase: "Error en el rebase: %error%"
-  no_fixups: "No se encontraron commits fixup! o squash!. Nada que aplanar."
-
-# Cache Clear Handler
+  section: Aplanando commits fixup
+  error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de aplanar.
+  warning_rewrite: ⚠️  Esto reescribirá el historial de sus commits. Es posible que necesite ejecutar 'stud please' para force-push después.
+  success: ✅ Todos los commits fixup! han sido fusionados en sus commits objetivo.
+  error_rebase: 'Error en el rebase: %error%'
+  no_fixups: No se encontraron commits fixup! o squash!. Nada que aplanar.
 cache:
   clear:
-    section: "Limpiando caché de verificación de actualización"
-    success: "✅ Caché de verificación de actualización limpiado exitosamente."
-    already_clear: "El caché ya estaba vacío."
-    error_delete: "Error al eliminar el archivo de caché."
-
-# Submit Handler
+    section: Limpiando caché de verificación de actualización
+    success: ✅ Caché de verificación de actualización limpiado exitosamente.
+    already_clear: El caché ya estaba vacío.
+    error_delete: Error al eliminar el archivo de caché.
 submit:
-  section: "Enviando Pull Request"
-  error_dirty_working: "Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de enviar."
-  error_base_branch: "No se puede crear una Pull Request desde la rama base."
-  pushing: "Haciendo push de la rama %branch%..."
-  error_push: "Error en el push. Su rama puede haber reescrito el historial.\nIntente ejecutar 'stud please' para forzar el push."
-  finding_commit: "Buscando el primer commit lógico para usar en los detalles de la PR..."
-  fetching_jira: "Obteniendo ticket de Jira para el cuerpo de la PR: %key%"
-  error_no_logical: "No se pudo encontrar un commit lógico en esta rama. No se puede crear la PR."
-  error_no_jira_key: "No se pudo analizar la clave de Jira del mensaje de commit. No se puede crear la PR."
-  warning_jira_fetch: "No se pudieron obtener los detalles del ticket de Jira para el cuerpo de la PR: %error%\nVolviendo a un enlace simple."
-  creating: "Creando Pull Request..."
-  success_created: "✅ Pull Request creada: %url%"
-  warning_no_provider: "No hay proveedor Git configurado para este proyecto."
-  note_pr_exists: "Ya existe una Pull Request para esta rama."
-  success_pushed: "✅ Los cambios han sido enviados a GitHub"
-  error_create_pr: "Error al crear la Pull Request.\nError: %error%"
-  using_head: "Usando rama head: %head%"
-  fetching_labels: "Obteniendo etiquetas del repositorio..."
-  label_unknown_prompt: "La etiqueta '%label%' no existe en el repositorio. ¿Qué te gustaría hacer?"
-  label_create_option: "Crear: Crear la etiqueta en GitHub y agregarla a la PR"
-  label_ignore_option: "Ignorar: Omitir esta etiqueta y eliminarla de la lista final"
-  label_retry_option: "Reintentar: Abortar el comando y volver a ejecutar con una lista corregida"
-  label_creating: "Creando etiqueta '%label%'..."
-  label_created: "✅ Etiqueta '%label%' creada exitosamente"
-  label_ignored: "La etiqueta '%label%' será ignorada"
-  error_fetch_labels: "Error al obtener las etiquetas de GitHub.\nError: %error%"
-  error_create_label: "Error al crear la etiqueta '%label%'.\nError: %error%"
-  error_add_labels: "Error al agregar etiquetas a la Pull Request.\nError: %error%"
-  adding_labels: "Agregando etiquetas a la Pull Request..."
-  updating_to_draft: "Actualizando Pull Request a estado borrador..."
-  error_update_draft: "Error al actualizar el estado borrador de la Pull Request.\nError: %error%"
+  section: Enviando Pull Request
+  error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de enviar.
+  error_base_branch: No se puede crear una Pull Request desde la rama base.
+  pushing: Haciendo push de la rama %branch%...
+  error_push: 'Error en el push. Su rama puede haber reescrito el historial.
 
-# PR Comment Handler
+    Intente ejecutar ''stud please'' para forzar el push.'
+  finding_commit: Buscando el primer commit lógico para usar en los detalles de la PR...
+  fetching_jira: 'Obteniendo ticket de Jira para el cuerpo de la PR: %key%'
+  error_no_logical: No se pudo encontrar un commit lógico en esta rama. No se puede crear la PR.
+  error_no_jira_key: No se pudo analizar la clave de Jira del mensaje de commit. No se puede crear la PR.
+  warning_jira_fetch: 'No se pudieron obtener los detalles del ticket de Jira para el cuerpo de la PR: %error%
+
+    Volviendo a un enlace simple.'
+  creating: Creando Pull Request...
+  success_created: '✅ Pull Request creada: %url%'
+  warning_no_provider: No hay proveedor Git configurado para este proyecto.
+  note_pr_exists: Ya existe una Pull Request para esta rama.
+  success_pushed: ✅ Los cambios han sido enviados a GitHub
+  error_create_pr: 'Error al crear la Pull Request.
+
+    Error: %error%'
+  using_head: 'Usando rama head: %head%'
+  fetching_labels: Obteniendo etiquetas del repositorio...
+  label_unknown_prompt: La etiqueta '%label%' no existe en el repositorio. ¿Qué te gustaría hacer?
+  label_create_option: 'Crear: Crear la etiqueta en GitHub y agregarla a la PR'
+  label_ignore_option: 'Ignorar: Omitir esta etiqueta y eliminarla de la lista final'
+  label_retry_option: 'Reintentar: Abortar el comando y volver a ejecutar con una lista corregida'
+  label_creating: Creando etiqueta '%label%'...
+  label_created: ✅ Etiqueta '%label%' creada exitosamente
+  label_ignored: La etiqueta '%label%' será ignorada
+  error_fetch_labels: 'Error al obtener las etiquetas de GitHub.
+
+    Error: %error%'
+  error_create_label: 'Error al crear la etiqueta ''%label%''.
+
+    Error: %error%'
+  error_add_labels: 'Error al agregar etiquetas a la Pull Request.
+
+    Error: %error%'
+  adding_labels: Agregando etiquetas a la Pull Request...
+  updating_to_draft: Actualizando Pull Request a estado borrador...
+  error_update_draft: 'Error al actualizar el estado borrador de la Pull Request.
+
+    Error: %error%'
 pr:
   comment:
-    section: "Publicar comentario en Pull Request"
-    error_no_provider: "No hay proveedor Git configurado para este proyecto."
-    error_no_input: "No se proporcionó contenido de comentario.\nPor favor proporcione contenido vía STDIN (tubería) o como argumento directo.\nEjemplo: echo \"Texto del comentario\" | stud pr:comment\nEjemplo: stud pr:comment \"Texto del comentario\""
-    error_no_pr: "No se pudo encontrar una Pull Request activa para la rama actual."
-    error_post: "Error al publicar comentario en Pull Request.\nError: %error%"
-    finding_pr: "Buscando Pull Request para la rama: %branch%"
-    posting: "Publicando comentario en Pull Request #%number%..."
-    success: "✅ Comentario publicado exitosamente en Pull Request #%number%"
-    using_stdin: "Leyendo comentario desde STDIN..."
-    using_argument: "Usando comentario desde argumento..."
+    section: Publicar comentario en Pull Request
+    error_no_provider: No hay proveedor Git configurado para este proyecto.
+    error_no_input: 'No se proporcionó contenido de comentario.
 
-# Branch Rename Handler
+      Por favor proporcione contenido vía STDIN (tubería) o como argumento directo.
+
+      Ejemplo: echo "Texto del comentario" | stud pr:comment
+
+      Ejemplo: stud pr:comment "Texto del comentario"'
+    error_no_pr: No se pudo encontrar una Pull Request activa para la rama actual.
+    error_post: 'Error al publicar comentario en Pull Request.
+
+      Error: %error%'
+    finding_pr: 'Buscando Pull Request para la rama: %branch%'
+    posting: 'Publicando comentario en Pull Request #%number%...'
+    success: '✅ Comentario publicado exitosamente en Pull Request #%number%'
+    using_stdin: Leyendo comentario desde STDIN...
+    using_argument: Usando comentario desde argumento...
 branch:
   rename:
-    section: "Renaming branch"
-    error_dirty_working: "Your working directory is not clean. Please commit your changes before renaming a branch."
-    error_branch_not_found: "Branch '%branch%' not found (local or remote)."
-    error_new_name_exists: "Branch '%name%' already exists (local or remote). Cannot rename."
-    error_invalid_name: "Invalid branch name: %name%. Branch names must follow Git naming rules."
-    error_key_not_found: "Could not find Jira issue with key \"%key%\"."
-    error_no_key_in_branch: "Could not extract Jira key from branch name '%branch%'."
-    fetching_issue: "Fetching issue details from Jira..."
-    generating_name: "Generating new branch name from issue..."
-    checking_branches: "Checking branch existence..."
-    local_not_found_remote_exists: "Local branch '%branch%' not found, but remote branch exists."
-    rename_remote_only_prompt: "Rename only the remote branch? (Y/n)"
-    remote_not_found: "Remote branch not found. Only local branch will be renamed."
-    checking_sync: "Checking branch synchronization..."
-    remote_ahead_prompt: "Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)"
-    rebasing: "Rebasing local branch onto remote..."
-    rebase_failed: "Rebase failed. Please resolve conflicts manually and try again."
-    rebase_suggestion: "Suggested commands: git rebase origin/%branch%, resolve conflicts, then run 'stud rn' again."
-    finding_pr: "Checking for associated Pull Request..."
-    confirmation_header: "Current branch: %oldName%"
-    confirmation_new: "Proposed name: %newName%"
-    confirmation_actions: "The following will be renamed:"
-    confirmation_local: " - Local branch: %oldName% → %newName%"
-    confirmation_remote: " - Remote branch: origin/%oldName% → origin/%newName%"
-    confirmation_pr: " - Pull Request: #%number% (will be updated and commented)"
-    confirm_prompt: "Are you sure you want to rename this branch? (Y/n)"
-    renaming_local: "Renaming local branch..."
-    renaming_remote: "Renaming remote branch..."
-    updating_pr: "Updating Pull Request..."
-    creating_new_pr: "Creating new Pull Request for renamed branch..."
+    section: Renaming branch
+    error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.
+    error_branch_not_found: Branch '%branch%' not found (local or remote).
+    error_new_name_exists: Branch '%name%' already exists (local or remote). Cannot rename.
+    error_invalid_name: 'Invalid branch name: %name%. Branch names must follow Git naming rules.'
+    error_key_not_found: Could not find Jira issue with key "%key%".
+    error_no_key_in_branch: Could not extract Jira key from branch name '%branch%'.
+    fetching_issue: Fetching issue details from Jira...
+    generating_name: Generating new branch name from issue...
+    checking_branches: Checking branch existence...
+    local_not_found_remote_exists: Local branch '%branch%' not found, but remote branch exists.
+    rename_remote_only_prompt: Rename only the remote branch? (Y/n)
+    remote_not_found: Remote branch not found. Only local branch will be renamed.
+    checking_sync: Checking branch synchronization...
+    remote_ahead_prompt: Remote branch has %count% commit(s) that local branch doesn't have. Rebase local branch first? (Y/n)
+    rebasing: Rebasing local branch onto remote...
+    rebase_failed: Rebase failed. Please resolve conflicts manually and try again.
+    rebase_suggestion: 'Suggested commands: git rebase origin/%branch%, resolve conflicts, then run ''stud rn'' again.'
+    finding_pr: Checking for associated Pull Request...
+    confirmation_header: 'Current branch: %oldName%'
+    confirmation_new: 'Proposed name: %newName%'
+    confirmation_actions: 'The following will be renamed:'
+    confirmation_local: ' - Local branch: %oldName% → %newName%'
+    confirmation_remote: ' - Remote branch: origin/%oldName% → origin/%newName%'
+    confirmation_pr: ' - Pull Request: #%number% (will be updated and commented)'
+    confirm_prompt: Are you sure you want to rename this branch? (Y/n)
+    renaming_local: Renaming local branch...
+    renaming_remote: Renaming remote branch...
+    updating_pr: Updating Pull Request...
+    creating_new_pr: Creating new Pull Request for renamed branch...
     pr_creation_failed: '⚠️ Warning: Failed to create new Pull Request. You may need to run stud submit manually.'
-    pr_update_failed: "⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually."
-    commenting_pr: "Adding comment to Pull Request..."
-    success: "✅ Branch renamed successfully from %oldName% to %newName%"
-    no_pr_found: "No Pull Request found for this branch."
-    create_pr_prompt: "Would you like to create a Pull Request? (Y/n)"
-    switching_for_submit: "Switching to renamed branch to create PR..."
-
-# Commit Handler
+    pr_update_failed: '⚠️ Warning: Could not update Pull Request head branch via API. You may need to update it manually.'
+    commenting_pr: Adding comment to Pull Request...
+    success: ✅ Branch renamed successfully from %oldName% to %newName%
+    no_pr_found: No Pull Request found for this branch.
+    create_pr_prompt: Would you like to create a Pull Request? (Y/n)
+    switching_for_submit: Switching to renamed branch to create PR...
 commit:
-  section: "Asistente de commit convencional"
-  staging: "Preparando todos los cambios..."
-  committing: "Haciendo commit con el mensaje proporcionado..."
-  committing_simple: "Haciendo commit..."
-  success: "¡Commit creado exitosamente!"
-  checking_logical: "Verificando commit lógico anterior..."
-  found_logical: "SHA de commit lógico encontrado: %sha%"
-  creating_fixup: "Creando commit fixup para %sha%..."
-  fixup_success: "✅ Cambios guardados como fixup para el commit %sha%."
-  note_no_logical: "No se encontró commit lógico anterior o se usó el flag --new. Iniciando asistente interactivo..."
-  note_clean_working_tree: "El árbol de trabajo está limpio. Abortando commit."
-  error_no_key: "No se pudo encontrar una clave de Jira en el nombre de su rama actual.\nPor favor use \"stud start <key>\" para crear una rama."
-  fetching_jira: "Obteniendo ticket de Jira: %key%"
-  error_not_found: "No se pudo encontrar el ticket de Jira con la clave \"%key%\"."
-  jira_details: "Detalles del ticket de Jira:"
-  jira_title: "Título: %title%"
-  jira_type: "Tipo: %type% -> %commit_type%"
-  jira_components: "Componentes: %components%"
-  scope_prompt: "Alcance (opcional)"
-  scope_auto: "Alcance (auto-detectado '%scope%')"
-  type_prompt: "Tipo de commit (auto-detectado '%type%')"
-  summary_prompt: "Mensaje corto (auto-completado desde Jira)"
-  generated_message: "Mensaje de commit generado:\n%message%"
+  section: Asistente de commit convencional
+  staging: Preparando todos los cambios...
+  committing: Haciendo commit con el mensaje proporcionado...
+  committing_simple: Haciendo commit...
+  success: ¡Commit creado exitosamente!
+  checking_logical: Verificando commit lógico anterior...
+  found_logical: 'SHA de commit lógico encontrado: %sha%'
+  creating_fixup: Creando commit fixup para %sha%...
+  fixup_success: ✅ Cambios guardados como fixup para el commit %sha%.
+  note_no_logical: No se encontró commit lógico anterior o se usó el flag --new. Iniciando asistente interactivo...
+  note_clean_working_tree: El árbol de trabajo está limpio. Abortando commit.
+  error_no_key: 'No se pudo encontrar una clave de Jira en el nombre de su rama actual.
 
-# Update Handler
+    Por favor use "stud start <key>" para crear una rama.'
+  fetching_jira: 'Obteniendo ticket de Jira: %key%'
+  error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+  jira_details: 'Detalles del ticket de Jira:'
+  jira_title: 'Título: %title%'
+  jira_type: 'Tipo: %type% -> %commit_type%'
+  jira_components: 'Componentes: %components%'
+  scope_prompt: Alcance (opcional)
+  scope_auto: Alcance (auto-detectado '%scope%')
+  type_prompt: Tipo de commit (auto-detectado '%type%')
+  summary_prompt: Mensaje corto (auto-completado desde Jira)
+  generated_message: 'Mensaje de commit generado:
+
+    %message%'
 update:
-  section: "Verificando actualizaciones"
-  binary_path: "Ruta del binario"
-  repository: "Repositorio"
-  current_version: "Versión actual"
-  latest_version: "Última versión"
-  downloading_from: "Descargando desde"
-  warning_no_releases: "No se encontraron releases para este repositorio.\nEl repositorio puede no tener releases publicadas aún."
-  error_fetch: "Error al obtener información de la última release.\nError: %error%"
-  success_latest: "Ya está en la última versión (%version%)."
-  new_version: "Una nueva versión (%version%) está disponible. Actualizando..."
-  error_no_phar: "No se pudo encontrar el asset stud.phar en la última release.\nAssets de release: %assets%"
-  error_download: "Error al descargar la nueva versión.\nError: %error%"
-  error_asset_id: "Error al descargar la nueva versión.\nError: ID de asset no encontrado en el asset de release."
-  error_not_writable: "Error en la actualización: El archivo no es escribible.\nPor favor vuelva a ejecutar con privilegios elevados: sudo stud update"
-  error_backup: "Error al crear respaldo de la versión actual.\nError: %error%"
-  error_rollback: "Error en la actualización y se revirtió.\nError: %error%"
-  error_rollback_failed: "¡Error en la actualización y la reversión también falló!\nError original: %original_error%\nError de reversión: %rollback_error%\nPor favor restaure manualmente desde: %backup_path%"
-  changelog_section: "Cambios en la versión %version%"
-  breaking_changes_detected: "⚠️  Cambios incompatibles detectados en esta actualización:"
-  changelog_error: "No se pudo obtener el changelog"
-  success_hash_verified: "✅ Verificación del hash exitosa. El binario es auténtico."
-  error_hash_not_found: "Error de verificación de seguridad: No se pudo encontrar el archivo de checksum en la release.\nEl binario no puede ser verificado. Actualización cancelada por razones de seguridad."
-  error_hash_calculation: "Error de verificación de seguridad: No se pudo calcular el hash del archivo descargado.\nActualización cancelada por razones de seguridad."
-  error_hash_mismatch: "Error de verificación de seguridad: ¡Inconsistencia de hash detectada!\n\nHash esperado: %expected%\nHash calculado: %calculated%\n\nEl binario descargado puede estar corrupto o haber sido modificado."
-  error_digest_not_found: "Error de verificación de seguridad: No se encontró digest en la respuesta de la API de GitHub.\nEl binario no puede ser verificado."
-  prompt_continue_on_verification_failure: "⚠️ Advertencia: La verificación del checksum falló.\n¿Desea continuar con la instalación de todos modos?"
-  downloading_checksum: "Descargando archivo de checksum desde"
-  checksum_download_error: "Error al descargar el archivo de checksum"
+  section: Verificando actualizaciones
+  binary_path: Ruta del binario
+  repository: Repositorio
+  current_version: Versión actual
+  latest_version: Última versión
+  downloading_from: Descargando desde
+  warning_no_releases: 'No se encontraron releases para este repositorio.
 
-# Release Handler
+    El repositorio puede no tener releases publicadas aún.'
+  error_fetch: 'Error al obtener información de la última release.
+
+    Error: %error%'
+  success_latest: Ya está en la última versión (%version%).
+  new_version: Una nueva versión (%version%) está disponible. Actualizando...
+  error_no_phar: 'No se pudo encontrar el asset stud.phar en la última release.
+
+    Assets de release: %assets%'
+  error_download: 'Error al descargar la nueva versión.
+
+    Error: %error%'
+  error_asset_id: 'Error al descargar la nueva versión.
+
+    Error: ID de asset no encontrado en el asset de release.'
+  error_not_writable: 'Error en la actualización: El archivo no es escribible.
+
+    Por favor vuelva a ejecutar con privilegios elevados: sudo stud update'
+  error_backup: 'Error al crear respaldo de la versión actual.
+
+    Error: %error%'
+  error_rollback: 'Error en la actualización y se revirtió.
+
+    Error: %error%'
+  error_rollback_failed: '¡Error en la actualización y la reversión también falló!
+
+    Error original: %original_error%
+
+    Error de reversión: %rollback_error%
+
+    Por favor restaure manualmente desde: %backup_path%'
+  changelog_section: Cambios en la versión %version%
+  breaking_changes_detected: '⚠️  Cambios incompatibles detectados en esta actualización:'
+  changelog_error: No se pudo obtener el changelog
+  success_hash_verified: ✅ Verificación del hash exitosa. El binario es auténtico.
+  error_hash_not_found: 'Error de verificación de seguridad: No se pudo encontrar el archivo de checksum en la release.
+
+    El binario no puede ser verificado. Actualización cancelada por razones de seguridad.'
+  error_hash_calculation: 'Error de verificación de seguridad: No se pudo calcular el hash del archivo descargado.
+
+    Actualización cancelada por razones de seguridad.'
+  error_hash_mismatch: 'Error de verificación de seguridad: ¡Inconsistencia de hash detectada!
+
+
+    Hash esperado: %expected%
+
+    Hash calculado: %calculated%
+
+
+    El binario descargado puede estar corrupto o haber sido modificado.'
+  error_digest_not_found: 'Error de verificación de seguridad: No se encontró digest en la respuesta de la API de GitHub.
+
+    El binario no puede ser verificado.'
+  prompt_continue_on_verification_failure: '⚠️ Advertencia: La verificación del checksum falló.
+
+    ¿Desea continuar con la instalación de todos modos?'
+  downloading_checksum: Descargando archivo de checksum desde
+  checksum_download_error: Error al descargar el archivo de checksum
 release:
-  section: "Iniciando proceso de release para la versión %version%"
-  fetched: "Últimos cambios obtenidos desde origin."
-  created_branch: "Rama de release creada: %branch%"
-  updated_composer: "Versión actualizada en composer.json a %version%"
-  updated_lock: "composer.lock actualizado"
-  dumped_config: "Config volcado en config/app.php"
-  updated_changelog: "CHANGELOG.md actualizado con la versión %version%"
-  staged: "Cambios preparados."
-  committed: "Incremento de versión commitado."
-  published: "Rama de release publicada en el remote."
-  confirm_publish: "¿Desea publicar la rama de release en el remote?"
-  success: "La release %version% está lista para ser desplegada."
-
-# Deploy Handler
+  section: Iniciando proceso de release para la versión %version%
+  fetched: Últimos cambios obtenidos desde origin.
+  created_branch: 'Rama de release creada: %branch%'
+  updated_composer: Versión actualizada en composer.json a %version%
+  updated_lock: composer.lock actualizado
+  dumped_config: Config volcado en config/app.php
+  updated_changelog: CHANGELOG.md actualizado con la versión %version%
+  staged: Cambios preparados.
+  committed: Incremento de versión commitado.
+  published: Rama de release publicada en el remote.
+  confirm_publish: ¿Desea publicar la rama de release en el remote?
+  success: La release %version% está lista para ser desplegada.
 deploy:
-  section: "Iniciando proceso de despliegue"
-  error_not_release: "Debe estar en una rama de release para desplegar."
-  deployed: "Desplegado en main y etiquetado."
-  updated_develop: "Rama develop actualizada."
-  cleaned: "Rama de release limpiada."
-  success: "Release v%version% desplegada exitosamente en main. develop ha sido rebaseado y force-pusheado. Ramas limpiadas."
-
-# Table Headers
+  section: Iniciando proceso de despliegue
+  error_not_release: Debe estar en una rama de release para desplegar.
+  deployed: Desplegado en main y etiquetado.
+  updated_develop: Rama develop actualizada.
+  cleaned: Rama de release limpiada.
+  success: Release v%version% desplegada exitosamente en main. develop ha sido rebaseado y force-pusheado. Ramas limpiadas.
+  warning_branch_cleanup: "Warning: Could not delete release branch %branch%: %error%"
 table:
-  key: "Clave"
-  status: "Estado"
-  summary: "Resumen"
-  name: "Nombre"
-  command: "Comando"
-  alias: "Alias"
-  description: "Descripción"
-  priority: "Prioridad"
-  jira_url: "URL de Jira"
-
-# Help Command
+  key: Clave
+  status: Estado
+  summary: Resumen
+  name: Nombre
+  command: Comando
+  alias: Alias
+  description: Descripción
+  priority: Prioridad
+  jira_url: URL de Jira
 help:
-  title: "Manual"
-  description_section: "DESCRIPCIÓN"
-  description_text: "`stud-cli` es una herramienta de interfaz de línea de comandos diseñada para optimizar el flujo de trabajo diario de un desarrollador integrando estrechamente los elementos de trabajo de Jira con las operaciones del repositorio Git local. Le guía a través del \"camino dorado\" de iniciar una tarea, hacer commits convencionales y preparar su trabajo para su envío, todo desde la línea de comandos."
-  global_options_section: "OPCIONES GLOBALES"
-  commands_section: "COMANDOS"
-  global_option_help: "Mostrar ayuda para el comando dado. Cuando no se da ningún comando, mostrar ayuda para el comando list."
-  global_option_silent: "No mostrar ningún mensaje."
-  global_option_quiet: "Solo se muestran errores. Todas las demás salidas se suprimen."
-  global_option_verbose: "Aumentar la verbosidad de los mensajes: 1 para salida normal, 2 para salida más verbosa y 3 para debug."
-  category_configuration: "Configuración"
-  category_jira_information: "Información de Jira"
-  category_git_workflow: "Flujo de trabajo Git"
-  category_release_commands: "Comandos de Release"
-  example_prefix: "Ejemplo: %example%"
-  command_config_init: "Asistente interactivo para configurar los detalles de conexión de Jira y Git."
-  command_completion: "Genera scripts de auto-completado para bash o zsh."
-  command_projects_list: "Lista todos los proyectos de Jira visibles."
-  command_items_list: "Lista elementos de trabajo activos (su panel de control)."
-  command_items_show: "Muestra información detallada para un elemento de trabajo."
-  command_items_search: "Buscar issues usando JQL."
-  command_items_transition: "Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual."
-  command_filters_list: "Lista todos los filtros de Jira disponibles."
-  command_filters_show: "Obtener issues de un filtro de Jira guardado."
-  command_items_start: "Crea una nueva rama git desde un elemento de Jira."
-  command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
-  command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
-  command_commit: "Le guía a través de la creación de un commit convencional."
-  command_please: "Un force-push seguro para usuario avanzado (force-with-lease)."
-  command_flatten: "Fusionar automáticamente todos los commits fixup! en sus commits objetivo."
-  command_cache_clear: "Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando."
-  command_submit: "Envía la rama actual y crea una Pull Request."
-  command_pr_comment: "Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo."
-  command_status: "Un panel de control rápido \"¿dónde estoy?\"."
-  command_release: "Crea una nueva rama de release y aumenta la versión."
-  command_deploy: "Despliega la rama de release actual."
-  command_update: "Verifica e instala nuevas versiones de la herramienta."
-  universal_help_note: "Consejo: Use --help (o -h) con cualquier comando para ver ayuda detallada. Por ejemplo: stud commit --help"
-  command_specific_help_note: "Consejo: Ejecute 'stud help <comando>' para ver ayuda detallada para un comando específico. Por ejemplo: stud help commit"
-  command_help_title: "Ayuda: %command%"
-  see_readme_note: "Para más información, consulte la documentación completa en README.md"
-  command_not_found: "Texto de ayuda no disponible para el comando: %command%"
-  option_all: "Listar elementos para todos los usuarios (anula el filtro de asignado por defecto)"
-  option_project: "Filtrar elementos por una clave de proyecto específica (por ej., PROJ)"
-  option_items_list_sort: "Ordenar resultados por Key o Status (use --sort o -s)"
-  option_commit_new: "Crear un nuevo commit lógico en lugar de un fixup"
-  option_commit_message: "Omitir el prompt interactivo y usar el mensaje proporcionado para el commit"
-  option_submit_draft: "Crear una Pull Request en borrador (marcada como \"Draft\" en GitHub)"
-  option_submit_labels: "Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida"
-  option_update_info: "Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar"
-  option_release_major: "Incrementar versión mayor (X.0.0)"
-  option_release_minor: "Incrementar versión menor (X.Y.0)"
-  option_release_patch: "Incrementar versión de parche (X.Y.Z). Este es el valor por defecto si no se proporcionan banderas"
-  option_release_publish: "Publicar la rama de release en el repositorio remoto"
-  option_branch_rename_name: "Explicit new branch name (no prefix will be added). This option takes precedence over the key argument"
-
+  title: Manual
+  description_section: DESCRIPCIÓN
+  description_text: '`stud-cli` es una herramienta de interfaz de línea de comandos diseñada para optimizar el flujo de trabajo diario de un desarrollador integrando estrechamente los elementos de trabajo de Jira con las operaciones del repositorio Git local. Le guía a través del "camino dorado" de iniciar una tarea, hacer commits convencionales y preparar su trabajo para su envío, todo desde la línea de comandos.'
+  global_options_section: OPCIONES GLOBALES
+  commands_section: COMANDOS
+  global_option_help: Mostrar ayuda para el comando dado. Cuando no se da ningún comando, mostrar ayuda para el comando list.
+  global_option_silent: No mostrar ningún mensaje.
+  global_option_quiet: Solo se muestran errores. Todas las demás salidas se suprimen.
+  global_option_verbose: 'Aumentar la verbosidad de los mensajes: 1 para salida normal, 2 para salida más verbosa y 3 para debug.'
+  category_configuration: Configuración
+  category_jira_information: Información de Jira
+  category_git_workflow: Flujo de trabajo Git
+  category_release_commands: Comandos de Release
+  example_prefix: 'Ejemplo: %example%'
+  command_config_init: Asistente interactivo para configurar los detalles de conexión de Jira y Git.
+  command_completion: Genera scripts de auto-completado para bash o zsh.
+  command_projects_list: Lista todos los proyectos de Jira visibles.
+  command_items_list: Lista elementos de trabajo activos (su panel de control).
+  command_items_show: Muestra información detallada para un elemento de trabajo.
+  command_items_search: Buscar issues usando JQL.
+  command_items_transition: Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual.
+  command_filters_list: Lista todos los filtros de Jira disponibles.
+  command_filters_show: Obtener issues de un filtro de Jira guardado.
+  command_items_start: Crea una nueva rama git desde un elemento de Jira.
+  command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
+  command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
+  command_commit: Le guía a través de la creación de un commit convencional.
+  command_please: Un force-push seguro para usuario avanzado (force-with-lease).
+  command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
+  command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
+  command_submit: Envía la rama actual y crea una Pull Request.
+  command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
+  command_status: Un panel de control rápido "¿dónde estoy?".
+  command_release: Crea una nueva rama de release y aumenta la versión.
+  command_deploy: Despliega la rama de release actual.
+  command_update: Verifica e instala nuevas versiones de la herramienta.
+  universal_help_note: 'Consejo: Use --help (o -h) con cualquier comando para ver ayuda detallada. Por ejemplo: stud commit --help'
+  command_specific_help_note: 'Consejo: Ejecute ''stud help <comando>'' para ver ayuda detallada para un comando específico. Por ejemplo: stud help commit'
+  command_help_title: 'Ayuda: %command%'
+  see_readme_note: Para más información, consulte la documentación completa en README.md
+  command_not_found: 'Texto de ayuda no disponible para el comando: %command%'
+  option_all: Listar elementos para todos los usuarios (anula el filtro de asignado por defecto)
+  option_project: Filtrar elementos por una clave de proyecto específica (por ej., PROJ)
+  option_items_list_sort: Ordenar resultados por Key o Status (use --sort o -s)
+  option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
+  option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
+  option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
+  option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
+  option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar
+  option_release_major: Incrementar versión mayor (X.0.0)
+  option_release_minor: Incrementar versión menor (X.Y.0)
+  option_release_patch: Incrementar versión de parche (X.Y.Z). Este es el valor por defecto si no se proporcionan banderas
+  option_release_publish: Publicar la rama de release en el repositorio remoto
+  option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
+  command_branches_list: Lista ramas locales/remotas con estado (fusionado, obsoleto, PR activa)
+  command_branches_clean: Limpieza interactiva de ramas fusionadas/obsoletas
+  option_branches_clean_quiet: Eliminar todas las ramas coincidentes sin preguntar
+  option_deploy_clean: Limpiar ramas fusionadas después del despliegue
+branches:
+  list:
+    section: Lista de Ramas
+    no_branches: No se encontraron ramas
+    column:
+      branch: Rama
+      status: Estado
+      remote: Remoto
+      pr: PR
+    status:
+      merged: fusionado
+      stale: obsoleto
+      active_pr: pr-activa
+      active: activo
+    fetching_local: Obteniendo ramas locales...
+    fetching_remote: Obteniendo ramas remotas para %count% ramas locales...
+    note_origin: 'Nota: Solo se verifica el remoto ''origin''. Se ignoran otros remotos.'
+  clean:
+    section: Limpieza de Ramas
+    scanning: Escaneando ramas para limpiar...
+    found: 'Se encontraron %count% rama(s) para limpiar:'
+    confirm: ¿Eliminar %count% rama(s)? (S/n)
+    cancelled: Limpieza cancelada.
+    deleting: 'Eliminando rama: %branch%'
+    deleted: '%count% rama(s) eliminada(s)'
+    none: No hay ramas para limpiar
+    protected: 'Rama protegida omitida: %branch%'
+    error: 'Error al eliminar rama %branch%: %error%'
+    note_origin: 'Nota: Solo se verifica el remoto ''origin''. Se ignoran otros remotos.'
+    fetching_local: Obteniendo ramas locales...
+    fetching_remote: Obteniendo ramas remotas...
+    local_only_header: 'Ramas solo locales (%count%):'
+    with_remote_header: 'Ramas con remoto (%count%):'
+    with_remote_note: Estas ramas existen en el remoto. Se le pedirá que también las elimine del remoto.
+    current_branch_skipped: La rama actual '%branch%' es candidata para eliminación pero se omitirá. Cambie primero a otra rama si desea eliminarla.
+    delete_remote_confirm: ¿Eliminar también la rama remota 'origin/%branch%'? (s/N)
+    deleted_remote: Rama remota 'origin/%branch%' eliminada
+    error_remote: 'Error al eliminar la rama remota ''origin/%branch%'': %error%'
+    remote_kept: Rama remota 'origin/%branch%' conservada (no eliminada)
+    remote_kept_quiet: Rama remota 'origin/%branch%' conservada (use el modo interactivo para eliminar ramas remotas)
+    pruning_refs: "Pruning stale remote-tracking references..."
+    force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"

@@ -115,8 +115,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to create pull request.');
 
         $prData = new PullRequestData($title, $head, $base, $body);
         $this->githubProvider->createPullRequest($prData);
@@ -153,16 +153,87 @@ class GithubProviderTest extends TestCase
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(404);
-        $responseMock->method('getContent')->willReturn($errorMessage);
+        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get latest release.');
 
         $this->githubProvider->getLatestRelease();
+    }
+
+    public function testGetLatestReleaseFailureWithTruncatedResponse(): void
+    {
+        $longResponse = str_repeat('A', 600); // 600 characters
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn($longResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get latest release.');
+
+        try {
+            $this->githubProvider->getLatestRelease();
+        } catch (\App\Exception\ApiException $e) {
+            $technicalDetails = $e->getTechnicalDetails();
+            $this->assertStringContainsString('... (truncated)', $technicalDetails);
+
+            throw $e;
+        }
+    }
+
+    public function testGetLatestReleaseFailureWithGetContentException(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willThrowException(new \Exception('Connection timeout'));
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get latest release.');
+
+        try {
+            $this->githubProvider->getLatestRelease();
+        } catch (\App\Exception\ApiException $e) {
+            $technicalDetails = $e->getTechnicalDetails();
+            $this->assertStringContainsString('Unable to read response body: Connection timeout', $technicalDetails);
+
+            throw $e;
+        }
+    }
+
+    public function testGetLatestReleaseFailureWithEmptyResponse(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get latest release.');
+
+        try {
+            $this->githubProvider->getLatestRelease();
+        } catch (\App\Exception\ApiException $e) {
+            $technicalDetails = $e->getTechnicalDetails();
+            $this->assertStringContainsString('No response body', $technicalDetails);
+
+            throw $e;
+        }
     }
 
     public function testGetChangelogContentSuccess(): void
@@ -204,8 +275,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get changelog content.');
 
         $this->githubProvider->getChangelogContent($tag);
     }
@@ -310,8 +381,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get labels.');
 
         $this->githubProvider->getLabels();
     }
@@ -390,8 +461,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'POST .*\'\.\nResponse: Validation Failed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to create label '{$name}'.");
 
         $this->githubProvider->createLabel($name, $color);
     }
@@ -432,8 +503,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to add labels to pull request #{$issueNumber}.");
 
         $this->githubProvider->addLabelsToPullRequest($issueNumber, $labels);
     }
@@ -498,8 +569,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'GET .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to find pull request by branch.');
 
         $this->githubProvider->findPullRequestByBranch($head);
     }
@@ -580,8 +651,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'PATCH .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to update pull request #{$pullNumber}.");
 
         $this->githubProvider->updatePullRequest($pullNumber, $draft);
     }
@@ -628,8 +699,8 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 404\) when calling \'POST .*\'\.\nResponse: Not Found/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to create comment on issue #{$issueNumber}.");
 
         $this->githubProvider->createComment($issueNumber, $body);
     }
@@ -675,9 +746,437 @@ class GithubProviderTest extends TestCase
             ->method('request')
             ->willReturn($responseMock);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/GitHub API Error \(Status: 422\) when calling \'PATCH .*\'\.\nResponse: .*Head branch cannot be changed/');
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to update pull request head for PR #{$pullNumber}.");
 
         $this->githubProvider->updatePullRequestHead($pullNumber, $newHead);
+    }
+
+    public function testFindPullRequestByBranchWithStateOpen(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+                'draft' => false,
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'open');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateClosed(): void
+    {
+        $head = 'test_owner:feature/test';
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=closed"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'closed');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateAllReturnsOpenFirst(): void
+    {
+        $head = 'test_owner:feature/test';
+        $openResponse = [
+            [
+                'number' => 123,
+                'title' => 'Open PR',
+                'head' => ['ref' => 'feature/test'],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($openResponse);
+
+        $this->httpClientMock->expects($this->exactly(1))
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'all');
+
+        $this->assertSame($openResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchWithStateAllReturnsClosedWhenOpenNotFound(): void
+    {
+        $head = 'test_owner:feature/test';
+        $openResponse = [];
+        $closedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Closed PR',
+                'head' => ['ref' => 'feature/test'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($openResponse);
+
+        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock->method('getStatusCode')->willReturn(200);
+        $closedResponseMock->method('toArray')->willReturn($closedResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($openResponseMock, $closedResponseMock) {
+                if (str_contains($url, 'state=open')) {
+                    return $openResponseMock;
+                }
+                if (str_contains($url, 'state=closed')) {
+                    return $closedResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url}");
+            });
+
+        $result = $this->githubProvider->findPullRequestByBranch($head, 'all');
+
+        $this->assertSame($closedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchName(): void
+    {
+        $branchName = 'feature/test';
+        $head = self::GITHUB_OWNER . ':' . $branchName;
+        $expectedResponse = [
+            [
+                'number' => 123,
+                'title' => 'Test PR',
+                'head' => ['ref' => 'feature/test'],
+            ],
+        ];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($expectedResponse);
+
+        $this->httpClientMock->expects($this->exactly(1))
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?head=" . urlencode($head) . "&state=open"
+            )
+            ->willReturn($openResponseMock);
+
+        $result = $this->githubProvider->findPullRequestByBranchName($branchName, 'all');
+
+        $this->assertSame($expectedResponse[0], $result);
+    }
+
+    public function testFindPullRequestByBranchNameReturnsNullWhenNotFound(): void
+    {
+        $branchName = 'feature/test';
+        $head = self::GITHUB_OWNER . ':' . $branchName;
+        $openResponse = [];
+        $closedResponse = [];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($openResponse);
+
+        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock->method('getStatusCode')->willReturn(200);
+        $closedResponseMock->method('toArray')->willReturn($closedResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($openResponseMock, $closedResponseMock) {
+                if (str_contains($url, 'state=open')) {
+                    return $openResponseMock;
+                }
+                if (str_contains($url, 'state=closed')) {
+                    return $closedResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url}");
+            });
+
+        $result = $this->githubProvider->findPullRequestByBranchName($branchName, 'all');
+
+        $this->assertNull($result);
+    }
+
+    public function testGetAllPullRequestsWithStateOpen(): void
+    {
+        $expectedResponse = [
+            [
+                'number' => 1,
+                'title' => 'Open PR 1',
+                'head' => ['ref' => 'feature/branch1'],
+                'state' => 'open',
+            ],
+            [
+                'number' => 2,
+                'title' => 'Open PR 2',
+                'head' => ['ref' => 'feature/branch2'],
+                'state' => 'open',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+        $responseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?state=open&per_page=100&page=1"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getAllPullRequests('open');
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testGetAllPullRequestsWithStateClosed(): void
+    {
+        $expectedResponse = [
+            [
+                'number' => 3,
+                'title' => 'Closed PR 1',
+                'head' => ['ref' => 'feature/branch3'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($expectedResponse);
+        $responseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                "/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls?state=closed&per_page=100&page=1"
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getAllPullRequests('closed');
+
+        $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testGetAllPullRequestsWithStateAll(): void
+    {
+        $openResponse = [
+            [
+                'number' => 1,
+                'title' => 'Open PR',
+                'head' => ['ref' => 'feature/branch1'],
+                'state' => 'open',
+            ],
+        ];
+
+        $closedResponse = [
+            [
+                'number' => 2,
+                'title' => 'Closed PR',
+                'head' => ['ref' => 'feature/branch2'],
+                'state' => 'closed',
+            ],
+        ];
+
+        $openResponseMock = $this->createMock(ResponseInterface::class);
+        $openResponseMock->method('getStatusCode')->willReturn(200);
+        $openResponseMock->method('toArray')->willReturn($openResponse);
+        $openResponseMock->method('getHeaders')->willReturn([]);
+
+        $closedResponseMock = $this->createMock(ResponseInterface::class);
+        $closedResponseMock->method('getStatusCode')->willReturn(200);
+        $closedResponseMock->method('toArray')->willReturn($closedResponse);
+        $closedResponseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($openResponseMock, $closedResponseMock) {
+                if (str_contains($url, 'state=open')) {
+                    return $openResponseMock;
+                }
+                if (str_contains($url, 'state=closed')) {
+                    return $closedResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url}");
+            });
+
+        $result = $this->githubProvider->getAllPullRequests('all');
+
+        $this->assertCount(2, $result);
+        $this->assertSame($openResponse[0], $result[0]);
+        $this->assertSame($closedResponse[0], $result[1]);
+    }
+
+    public function testGetAllPullRequestsWithPagination(): void
+    {
+        $page1Response = [
+            ['number' => 1, 'title' => 'PR 1', 'head' => ['ref' => 'feature/branch1'], 'state' => 'open'],
+            ['number' => 2, 'title' => 'PR 2', 'head' => ['ref' => 'feature/branch2'], 'state' => 'open'],
+        ];
+
+        $page2Response = [
+            ['number' => 3, 'title' => 'PR 3', 'head' => ['ref' => 'feature/branch3'], 'state' => 'open'],
+        ];
+
+        $page1ResponseMock = $this->createMock(ResponseInterface::class);
+        $page1ResponseMock->method('getStatusCode')->willReturn(200);
+        $page1ResponseMock->method('toArray')->willReturn($page1Response);
+        // getHeaders() may be called multiple times (once in hasNextPage check)
+        // Add explicit expectation to ensure it always returns the same value
+        $page1Headers = [
+            'link' => ['<https://api.github.com/repos/test_owner/test_repo/pulls?state=open&per_page=100&page=2>; rel="next"'],
+        ];
+        $page1ResponseMock->expects($this->atLeastOnce())
+            ->method('getHeaders')
+            ->willReturn($page1Headers);
+
+        $page2ResponseMock = $this->createMock(ResponseInterface::class);
+        $page2ResponseMock->method('getStatusCode')->willReturn(200);
+        $page2ResponseMock->method('toArray')->willReturn($page2Response);
+        // Return empty headers array - no 'link' key means no next page
+        // CRITICAL: getHeaders() must ALWAYS return [] to stop pagination
+        // Add explicit expectation to ensure it always returns []
+        $page2ResponseMock->expects($this->atLeastOnce())
+            ->method('getHeaders')
+            ->willReturn([]);
+
+        $callCount = 0;
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url) use ($page1ResponseMock, $page2ResponseMock, &$callCount) {
+                $callCount++;
+
+                // Use more specific matching - check for exact page parameter
+                // Match '&page=1' or '?page=1' to avoid matching 'page=10', 'page=11', etc.
+                if (preg_match('/[?&]page=1(?=&|$)/', $url)) {
+                    return $page1ResponseMock;
+                }
+                if (preg_match('/[?&]page=2(?=&|$)/', $url)) {
+                    return $page2ResponseMock;
+                }
+
+                throw new \RuntimeException("Unexpected URL: {$url} (call #{$callCount})");
+            });
+
+        $result = $this->githubProvider->getAllPullRequests('open');
+
+        $this->assertCount(3, $result);
+        $this->assertSame($page1Response[0], $result[0]);
+        $this->assertSame($page1Response[1], $result[1]);
+        $this->assertSame($page2Response[0], $result[2]);
+    }
+
+    public function testGetAllPullRequestsFailure(): void
+    {
+        $errorMessage = 'Not Found';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn($errorMessage);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Failed to get all pull requests.');
+
+        $this->githubProvider->getAllPullRequests('open');
+    }
+
+    public function testGetAllPullRequestsWithEmptyResult(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([]);
+        $responseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getAllPullRequests('open');
+
+        $this->assertSame([], $result);
+    }
+
+    public function testHasNextPageWithNonArrayLinkHeader(): void
+    {
+        // Test hasNextPage when link header is a string, not an array
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getHeaders')->willReturn([
+            'link' => '<https://api.github.com/repos/test_owner/test_repo/pulls?state=open&per_page=100&page=2>; rel="next"',
+        ]);
+
+        $reflection = new \ReflectionClass($this->githubProvider);
+        $method = $reflection->getMethod('hasNextPage');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->githubProvider, $responseMock);
+
+        $this->assertTrue($result);
+    }
+
+    public function testHasNextPageWithEmptyLinkArray(): void
+    {
+        // Test hasNextPage when link header exists but is empty array
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getHeaders')->willReturn([
+            'link' => [],
+        ]);
+
+        $reflection = new \ReflectionClass($this->githubProvider);
+        $method = $reflection->getMethod('hasNextPage');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->githubProvider, $responseMock);
+
+        $this->assertFalse($result);
     }
 }

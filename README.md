@@ -365,7 +365,11 @@ This section provides detailed instructions for creating and configuring the API
 
 **Storage:** Token is stored in `~/.config/stud/config.yml` (plain text)
 
-##### GitHub Token
+##### Git Provider Token
+
+`stud-cli` supports both GitHub and GitLab as Git hosting providers. During `stud config:init`, you'll be prompted to select your provider (`github` or `gitlab`).
+
+**GitHub Token**
 
 **Required Scopes:**
 - `repo` scope (full control of private repositories)
@@ -383,11 +387,35 @@ This section provides detailed instructions for creating and configuring the API
 
 **Note:** Fine-grained tokens are not currently supported. Use classic tokens.
 
-**What it enables:**
-- `stud submit`: Creating Pull Requests
-- `stud pr:comment`: Adding comments to PRs
-- `stud branch:rename`: Managing PRs and labels during branch rename
-- Label management and PR operations
+**GitLab Token**
+
+**Required Scopes:**
+- `api` scope (full API access)
+- Required for: Creating Merge Requests, adding comments/notes, managing labels
+
+**Creation Steps:**
+1. Go to [GitLab Settings > Access Tokens](https://gitlab.com/-/user_settings/personal_access_tokens) (or your GitLab instance URL)
+2. Give it a descriptive name (e.g., "stud-cli")
+3. Select expiration date (optional)
+4. Check the `api` scope checkbox
+5. Click "Create personal access token"
+6. Copy the token immediately (you won't be able to see it again)
+7. Paste it when prompted by `stud config:init`
+
+**For Self-Hosted GitLab Instances:**
+If you're using a self-hosted GitLab instance, you can optionally configure the instance URL in your config file:
+```yaml
+GIT_PROVIDER: gitlab
+GIT_TOKEN: your_token_here
+GITLAB_INSTANCE_URL: https://git.example.com  # Optional, defaults to gitlab.com
+```
+
+**What Git Provider Tokens Enable:**
+- `stud submit`: Creating Pull Requests (GitHub) or Merge Requests (GitLab)
+- `stud pr:comment`: Adding comments to PRs/MRs
+- `stud branch:rename`: Managing PRs/MRs and labels during branch rename
+- `stud branches:list` and `stud branches:clean`: PR/MR detection for branch status
+- Label management and PR/MR operations
 
 **Storage:** Token is stored in `~/.config/stud/config.yml` (plain text)
 
@@ -576,6 +604,63 @@ These commands integrate directly with your local Git repository to streamline y
         -   Asks for confirmation (default yes, bypass if `--quiet`).
         -   Suggests creating PR if none exists after rename.
 
+-   **`stud branches:list`** (Alias: `stud bl`)
+    -   **Description:** Lists all local branches with their status (merged, stale, active PR, or active). Shows whether each branch exists on remote and has an associated Pull Request.
+    -   **Usage:**
+        ```bash
+        stud branches:list
+        stud bl
+        ```
+    -   **Status Definitions:**
+        -   **merged**: Branch is merged into develop and exists on remote
+        -   **stale**: Branch is merged into develop but doesn't exist on remote
+        -   **active-pr**: Branch has an associated Pull Request (open or closed)
+        -   **active**: Branch is not merged and has commits
+
+-   **`stud branches:clean`** (Alias: `stud bc`)
+    -   **Description:** Interactive cleanup of merged/stale branches. Identifies branches that are merged into develop and don't exist on remote, then prompts for confirmation before deletion. Protected branches (develop, main, master) are never deleted.
+    -   **Options:**
+        -   `--quiet` or `-q`: Remove all matching branches without prompting (non-interactive mode).
+    -   **Usage:**
+        ```bash
+        # Interactive mode (prompts for confirmation)
+        stud branches:clean
+        stud bc
+        
+        # Non-interactive mode (no prompts)
+        stud branches:clean --quiet
+        stud bc -q
+        ```
+    -   **Branch Deletion Decision Matrix:**
+        
+        The command evaluates each local branch against the following criteria to determine if it should be deleted:
+        
+        | Protected? | Current Branch? | Merged into develop? | Has Open PR? | Exists on Remote? | Action |
+        |------------|-----------------|----------------------|--------------|-------------------|--------|
+        | ✅ Yes | - | - | - | - | ❌ **SKIP** (never deleted) |
+        | ❌ No | ✅ Yes | - | - | - | ⚠️ **SKIP** (notify user, switch branch first) |
+        | ❌ No | ❌ No | ❌ No | - | - | ❌ **SKIP** (not merged) |
+        | ❌ No | ❌ No | ✅ Yes | ✅ Yes | - | ❌ **SKIP** (has open PR) |
+        | ❌ No | ❌ No | ✅ Yes | ❌ No | ✅ Yes | ✅ **CANDIDATE** (prompt for local + remote deletion) |
+        | ❌ No | ❌ No | ✅ Yes | ❌ No | ❌ No | ✅ **CANDIDATE** (delete local only) |
+        
+        **Notes:**
+        - **Protected branches:** `develop`, `main`, `master` are always skipped
+        - **Current branch:** Cannot be deleted (you must switch branches first)
+        - **Merge check:** Uses `git branch --merged develop` to determine if branch is merged
+        - **PR check:** If GitHub provider is available, checks for open PRs (closed PRs don't prevent deletion)
+        - **Remote branches:** In interactive mode, you'll be prompted separately to delete remote branches
+        - **Quiet mode:** Only deletes local branches, never prompts for remote deletion
+        - **Error handling:** If merge check or PR check fails, the branch is skipped (safe default)
+        
+    -   **Behavior:**
+        -   Scans for branches merged into develop that don't exist on remote
+        -   Never deletes protected branches (develop, main, master)
+        -   In interactive mode, displays list of branches to be deleted and prompts for confirmation
+        -   In quiet mode, deletes all matching branches without prompting
+        -   Handles deletion errors gracefully (logs warning and continues with other branches)
+        -   For branches that exist on remote, prompts separately to delete the remote branch as well
+
 -   **`stud commit`** (Alias: `stud co`)
     -   **Description:** Guides you through making a conventional commit message.
     -   **Options:**
@@ -702,10 +787,13 @@ These commands help you manage the release process.
 
 -   **`stud deploy`** (Alias: `stud mep`)
     -   **Description:** Deploys the current release branch. This merges the release into `main`, tags it, and updates `develop`.
+    -   **Options:**
+        -   `--clean`: Clean up merged branches after deployment (non-interactive).
     -   **Usage:**
         ```bash
         stud deploy
         stud mep
+        stud deploy --clean
         ```
 
 ### User Troubleshooting

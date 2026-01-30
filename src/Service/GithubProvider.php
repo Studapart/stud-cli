@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\PullRequestData;
+use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class GithubProvider
+class GithubProvider implements GitProviderInterface
 {
     public function __construct(
         private readonly string $token,
@@ -42,15 +43,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to create pull request.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -66,15 +65,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get latest release.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -89,15 +86,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get changelog content.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $content = $response->toArray();
@@ -125,15 +120,13 @@ class GithubProvider
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to get labels.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -157,15 +150,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to create label '{$name}'.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -182,45 +173,179 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to add labels to pull request #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
     }
 
     /**
-     * @return array<string, mixed>|null
+     * Finds a pull request by branch head.
+     *
+     * @param string $head The branch head in format "owner:branch" or just "branch"
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'open')
+     * @return array<string, mixed>|null The PR data or null if not found
      */
-    public function findPullRequestByBranch(string $head): ?array
+    public function findPullRequestByBranch(string $head, string $state = 'open'): ?array
     {
+        // If state is 'all', we need to check both 'open' and 'closed'
+        if ($state === 'all') {
+            $openPr = $this->findPullRequestByBranchInternal($head, 'open');
+            if ($openPr !== null) {
+                return $openPr;
+            }
+
+            return $this->findPullRequestByBranchInternal($head, 'closed');
+        }
+
+        return $this->findPullRequestByBranchInternal($head, $state);
+    }
+
+    /**
+     * Internal method to find PR by branch (avoids recursion).
+     *
+     * @param string $head The branch head
+     * @param string $state The PR state: 'open' or 'closed'
+     * @return array<string, mixed>|null The PR data or null if not found
+     */
+    protected function findPullRequestByBranchInternal(string $head, string $state): ?array
+    {
+
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
-        $queryParams = http_build_query(['head' => $head, 'state' => 'open']);
+        $queryParams = http_build_query(['head' => $head, 'state' => $state]);
         $apiUrl .= '?' . $queryParams;
 
         $response = $this->client->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'GET %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                'Failed to find pull request by branch.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         $pulls = $response->toArray();
 
         // Return the first PR if any exist
         return ! empty($pulls) ? $pulls[0] : null;
+    }
+
+    /**
+     * Finds a pull request by branch name (constructs owner:branch format automatically).
+     *
+     * @param string $branchName The branch name (without remote prefix)
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'all')
+     * @return array<string, mixed>|null The PR data or null if not found
+     */
+    public function findPullRequestByBranchName(string $branchName, string $state = 'all'): ?array
+    {
+        $owner = $this->owner;
+        $head = "{$owner}:{$branchName}";
+
+        return $this->findPullRequestByBranch($head, $state);
+    }
+
+    /**
+     * Fetches all pull requests for the repository.
+     *
+     * @param string $state The PR state: 'open', 'closed', or 'all' (default: 'all')
+     * @return array<int, array<string, mixed>> Array of PR data arrays
+     */
+    public function getAllPullRequests(string $state = 'all'): array
+    {
+        if ($state === 'all') {
+            $openPrs = $this->getAllPullRequestsByState('open');
+            $closedPrs = $this->getAllPullRequestsByState('closed');
+
+            return array_merge($openPrs, $closedPrs);
+        }
+
+        return $this->getAllPullRequestsByState($state);
+    }
+
+    /**
+     * Fetches all pull requests for a specific state with pagination support.
+     *
+     * @param string $state The PR state: 'open' or 'closed'
+     * @return array<int, array<string, mixed>> Array of PR data arrays
+     */
+    protected function getAllPullRequestsByState(string $state): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
+        $queryParams = http_build_query(['state' => $state, 'per_page' => 100]);
+        $apiUrl .= '?' . $queryParams;
+
+        $allPrs = [];
+        $page = 1;
+
+        while (true) {
+            $pageUrl = $apiUrl . '&page=' . $page;
+            $response = $this->client->request('GET', $pageUrl);
+
+            if ($response->getStatusCode() !== 200) {
+                $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
+
+                throw new ApiException(
+                    'Failed to get all pull requests.',
+                    $technicalDetails,
+                    $response->getStatusCode()
+                );
+            }
+
+            $prs = $response->toArray();
+            $allPrs = array_merge($allPrs, $prs);
+
+            // Stop if no results
+            if (empty($prs)) {
+                break;
+            }
+
+            // Check for pagination - if no next page, stop before incrementing
+            if (! $this->hasNextPage($response)) {
+                break;
+            }
+
+            // There's a next page, increment for next iteration
+            ++$page;
+        }
+
+        return $allPrs;
+    }
+
+    /**
+     * Checks if there is a next page based on the Link header.
+     *
+     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response The HTTP response
+     * @return bool True if there is a next page, false otherwise
+     */
+    protected function hasNextPage(\Symfony\Contracts\HttpClient\ResponseInterface $response): bool
+    {
+        $headers = $response->getHeaders();
+
+        // If no 'link' header exists, there's no next page
+        if (! isset($headers['link'])) {
+            return false;
+        }
+
+        // If 'link' header is empty, there's no next page
+        if (empty($headers['link'])) {
+            return false;
+        }
+
+        // getHeaders() returns array<string, string|string[]>
+        // link header can be string or string[]
+        /** @var string|string[] $linkHeaderValue */
+        $linkHeaderValue = $headers['link'];
+        $linkHeader = is_array($linkHeaderValue) ? $linkHeaderValue[0] : $linkHeaderValue;
+
+        return str_contains($linkHeader, 'rel="next"');
     }
 
     /**
@@ -236,15 +361,13 @@ class GithubProvider
         $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to update pull request #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -263,15 +386,13 @@ class GithubProvider
         $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'POST %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to create comment on issue #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
@@ -297,17 +418,50 @@ class GithubProvider
         $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
-            $fullUrl = "https://api.github.com{$apiUrl}";
-            $errorMessage = sprintf(
-                "GitHub API Error (Status: %d) when calling 'PATCH %s'.\nResponse: %s",
-                $response->getStatusCode(),
-                $fullUrl,
-                $response->getContent(false)
-            );
+            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
 
-            throw new \RuntimeException($errorMessage);
+            throw new ApiException(
+                "Failed to update pull request head for PR #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
         }
 
         return $response->toArray();
+    }
+
+    /**
+     * Extracts technical details from an HTTP response for error reporting.
+     * Truncates response body to 500 characters to avoid overwhelming output.
+     *
+     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response
+     * @param string $method HTTP method (GET, POST, etc.)
+     * @param string $apiUrl API endpoint URL
+     * @return string Technical details including method, URL, status code and response body
+     */
+    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, string $method, string $apiUrl): string
+    {
+        $statusCode = $response->getStatusCode();
+        $fullUrl = "https://api.github.com{$apiUrl}";
+        $responseBody = 'No response body';
+
+        try {
+            $content = $response->getContent(false);
+            if (! empty($content)) {
+                $responseBody = mb_strlen($content) > 500
+                    ? mb_substr($content, 0, 500) . '... (truncated)'
+                    : $content;
+            }
+        } catch (\Exception $e) {
+            $responseBody = 'Unable to read response body: ' . $e->getMessage();
+        }
+
+        return sprintf(
+            "GitHub API Error (Status: %d) when calling '%s %s'.\nResponse: %s",
+            $statusCode,
+            $method,
+            $fullUrl,
+            $responseBody
+        );
     }
 }

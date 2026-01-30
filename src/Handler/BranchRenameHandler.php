@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Service\CanConvertToMarkdownInterface;
-use App\Service\GithubProvider;
+use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -21,7 +21,7 @@ class BranchRenameHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly ?GithubProvider $githubProvider,
+        private readonly ?GitProviderInterface $githubProvider,
         private readonly TranslationService $translator,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,

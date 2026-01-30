@@ -17,6 +17,8 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Handler\BranchCleanHandler;
+use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
@@ -114,10 +116,94 @@ function _get_config_path(): string
 }
 
 /**
+ * Migrates old Git configuration format to new format.
+ * Old format: GIT_PROVIDER + GIT_TOKEN
+ * New format: GITHUB_TOKEN + GITLAB_TOKEN (provider is per-repository)
+ *
+ * @param array<string, mixed> $config The current config array
+ * @return array<string, mixed> The migrated config array
+ */
+function _migrate_git_config(array $config): array
+{
+    // Check if migration is needed
+    $hasOldToken = isset($config['GIT_TOKEN']) && is_string($config['GIT_TOKEN']) && trim($config['GIT_TOKEN']) !== '';
+    $hasOldProvider = isset($config['GIT_PROVIDER']) && in_array($config['GIT_PROVIDER'], ['github', 'gitlab'], true);
+
+    // No old token, nothing to migrate
+    if (! $hasOldToken) {
+        return $config;
+    }
+
+    $oldToken = trim($config['GIT_TOKEN']);
+
+    // Case 1: Token + Provider -> Migrate automatically
+    if ($hasOldProvider) {
+        $provider = $config['GIT_PROVIDER'];
+        $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+        // Only migrate if new token key doesn't already exist
+        if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
+            $config[$newTokenKey] = $oldToken;
+        }
+
+        // Remove old keys
+        unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
+
+        // Save migrated config
+        $configPath = _get_config_path();
+        file_put_contents($configPath, Yaml::dump($config));
+
+        return $config;
+    }
+
+    // Case 2: Token but no Provider -> Prompt user
+    $translator = _get_translation_service();
+    $logger = _get_logger();
+
+    $logger->note(
+        Logger::VERBOSITY_NORMAL,
+        $translator->trans('config.migration.git_token_detected')
+    );
+
+    $provider = $logger->choice(
+        $translator->trans('config.migration.git_provider_prompt'),
+        ['github', 'gitlab'],
+        'github'
+    );
+
+    if ($provider === null || ! in_array($provider, ['github', 'gitlab'], true)) {
+        // User cancelled, don't migrate
+        return $config;
+    }
+
+    $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+    // Only migrate if new token key doesn't already exist
+    if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
+        $config[$newTokenKey] = $oldToken;
+    }
+
+    // Remove old keys
+    unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
+
+    // Save migrated config
+    $configPath = _get_config_path();
+    file_put_contents($configPath, Yaml::dump($config));
+
+    $logger->success(
+        Logger::VERBOSITY_NORMAL,
+        $translator->trans('config.migration.git_migration_complete', ['provider' => ucfirst($provider)])
+    );
+
+    return $config;
+}
+
+/**
  * Reads configuration from the YAML file.
  * Throws an exception if the config is not found.
  *
  * This function also triggers the version check on first call (after app initialization).
+ * It also performs migration from old config format if needed.
  *
  * @return array<string, mixed>
  */
@@ -143,7 +229,16 @@ function _get_config(): array
         exit(1);
     }
 
-    return Yaml::parseFile($configPath);
+    $config = Yaml::parseFile($configPath);
+
+    // Perform migration from old format if needed (only once per session)
+    static $migrationDone = false;
+    if (! $migrationDone) {
+        $migrationDone = true;
+        $config = _migrate_git_config($config);
+    }
+
+    return $config;
 }
 
 /**
@@ -166,22 +261,22 @@ function _get_jira_config(): array
 }
 
 /**
- * Gets and validates the Git provider configuration.
+ * Gets the Git provider token configuration from global config.
+ * Tokens are optional - at least one should be configured for Git operations.
  *
- * @return array<string, mixed>
+ * @return array<string, mixed> Global git token configuration
  */
 function _get_git_config(): array
 {
     $config = _get_config();
-    $missingKeys = array_diff(['GIT_PROVIDER', 'GIT_TOKEN'], array_keys($config));
 
-    if (! empty($missingKeys)) {
-        $translator = _get_translation_service();
-        io()->error(explode("\n", $translator->trans('config.error.missing_git_keys', ['keys' => implode(', ', $missingKeys)])));
-        exit(1);
-    }
-
-    return $config;
+    // Tokens are optional - we don't require them to be present
+    // The provider will be determined per-repository
+    return [
+        'GITHUB_TOKEN' => $config['GITHUB_TOKEN'] ?? null,
+        'GITLAB_TOKEN' => $config['GITLAB_TOKEN'] ?? null,
+        'GITLAB_INSTANCE_URL' => $config['GITLAB_INSTANCE_URL'] ?? null,
+    ];
 }
 
 function _get_html_converter(): \App\Service\JiraHtmlConverter
@@ -235,6 +330,116 @@ function _get_git_repository(): GitRepository
     }
 
     return new GitRepository(_get_process_factory());
+}
+
+/**
+ * Gets the appropriate Git provider based on configuration.
+ * Reads provider from project config, tokens from project config (with global fallback).
+ * Prompts user to configure provider and/or token if missing.
+ *
+ * @return \App\Service\GitProviderInterface|null The provider instance or null if not configured
+ */
+function _get_git_provider(): ?\App\Service\GitProviderInterface
+{
+    try {
+        $gitRepository = _get_git_repository();
+        $logger = _get_logger();
+        $translator = _get_translation_service();
+
+        // Get provider from project config (with auto-detection)
+        $providerType = $gitRepository->getGitProvider();
+        if ($providerType === null) {
+            // Try to ensure it's configured (will prompt if needed)
+            $providerType = $gitRepository->ensureGitProviderConfigured(
+                io(),
+                $logger,
+                $translator
+            );
+        }
+
+        if (! in_array($providerType, ['github', 'gitlab'], true)) {
+            return null;
+        }
+
+        $repoOwner = $gitRepository->getRepositoryOwner();
+        $repoName = $gitRepository->getRepositoryName();
+
+        if (! $repoOwner || ! $repoName) {
+            return null;
+        }
+
+        // Get tokens: project config first, then global config fallback
+        $projectConfig = $gitRepository->readProjectConfig();
+        $globalConfig = _get_git_config();
+
+        // Determine token keys based on provider
+        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
+        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+
+        // Check if token exists
+        $token = $projectConfig[$tokenKey] ?? $globalConfig[$globalTokenKey] ?? null;
+
+        // If token is missing, try to ensure it's configured (will prompt if needed)
+        if ($token === null || (is_string($token) && trim($token) === '')) {
+            $token = $gitRepository->ensureGitTokenConfigured(
+                $providerType,
+                io(),
+                $logger,
+                $translator,
+                $globalConfig
+            );
+
+            // If user skipped or token is still null, return null
+            if ($token === null || trim($token) === '') {
+                // Check if any tokens exist globally to provide helpful message
+                $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
+                    || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
+
+                if (! $hasAnyGlobalToken) {
+                    $logger->error(
+                        \App\Service\Logger::VERBOSITY_NORMAL,
+                        $translator->trans('config.git_token_no_tokens')
+                    );
+                }
+
+                return null;
+            }
+        }
+
+        $token = is_string($token) ? trim($token) : '';
+
+        if ($providerType === 'github') {
+            return new GithubProvider(
+                $token,
+                $repoOwner,
+                $repoName
+            );
+        }
+
+        // GitLab provider
+        // Instance URL: project config first, then global config fallback
+        $instanceUrl = $projectConfig['gitlabInstanceUrl'] ?? $globalConfig['GITLAB_INSTANCE_URL'] ?? null;
+
+        return new \App\Service\GitLabProvider(
+            $token,
+            $repoOwner,
+            $repoName,
+            $instanceUrl
+        );
+    } catch (\Exception $e) {
+        // Config might not exist or provider not configured
+        return null;
+    }
+}
+
+/**
+ * @deprecated Use _get_git_provider() instead. This function is kept for backward compatibility.
+ */
+function _get_github_provider(): ?GithubProvider
+{
+    $provider = _get_git_provider();
+
+    return $provider instanceof GithubProvider ? $provider : null;
 }
 
 function _get_translation_service(): TranslationService
@@ -295,6 +500,24 @@ function _get_logger(): Logger
     $colors = _get_colour_config();
 
     return new Logger(io(), $colors);
+}
+
+/**
+ * Gets the configured base branch for the repository.
+ * Auto-detects or prompts user if not configured.
+ * Returns branch name with 'origin/' prefix for consistency.
+ */
+function _get_base_branch(): string
+{
+    static $baseBranch = null;
+    if ($baseBranch === null) {
+        $gitRepository = _get_git_repository();
+        $logger = _get_logger();
+        $translator = _get_translation_service();
+        $baseBranch = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator);
+    }
+
+    return $baseBranch;
 }
 
 /**
@@ -387,7 +610,8 @@ function _version_check_bootstrap(): void
 
     [$repoOwner, $repoName] = $nameParts;
 
-    // Get Git token from config if available (needed for private repositories)
+    // Get GitHub token from config if available (needed for private repositories)
+    // UpdateHandler is specifically for GitHub (updating stud-cli itself)
     // Read config file directly to avoid circular dependency with _get_config()
     $gitToken = null;
 
@@ -395,7 +619,8 @@ function _version_check_bootstrap(): void
         $configPath = _get_config_path();
         if (file_exists($configPath)) {
             $config = Yaml::parseFile($configPath);
-            $gitToken = $config['GIT_TOKEN'] ?? null;
+            // Try new format first, then fallback to old format for migration compatibility
+            $gitToken = $config['GITHUB_TOKEN'] ?? $config['GIT_TOKEN'] ?? null;
         }
     } catch (\Throwable $e) {
         // Config might not exist or be unreadable, that's okay - we'll try without token
@@ -608,7 +833,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 function config_init(): void
 {
     _load_constants();
-    $handler = new InitHandler(new FileSystem(), _get_config_path(), _get_translation_service(), _get_logger());
+    $handler = new InitHandler(FileSystem::createLocal(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -744,7 +969,7 @@ function items_start(
     string $key,
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
     $handler->handle(io(), $key);
 }
 
@@ -754,8 +979,9 @@ function items_takeover(
     string $key,
 ): void {
     _load_constants();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, DEFAULT_BASE_BRANCH, _get_translation_service(), _get_jira_config(), _get_logger());
+    $baseBranch = _get_base_branch();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
     exit($handler->handle(io(), $key));
 }
 
@@ -769,50 +995,45 @@ function branch_rename(
     ?string $explicitName = null,
 ): void {
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
-
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        $repoOwner = $gitRepository->getRepositoryOwner();
-        $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
-
-        if (! $repoOwner || ! $repoName) {
-            io()->error([
-                'Could not determine repository owner or name from git remote.',
-                'Please ensure your repository has a remote named "origin" configured.',
-                'You can check with: git remote -v',
-            ]);
-            exit(1);
-        }
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
-    }
+    $gitProvider = _get_git_provider();
 
     $handler = new BranchRenameHandler(
         $gitRepository,
         _get_jira_service(),
-        $githubProvider,
+        $gitProvider,
         _get_translation_service(),
         _get_jira_config(),
-        DEFAULT_BASE_BRANCH,
+        _get_base_branch(),
         _get_logger(),
         _get_html_converter()
     );
     exit($handler->handle(io(), $branch, $key, $explicitName));
+}
+
+#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
+function branches_list(): int
+{
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $githubProvider = _get_github_provider();
+    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+
+    return $handler->handle(io());
+}
+
+#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
+function branches_clean(
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Remove all matching branches without prompting')]
+    bool $quiet = false
+): int {
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $gitProvider = _get_git_provider();
+    $baseBranch = _get_base_branch();
+    $handler = new BranchCleanHandler($gitRepository, $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+
+    return $handler->handle(io(), $quiet);
 }
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
@@ -831,7 +1052,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
     $handler->handle(io(), $isNew, $message);
 }
 
@@ -849,7 +1070,7 @@ function flatten(
 
 ): void {
     _load_constants();
-    $handler = new FlattenHandler(_get_git_repository(), DEFAULT_BASE_BRANCH, _get_translation_service(), _get_logger());
+    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     exit($handler->handle(io()));
 }
 
@@ -871,19 +1092,13 @@ function submit(
 ): void {
     _load_constants();
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
+    $gitProvider = _get_git_provider();
 
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        // Get repository owner and name from git remote at runtime
+    if ($gitProvider === null) {
+        $gitConfig = _get_git_config();
         $repoOwner = $gitRepository->getRepositoryOwner();
         $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
 
         if (! $repoOwner || ! $repoName) {
             io()->error([
@@ -894,23 +1109,20 @@ function submit(
             exit(1);
         }
 
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
+        $providerType = $gitConfig['GIT_PROVIDER'] ?? 'unknown';
+        io()->error([
+            "Git provider '{$providerType}' is not supported or not properly configured.",
+            'Please check your configuration file and ensure GIT_PROVIDER is set to "github" or "gitlab".',
+        ]);
+        exit(1);
     }
 
     $handler = new SubmitHandler(
         $gitRepository,
         _get_jira_service(),
-        $githubProvider,
+        $gitProvider,
         _get_jira_config(),
-        DEFAULT_BASE_BRANCH,
+        _get_base_branch(),
         _get_translation_service(),
         _get_logger(),
         _get_html_converter()
@@ -924,43 +1136,12 @@ function pr_comment(
     ?string $message = null,
 ): void {
     _load_constants();
-    $gitConfig = _get_git_config();
     $gitRepository = _get_git_repository();
-
-    $githubProvider = null;
-    if ($gitConfig['GIT_PROVIDER'] === 'github') {
-        // Get repository owner and name from git remote at runtime
-        $repoOwner = $gitRepository->getRepositoryOwner();
-        $repoName = $gitRepository->getRepositoryName();
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Detected repository owner: '{$repoOwner}'</>");
-            io()->writeln("  <fg=gray>Detected repository name: '{$repoName}'</>");
-        }
-
-        if (! $repoOwner || ! $repoName) {
-            io()->error([
-                'Could not determine repository owner or name from git remote.',
-                'Please ensure your repository has a remote named "origin" configured.',
-                'You can check with: git remote -v',
-            ]);
-            exit(1);
-        }
-
-        if (io()->isVerbose()) {
-            io()->writeln("  <fg=gray>Creating GitHub provider with owner='{$repoOwner}' and repo='{$repoName}'</>");
-        }
-
-        $githubProvider = new GithubProvider(
-            $gitConfig['GIT_TOKEN'],
-            $repoOwner,
-            $repoName
-        );
-    }
+    $gitProvider = _get_git_provider();
 
     $handler = new PrCommentHandler(
         $gitRepository,
-        $githubProvider,
+        $gitProvider,
         _get_translation_service(),
         _get_logger()
     );
@@ -1261,11 +1442,20 @@ function release(
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
 function deploy(
-
+    #[AsOption(name: 'clean', description: 'Clean up merged branches after deployment')]
+    bool $clean = false
 ): void {
     _load_constants();
-    $handler = new DeployHandler(_get_git_repository(), _get_translation_service(), _get_logger());
+    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     $handler->handle(io());
+
+    // Clean up merged branches if requested (after deployment cleanup)
+    if ($clean) {
+        $gitRepository = _get_git_repository();
+        $githubProvider = _get_github_provider();
+        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+        $cleanHandler->handle(io(), true); // true = quiet mode (non-interactive)
+    }
 }
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
@@ -1284,12 +1474,13 @@ function update(
         $binaryPath = __FILE__;
     }
 
-    // Get Git token from config if available (needed for private repositories)
+    // Get GitHub token from config if available (needed for private repositories)
+    // UpdateHandler is specifically for GitHub (updating stud-cli itself)
     $gitToken = null;
 
     try {
         $gitConfig = _get_git_config();
-        $gitToken = $gitConfig['GIT_TOKEN'] ?? null;
+        $gitToken = $gitConfig['GITHUB_TOKEN'] ?? null;
     } catch (\Exception $e) {
         // Config might not exist, that's okay - we'll try without token
     }

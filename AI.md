@@ -86,6 +86,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - Use `vendor/bin/phpunit --coverage-text` for a quick overview of coverage percentages.
     - **When coverage is not 100%**: Use `php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-clover phpunit-results.xml` to generate a detailed Clover XML report that identifies exactly which lines are missing coverage. The Clover format provides precise insight into uncovered lines, making it easier to identify and fix gaps.
     - If coverage drops below 100%, you MUST write additional tests to restore full coverage before proceeding. Use `@codeCoverageIgnore` annotations only for truly untestable code paths (see CONVENTIONS.md for proper usage).
+    - **MANDATORY RE-VERIFICATION**: After ANY code changes (including fixes for PHP-CS-Fixer, PHPStan, or any other corrections), you MUST re-run coverage verification to ensure 100% coverage is maintained. This is a blocking requirement that cannot be skipped.
     - This is a blocking requirement; the commit cannot proceed until 100% coverage is restored.
 
 2.  **Complexity Verification**: 
@@ -103,7 +104,16 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 4.  **Review**: Review your changes and compare them with the ticket's description to ensure your changes cover all requirements and acceptance criteria.
 
-5.  **Commit**: Use `stud commit` to generate the commit message. Only commit if there are meaningful, relevant changes.
+5.  **FINAL Coverage Re-Verification**: 
+    - **CRITICAL STEP**: After completing steps 1-4, and especially after any code fixes (PHP-CS-Fixer, PHPStan corrections, etc.), you MUST run the full coverage check one final time:
+      ```bash
+      php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-text
+      ```
+    - Verify that the Summary shows 100% coverage (Classes: 100%, Methods: 100%, Lines: 100%).
+    - If coverage is not 100%, identify missing lines using the Clover XML report and add tests to cover them.
+    - **DO NOT PROCEED TO COMMIT** until 100% coverage is confirmed.
+
+6.  **Commit**: Use `stud commit` to generate the commit message. Only commit if there are meaningful, relevant changes.
 
 **Deliverable**: All changes committed with a proper conventional commit message, and the entire project maintains 100% code coverage and meets all quality thresholds.
 

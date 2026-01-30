@@ -4,14 +4,30 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-/**
- * @codeCoverageIgnore
- */
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\FilesystemOperator;
+use League\Flysystem\Local\LocalFilesystemAdapter;
+
 class FileSystem
 {
+    public function __construct(
+        private readonly FilesystemOperator $filesystem
+    ) {
+    }
+
+    /**
+     * Creates a FileSystem instance with Local adapter (for production use).
+     */
+    public static function createLocal(): self
+    {
+        $adapter = new LocalFilesystemAdapter('/');
+
+        return new self(new FlysystemFilesystem($adapter));
+    }
+
     public function fileExists(string $path): bool
     {
-        return file_exists($path);
+        return $this->filesystem->fileExists($path);
     }
 
     /**
@@ -19,7 +35,13 @@ class FileSystem
      */
     public function parseFile(string $path): array
     {
-        return \Symfony\Component\Yaml\Yaml::parseFile($path);
+        try {
+            $content = $this->filesystem->read($path);
+        } catch (\League\Flysystem\FilesystemException $e) {
+            throw new \RuntimeException("Failed to read file: {$path}", 0, $e);
+        }
+
+        return \Symfony\Component\Yaml\Yaml::parse($content);
     }
 
     /**
@@ -27,22 +49,29 @@ class FileSystem
      */
     public function dumpFile(string $path, array $data): void
     {
-        file_put_contents($path, \Symfony\Component\Yaml\Yaml::dump($data));
+        $yamlContent = \Symfony\Component\Yaml\Yaml::dump($data);
+        $this->filesystem->write($path, $yamlContent);
     }
 
     public function isDir(string $path): bool
     {
-        return is_dir($path);
+        return $this->filesystem->directoryExists($path);
     }
 
     public function mkdir(string $path, int $mode = 0777, bool $recursive = false): bool
     {
-        return mkdir($path, $mode, $recursive);
+        try {
+            $this->filesystem->createDirectory($path);
+        } catch (\League\Flysystem\FilesystemException $e) {
+            return false;
+        }
+
+        return true;
     }
 
     public function filePutContents(string $path, string $contents): void
     {
-        file_put_contents($path, $contents);
+        $this->filesystem->write($path, $contents);
     }
 
     public function dirname(string $path): string
