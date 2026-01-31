@@ -85,12 +85,15 @@ class MigrationRegistry
         $migrations = [];
         $fileSystem = $this->getFileSystem();
 
-        if (! $fileSystem->isDir($directoryPath)) {
+        // Resolve absolute paths to relative paths if they're within the current working directory
+        $resolvedPath = $this->resolvePath($directoryPath);
+
+        if (! $fileSystem->isDir($resolvedPath)) {
             // Directory doesn't exist yet (e.g., ProjectMigrations might not exist)
             return [];
         }
 
-        $files = $fileSystem->listDirectory($directoryPath);
+        $files = $fileSystem->listDirectory($resolvedPath);
         if (empty($files)) {
             return [];
         }
@@ -103,7 +106,7 @@ class MigrationRegistry
                 continue;
             }
 
-            $className = $this->getClassNameFromFile($directoryPath, $file);
+            $className = $this->getClassNameFromFile($resolvedPath, $file);
             if ($className === null) {
                 continue;
             }
@@ -145,6 +148,30 @@ class MigrationRegistry
      * @param string $fileName The PHP file name
      * @return string|null The fully qualified class name, or null if not found
      */
+    /**
+     * Resolves an absolute path to a relative path if it's within the current working directory.
+     * This is needed because FileSystem::createLocal() uses getcwd() as the root.
+     *
+     * @param string $path The path to resolve
+     * @return string The resolved path (relative to cwd if absolute, or original if already relative)
+     */
+    protected function resolvePath(string $path): string
+    {
+        $cwd = getcwd();
+        if ($cwd === false) {
+            return $path;
+        }
+
+        // If path is absolute and starts with cwd, make it relative
+        if (str_starts_with($path, '/') && str_starts_with($path, $cwd)) {
+            $relative = ltrim(str_replace($cwd, '', $path), '/');
+
+            return $relative !== '' ? $relative : '.';
+        }
+
+        return $path;
+    }
+
     protected function getClassNameFromFile(string $directoryPath, string $fileName): ?string
     {
         $filePath = $directoryPath . '/' . $fileName;

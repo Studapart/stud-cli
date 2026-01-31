@@ -55,6 +55,11 @@ class FileSystem
 
     public function isDir(string $path): bool
     {
+        // If path is absolute and outside the filesystem root, use native is_dir
+        if (str_starts_with($path, '/') && ! $this->isPathWithinRoot($path)) {
+            return is_dir($path);
+        }
+
         return $this->filesystem->directoryExists($path);
     }
 
@@ -71,7 +76,71 @@ class FileSystem
 
     public function filePutContents(string $path, string $contents): void
     {
+        // If path is absolute and outside the filesystem root, use native file_put_contents
+        // This handles system temp directories and other absolute paths
+        if (str_starts_with($path, '/') && ! $this->isPathWithinRoot($path)) {
+            $result = @file_put_contents($path, $contents);
+            if ($result === false) {
+                throw new \RuntimeException("Failed to write file: {$path}");
+            }
+
+            return;
+        }
+
         $this->filesystem->write($path, $contents);
+    }
+
+    /**
+     * Checks if a path is within the filesystem root.
+     * For LocalFilesystemAdapter, this checks if the path is within getcwd().
+     *
+     * @param string $path The path to check
+     * @return bool True if path is within root, false otherwise
+     */
+    private function isPathWithinRoot(string $path): bool
+    {
+        if (! str_starts_with($path, '/')) {
+            // Relative paths are always within root
+            return true;
+        }
+
+        // If using in-memory filesystem, always use filesystem methods (don't use native file ops)
+        if (! $this->isLocalFilesystem()) {
+            return true;
+        }
+
+        $cwd = getcwd();
+        if ($cwd === false) {
+            return false;
+        }
+
+        // Check if path starts with current working directory
+        return str_starts_with($path, $cwd . '/') || $path === $cwd;
+    }
+
+    /**
+     * Checks if the filesystem is using a LocalFilesystemAdapter.
+     * This is needed to determine if we can use native file operations for paths outside the root.
+     *
+     * @return bool True if using LocalFilesystemAdapter, false otherwise
+     */
+    private function isLocalFilesystem(): bool
+    {
+        if (! $this->filesystem instanceof FlysystemFilesystem) {
+            return false;
+        }
+
+        try {
+            $reflection = new \ReflectionClass($this->filesystem);
+            $adapterProperty = $reflection->getProperty('adapter');
+            $adapterProperty->setAccessible(true);
+            $adapter = $adapterProperty->getValue($this->filesystem);
+
+            return $adapter instanceof \League\Flysystem\Local\LocalFilesystemAdapter;
+        } catch (\Exception $e) {
+            // If we can't determine, assume it's not local (safer to use filesystem methods)
+            return false;
+        }
     }
 
     public function dirname(string $path): string
@@ -84,6 +153,16 @@ class FileSystem
      */
     public function read(string $path): string
     {
+        // If path is absolute and outside the filesystem root, use native file_get_contents
+        if (str_starts_with($path, '/') && ! $this->isPathWithinRoot($path)) {
+            $content = @file_get_contents($path);
+            if ($content === false) {
+                throw new \RuntimeException("Failed to read file: {$path}");
+            }
+
+            return $content;
+        }
+
         try {
             return $this->filesystem->read($path);
         } catch (\League\Flysystem\FilesystemException $e) {
@@ -96,6 +175,11 @@ class FileSystem
      */
     public function delete(string $path): bool
     {
+        // If path is absolute and outside the filesystem root, use native unlink
+        if (str_starts_with($path, '/') && ! $this->isPathWithinRoot($path)) {
+            return @unlink($path);
+        }
+
         try {
             $this->filesystem->delete($path);
 

@@ -46,6 +46,30 @@ class HelpService
     }
 
     /**
+     * Resolves an absolute path to a relative path if it's within the current working directory.
+     * This is needed because FileSystem::createLocal() uses getcwd() as the root.
+     *
+     * @param string $path The path to resolve
+     * @return string The resolved path (relative to cwd if absolute, or original if already relative)
+     */
+    private function resolvePath(string $path): string
+    {
+        $cwd = getcwd();
+        if ($cwd === false) {
+            return $path;
+        }
+
+        // If path is absolute and starts with cwd, make it relative
+        if (str_starts_with($path, '/') && str_starts_with($path, $cwd)) {
+            $relative = ltrim(str_replace($cwd, '', $path), '/');
+
+            return $relative !== '' ? $relative : '.';
+        }
+
+        return $path;
+    }
+
+    /**
      * Get help text for a command from README.md
      */
     public function getCommandHelp(string $commandName): ?string
@@ -56,8 +80,11 @@ class HelpService
 
         $fileSystem = $this->getFileSystem();
 
+        // Resolve absolute paths to relative paths if they're within the current working directory
+        $readmePath = $this->resolvePath(self::README_PATH);
+
         try {
-            $readmeContent = $fileSystem->read(self::README_PATH);
+            $readmeContent = $fileSystem->read($readmePath);
         } catch (\RuntimeException $e) {
             // File read failure is extremely rare and hard to simulate in tests
             // @codeCoverageIgnoreStart
