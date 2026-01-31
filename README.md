@@ -209,6 +209,109 @@ This project is configured to be compiled into a single, executable PHAR file us
     ```
     Note: If you use this method, you will need to run `sudo stud update` to update the tool.
 
+### Configuration Migration System
+
+`stud-cli` includes a migration system that allows configuration format changes to be automatically applied when the tool is updated. This enables backward compatibility and smooth transitions when configuration schemas evolve.
+
+#### Migration Types
+
+**Global Migrations** (`src/Migrations/GlobalMigrations/`):
+- Affect the global configuration file (`~/.config/stud/config.yml`)
+- Run automatically during `stud update` (prerequisite migrations)
+- Run on-demand when commands execute (non-prerequisite migrations)
+- Use when configuration changes affect all users globally
+
+**Project Migrations** (`src/Migrations/ProjectMigrations/`):
+- Affect project-specific configuration (`.git/stud.config`)
+- Run on-demand when commands execute in a git repository (lazy migrations)
+- Use when configuration changes are project-specific
+
+#### Creating a New Migration
+
+1. **Choose the Migration Scope:**
+   - Global migrations go in `src/Migrations/GlobalMigrations/`
+   - Project migrations go in `src/Migrations/ProjectMigrations/`
+
+2. **Create the Migration Class:**
+   - Migration ID format: `YYYYMMDDHHIISS001` (timestamp + sequence number)
+   - Example: `Migration202501160000001_MyFeature.php`
+   - Extend `AbstractMigration` and implement required methods:
+     ```php
+     <?php
+     declare(strict_types=1);
+     
+     namespace App\Migrations\GlobalMigrations; // or ProjectMigrations
+     
+     use App\Migrations\AbstractMigration;
+     use App\Migrations\MigrationScope;
+     
+     class Migration202501160000001_MyFeature extends AbstractMigration
+     {
+         public function getId(): string
+         {
+             return '202501160000001';
+         }
+         
+         public function getDescription(): string
+         {
+             return 'Description of what this migration does';
+         }
+         
+         public function getScope(): MigrationScope
+         {
+             return MigrationScope::GLOBAL; // or PROJECT
+         }
+         
+         public function isPrerequisite(): bool
+         {
+             return false; // true if must run during stud update
+         }
+         
+         public function up(array $config): array
+         {
+             // Transform config from old format to new format
+             $config['new_key'] = $config['old_key'] ?? 'default';
+             unset($config['old_key']);
+             return $config;
+         }
+         
+         public function down(array $config): array
+         {
+             // Optional: Revert migration (for rollback)
+             $config['old_key'] = $config['new_key'] ?? '';
+             unset($config['new_key']);
+             return $config;
+         }
+     }
+     ```
+
+3. **Migration Discovery:**
+   - Migrations are automatically discovered by `MigrationRegistry`
+   - They are sorted by ID and filtered based on the current `migration_version` in the config
+   - Only pending migrations (ID > current version) are executed
+
+4. **Migration Execution:**
+   - Global migrations run during `stud update` (prerequisite) or via config pass listener
+   - Project migrations run via config pass listener when in a git repository
+   - Each migration updates the `migration_version` in the config after successful execution
+   - Prerequisite migrations that fail prevent update completion
+   - Non-prerequisite migrations that fail log errors but continue
+
+#### Best Practices
+
+- **Migration IDs:** Use timestamps to ensure proper ordering. Format: `YYYYMMDDHHIISS001`
+- **Idempotency:** Migrations should be idempotent - running them multiple times should produce the same result
+- **Backward Compatibility:** Old configs without `migration_version` are treated as version "0" and all migrations run
+- **Error Handling:** Prerequisite migrations should be robust; non-prerequisite migrations can be more lenient
+- **Testing:** Create test migrations in `tests/Migrations/Fixtures/` for testing the migration system
+
+#### Example Use Cases
+
+- **Format Changes:** Converting old config keys to new ones (e.g., `GIT_TOKEN` → `GITHUB_TOKEN`)
+- **Schema Updates:** Adding new required configuration keys with defaults
+- **Data Transformation:** Migrating data structures (e.g., array format changes)
+- **Validation:** Adding validation rules or constraints to existing config
+
 ### Developer Troubleshooting
 
 -   **`Configuration file not found`:** When running from source, ensure you've run `./stud config:init`.
@@ -300,6 +403,8 @@ This is especially useful for checking breaking changes before updating.
 ### Configuration
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
+
+**Automatic Configuration Migration:** `stud-cli` includes an automatic migration system that updates your configuration format when the tool is updated. Global configuration migrations run automatically during `stud update`, and project-specific migrations run on-demand when you execute commands in a git repository. If mandatory configuration keys are missing, the tool will prompt you interactively or provide helpful error messages in non-interactive mode.
 
 #### `stud config:init` (Alias: `stud init`)
 

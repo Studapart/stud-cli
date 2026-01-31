@@ -2,8 +2,11 @@
 
 namespace App\Tests\Service;
 
+use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\VersionCheckService;
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -18,6 +21,8 @@ class VersionCheckServiceTest extends TestCase
 
     private VersionCheckService $service;
     private HttpClientInterface&MockObject $httpClientMock;
+    private FileSystem $fileSystem;
+    private FlysystemFilesystem $flysystem;
     private string $tempCacheDir;
     private string $tempCacheFile;
 
@@ -25,20 +30,26 @@ class VersionCheckServiceTest extends TestCase
     {
         parent::setUp();
 
+        // Create in-memory filesystem
+        $adapter = new InMemoryFilesystemAdapter();
+        $this->flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($this->flysystem);
+
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->tempCacheDir = sys_get_temp_dir() . '/stud-test-cache-' . uniqid();
+        $this->tempCacheDir = '/test/home';
         // Cache file should be in .cache/stud/ subdirectory
         $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
 
-        // Create cache directory structure
-        @mkdir(dirname($this->tempCacheFile), 0755, true);
+        // Create cache directory structure in memory
+        $this->flysystem->createDirectory($this->tempCacheDir . '/.cache/stud');
 
         $this->service = new VersionCheckService(
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
             self::GIT_TOKEN,
-            $this->httpClientMock
+            $this->httpClientMock,
+            $this->fileSystem
         );
     }
 
@@ -49,30 +60,21 @@ class VersionCheckServiceTest extends TestCase
             'repo',
             '1.0.0',
             'token',
-            $this->httpClientMock
+            $this->httpClientMock,
+            $this->fileSystem
         );
 
         $this->assertInstanceOf(VersionCheckService::class, $service);
     }
 
-    protected function tearDown(): void
-    {
-        // Clean up cache file and directory
-        @unlink($this->tempCacheFile);
-        @rmdir(dirname($this->tempCacheFile)); // .cache/stud
-        @rmdir($this->tempCacheDir . '/.cache'); // .cache
-        @rmdir($this->tempCacheDir);
-        parent::tearDown();
-    }
-
     public function testCheckForUpdateWithFreshCache(): void
     {
-        // Create a fresh cache file (less than 24 hours old)
+        // Create a fresh cache file (less than 24 hours old) in in-memory filesystem
         $cacheData = [
             'latest_version' => '1.2.0',
             'timestamp' => time() - 3600, // 1 hour ago
         ];
-        file_put_contents($this->tempCacheFile, json_encode($cacheData));
+        $this->flysystem->write($this->tempCacheFile, json_encode($cacheData));
 
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -98,12 +100,12 @@ class VersionCheckServiceTest extends TestCase
 
     public function testCheckForUpdateWithStaleCache(): void
     {
-        // Create a stale cache file (more than 24 hours old)
+        // Create a stale cache file (more than 24 hours old) in in-memory filesystem
         $cacheData = [
             'latest_version' => '1.0.0',
             'timestamp' => time() - 86401, // 24 hours + 1 second ago
         ];
-        file_put_contents($this->tempCacheFile, json_encode($cacheData));
+        $this->flysystem->write($this->tempCacheFile, json_encode($cacheData));
 
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -130,7 +132,7 @@ class VersionCheckServiceTest extends TestCase
             $this->assertTrue($result['should_display']);
 
             // Verify cache was updated
-            $updatedCache = json_decode(file_get_contents($this->tempCacheFile), true);
+            $updatedCache = json_decode($this->fileSystem->read($this->tempCacheFile), true);
             $this->assertSame('1.2.0', $updatedCache['latest_version']);
             $this->assertGreaterThan(time() - 10, $updatedCache['timestamp']);
         } finally {
@@ -170,8 +172,8 @@ class VersionCheckServiceTest extends TestCase
             $this->assertTrue($result['should_display']);
 
             // Verify cache was created
-            $this->assertFileExists($this->tempCacheFile);
-            $cache = json_decode(file_get_contents($this->tempCacheFile), true);
+            $this->assertTrue($this->fileSystem->fileExists($this->tempCacheFile));
+            $cache = json_decode($this->fileSystem->read($this->tempCacheFile), true);
             $this->assertSame('1.2.0', $cache['latest_version']);
         } finally {
             if ($originalHome !== null) {
@@ -205,8 +207,8 @@ class VersionCheckServiceTest extends TestCase
             $this->assertFalse($result['should_display']);
 
             // Cache should still be written (with null version)
-            $this->assertFileExists($this->tempCacheFile);
-            $cache = json_decode(file_get_contents($this->tempCacheFile), true);
+            $this->assertTrue($this->fileSystem->fileExists($this->tempCacheFile));
+            $cache = json_decode($this->fileSystem->read($this->tempCacheFile), true);
             $this->assertNull($cache['latest_version']);
         } finally {
             if ($originalHome !== null) {
@@ -337,37 +339,23 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('getCachePath');
         $method->setAccessible(true);
 
-        $tempDir = sys_get_temp_dir() . '/stud-test-cache-dir-' . uniqid();
+        $tempDir = '/test/cache-dir';
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $tempDir;
 
         try {
-            // Remove directory if it exists - ensure it's completely removed
-            if (is_dir($tempDir . '/.cache/stud')) {
-                @rmdir($tempDir . '/.cache/stud');
-            }
-            if (is_dir($tempDir . '/.cache')) {
-                @rmdir($tempDir . '/.cache');
-            }
-            if (is_dir($tempDir)) {
-                @rmdir($tempDir);
-            }
-
             // Verify directory doesn't exist before calling getCachePath
-            $this->assertDirectoryDoesNotExist($tempDir . '/.cache/stud');
+            $this->assertFalse($this->fileSystem->isDir($tempDir . '/.cache/stud'));
 
             $path = $method->invoke($this->service);
             $this->assertStringContainsString('.cache/stud/last_update_check.json', $path);
-            $this->assertDirectoryExists(dirname($path));
+            $this->assertTrue($this->fileSystem->isDir(dirname($path)));
         } finally {
             if ($originalHome !== null) {
                 $_SERVER['HOME'] = $originalHome;
             } else {
                 unset($_SERVER['HOME']);
             }
-            @rmdir($tempDir . '/.cache/stud');
-            @rmdir($tempDir . '/.cache');
-            @rmdir($tempDir);
         }
     }
 
@@ -377,43 +365,43 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('getCachePath');
         $method->setAccessible(true);
 
-        $tempDir = sys_get_temp_dir() . '/stud-test-cache-exists-' . uniqid();
+        $tempDir = '/test/cache-exists';
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $tempDir;
 
         try {
-            // Create directory structure first
-            @mkdir($tempDir . '/.cache/stud', 0755, true);
+            // Create directory structure first in in-memory filesystem
+            $this->flysystem->createDirectory($tempDir . '/.cache/stud');
 
             // Verify directory exists
-            $this->assertDirectoryExists($tempDir . '/.cache/stud');
+            $this->assertTrue($this->fileSystem->isDir($tempDir . '/.cache/stud'));
 
             // Call getCachePath - should skip mkdir since directory exists
             $path = $method->invoke($this->service);
             $this->assertStringContainsString('.cache/stud/last_update_check.json', $path);
-            $this->assertDirectoryExists(dirname($path));
+            $this->assertTrue($this->fileSystem->isDir(dirname($path)));
         } finally {
             if ($originalHome !== null) {
                 $_SERVER['HOME'] = $originalHome;
             } else {
                 unset($_SERVER['HOME']);
             }
-            @rmdir($tempDir . '/.cache/stud');
-            @rmdir($tempDir . '/.cache');
-            @rmdir($tempDir);
         }
     }
 
     public function testCheckForUpdateCreatesCacheDirectoryIfNotExists(): void
     {
         // Create a service with a fresh temp directory that doesn't have cache dir
-        $tempDir = sys_get_temp_dir() . '/stud-test-no-cache-dir-' . uniqid();
+        $tempDir = '/test/no-cache-dir';
         $originalHome = $_SERVER['HOME'] ?? null;
         $_SERVER['HOME'] = $tempDir;
 
         try {
-            // Ensure cache directory doesn't exist
-            $this->assertDirectoryDoesNotExist($tempDir . '/.cache/stud');
+            // Ensure cache directory doesn't exist in in-memory filesystem
+            if ($this->flysystem->directoryExists($tempDir . '/.cache/stud')) {
+                $this->flysystem->deleteDirectory($tempDir . '/.cache/stud');
+            }
+            $this->assertFalse($this->fileSystem->isDir($tempDir . '/.cache/stud'));
 
             // Mock GitHub API response
             $releaseData = [
@@ -432,7 +420,7 @@ class VersionCheckServiceTest extends TestCase
             $result = $this->service->checkForUpdate();
 
             // Verify directory was created
-            $this->assertDirectoryExists($tempDir . '/.cache/stud');
+            $this->assertTrue($this->fileSystem->isDir($tempDir . '/.cache/stud'));
             $this->assertSame('1.2.0', $result['latest_version']);
         } finally {
             if ($originalHome !== null) {
@@ -440,10 +428,6 @@ class VersionCheckServiceTest extends TestCase
             } else {
                 unset($_SERVER['HOME']);
             }
-            @unlink($tempDir . '/.cache/stud/last_update_check.json');
-            @rmdir($tempDir . '/.cache/stud');
-            @rmdir($tempDir . '/.cache');
-            @rmdir($tempDir);
         }
     }
 
@@ -463,21 +447,31 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('readCache');
         $method->setAccessible(true);
 
-        // Create a file first, then remove read permissions to force file_get_contents to return false
-        $testFile = sys_get_temp_dir() . '/stud-test-no-read-' . uniqid() . '.json';
-        file_put_contents($testFile, 'test content');
+        // Create a mock FileSystem that throws RuntimeException when reading
+        $mockFileSystem = $this->createMock(FileSystem::class);
+        $mockFileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $mockFileSystem->expects($this->once())
+            ->method('read')
+            ->willThrowException(new \RuntimeException('Read error'));
 
-        // Remove read permissions from the file itself
-        @chmod($testFile, 0000);
+        // Create a new service instance with the mock FileSystem
+        $service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            self::GIT_TOKEN,
+            $this->httpClientMock,
+            $mockFileSystem
+        );
 
-        try {
-            // file_get_contents should return false when file exists but can't be read
-            $result = $method->invoke($this->service, $testFile);
-            $this->assertNull($result);
-        } finally {
-            @chmod($testFile, 0644);
-            @unlink($testFile);
-        }
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('readCache');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($service, '/test/file.json');
+        $this->assertNull($result);
     }
 
     public function testReadCacheReturnsNullWhenJsonIsInvalid(): void
@@ -486,15 +480,11 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('readCache');
         $method->setAccessible(true);
 
-        $invalidJsonFile = sys_get_temp_dir() . '/stud-test-invalid-' . uniqid() . '.json';
-        file_put_contents($invalidJsonFile, 'invalid json content');
+        $invalidJsonFile = '/test/invalid.json';
+        $this->flysystem->write($invalidJsonFile, 'invalid json content');
 
-        try {
-            $result = $method->invoke($this->service, $invalidJsonFile);
-            $this->assertNull($result);
-        } finally {
-            @unlink($invalidJsonFile);
-        }
+        $result = $method->invoke($this->service, $invalidJsonFile);
+        $this->assertNull($result);
     }
 
     public function testReadCacheReturnsNullWhenTimestampMissing(): void
@@ -503,15 +493,11 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('readCache');
         $method->setAccessible(true);
 
-        $cacheFile = sys_get_temp_dir() . '/stud-test-no-timestamp-' . uniqid() . '.json';
-        file_put_contents($cacheFile, json_encode(['latest_version' => '1.2.0']));
+        $cacheFile = '/test/no-timestamp.json';
+        $this->flysystem->write($cacheFile, json_encode(['latest_version' => '1.2.0']));
 
-        try {
-            $result = $method->invoke($this->service, $cacheFile);
-            $this->assertNull($result);
-        } finally {
-            @unlink($cacheFile);
-        }
+        $result = $method->invoke($this->service, $cacheFile);
+        $this->assertNull($result);
     }
 
     public function testCreateGithubProviderWithoutToken(): void
@@ -619,7 +605,7 @@ class VersionCheckServiceTest extends TestCase
             'latest_version' => null,
             'timestamp' => time() - 3600, // 1 hour ago
         ];
-        file_put_contents($this->tempCacheFile, json_encode($cacheData));
+        $this->flysystem->write($this->tempCacheFile, json_encode($cacheData));
 
         // Override HOME to use our temp directory
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -649,20 +635,15 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('writeCache');
         $method->setAccessible(true);
 
-        $testCacheFile = sys_get_temp_dir() . '/stud-test-write-' . uniqid() . '.json';
-        @mkdir(dirname($testCacheFile), 0755, true);
+        $testCacheFile = '/test/write.json';
+        $this->flysystem->createDirectory(dirname($testCacheFile));
 
-        try {
-            $method->invoke($this->service, $testCacheFile, '1.2.0');
+        $method->invoke($this->service, $testCacheFile, '1.2.0');
 
-            $this->assertFileExists($testCacheFile);
-            $data = json_decode(file_get_contents($testCacheFile), true);
-            $this->assertSame('1.2.0', $data['latest_version']);
-            $this->assertIsInt($data['timestamp']);
-        } finally {
-            @unlink($testCacheFile);
-            @rmdir(dirname($testCacheFile));
-        }
+        $this->assertTrue($this->fileSystem->fileExists($testCacheFile));
+        $data = json_decode($this->fileSystem->read($testCacheFile), true);
+        $this->assertSame('1.2.0', $data['latest_version']);
+        $this->assertIsInt($data['timestamp']);
     }
 
     public function testWriteCacheWithNullVersion(): void
@@ -671,19 +652,34 @@ class VersionCheckServiceTest extends TestCase
         $method = $reflection->getMethod('writeCache');
         $method->setAccessible(true);
 
-        $testCacheFile = sys_get_temp_dir() . '/stud-test-write-null-' . uniqid() . '.json';
-        @mkdir(dirname($testCacheFile), 0755, true);
+        $testCacheFile = '/test/write-null.json';
+        $this->flysystem->createDirectory(dirname($testCacheFile));
 
-        try {
-            $method->invoke($this->service, $testCacheFile, null);
+        $method->invoke($this->service, $testCacheFile, null);
 
-            $this->assertFileExists($testCacheFile);
-            $data = json_decode(file_get_contents($testCacheFile), true);
-            $this->assertNull($data['latest_version']);
-            $this->assertIsInt($data['timestamp']);
-        } finally {
-            @unlink($testCacheFile);
-            @rmdir(dirname($testCacheFile));
-        }
+        $this->assertTrue($this->fileSystem->fileExists($testCacheFile));
+        $data = json_decode($this->fileSystem->read($testCacheFile), true);
+        $this->assertNull($data['latest_version']);
+        $this->assertIsInt($data['timestamp']);
+    }
+
+    public function testGetFileSystemFallback(): void
+    {
+        // Test that getFileSystem() falls back to createLocal() when FileSystem is not injected
+        $service = new VersionCheckService(
+            self::REPO_OWNER,
+            self::REPO_NAME,
+            self::CURRENT_VERSION,
+            self::GIT_TOKEN,
+            $this->httpClientMock,
+            null // No FileSystem injected
+        );
+
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('getFileSystem');
+        $method->setAccessible(true);
+
+        $fileSystem = $method->invoke($service);
+        $this->assertInstanceOf(FileSystem::class, $fileSystem);
     }
 }

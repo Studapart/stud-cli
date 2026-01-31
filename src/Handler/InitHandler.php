@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\FileSystem;
 use App\Service\Logger;
+use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
@@ -88,6 +89,14 @@ class InitHandler
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 
+        // Set initial migration version to latest migration ID
+        $registry = new MigrationRegistry($this->logger, $this->translator);
+        $globalMigrations = $registry->discoverGlobalMigrations();
+        $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
+        if ($latestMigrationId !== null) {
+            $config['migration_version'] = $latestMigrationId;
+        }
+
         $configDir = $this->fileSystem->dirname($this->configPath);
         if (! $this->fileSystem->isDir($configDir)) {
             $this->fileSystem->mkdir($configDir, 0700, true);
@@ -98,6 +107,29 @@ class InitHandler
 
         // Shell completion setup
         $this->promptForCompletion();
+    }
+
+    /**
+     * Gets the latest migration ID from the list of migrations.
+     *
+     * @param array<\App\Migrations\MigrationInterface> $migrations
+     * @return string|null The latest migration ID, or null if no migrations exist
+     */
+    protected function getLatestMigrationId(array $migrations): ?string
+    {
+        if (empty($migrations)) {
+            return null;
+        }
+
+        $latestId = null;
+        foreach ($migrations as $migration) {
+            $migrationId = $migration->getId();
+            if ($latestId === null || strcmp($migrationId, $latestId) > 0) {
+                $latestId = $migrationId;
+            }
+        }
+
+        return $latestId;
     }
 
     protected function promptForCompletion(): void

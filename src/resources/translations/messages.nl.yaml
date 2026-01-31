@@ -71,6 +71,18 @@ config:
     git_token_detected: Oude Git token formaat gedetecteerd. Migratie vereist.
     git_provider_prompt: Selecteer Git provider voor uw token
     git_migration_complete: "Git configuratie succesvol gemigreerd. Token geconfigureerd voor %provider%."
+    global:
+      running: "Uitvoeren van globale configuratie migraties..."
+      complete: "Globale configuratie migraties succesvol voltooid."
+    project:
+      running: "Uitvoeren van project configuratie migraties..."
+      complete: "Project configuratie migraties succesvol voltooid."
+    running: "Uitvoeren van migratie %id%: %description%"
+    error: "Migratie %id% mislukt: %error%"
+    version_updated: "Migratie versie bijgewerkt naar %version%"
+  missing_global_key: "Ontbrekende vereiste globale configuratiesleutel: %key%"
+  missing_project_key: "Ontbrekende vereiste project configuratiesleutel: %key%"
+  auto_detected: "Automatisch gedetecteerd %key%: %value%"
 item:
   start:
     section: Werk starten op %key%

@@ -47,11 +47,14 @@ use App\Responder\ItemShowResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
 use App\Service\ChangelogParser;
+use App\Service\ConfigValidator;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
+use App\Service\MigrationExecutor;
+use App\Service\MigrationRegistry;
 use App\Service\ProcessFactory;
 use App\Service\ThemeDetector;
 use App\Service\TranslationService;
@@ -116,94 +119,11 @@ function _get_config_path(): string
 }
 
 /**
- * Migrates old Git configuration format to new format.
- * Old format: GIT_PROVIDER + GIT_TOKEN
- * New format: GITHUB_TOKEN + GITLAB_TOKEN (provider is per-repository)
- *
- * @param array<string, mixed> $config The current config array
- * @return array<string, mixed> The migrated config array
- */
-function _migrate_git_config(array $config): array
-{
-    // Check if migration is needed
-    $hasOldToken = isset($config['GIT_TOKEN']) && is_string($config['GIT_TOKEN']) && trim($config['GIT_TOKEN']) !== '';
-    $hasOldProvider = isset($config['GIT_PROVIDER']) && in_array($config['GIT_PROVIDER'], ['github', 'gitlab'], true);
-
-    // No old token, nothing to migrate
-    if (! $hasOldToken) {
-        return $config;
-    }
-
-    $oldToken = trim($config['GIT_TOKEN']);
-
-    // Case 1: Token + Provider -> Migrate automatically
-    if ($hasOldProvider) {
-        $provider = $config['GIT_PROVIDER'];
-        $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
-
-        // Only migrate if new token key doesn't already exist
-        if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
-            $config[$newTokenKey] = $oldToken;
-        }
-
-        // Remove old keys
-        unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
-
-        // Save migrated config
-        $configPath = _get_config_path();
-        file_put_contents($configPath, Yaml::dump($config));
-
-        return $config;
-    }
-
-    // Case 2: Token but no Provider -> Prompt user
-    $translator = _get_translation_service();
-    $logger = _get_logger();
-
-    $logger->note(
-        Logger::VERBOSITY_NORMAL,
-        $translator->trans('config.migration.git_token_detected')
-    );
-
-    $provider = $logger->choice(
-        $translator->trans('config.migration.git_provider_prompt'),
-        ['github', 'gitlab'],
-        'github'
-    );
-
-    if ($provider === null || ! in_array($provider, ['github', 'gitlab'], true)) {
-        // User cancelled, don't migrate
-        return $config;
-    }
-
-    $newTokenKey = $provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
-
-    // Only migrate if new token key doesn't already exist
-    if (! isset($config[$newTokenKey]) || empty(trim($config[$newTokenKey] ?? ''))) {
-        $config[$newTokenKey] = $oldToken;
-    }
-
-    // Remove old keys
-    unset($config['GIT_PROVIDER'], $config['GIT_TOKEN']);
-
-    // Save migrated config
-    $configPath = _get_config_path();
-    file_put_contents($configPath, Yaml::dump($config));
-
-    $logger->success(
-        Logger::VERBOSITY_NORMAL,
-        $translator->trans('config.migration.git_migration_complete', ['provider' => ucfirst($provider)])
-    );
-
-    return $config;
-}
-
-/**
  * Reads configuration from the YAML file.
  * Throws an exception if the config is not found.
  *
  * This function also triggers the version check on first call (after app initialization).
- * It also performs migration from old config format if needed.
+ * Note: Migrations are now handled by the _config_pass_listener, not in this function.
  *
  * @return array<string, mixed>
  */
@@ -229,16 +149,7 @@ function _get_config(): array
         exit(1);
     }
 
-    $config = Yaml::parseFile($configPath);
-
-    // Perform migration from old format if needed (only once per session)
-    static $migrationDone = false;
-    if (! $migrationDone) {
-        $migrationDone = true;
-        $config = _migrate_git_config($config);
-    }
-
-    return $config;
+    return Yaml::parseFile($configPath);
 }
 
 /**
@@ -794,6 +705,174 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     $command->setCode(function () {
         return 1;
     });
+}
+
+/**
+ * Config pass listener: Runs migrations and validates configuration before command execution.
+ * This listener runs after config check and extension check, ensuring config file exists.
+ */
+#[AsListener(event: ConsoleEvents::COMMAND)]
+function _config_pass_listener(ConsoleCommandEvent $event): void
+{
+    // Skip during PHAR compilation/build process
+    $constantsPath = __DIR__ . '/src/config/constants.php';
+    if (! file_exists($constantsPath)) {
+        return;
+    }
+
+    $command = $event->getCommand();
+    if ($command === null) {
+        return;
+    }
+
+    // Only process stud-cli task commands
+    if (! $command instanceof \Castor\Console\Command\TaskCommand) {
+        return;
+    }
+
+    $commandName = $command->getName();
+
+    // Whitelist: Commands that should work without config pass
+    $whitelistedCommands = [
+        'config:init',
+        'init', // alias
+        'help',
+        'main', // default command
+        'cache:clear',
+        'cc', // alias
+    ];
+
+    if (in_array($commandName, $whitelistedCommands, true)) {
+        return;
+    }
+
+    // Check if config file exists (should exist at this point due to _config_check_listener)
+    $configPath = _get_config_path();
+    if (! file_exists($configPath)) {
+        return;
+    }
+
+    try {
+        $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+        $logger = _get_logger();
+        $translator = _get_translation_service();
+        $fileSystem = FileSystem::createLocal();
+
+        // Read current config
+        $config = Yaml::parseFile($configPath);
+        $currentVersion = $config['migration_version'] ?? '0';
+
+        // Step 1: Run global migrations if pending
+        $registry = new MigrationRegistry($logger, $translator);
+        $globalMigrations = $registry->discoverGlobalMigrations();
+        $pendingGlobalMigrations = $registry->getPendingMigrations($globalMigrations, $currentVersion);
+
+        if (! empty($pendingGlobalMigrations)) {
+            $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.running'));
+            $executor = new MigrationExecutor($logger, $fileSystem, $translator);
+            $config = $executor->executeMigrations($pendingGlobalMigrations, $config, $configPath);
+            $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.complete'));
+            $currentVersion = $config['migration_version'] ?? $currentVersion;
+        }
+
+        // Step 2: Run project migrations if in git repository
+        try {
+            $gitRepository = _get_git_repository();
+            $projectConfigPath = $gitRepository->getProjectConfigPath();
+
+            if (file_exists($projectConfigPath)) {
+                $projectConfig = Yaml::parseFile($projectConfigPath);
+                $projectCurrentVersion = $projectConfig['migration_version'] ?? '0';
+
+                $projectMigrations = $registry->discoverProjectMigrations();
+                $pendingProjectMigrations = $registry->getPendingMigrations($projectMigrations, $projectCurrentVersion);
+
+                if (! empty($pendingProjectMigrations)) {
+                    $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.running'));
+                    $executor = new MigrationExecutor($logger, $fileSystem, $translator);
+                    $projectConfig = $executor->executeMigrations($pendingProjectMigrations, $projectConfig, $projectConfigPath);
+                    $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.complete'));
+                }
+            }
+        } catch (\RuntimeException $e) {
+            // Not in a git repository, skip project migrations
+        }
+
+        // Step 3: Validate command requirements
+        $validator = new ConfigValidator($logger, $translator, _get_git_repository());
+        $projectConfig = null;
+
+        try {
+            $gitRepository = _get_git_repository();
+            $projectConfig = $gitRepository->readProjectConfig();
+        } catch (\RuntimeException $e) {
+            // Not in a git repository
+        }
+
+        $validationResult = $validator->validateCommandRequirements($commandName, $config, $projectConfig);
+
+        // Step 4: Prompt for missing mandatory keys
+        if ($validationResult->hasMissingKeys()) {
+            // Check if we're in non-interactive mode
+            $input = $event->getInput();
+            $isInteractive = $input->isInteractive();
+
+            if (! $isInteractive) {
+                // Non-interactive mode: exit with error
+                $missingKeys = array_merge($validationResult->missingGlobalKeys, $validationResult->missingProjectKeys);
+                $io->error([
+                    'Missing required configuration keys: ' . implode(', ', $missingKeys),
+                    'Please run "stud config:init" to configure these keys, or run the command in interactive mode.',
+                ]);
+                $event->disableCommand();
+                $command->setCode(function () {
+                    return 1;
+                });
+
+                return;
+            }
+
+            // Interactive mode: prompt for missing keys
+            if (! empty($validationResult->missingGlobalKeys)) {
+                $promptedValues = $validator->promptForMissingKeys($validationResult->missingGlobalKeys, 'global');
+                foreach ($promptedValues as $key => $value) {
+                    $config[$key] = $value;
+                }
+                // Save updated global config
+                $fileSystem->dumpFile($configPath, $config);
+            }
+
+            if (! empty($validationResult->missingProjectKeys)) {
+                try {
+                    $gitRepository = _get_git_repository();
+                    $projectConfigPath = $gitRepository->getProjectConfigPath();
+                    $projectConfig = $gitRepository->readProjectConfig();
+
+                    $promptedValues = $validator->promptForMissingKeys($validationResult->missingProjectKeys, 'project');
+                    foreach ($promptedValues as $key => $value) {
+                        $projectConfig[$key] = $value;
+                    }
+                    // Save updated project config
+                    $gitRepository->writeProjectConfig($projectConfig);
+                } catch (\RuntimeException $e) {
+                    // Not in a git repository, can't save project config
+                    $io->error('Cannot save project configuration: not in a git repository.');
+                    $event->disableCommand();
+                    $command->setCode(function () {
+                        return 1;
+                    });
+
+                    return;
+                }
+            }
+        }
+    } catch (\Throwable $e) {
+        // Fail gracefully - don't block command execution if migration/validation fails
+        // Log error but continue
+        if (isset($logger)) {
+            $logger->error(Logger::VERBOSITY_VERBOSE, ['Config pass error: ' . $e->getMessage()]);
+        }
+    }
 }
 
 /**

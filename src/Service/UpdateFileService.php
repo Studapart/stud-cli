@@ -13,6 +13,16 @@ class UpdateFileService
     ) {
     }
 
+    /**
+     * Replaces the running binary with a new version.
+     *
+     * NOTE: This method uses native PHP file functions (copy, rename, chmod, unlink)
+     * instead of Flysystem because:
+     * 1. We're updating the binary that is currently executing
+     * 2. On Linux, we cannot rename an executing file (EBUSY error)
+     * 3. We need atomic operations that work with the running process
+     * 4. Flysystem cannot handle this special case
+     */
     public function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
     {
         if (! is_writable($binaryPath)) {
@@ -26,11 +36,17 @@ class UpdateFileService
         $backupPath = $binaryPath . '-' . $currentVersion . '.bak';
 
         // Step 1: Backup the current executable
-        // Note: rename() doesn't throw exceptions in PHP (returns false), but catch block handles edge cases
-        // Exception from rename() is extremely rare and hard to simulate
+        // On Linux, we cannot rename a file that is currently executing (EBUSY error)
+        // So we use copy() instead, which works even when the file is in use
+        // Exception from copy() is extremely rare and hard to simulate
         // @codeCoverageIgnoreStart
         try {
-            rename($binaryPath, $backupPath);
+            if (! @copy($binaryPath, $backupPath)) {
+                $lastError = error_get_last();
+                $errorMessage = $lastError['message'] ?? 'Unknown error during backup';
+
+                throw new \RuntimeException($errorMessage);
+            }
         } catch (\Exception $e) {
             $io->error(explode("\n", $this->translator->trans('update.error_backup', ['error' => $e->getMessage()])));
             @unlink($tempFile);

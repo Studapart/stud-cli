@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Service\TranslationService;
@@ -18,9 +19,15 @@ class ReleaseHandler
         private readonly Logger $logger,
         private readonly string $composerJsonPath = 'composer.json',
         private readonly string $changelogPath = 'CHANGELOG.md',
+        private readonly ?FileSystem $fileSystem = null
     ) {
     }
     // @codeCoverageIgnoreEnd
+
+    private function getFileSystem(): FileSystem
+    {
+        return $this->fileSystem ?? FileSystem::createLocal();
+    }
 
     /**
      * Calculates the next version based on SemVer rules.
@@ -54,9 +61,12 @@ class ReleaseHandler
      */
     protected function getCurrentVersion(): string
     {
-        $content = @file_get_contents($this->composerJsonPath);
-        if ($content === false) {
-            throw new \RuntimeException('Unable to read composer.json');
+        $fileSystem = $this->getFileSystem();
+
+        try {
+            $content = $fileSystem->read($this->composerJsonPath);
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
 
         $composerJson = json_decode($content, true);
@@ -125,9 +135,12 @@ class ReleaseHandler
 
     protected function updateComposerVersion(string $version): void
     {
-        $content = @file_get_contents($this->composerJsonPath);
-        if ($content === false) {
-            throw new \RuntimeException('Unable to read composer.json');
+        $fileSystem = $this->getFileSystem();
+
+        try {
+            $content = $fileSystem->read($this->composerJsonPath);
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
 
         $composerJson = json_decode($content, true);
@@ -136,14 +149,25 @@ class ReleaseHandler
         }
 
         $composerJson['version'] = $version;
-        file_put_contents($this->composerJsonPath, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $encoded = json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        // @codeCoverageIgnoreStart
+        // json_encode returning false is extremely rare (only with circular references or invalid UTF-8)
+        // and is difficult to test in isolation
+        if ($encoded === false) {
+            throw new \RuntimeException('Failed to encode composer.json');
+        }
+        // @codeCoverageIgnoreEnd
+        $fileSystem->write($this->composerJsonPath, $encoded);
     }
 
     protected function updateChangelog(string $version): void
     {
-        $content = @file_get_contents($this->changelogPath);
-        if ($content === false) {
-            throw new \RuntimeException('Unable to read CHANGELOG.md');
+        $fileSystem = $this->getFileSystem();
+
+        try {
+            $content = $fileSystem->read($this->changelogPath);
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Unable to read CHANGELOG.md', 0, $e);
         }
 
         $currentDate = date('Y-m-d');
@@ -154,6 +178,6 @@ class ReleaseHandler
         $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
 
-        file_put_contents($this->changelogPath, $updatedContent);
+        $fileSystem->write($this->changelogPath, $updatedContent);
     }
 }

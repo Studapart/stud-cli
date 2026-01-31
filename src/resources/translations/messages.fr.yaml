@@ -71,6 +71,18 @@ config:
     git_token_detected: Ancien format de jeton Git détecté. Migration requise.
     git_provider_prompt: Sélectionnez le fournisseur Git pour votre jeton
     git_migration_complete: "Configuration Git migrée avec succès. Jeton configuré pour %provider%."
+    global:
+      running: "Exécution des migrations de configuration globale..."
+      complete: "Migrations de configuration globale terminées avec succès."
+    project:
+      running: "Exécution des migrations de configuration du projet..."
+      complete: "Migrations de configuration du projet terminées avec succès."
+    running: "Exécution de la migration %id%: %description%"
+    error: "La migration %id% a échoué: %error%"
+    version_updated: "Version de migration mise à jour vers %version%"
+  missing_global_key: "Clé de configuration globale requise manquante: %key%"
+  missing_project_key: "Clé de configuration de projet requise manquante: %key%"
+  auto_detected: "Détection automatique de %key%: %value%"
 item:
   start:
     section: Démarrage du travail sur %key%

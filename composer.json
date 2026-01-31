@@ -34,7 +34,9 @@
         "symfony/yaml": "^7.3",
         "symfony/translation": "^7.3",
         "stevebauman/hypertext": "^1.1",
-        "league/html-to-markdown": "^5.0"
+        "league/html-to-markdown": "^5.0",
+        "league/flysystem": "^3.0",
+        "league/flysystem-local": "^3.0"
     },
     "autoload": {
         "psr-4": {
@@ -61,7 +63,6 @@
         "phpspec/prophecy-phpunit": "^2.4",
         "friendsofphp/php-cs-fixer": "^3.0",
         "phpstan/phpstan": "^1.10",
-        "league/flysystem": "^3.0",
         "league/flysystem-memory": "^3.31"
     },
     "scripts": {

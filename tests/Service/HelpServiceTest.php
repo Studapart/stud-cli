@@ -356,16 +356,23 @@ class HelpServiceTest extends TestCase
     public function testFormatCommandHelpFromTranslationWithVersionArgument(): void
     {
         // Test formatCommandHelpFromTranslation directly with release command
-        // This covers line 281: version argument type
+        // This covers the release command definition (lines 292-301) and version argument handling
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
 
         $result = $method->invoke($this->helpService, 'release');
 
-        // Test intent: should return formatted help text
+        // Test intent: should return formatted help text with release command details
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+        // Verify release command specific content is present
+        $this->assertStringContainsString('stud release', $result);
+        $this->assertStringContainsString('stud rl', $result);
+        $this->assertStringContainsString('--major', $result);
+        $this->assertStringContainsString('--minor', $result);
+        $this->assertStringContainsString('--patch', $result);
+        $this->assertStringContainsString('--publish', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithItemsListFirstOptionWithArgument(): void
@@ -760,5 +767,44 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('(Alias: stud ss)', $result);
         // Alias should not have arguments appended
         $this->assertStringNotContainsString('(Alias: stud ss ', $result);
+    }
+
+    public function testGetFileSystemReturnsProvidedFileSystem(): void
+    {
+        // Test that getFileSystem returns the provided FileSystem instance
+        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $helpService = new HelpService($this->translationService, $fileSystem);
+
+        $reflection = new \ReflectionClass($helpService);
+        $method = $reflection->getMethod('getFileSystem');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($helpService);
+        $this->assertSame($fileSystem, $result);
+    }
+
+    public function testGetFileSystemCreatesLocalWhenNotProvided(): void
+    {
+        // Test that getFileSystem creates a local FileSystem when none is provided
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('getFileSystem');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->helpService);
+        $this->assertInstanceOf(\App\Service\FileSystem::class, $result);
+    }
+
+    public function testGetCommandHelpReturnsNullWhenFileReadThrowsException(): void
+    {
+        // Test that getCommandHelp returns null when file read throws RuntimeException
+        // This covers line 60 (catch block)
+        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $fileSystem->method('read')
+            ->willThrowException(new \RuntimeException('File read failed'));
+
+        $helpService = new HelpService($this->translationService, $fileSystem);
+
+        $result = $helpService->getCommandHelp('commit');
+        $this->assertNull($result);
     }
 }
