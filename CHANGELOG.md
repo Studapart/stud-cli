@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed nested group parsing in GitLab URL parsing to support repositories in nested groups (e.g., `group/subgroup/repo`)
   - Project path construction now correctly handles nested groups with proper URL encoding
   - Added comprehensive tests for nested group support and enhanced error reporting
+- Fixed `FileSystem::createLocal()` to use current working directory instead of filesystem root
+  - Resolves issue where `stud submit` and `stud please` commands failed with "Cannot save project configuration: not in a git repository"
+  - FileSystem now correctly detects `.git` directory and project configuration files
 
 ### Changed
 - Improved consistency between GitHub and GitLab providers

@@ -20,7 +20,7 @@ class FileSystem
      */
     public static function createLocal(): self
     {
-        $adapter = new LocalFilesystemAdapter('/');
+        $adapter = new LocalFilesystemAdapter(getcwd() ?: '/');
 
         return new self(new FlysystemFilesystem($adapter));
     }
