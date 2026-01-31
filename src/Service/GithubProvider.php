@@ -17,13 +17,24 @@ class GithubProvider implements GitProviderInterface
         private readonly string $repo,
         private ?HttpClientInterface $client = null,
     ) {
-        $this->client = $client ?? HttpClient::createForBaseUri('https://api.github.com', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->token,
-                'Accept' => 'application/vnd.github.v3+json',
-                'Content-Type' => 'application/json',
-            ],
-        ]);
+    }
+
+    /**
+     * Gets the HTTP client, creating it if it doesn't exist.
+     */
+    protected function getClient(): HttpClientInterface
+    {
+        if ($this->client === null) {
+            $this->client = HttpClient::createForBaseUri('https://api.github.com', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token,
+                    'Accept' => 'application/vnd.github.v3+json',
+                    'Content-Type' => 'application/json',
+                ],
+            ]);
+        }
+
+        return $this->client;
     }
 
     /**
@@ -40,7 +51,7 @@ class GithubProvider implements GitProviderInterface
             'draft' => $prData->draft,
         ];
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -62,7 +73,7 @@ class GithubProvider implements GitProviderInterface
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/releases/latest";
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -83,7 +94,7 @@ class GithubProvider implements GitProviderInterface
         $queryParams = http_build_query(['ref' => $tag]);
         $apiUrl .= '?' . $queryParams;
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -117,7 +128,7 @@ class GithubProvider implements GitProviderInterface
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -147,7 +158,7 @@ class GithubProvider implements GitProviderInterface
             $payload['description'] = $description;
         }
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -170,7 +181,7 @@ class GithubProvider implements GitProviderInterface
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/labels";
         $payload = $labels;
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -219,7 +230,7 @@ class GithubProvider implements GitProviderInterface
         $queryParams = http_build_query(['head' => $head, 'state' => $state]);
         $apiUrl .= '?' . $queryParams;
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -287,7 +298,7 @@ class GithubProvider implements GitProviderInterface
 
         while (true) {
             $pageUrl = $apiUrl . '&page=' . $page;
-            $response = $this->client->request('GET', $pageUrl);
+            $response = $this->getClient()->request('GET', $pageUrl);
 
             if ($response->getStatusCode() !== 200) {
                 $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
@@ -358,7 +369,7 @@ class GithubProvider implements GitProviderInterface
             'draft' => $draft,
         ];
 
-        $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
@@ -383,7 +394,7 @@ class GithubProvider implements GitProviderInterface
             'body' => $body,
         ];
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -415,7 +426,7 @@ class GithubProvider implements GitProviderInterface
             'head' => $newHead,
         ];
 
-        $response = $this->client->request('PATCH', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('PATCH', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
@@ -457,9 +468,12 @@ class GithubProvider implements GitProviderInterface
         }
 
         return sprintf(
-            "GitHub API Error (Status: %d) when calling '%s %s'.\nResponse: %s",
+            "GitHub API Error (Status: %d) when calling '%s %s'.\nOwner: %s\nRepo: %s\nFull URL: %s\nResponse: %s",
             $statusCode,
             $method,
+            $apiUrl,
+            $this->owner,
+            $this->repo,
             $fullUrl,
             $responseBody
         );

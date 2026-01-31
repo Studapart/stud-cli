@@ -1009,4 +1009,145 @@ class GitLabProviderTest extends TestCase
 
         $this->assertStringContainsString('No response body', $result);
     }
+
+    public function testExtractTechnicalDetailsIncludesOwnerRepoAndProjectPath(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $reflection = new \ReflectionClass($this->gitlabProvider);
+        $method = $reflection->getMethod('extractTechnicalDetails');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gitlabProvider, $responseMock, 'POST', '/projects/test_owner%2Ftest_repo/merge_requests');
+
+        $this->assertStringContainsString('Owner: test_owner', $result);
+        $this->assertStringContainsString('Repo: test_repo', $result);
+        $this->assertStringContainsString('Project Path: test_owner%2Ftest_repo', $result);
+    }
+
+    public function testCreatePullRequestWithNestedGroupPath(): void
+    {
+        $nestedGroupProvider = new GitLabProvider(
+            self::GITLAB_TOKEN,
+            'group/subgroup',
+            'test_repo',
+            null,
+            $this->httpClientMock
+        );
+
+        $title = 'Test MR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'This is a test merge request.';
+        $gitlabResponse = [
+            'iid' => 1,
+            'id' => 123,
+            'title' => $title,
+            'source_branch' => $head,
+            'target_branch' => $base,
+            'description' => $body,
+            'work_in_progress' => false,
+            'state' => 'opened',
+            'web_url' => 'https://gitlab.com/group/subgroup/test_repo/-/merge_requests/1',
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($gitlabResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/projects/group%2Fsubgroup%2Ftest_repo/merge_requests',
+                [
+                    'json' => [
+                        'title' => $title,
+                        'source_branch' => $head,
+                        'target_branch' => $base,
+                        'description' => $body,
+                        'work_in_progress' => false,
+                    ],
+                ]
+            )
+            ->willReturn($responseMock);
+
+        $prData = new PullRequestData($title, $head, $base, $body);
+        $result = $nestedGroupProvider->createPullRequest($prData);
+
+        $this->assertSame(1, $result['number']);
+        $this->assertSame($title, $result['title']);
+    }
+
+    public function testCreatePullRequestWithDeeplyNestedGroupPath(): void
+    {
+        $deeplyNestedProvider = new GitLabProvider(
+            self::GITLAB_TOKEN,
+            'group/subgroup/subsubgroup',
+            'test_repo',
+            null,
+            $this->httpClientMock
+        );
+
+        $title = 'Test MR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'This is a test merge request.';
+        $gitlabResponse = [
+            'iid' => 1,
+            'id' => 123,
+            'title' => $title,
+            'source_branch' => $head,
+            'target_branch' => $base,
+            'description' => $body,
+            'work_in_progress' => false,
+            'state' => 'opened',
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($gitlabResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/projects/group%2Fsubgroup%2Fsubsubgroup%2Ftest_repo/merge_requests',
+                $this->anything()
+            )
+            ->willReturn($responseMock);
+
+        $prData = new PullRequestData($title, $head, $base, $body);
+        $result = $deeplyNestedProvider->createPullRequest($prData);
+
+        $this->assertSame(1, $result['number']);
+    }
+
+    public function testGetClientCreatesClientWhenNotProvided(): void
+    {
+        // Create provider without passing a client
+        $provider = new GitLabProvider(
+            self::GITLAB_TOKEN,
+            self::GITLAB_OWNER,
+            self::GITLAB_REPO,
+            null,
+            null
+        );
+
+        // Use reflection to access protected getClient method
+        $reflection = new \ReflectionClass($provider);
+        $method = $reflection->getMethod('getClient');
+        $method->setAccessible(true);
+
+        $client = $method->invoke($provider);
+
+        // Verify client is created
+        $this->assertInstanceOf(HttpClientInterface::class, $client);
+
+        // Verify calling getClient again returns the same instance
+        $client2 = $method->invoke($provider);
+        $this->assertSame($client, $client2);
+    }
 }

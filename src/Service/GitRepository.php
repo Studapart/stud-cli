@@ -335,11 +335,12 @@ SCRIPT;
             ];
         }
 
-        // Parse GitLab URLs
-        // SSH format: git@gitlab.com:owner/repo.git
-        // HTTPS format: https://gitlab.com/owner/repo.git
-        // Custom instance: https://git.example.com/owner/repo.git
-        if (preg_match('#gitlab\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+        // Parse GitLab URLs (supports nested groups)
+        // SSH format: git@gitlab.com:owner/repo.git or git@gitlab.com:group/subgroup/repo.git
+        // HTTPS format: https://gitlab.com/owner/repo.git or https://gitlab.com/group/subgroup/repo.git
+        // Custom instance: https://git.example.com/owner/repo.git or https://git.example.com/group/subgroup/repo.git
+        // For nested groups, capture all path segments except the last one as owner
+        if (preg_match('#gitlab\.com[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return [
                 'owner' => $matches[1],
                 'name' => $matches[2],
@@ -347,11 +348,13 @@ SCRIPT;
             ];
         }
 
-        // Parse custom GitLab instance URLs (e.g., self-hosted)
+        // Parse custom GitLab instance URLs (e.g., self-hosted, supports nested groups)
         // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
+        // Pattern: https://git.example.com/group/subgroup/repo.git or git@git.example.com:group/subgroup/repo.git
         // This is a fallback that matches any host that isn't github.com
-        // We check for the common GitLab URL structure: host/owner/repo
-        if (preg_match('#(?:git@|https?://)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+        // We check for the common GitLab URL structure: host/path/to/repo
+        // For nested groups, capture all path segments except the last one as owner
+        if (preg_match('#(?:git@|https?://)([^/:]+)[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             $host = $matches[1];
             // Only treat as GitLab if it's not github.com (already handled above)
             if ($host !== 'github.com') {
