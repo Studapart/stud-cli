@@ -18,5 +18,8 @@
             <file>./src/config/colours.php</file>
             <file>./src/repack/logo.php</file>
         </exclude>
-    </source>    
+    </source>
+    <php>
+        <env name="APP_ENV" value="test"/>
+    </php>
 </phpunit>

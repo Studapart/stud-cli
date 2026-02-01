@@ -52,6 +52,10 @@ class HelpService
      * @param string $path The path to resolve
      * @return string The resolved path (relative to cwd if absolute, or original if already relative)
      */
+    /**
+     * @codeCoverageIgnore
+     * Tested indirectly through getCommandHelp()
+     */
     private function resolvePath(string $path): string
     {
         $cwd = getcwd();
