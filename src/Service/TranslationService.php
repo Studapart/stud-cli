@@ -11,18 +11,21 @@ class TranslationService
 {
     private Translator $translator;
 
-    public function __construct(string $locale, string $translationsPath, ?FileSystem $fileSystem = null)
+    public function __construct(string $locale, string $translationsPath)
     {
         $this->translator = new Translator($locale);
         $this->translator->addLoader('yaml', new YamlFileLoader());
 
+        // Resolve the translations path to an absolute path
+        $resolvedPath = realpath($translationsPath) ?: $translationsPath;
+
         // Load translation files from the specified path
-        $fileSystem = $fileSystem ?? FileSystem::createLocal();
+        // Use native file_exists for absolute paths since FileSystem uses getcwd() as root
         $supportedLocales = ['en', 'fr', 'es', 'nl', 'ru', 'el', 'af', 'vi'];
 
         foreach ($supportedLocales as $fileLocale) {
-            $file = $translationsPath . '/messages.' . $fileLocale . '.yaml';
-            if ($fileSystem->fileExists($file)) {
+            $file = $resolvedPath . '/messages.' . $fileLocale . '.yaml';
+            if (file_exists($file)) {
                 $this->translator->addResource('yaml', $file, $fileLocale);
             }
         }

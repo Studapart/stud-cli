@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed GitLab 404 errors when creating merge requests [SCI-48]
+  - Enhanced error messages to include owner, repo, and project path for better debugging
+  - Fixed nested group parsing in GitLab URL parsing to support repositories in nested groups (e.g., `group/subgroup/repo`)
+  - Project path construction now correctly handles nested groups with proper URL encoding
+  - Added comprehensive tests for nested group support and enhanced error reporting
+- Fixed `FileSystem::createLocal()` to use current working directory instead of filesystem root
+  - Resolves issue where `stud submit` and `stud please` commands failed with "Cannot save project configuration: not in a git repository"
+  - FileSystem now correctly detects `.git` directory and project configuration files
+
+### Changed
+- Improved consistency between GitHub and GitLab providers
+  - Refactored both providers to use lazy client initialization via `getClient()` method
+  - Enhanced GitHub provider error messages to include owner and repo information (matching GitLab provider)
+  - Both providers now have consistent error reporting format for better debugging
+
 ### Added
 - Configuration migration system with automatic updates and config validation [SCI-46]
   - Migration infrastructure: `MigrationInterface`, `AbstractMigration`, and `MigrationScope` enum for global and project migrations

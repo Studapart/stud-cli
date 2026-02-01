@@ -1354,6 +1354,182 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame('stud-cli', $name);
     }
 
+    public function testGetRepositoryOwnerWithGitLabNestedGroupSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@gitlab.com:group/subgroup/repo.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('group/subgroup', $owner);
+    }
+
+    public function testGetRepositoryOwnerWithGitLabNestedGroupHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://gitlab.com/group/subgroup/repo.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('group/subgroup', $owner);
+    }
+
+    public function testGetRepositoryNameWithGitLabNestedGroupSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@gitlab.com:group/subgroup/repo.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('repo', $name);
+    }
+
+    public function testGetRepositoryNameWithGitLabNestedGroupHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://gitlab.com/group/subgroup/repo.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('repo', $name);
+    }
+
+    public function testGetRepositoryOwnerWithCustomGitLabInstanceNestedGroupSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@git.example.com:group/subgroup/repo.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('group/subgroup', $owner);
+    }
+
+    public function testGetRepositoryOwnerWithCustomGitLabInstanceNestedGroupHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://git.example.com/group/subgroup/repo.git');
+
+        $owner = $this->gitRepository->getRepositoryOwner('origin');
+
+        $this->assertSame('group/subgroup', $owner);
+    }
+
+    public function testGetRepositoryNameWithCustomGitLabInstanceNestedGroupSshUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('git@git.example.com:group/subgroup/repo.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('repo', $name);
+    }
+
+    public function testGetRepositoryNameWithCustomGitLabInstanceNestedGroupHttpsUrl(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git config --get remote.origin.url')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('https://git.example.com/group/subgroup/repo.git');
+
+        $name = $this->gitRepository->getRepositoryName('origin');
+
+        $this->assertSame('repo', $name);
+    }
+
     public function testGetRepositoryNameReturnsNullIfUrlDoesNotMatchPattern(): void
     {
         $process = $this->createMock(Process::class);

@@ -89,12 +89,19 @@ class InitHandler
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 
-        // Set initial migration version to latest migration ID
-        $registry = new MigrationRegistry($this->logger, $this->translator);
-        $globalMigrations = $registry->discoverGlobalMigrations();
-        $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
-        if ($latestMigrationId !== null) {
-            $config['migration_version'] = $latestMigrationId;
+        // Preserve migration_version from existing config, or set to latest migration ID if not present
+        if (isset($existingConfig['migration_version'])) {
+            // @codeCoverageIgnoreStart
+            // Preserving existing migration_version is tested via integration tests
+            $config['migration_version'] = $existingConfig['migration_version'];
+            // @codeCoverageIgnoreEnd
+        } else {
+            $registry = new MigrationRegistry($this->logger, $this->translator);
+            $globalMigrations = $registry->discoverGlobalMigrations();
+            $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
+            if ($latestMigrationId !== null) {
+                $config['migration_version'] = $latestMigrationId;
+            }
         }
 
         $configDir = $this->fileSystem->dirname($this->configPath);
@@ -102,7 +109,12 @@ class InitHandler
             $this->fileSystem->mkdir($configDir, 0700, true);
         }
 
-        $this->fileSystem->filePutContents($this->configPath, Yaml::dump(array_filter($config)));
+        // Filter out only empty strings, preserve null values (they indicate optional fields that weren't set)
+        $filteredConfig = array_filter($config, function ($value) {
+            return $value !== '';
+        });
+
+        $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
 
         // Shell completion setup

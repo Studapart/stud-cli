@@ -24,14 +24,25 @@ class GitLabProvider implements GitProviderInterface
         // Use custom instance URL or default to gitlab.com
         $this->baseUrl = $this->instanceUrl ?? 'https://gitlab.com';
         // GitLab uses URL-encoded project path: owner%2Frepo
+        // For nested groups, owner may contain slashes (e.g., "group/subgroup")
         $this->projectPath = urlencode("{$this->owner}/{$this->repo}");
+    }
 
-        $this->client = $client ?? HttpClient::createForBaseUri("{$this->baseUrl}/api/v4", [
-            'headers' => [
-                'PRIVATE-TOKEN' => $this->token,
-                'Content-Type' => 'application/json',
-            ],
-        ]);
+    /**
+     * Gets the HTTP client, creating it if it doesn't exist.
+     */
+    protected function getClient(): HttpClientInterface
+    {
+        if ($this->client === null) {
+            $this->client = HttpClient::createForBaseUri("{$this->baseUrl}/api/v4", [
+                'headers' => [
+                    'PRIVATE-TOKEN' => $this->token,
+                    'Content-Type' => 'application/json',
+                ],
+            ]);
+        }
+
+        return $this->client;
     }
 
     /**
@@ -48,7 +59,7 @@ class GitLabProvider implements GitProviderInterface
             'work_in_progress' => $prData->draft,
         ];
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -102,7 +113,7 @@ class GitLabProvider implements GitProviderInterface
         $queryParams = http_build_query(['source_branch' => $branchName, 'state' => $state]);
         $apiUrl .= '?' . $queryParams;
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -146,7 +157,7 @@ class GitLabProvider implements GitProviderInterface
             'labels' => implode(',', $labels),
         ];
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -171,7 +182,7 @@ class GitLabProvider implements GitProviderInterface
             'body' => $body,
         ];
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -198,7 +209,7 @@ class GitLabProvider implements GitProviderInterface
             'work_in_progress' => $draft,
         ];
 
-        $response = $this->client->request('PUT', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('PUT', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'PUT', $apiUrl);
@@ -220,7 +231,7 @@ class GitLabProvider implements GitProviderInterface
     {
         $apiUrl = "/projects/{$this->projectPath}/labels";
 
-        $response = $this->client->request('GET', $apiUrl);
+        $response = $this->getClient()->request('GET', $apiUrl);
 
         if ($response->getStatusCode() !== 200) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
@@ -250,7 +261,7 @@ class GitLabProvider implements GitProviderInterface
             $payload['description'] = $description;
         }
 
-        $response = $this->client->request('POST', $apiUrl, ['json' => $payload]);
+        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
 
         if ($response->getStatusCode() !== 201) {
             $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
@@ -303,7 +314,7 @@ class GitLabProvider implements GitProviderInterface
 
         while (true) {
             $pageUrl = $apiUrl . '&page=' . $page;
-            $response = $this->client->request('GET', $pageUrl);
+            $response = $this->getClient()->request('GET', $pageUrl);
 
             if ($response->getStatusCode() !== 200) {
                 $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
@@ -498,9 +509,13 @@ class GitLabProvider implements GitProviderInterface
         }
 
         return sprintf(
-            "GitLab API Error (Status: %d) when calling '%s %s'.\nResponse: %s",
+            "GitLab API Error (Status: %d) when calling '%s %s'.\nOwner: %s\nRepo: %s\nProject Path: %s\nFull URL: %s\nResponse: %s",
             $statusCode,
             $method,
+            $apiUrl,
+            $this->owner,
+            $this->repo,
+            $this->projectPath,
             $fullUrl,
             $responseBody
         );
