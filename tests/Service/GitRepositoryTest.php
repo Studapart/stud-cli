@@ -3754,4 +3754,85 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->assertNull($result);
     }
+
+    public function testRebaseAutosquashHandlesCleanupErrorForTempScript(): void
+    {
+        // Test line 148: cleanup error catch block when deleting temp script fails
+        $baseSha = 'abc123';
+
+        $process = $this->createMock(Process::class);
+        $process->method('mustRun');
+
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with("git rebase -i --autosquash {$baseSha}")
+            ->willReturn($process);
+
+        // Mock FileSystem to throw RuntimeException on delete for temp script
+        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem->method('fileExists')->willReturnCallback(function ($path) {
+            // Return true for backup file, false for temp script (already deleted)
+            return str_ends_with($path, '.bak');
+        });
+        $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
+            // Allow writing temp script
+        });
+        $fileSystem->method('dirname')->willReturnCallback(function ($path) {
+            return dirname($path);
+        });
+
+        // Make delete() throw RuntimeException for temp script (line 148)
+        $fileSystem->expects($this->atLeastOnce())
+            ->method('delete')
+            ->willReturnCallback(function ($path) {
+                if (! str_ends_with($path, '.bak')) {
+                    // Throw exception for temp script deletion
+                    throw new \RuntimeException('Cleanup error');
+                }
+            });
+
+        $gitRepository = new GitRepository($this->processFactory, $fileSystem);
+
+        // Should not throw exception - cleanup errors are caught and ignored
+        $gitRepository->rebaseAutosquash($baseSha);
+    }
+
+    public function testRebaseAutosquashHandlesCleanupErrorForBackupFile(): void
+    {
+        // Test line 155: cleanup error catch block when deleting backup file fails
+        $baseSha = 'abc123';
+
+        $process = $this->createMock(Process::class);
+        $process->method('mustRun');
+
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with("git rebase -i --autosquash {$baseSha}")
+            ->willReturn($process);
+
+        // Mock FileSystem to throw RuntimeException on delete for backup file
+        $fileSystem = $this->createMock(FileSystem::class);
+        $fileSystem->method('fileExists')->willReturn(true); // Backup file exists
+        $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
+            // Allow writing temp script
+        });
+        $fileSystem->method('dirname')->willReturnCallback(function ($path) {
+            return dirname($path);
+        });
+
+        // Make delete() throw RuntimeException for backup file (line 155)
+        $fileSystem->expects($this->atLeastOnce())
+            ->method('delete')
+            ->willReturnCallback(function ($path) {
+                if (str_ends_with($path, '.bak')) {
+                    // Throw exception for backup file deletion
+                    throw new \RuntimeException('Cleanup error');
+                }
+            });
+
+        $gitRepository = new GitRepository($this->processFactory, $fileSystem);
+
+        // Should not throw exception - cleanup errors are caught and ignored
+        $gitRepository->rebaseAutosquash($baseSha);
+    }
 }

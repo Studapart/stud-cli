@@ -27,7 +27,7 @@ class MigrationRegistryTest extends TestCase
 
         $this->logger = $this->createMock(Logger::class);
         $this->translator = $this->createMock(TranslationService::class);
-        $this->registry = new MigrationRegistry($this->logger, $this->translator);
+        $this->registry = $this->createRegistryWithInMemoryFilesystem();
     }
 
     private function createRegistryWithInMemoryFilesystem(): MigrationRegistry
@@ -41,7 +41,10 @@ class MigrationRegistryTest extends TestCase
     public function testDiscoverGlobalMigrationsCallsDiscoverMigrations(): void
     {
         // Test that discoverGlobalMigrations calls discoverMigrations with correct path and scope
-        $migrations = $this->registry->discoverGlobalMigrations();
+        // Use real filesystem for this test since it needs to discover actual migration files
+        $realFileSystem = FileSystem::createLocal();
+        $realRegistry = new MigrationRegistry($this->logger, $this->translator, $realFileSystem);
+        $migrations = $realRegistry->discoverGlobalMigrations();
         $this->assertIsArray($migrations);
         // Should discover at least one migration (GitTokenFormat)
         $this->assertNotEmpty($migrations);
@@ -57,7 +60,10 @@ class MigrationRegistryTest extends TestCase
 
     public function testDiscoverGlobalMigrations(): void
     {
-        $migrations = $this->registry->discoverGlobalMigrations();
+        // Use real filesystem for this test since it needs to discover actual migration files
+        $realFileSystem = FileSystem::createLocal();
+        $realRegistry = new MigrationRegistry($this->logger, $this->translator, $realFileSystem);
+        $migrations = $realRegistry->discoverGlobalMigrations();
 
         // Should discover at least the GitTokenFormat migration
         $this->assertIsArray($migrations);
@@ -311,9 +317,9 @@ class MigrationRegistryTest extends TestCase
     {
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
-        $fileSystemMethod = $reflection->getMethod('getFileSystem');
-        $fileSystemMethod->setAccessible(true);
-        $fileSystem = $fileSystemMethod->invoke($registry);
+        $fileSystemProperty = $reflection->getProperty('fileSystem');
+        $fileSystemProperty->setAccessible(true);
+        $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
         $filesystemProperty->setAccessible(true);
@@ -341,9 +347,9 @@ PHP;
     {
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
-        $fileSystemMethod = $reflection->getMethod('getFileSystem');
-        $fileSystemMethod->setAccessible(true);
-        $fileSystem = $fileSystemMethod->invoke($registry);
+        $fileSystemProperty = $reflection->getProperty('fileSystem');
+        $fileSystemProperty->setAccessible(true);
+        $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
         $filesystemProperty->setAccessible(true);
@@ -384,9 +390,9 @@ PHP;
     {
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
-        $fileSystemMethod = $reflection->getMethod('getFileSystem');
-        $fileSystemMethod->setAccessible(true);
-        $fileSystem = $fileSystemMethod->invoke($registry);
+        $fileSystemProperty = $reflection->getProperty('fileSystem');
+        $fileSystemProperty->setAccessible(true);
+        $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
         $filesystemProperty->setAccessible(true);
@@ -445,9 +451,9 @@ PHP;
     {
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
-        $fileSystemMethod = $reflection->getMethod('getFileSystem');
-        $fileSystemMethod->setAccessible(true);
-        $fileSystem = $fileSystemMethod->invoke($registry);
+        $fileSystemProperty = $reflection->getProperty('fileSystem');
+        $fileSystemProperty->setAccessible(true);
+        $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
         $filesystemProperty->setAccessible(true);
@@ -475,6 +481,8 @@ PHP;
     public function testDiscoverMigrationsWithClassExistsFalse(): void
     {
         // Test when class doesn't exist (class_exists returns false)
+        // NOTE: This test uses a real filesystem because it needs to test class autoloading behavior.
+        // The file is created in a dedicated test directory with guaranteed cleanup in finally block.
         $tempDir = sys_get_temp_dir() . '/test-migrations-' . uniqid();
         mkdir($tempDir, 0755, true);
         $tempFile = $tempDir . '/NonExistentClass.php';
@@ -507,6 +515,8 @@ PHP;
     public function testDiscoverMigrationsWithExceptionDuringInstantiation(): void
     {
         // Test when migration instantiation throws an exception
+        // NOTE: This test uses a real filesystem because it needs to test class autoloading behavior.
+        // The file is created in a dedicated test directory with guaranteed cleanup in finally block.
         $tempDir = sys_get_temp_dir() . '/test-migrations-' . uniqid();
         mkdir($tempDir, 0755, true);
         $tempFile = $tempDir . '/BrokenMigration.php';
@@ -562,7 +572,8 @@ PHP;
     {
         // Test that discoverMigrations skips classes that don't implement MigrationInterface
         // This covers line 118: continue when class doesn't implement interface
-        // Use real filesystem for this test since we need to autoload the class
+        // NOTE: This test uses a real filesystem because it needs to test class autoloading behavior.
+        // The file is created in a dedicated test directory with guaranteed cleanup in finally block.
         $tempDir = sys_get_temp_dir() . '/test-migrations-' . uniqid();
         mkdir($tempDir, 0755, true);
         $tempFile = $tempDir . '/TestClass.php';
@@ -607,7 +618,8 @@ PHP;
     {
         // Test that discoverMigrations skips migrations with wrong scope
         // This covers line 127: continue when scope doesn't match
-        // Use real filesystem for this test since we need to autoload the class
+        // NOTE: This test uses a real filesystem because it needs to test class autoloading behavior.
+        // The file is created in a dedicated test directory with guaranteed cleanup in finally block.
         $tempDir = sys_get_temp_dir() . '/test-migrations-' . uniqid();
         mkdir($tempDir, 0755, true);
         $tempFile = $tempDir . '/TestProjectMigration.php';

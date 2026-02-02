@@ -12,13 +12,8 @@ class GitRepository
 {
     public function __construct(
         private readonly ProcessFactory $processFactory,
-        private readonly ?FileSystem $fileSystem = null
+        private readonly FileSystem $fileSystem
     ) {
-    }
-
-    private function getFileSystem(): FileSystem
-    {
-        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     public function getJiraKeyFromBranchName(): ?string
@@ -136,9 +131,8 @@ SCRIPT;
         }
         // @codeCoverageIgnoreEnd
 
-        $fileSystem = $this->getFileSystem();
-        $fileSystem->write($tempScript, $scriptContent);
-        $fileSystem->chmod($tempScript, 0755);
+        $this->fileSystem->write($tempScript, $scriptContent);
+        $this->fileSystem->chmod($tempScript, 0755);
 
         try {
             // Set GIT_SEQUENCE_EDITOR to our script and run rebase
@@ -149,10 +143,18 @@ SCRIPT;
             $process->setEnv($env);
             $process->mustRun();
         } finally {
-            $fileSystem->delete($tempScript);
+            try {
+                $this->fileSystem->delete($tempScript);
+            } catch (\RuntimeException $e) {
+                // Ignore cleanup errors - file may already be deleted
+            }
             $backupFile = $tempScript . '.bak';
-            if ($fileSystem->fileExists($backupFile)) {
-                $fileSystem->delete($backupFile);
+            if ($this->fileSystem->fileExists($backupFile)) {
+                try {
+                    $this->fileSystem->delete($backupFile);
+                } catch (\RuntimeException $e) {
+                    // Ignore cleanup errors - file may already be deleted
+                }
             }
         }
     }
@@ -435,14 +437,13 @@ SCRIPT;
     public function readProjectConfig(): array
     {
         $configPath = $this->getProjectConfigPath();
-        $fileSystem = $this->getFileSystem();
 
-        if (! $fileSystem->fileExists($configPath)) {
+        if (! $this->fileSystem->fileExists($configPath)) {
             return [];
         }
 
         try {
-            $config = $fileSystem->parseFile($configPath);
+            $config = $this->fileSystem->parseFile($configPath);
 
             return $config;
         } catch (\Exception $e) {
@@ -460,21 +461,20 @@ SCRIPT;
     {
         $configPath = $this->getProjectConfigPath();
         $configDir = dirname($configPath);
-        $fileSystem = $this->getFileSystem();
 
-        if (! $fileSystem->isDir($configDir)) {
+        if (! $this->fileSystem->isDir($configDir)) {
             throw new \RuntimeException("Git directory not found: {$configDir}");
         }
 
         // Preserve migration_version if it exists in current config
-        if ($fileSystem->fileExists($configPath)) {
+        if ($this->fileSystem->fileExists($configPath)) {
             $existingConfig = $this->readProjectConfig();
             if (isset($existingConfig['migration_version'])) {
                 $config['migration_version'] = $existingConfig['migration_version'];
             }
         }
 
-        $fileSystem->dumpFile($configPath, $config);
+        $this->fileSystem->dumpFile($configPath, $config);
     }
 
     /**

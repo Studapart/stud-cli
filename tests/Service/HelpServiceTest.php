@@ -2,8 +2,11 @@
 
 namespace App\Tests\Service;
 
+use App\Service\FileSystem;
 use App\Service\HelpService;
 use App\Service\TranslationService;
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -11,6 +14,7 @@ class HelpServiceTest extends TestCase
 {
     private HelpService $helpService;
     private TranslationService $translationService;
+    private FileSystem $fileSystem;
 
     protected function setUp(): void
     {
@@ -22,7 +26,21 @@ class HelpServiceTest extends TestCase
                 return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
             });
         $this->translationService->method('getLocale')->willReturn('en');
-        $this->helpService = new HelpService($this->translationService);
+
+        // Create in-memory filesystem
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($flysystem);
+
+        // Create README.md in in-memory filesystem for tests that need it
+        // Use relative path from project root
+        $readmePath = 'README.md';
+        if (file_exists(__DIR__ . '/../../README.md')) {
+            $readmeContent = file_get_contents(__DIR__ . '/../../README.md');
+            $flysystem->write($readmePath, $readmeContent);
+        }
+
+        $this->helpService = new HelpService($this->translationService, $this->fileSystem);
     }
 
     public function testGetCommandHelpForExistingCommand(): void
@@ -767,31 +785,6 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('(Alias: stud ss)', $result);
         // Alias should not have arguments appended
         $this->assertStringNotContainsString('(Alias: stud ss ', $result);
-    }
-
-    public function testGetFileSystemReturnsProvidedFileSystem(): void
-    {
-        // Test that getFileSystem returns the provided FileSystem instance
-        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
-        $helpService = new HelpService($this->translationService, $fileSystem);
-
-        $reflection = new \ReflectionClass($helpService);
-        $method = $reflection->getMethod('getFileSystem');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($helpService);
-        $this->assertSame($fileSystem, $result);
-    }
-
-    public function testGetFileSystemCreatesLocalWhenNotProvided(): void
-    {
-        // Test that getFileSystem creates a local FileSystem when none is provided
-        $reflection = new \ReflectionClass($this->helpService);
-        $method = $reflection->getMethod('getFileSystem');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->helpService);
-        $this->assertInstanceOf(\App\Service\FileSystem::class, $result);
     }
 
     public function testGetCommandHelpReturnsNullWhenFileReadThrowsException(): void

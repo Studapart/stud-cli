@@ -16,9 +16,9 @@ class VersionCheckService
         private readonly string $repoOwner,
         private readonly string $repoName,
         private readonly string $currentVersion,
+        private readonly FileSystem $fileSystem,
         private ?string $gitToken = null,
-        private ?HttpClientInterface $httpClient = null,
-        private ?FileSystem $fileSystem = null
+        private ?HttpClientInterface $httpClient = null
     ) {
     }
 
@@ -61,11 +61,14 @@ class VersionCheckService
         $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
         $path = str_replace('~', $home, self::CACHE_FILE_PATH);
         $dir = dirname($path);
-        $fileSystem = $this->getFileSystem();
 
         // Ensure cache directory exists
-        if (! $fileSystem->isDir($dir)) {
-            $fileSystem->mkdir($dir, 0755, true);
+        if (! $this->fileSystem->isDir($dir)) {
+            try {
+                $this->fileSystem->mkdir($dir, 0755, true);
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException("Failed to create cache directory: {$dir}", 0, $e);
+            }
         }
 
         return $path;
@@ -76,14 +79,12 @@ class VersionCheckService
      */
     protected function readCache(string $cachePath): ?array
     {
-        $fileSystem = $this->getFileSystem();
-
-        if (! $fileSystem->fileExists($cachePath)) {
+        if (! $this->fileSystem->fileExists($cachePath)) {
             return null;
         }
 
         try {
-            $content = $fileSystem->read($cachePath);
+            $content = $this->fileSystem->read($cachePath);
         } catch (\RuntimeException $e) {
             return null;
         }
@@ -146,7 +147,6 @@ class VersionCheckService
             'timestamp' => time(),
         ];
 
-        $fileSystem = $this->getFileSystem();
         $encoded = json_encode($data, JSON_PRETTY_PRINT);
         // @codeCoverageIgnoreStart
         // json_encode returning false is extremely rare (only with circular references or invalid UTF-8)
@@ -155,7 +155,7 @@ class VersionCheckService
             throw new \RuntimeException('Failed to encode cache data');
         }
         // @codeCoverageIgnoreEnd
-        $fileSystem->filePutContents($cachePath, $encoded);
+        $this->fileSystem->filePutContents($cachePath, $encoded);
     }
 
     protected function isNewerVersion(string $latestVersion): bool
@@ -169,8 +169,4 @@ class VersionCheckService
     /**
      * Gets the FileSystem instance, creating one if not provided.
      */
-    private function getFileSystem(): FileSystem
-    {
-        return $this->fileSystem ?? FileSystem::createLocal();
-    }
 }

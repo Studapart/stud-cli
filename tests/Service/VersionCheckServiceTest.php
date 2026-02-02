@@ -47,9 +47,9 @@ class VersionCheckServiceTest extends TestCase
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $this->fileSystem,
             self::GIT_TOKEN,
-            $this->httpClientMock,
-            $this->fileSystem
+            $this->httpClientMock
         );
     }
 
@@ -59,9 +59,9 @@ class VersionCheckServiceTest extends TestCase
             'owner',
             'repo',
             '1.0.0',
+            $this->fileSystem,
             'token',
-            $this->httpClientMock,
-            $this->fileSystem
+            $this->httpClientMock
         );
 
         $this->assertInstanceOf(VersionCheckService::class, $service);
@@ -461,9 +461,9 @@ class VersionCheckServiceTest extends TestCase
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $mockFileSystem,
             self::GIT_TOKEN,
-            $this->httpClientMock,
-            $mockFileSystem
+            $this->httpClientMock
         );
 
         $reflection = new \ReflectionClass($service);
@@ -506,6 +506,7 @@ class VersionCheckServiceTest extends TestCase
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $this->fileSystem,
             null, // No token
             $this->httpClientMock
         );
@@ -534,6 +535,7 @@ class VersionCheckServiceTest extends TestCase
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $this->fileSystem,
             self::GIT_TOKEN,
             null // No httpClient provided
         );
@@ -552,6 +554,7 @@ class VersionCheckServiceTest extends TestCase
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $this->fileSystem,
             null, // No token
             null  // No httpClient
         );
@@ -629,6 +632,41 @@ class VersionCheckServiceTest extends TestCase
         }
     }
 
+    public function testCheckForUpdateShouldDisplayWhenNewerVersionAvailable(): void
+    {
+        // Test that should_display is true when a newer version is available
+        // This covers line 55: 'should_display' => $latestVersion !== null && $this->isNewerVersion($latestVersion)
+        // Override HOME to use our temp directory
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $this->tempCacheDir;
+
+        try {
+            // Mock GitHub API response with newer version
+            $releaseData = [
+                'tag_name' => 'v1.2.0', // Newer than current version 1.1.0
+            ];
+
+            $responseMock = $this->createMock(ResponseInterface::class);
+            $responseMock->method('getStatusCode')->willReturn(200);
+            $responseMock->method('toArray')->willReturn($releaseData);
+
+            $this->httpClientMock->expects($this->once())
+                ->method('request')
+                ->willReturn($responseMock);
+
+            $result = $this->service->checkForUpdate();
+
+            $this->assertSame('1.2.0', $result['latest_version']);
+            $this->assertTrue($result['should_display'], 'should_display should be true when newer version is available');
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+        }
+    }
+
     public function testWriteCache(): void
     {
         $reflection = new \ReflectionClass($this->service);
@@ -663,23 +701,47 @@ class VersionCheckServiceTest extends TestCase
         $this->assertIsInt($data['timestamp']);
     }
 
-    public function testGetFileSystemFallback(): void
+    public function testGetCachePathThrowsExceptionWhenMkdirFails(): void
     {
-        // Test that getFileSystem() falls back to createLocal() when FileSystem is not injected
+        // Test lines 69-70: RuntimeException when mkdir() fails
+        $reflection = new \ReflectionClass($this->service);
+        $method = $reflection->getMethod('getCachePath');
+        $method->setAccessible(true);
+
+        $tempDir = '/test/mkdir-fails';
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $tempDir;
+
+        // Create a mock FileSystem that throws RuntimeException on mkdir
+        $mockFileSystem = $this->createMock(FileSystem::class);
+        $mockFileSystem->method('isDir')
+            ->willReturn(false); // Directory doesn't exist
+        $mockFileSystem->method('mkdir')
+            ->willThrowException(new \RuntimeException('Mkdir failed'));
+
         $service = new VersionCheckService(
             self::REPO_OWNER,
             self::REPO_NAME,
             self::CURRENT_VERSION,
+            $mockFileSystem,
             self::GIT_TOKEN,
-            $this->httpClientMock,
-            null // No FileSystem injected
+            $this->httpClientMock
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('getFileSystem');
+        $method = $reflection->getMethod('getCachePath');
         $method->setAccessible(true);
 
-        $fileSystem = $method->invoke($service);
-        $this->assertInstanceOf(FileSystem::class, $fileSystem);
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Failed to create cache directory:');
+            $method->invoke($service);
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+        }
     }
 }

@@ -91,12 +91,10 @@ class InitHandler
 
         // Preserve migration_version from existing config, or set to latest migration ID if not present
         if (isset($existingConfig['migration_version'])) {
-            // @codeCoverageIgnoreStart
-            // Preserving existing migration_version is tested via integration tests
+            // Tested via integration test (InitHandlerMigrationVersionIntegrationTest)
             $config['migration_version'] = $existingConfig['migration_version'];
-            // @codeCoverageIgnoreEnd
         } else {
-            $registry = new MigrationRegistry($this->logger, $this->translator);
+            $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
             $globalMigrations = $registry->discoverGlobalMigrations();
             $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
             if ($latestMigrationId !== null) {
@@ -106,13 +104,15 @@ class InitHandler
 
         $configDir = $this->fileSystem->dirname($this->configPath);
         if (! $this->fileSystem->isDir($configDir)) {
-            $this->fileSystem->mkdir($configDir, 0700, true);
+            try {
+                $this->fileSystem->mkdir($configDir, 0700, true);
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException("Failed to create config directory: {$configDir}", 0, $e);
+            }
         }
 
         // Filter out only empty strings, preserve null values (they indicate optional fields that weren't set)
-        $filteredConfig = array_filter($config, function ($value) {
-            return $value !== '';
-        });
+        $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
 
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
@@ -225,5 +225,20 @@ class InitHandler
 
         // Language not supported, return null to fallback to 'en'
         return null;
+    }
+
+    /**
+     * Filters out empty strings from config array while preserving null values.
+     *
+     * This method is used as a callback for array_filter to remove empty strings
+     * from the configuration while preserving null values (which indicate optional
+     * fields that weren't set).
+     *
+     * @param mixed $value The value to check
+     * @return bool True if the value should be kept (not an empty string), false otherwise
+     */
+    private function filterEmptyStrings($value): bool
+    {
+        return $value !== '';
     }
 }

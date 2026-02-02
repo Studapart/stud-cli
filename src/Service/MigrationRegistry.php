@@ -19,13 +19,8 @@ class MigrationRegistry
     public function __construct(
         private readonly Logger $logger,
         private readonly TranslationService $translator,
-        private readonly ?FileSystem $fileSystem = null
+        private readonly FileSystem $fileSystem
     ) {
-    }
-
-    private function getFileSystem(): FileSystem
-    {
-        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     /**
@@ -89,17 +84,22 @@ class MigrationRegistry
     {
         // @codeCoverageIgnoreStart
         $migrations = [];
-        $fileSystem = $this->getFileSystem();
 
         // Resolve absolute paths to relative paths if they're within the current working directory
         $resolvedPath = $this->resolvePath($directoryPath);
 
-        if (! $fileSystem->isDir($resolvedPath)) {
+        if (! $this->fileSystem->isDir($resolvedPath)) {
             // Directory doesn't exist yet (e.g., ProjectMigrations might not exist)
             return [];
         }
 
-        $files = $fileSystem->listDirectory($resolvedPath);
+        try {
+            $files = $this->fileSystem->listDirectory($resolvedPath);
+        } catch (\RuntimeException $e) {
+            // If directory listing fails, return empty array (no migrations found)
+            return [];
+        }
+
         if (empty($files)) {
             return [];
         }
@@ -190,10 +190,9 @@ class MigrationRegistry
     protected function getClassNameFromFile(string $directoryPath, string $fileName): ?string
     {
         $filePath = $directoryPath . '/' . $fileName;
-        $fileSystem = $this->getFileSystem();
 
         try {
-            $content = $fileSystem->read($filePath);
+            $content = $this->fileSystem->read($filePath);
         } catch (\RuntimeException $e) {
             // @codeCoverageIgnoreStart
             // File read failure is extremely rare and difficult to test

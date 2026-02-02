@@ -240,7 +240,7 @@ function _get_git_repository(): GitRepository
         return \App\Tests\TestKernel::$gitRepository;
     }
 
-    return new GitRepository(_get_process_factory());
+    return new GitRepository(_get_process_factory(), _get_file_system());
 }
 
 /**
@@ -453,6 +453,19 @@ function _get_color_helper(): \App\Service\ColorHelper
 }
 
 /**
+ * Gets a FileSystem instance with Local adapter (for production use).
+ */
+function _get_file_system(): FileSystem
+{
+    static $fileSystem = null;
+    if ($fileSystem === null) {
+        $fileSystem = FileSystem::createLocal();
+    }
+
+    return $fileSystem;
+}
+
+/**
  * Global variable to store the update message for display at command termination.
  */
 $GLOBALS['_version_check_message'] = null;
@@ -543,6 +556,7 @@ function _version_check_bootstrap(): void
             $repoOwner,
             $repoName,
             APP_VERSION,
+            _get_file_system(),
             $gitToken
         );
 
@@ -756,14 +770,14 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         $io = new SymfonyStyle($event->getInput(), $event->getOutput());
         $logger = _get_logger();
         $translator = _get_translation_service();
-        $fileSystem = FileSystem::createLocal();
+        $fileSystem = _get_file_system();
 
         // Read current config
         $config = Yaml::parseFile($configPath);
         $currentVersion = $config['migration_version'] ?? '0';
 
         // Step 1: Run global migrations if pending
-        $registry = new MigrationRegistry($logger, $translator);
+        $registry = new MigrationRegistry($logger, $translator, $fileSystem);
         $globalMigrations = $registry->discoverGlobalMigrations();
         $pendingGlobalMigrations = $registry->getPendingMigrations($globalMigrations, $currentVersion);
 
@@ -912,7 +926,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 function config_init(): void
 {
     _load_constants();
-    $handler = new InitHandler(FileSystem::createLocal(), _get_config_path(), _get_translation_service(), _get_logger());
+    $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 }
 
@@ -1070,7 +1084,7 @@ function branch_rename(
     ?string $branch = null,
     #[AsArgument(name: 'key', description: 'The Jira issue key to regenerate branch name from (e.g., PROJ-123)')]
     ?string $key = null,
-    #[AsOption(name: 'name', description: 'Explicit new branch name (no prefix will be added)')]
+    #[AsOption(name: 'name', shortcut: 'n', description: 'Explicit new branch name (no prefix will be added)')]
     ?string $explicitName = null,
 ): void {
     _load_constants();
@@ -1128,7 +1142,7 @@ function commit(
 ): void {
     _load_constants();
     if ($help) {
-        $helpService = new \App\Service\HelpService(_get_translation_service());
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
         $helpService->displayCommandHelp(io(), 'commit');
 
         return;
@@ -1160,7 +1174,7 @@ function cache_clear(
 
 ): void {
     _load_constants();
-    $handler = new CacheClearHandler(_get_translation_service(), _get_logger());
+    $handler = new CacheClearHandler(_get_translation_service(), _get_logger(), _get_file_system());
     exit($handler->handle(io()));
 }
 
@@ -1244,7 +1258,7 @@ function help(
 
     // If a command is provided, show help for that specific command
     if ($commandName !== null) {
-        $helpService = new \App\Service\HelpService($translator);
+        $helpService = new \App\Service\HelpService($translator, _get_file_system());
 
         // Map aliases to command names
         $aliasMap = [
@@ -1517,7 +1531,7 @@ function release(
         exit(1);
     }
 
-    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
+    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
     $handler->handle(io(), $version, $publish, $bumpType);
 }
 
@@ -1597,6 +1611,7 @@ function update(
         new ChangelogParser(),
         new UpdateFileService(_get_translation_service()),
         _get_logger(),
+        _get_file_system(),
         $gitToken
     );
     $result = $handler->handle(io(), $info);

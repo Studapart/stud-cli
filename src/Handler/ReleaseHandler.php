@@ -17,17 +17,12 @@ class ReleaseHandler
         private readonly GitRepository $gitRepository,
         private readonly TranslationService $translator,
         private readonly Logger $logger,
+        private readonly FileSystem $fileSystem,
         private readonly string $composerJsonPath = 'composer.json',
-        private readonly string $changelogPath = 'CHANGELOG.md',
-        private readonly ?FileSystem $fileSystem = null
+        private readonly string $changelogPath = 'CHANGELOG.md'
     ) {
     }
     // @codeCoverageIgnoreEnd
-
-    private function getFileSystem(): FileSystem
-    {
-        return $this->fileSystem ?? FileSystem::createLocal();
-    }
 
     /**
      * Calculates the next version based on SemVer rules.
@@ -61,10 +56,8 @@ class ReleaseHandler
      */
     protected function getCurrentVersion(): string
     {
-        $fileSystem = $this->getFileSystem();
-
         try {
-            $content = $fileSystem->read($this->composerJsonPath);
+            $content = $this->fileSystem->read($this->composerJsonPath);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
@@ -135,10 +128,8 @@ class ReleaseHandler
 
     protected function updateComposerVersion(string $version): void
     {
-        $fileSystem = $this->getFileSystem();
-
         try {
-            $content = $fileSystem->read($this->composerJsonPath);
+            $content = $this->fileSystem->read($this->composerJsonPath);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read composer.json', 0, $e);
         }
@@ -157,15 +148,13 @@ class ReleaseHandler
             throw new \RuntimeException('Failed to encode composer.json');
         }
         // @codeCoverageIgnoreEnd
-        $fileSystem->write($this->composerJsonPath, $encoded);
+        $this->fileSystem->write($this->composerJsonPath, $encoded);
     }
 
     protected function updateChangelog(string $version): void
     {
-        $fileSystem = $this->getFileSystem();
-
         try {
-            $content = $fileSystem->read($this->changelogPath);
+            $content = $this->fileSystem->read($this->changelogPath);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Unable to read CHANGELOG.md', 0, $e);
         }
@@ -178,6 +167,6 @@ class ReleaseHandler
         $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
 
-        $fileSystem->write($this->changelogPath, $updatedContent);
+        $this->fileSystem->write($this->changelogPath, $updatedContent);
     }
 }
