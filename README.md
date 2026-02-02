@@ -771,11 +771,14 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Options:**
         -   `--new`: Create a new logical commit instead of a fixup.
         -   `--message <message>` or `-m <message>`: Bypass the interactive prompter and use the provided message for the commit.
+        -   `--all` or `-a`: Stage all changes before committing (restores old behavior). By default, `stud commit` only commits already-staged changes.
     -   **Usage:**
         ```bash
         stud commit
         stud co --new
         stud commit -m "feat: My custom message"
+        stud commit --all
+        stud co -a
         ```
 
 -   **`stud please`** (Alias: `stud pl`)

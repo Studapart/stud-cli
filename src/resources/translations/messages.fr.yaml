@@ -323,9 +323,11 @@ branch:
 commit:
   section: Assistant de commit conventionnel
   staging: Mise en staging de toutes les modifications...
+  staging_conditional: Mise en staging de toutes les modifications...
   committing: Commit avec le message fourni...
   committing_simple: Commit en cours...
   success: Commit créé avec succès !
+  no_staged_changes: Aucune modification en staging trouvée. Utilisez 'stud commit --all' pour mettre en staging toutes les modifications, ou mettez les fichiers en staging manuellement avec 'git add'.
   checking_logical: Vérification du commit logique précédent...
   found_logical: 'Commit logique SHA trouvé : %sha%'
   creating_fixup: Création d'un commit fixup pour %sha%...
@@ -493,6 +495,7 @@ help:
   option_items_list_sort: Trier les résultats par Key ou Status (utilisez --sort ou -s)
   option_commit_new: Créer un nouveau commit logique au lieu d'un fixup
   option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
+  option_commit_all: Mettre en staging toutes les modifications avant de committer (restaure l'ancien comportement)
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour

@@ -271,6 +271,7 @@ class HelpService
                 'options' => [
                     ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
                     ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
+                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
