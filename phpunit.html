@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Test Documentation</title>
+        <style>
+            body {
+                text-rendering: optimizeLegibility;
+                font-family: Source SansSerif Pro, Arial, sans-serif;
+                font-variant-ligatures: common-ligatures;
+                font-kerning: normal;
+                margin-left: 2rem;
+                background-color: #fff;
+                color: #000;
+            }
+
+            body > ul > li {
+                font-size: larger;
+            }
+
+            h2 {
+                font-size: larger;
+                text-decoration-line: underline;
+                text-decoration-thickness: 2px;
+                margin: 0;
+                padding: 0.5rem 0;
+            }
+
+            ul {
+                list-style: none;
+                margin: 0 0 2rem;
+                padding: 0 0 0 1rem;
+                text-indent: -1rem;
+            }
+
+            .success:before {
+                color: #4e9a06;
+                content: '✓';
+                padding-right: 0.5rem;
+            }
+
+            .defect {
+                color: #a40000;
+            }
+
+            .defect:before {
+                color: #a40000;
+                content: '✗';
+                padding-right: 0.5rem;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Abstract Migration (App\Tests\Migrations\AbstractMigration)</h2>
+        <ul>
+            <li class="success">Execute calls up method</li>
+            <li class="success">Execute calls before up hook</li>
+            <li class="success">Execute calls after up hook</li>
+        </ul>
+        <h2>Abstract Response (App\Tests\Response\AbstractResponse)</h2>
+        <ul>
+            <li class="success">Is success returns true for success response</li>
+            <li class="success">Is success returns false for error response</li>
+            <li class="success">Get error returns error when present</li>
+            <li class="success">Get error returns null when success</li>
+        </ul>
+        <h2>Api Exception (App\Tests\Exception\ApiException)</h2>
+        <ul>
+            <li class="success">Get technical details returns technical details</li>
+            <li class="success">Get status code returns status code</li>
+            <li class="success">Get status code returns null when not provided</li>
+            <li class="success">Get message returns user message</li>
+            <li class="success">Previous exception is preserved</li>
+            <li class="success">Code is zero</li>
+        </ul>
+        <h2>Branch Action (App\Tests\Handler\BranchAction)</h2>
+        <ul>
+            <li class="success">Constants are defined</li>
+            <li class="success">Class cannot be instantiated</li>
+        </ul>
+        <h2>Branch Clean Handler (App\Tests\Handler\BranchCleanHandler)</h2>
+        <ul>
+            <li class="success">Handle with no branches to clean</li>
+            <li class="success">Handle with branches to clean local only in quiet mode</li>
+            <li class="success">Handle with branches to clean with remote</li>
+            <li class="success">Handle skips protected branches</li>
+            <li class="success">Handle skips current branch</li>
+            <li class="success">Handle skips branches with open pr</li>
+            <li class="success">Handle with deletion error</li>
+            <li class="success">Handle with github provider null</li>
+            <li class="success">Handle with github provider exception</li>
+            <li class="success">Handle with remote deletion confirmed</li>
+            <li class="success">Handle with remote deletion error</li>
+            <li class="success">Handle with cancellation</li>
+            <li class="success">Handle with merge check exception</li>
+            <li class="success">Handle with current branch skipped</li>
+            <li class="success">Handle with current branch skipped and other branches to clean</li>
+            <li class="success">Handle with both local and remote branches</li>
+            <li class="success">Handle with remote branch in quiet mode</li>
+            <li class="success">Handle with non merged branch</li>
+            <li class="success">Delete branches with protected branch in local only</li>
+            <li class="success">Delete branches with protected branch in with remote</li>
+            <li class="success">Delete branches with remote throws exception</li>
+            <li class="success">Delete branches with stale remote ref</li>
+            <li class="success">Delete branches with stale remote ref force delete fails</li>
+            <li class="success">Delete branches with stale remote ref in with remote branches</li>
+            <li class="success">Delete branches with stale remote ref in with remote branches force delete fails</li>
+            <li class="success">Handle with pr map optimization</li>
+            <li class="success">Handle with pr map fallback on error</li>
+            <li class="success">Build pr map excludes fork prs</li>
+            <li class="success">Build pr map skips prs without head ref</li>
+            <li class="success">Has open pull request with pr map</li>
+            <li class="success">Build pr map handles exception</li>
+            <li class="success">Build pr map skips prs with missing repo info</li>
+            <li class="success">Has open pull request with null github provider</li>
+            <li class="success">Has open pull request with fallback path open pr</li>
+            <li class="success">Has open pull request with fallback path closed pr</li>
+            <li class="success">Has open pull request with fallback path no pr</li>
+            <li class="success">Has open pull request with fallback path exception</li>
+            <li class="success">Has open pull request with pr map open pr</li>
+            <li class="success">Has open pull request with pr map closed pr</li>
+        </ul>
+        <h2>Branch List Handler (App\Tests\Handler\BranchListHandler)</h2>
+        <ul>
+            <li class="success">Handle with no branches</li>
+            <li class="success">Handle with branches</li>
+            <li class="success">Handle with branch having pr</li>
+            <li class="success">Handle with github provider null</li>
+            <li class="success">Handle with github provider exception</li>
+            <li class="success">Handle with merged branch on remote</li>
+            <li class="success">Handle with stale branch</li>
+            <li class="success">Handle with pr map optimization</li>
+            <li class="success">Handle with pr map fallback on error</li>
+            <li class="success">Build pr map excludes fork prs</li>
+            <li class="success">Build pr map skips prs without head ref</li>
+            <li class="success">Build pr map handles exception</li>
+            <li class="success">Build pr map skips prs with missing repo info</li>
+            <li class="success">Has pull request with null github provider</li>
+            <li class="success">Has pull request with fallback path</li>
+            <li class="success">Has pull request with fallback path no pr</li>
+            <li class="success">Has pull request with fallback path exception</li>
+            <li class="success">Has pull request with pr map found</li>
+            <li class="success">Has pull request with pr map not found</li>
+        </ul>
+        <h2>Branch Rename Handler (App\Tests\Handler\BranchRenameHandler)</h2>
+        <ul>
+            <li class="success">Handle with dirty working directory</li>
+            <li class="success">Handle with branch not found</li>
+            <li class="success">Handle with explicit name</li>
+            <li class="success">Handle with key parameter</li>
+            <li class="success">Handle with jira key as first argument</li>
+            <li class="success">Handle with key extracted from branch</li>
+            <li class="success">Handle with new name already exists</li>
+            <li class="success">Handle with invalid branch name</li>
+            <li class="success">Handle with invalid branch name at symbol</li>
+            <li class="success">Handle with invalid branch name backslash</li>
+            <li class="success">Handle with remote only branch</li>
+            <li class="success">Handle with both local and remote</li>
+            <li class="success">Handle with pull request update</li>
+            <li class="success">Handle with key not found</li>
+            <li class="success">Handle with no key in branch</li>
+            <li class="success">Handle with remote only branch user declines</li>
+            <li class="success">Handle with branch sync and rebase</li>
+            <li class="success">Handle with branch sync rebase fails</li>
+            <li class="success">Handle with user declines confirmation</li>
+            <li class="success">Handle with remote branch rename exception</li>
+            <li class="success">Handle with pr find exception</li>
+            <li class="success">Handle with pr update success</li>
+            <li class="success">Handle with pr update no number</li>
+            <li class="success">Handle with pr comment exception</li>
+            <li class="success">Handle with pr creation failed</li>
+            <li class="success">Validate branch name with various invalid names</li>
+            <li class="success">Get branch prefix from issue type</li>
+            <li class="success">Handle with key extracted from branch exception</li>
+            <li class="success">Handle with no github provider</li>
+            <li class="success">Handle with pr update no github provider</li>
+        </ul>
+        <h2>Cache Clear Handler (App\Tests\Handler\CacheClearHandler)</h2>
+        <ul>
+            <li class="success">Handle with existing cache file</li>
+            <li class="success">Handle with non existent cache file</li>
+            <li class="success">Handle with delete exception</li>
+        </ul>
+        <h2>Changelog Parser (App\Tests\Service\ChangelogParser)</h2>
+        <ul>
+            <li class="success">Parse with breaking changes</li>
+            <li class="success">Parse with multiple versions</li>
+            <li class="success">Parse stops at current version</li>
+            <li class="success">Parse with version prefixes</li>
+            <li class="success">Parse with empty sections</li>
+            <li class="success">Parse skips versions outside range</li>
+            <li class="success">Parse stops at older version</li>
+            <li class="success">Get section title</li>
+            <li class="success">Get section title is case insensitive</li>
+            <li class="success">Parse with regular sections</li>
+            <li class="success">Parse with multiple breaking changes</li>
+            <li class="success">Extract version from line</li>
+            <li class="success">Is in target version</li>
+            <li class="success">Extract section from line</li>
+            <li class="success">Extract item from line</li>
+            <li class="success">Normalize version</li>
+        </ul>
+        <h2>Color Helper (App\Tests\Service\ColorHelper)</h2>
+        <ul>
+            <li class="success">Register styles registers all colors</li>
+            <li class="success">Register styles does not override existing styles</li>
+            <li class="success">Format returns formatted message</li>
+            <li class="success">Get color name returns color from config</li>
+            <li class="success">Get color name returns default when not found</li>
+            <li class="success">Convert color name handles bright variants</li>
+            <li class="success">Register styles with symfony style</li>
+            <li class="success">Convert color name handles dark variants</li>
+        </ul>
+        <h2>Column (App\Tests\View\Column)</h2>
+        <ul>
+            <li class="success">Column creation and property access</li>
+            <li class="success">Column with formatter</li>
+            <li class="success">Column with condition</li>
+            <li class="success">Formatter callable execution</li>
+        </ul>
+        <h2>Commit Handler (App\Tests\Handler\CommitHandler)</h2>
+        <ul>
+            <li class="success">Handle with clean working tree</li>
+            <li class="success">Handle with clean working tree and whitespace</li>
+            <li class="success">Handle with message</li>
+            <li class="success">Handle with message and all flag</li>
+            <li class="success">Handle with message no staged changes</li>
+            <li class="success">Handle with auto fixup</li>
+            <li class="success">Handle with auto fixup and all flag</li>
+            <li class="success">Handle with auto fixup no staged changes</li>
+            <li class="success">Handle with interactive prompter</li>
+            <li class="success">Handle with interactive prompter and all flag</li>
+            <li class="success">Handle with interactive prompter no staged changes</li>
+            <li class="success">Handle with no jira key in branch name</li>
+            <li class="success">Handle with jira service exception</li>
+            <li class="success">Handle with jira service api exception</li>
+            <li class="success">Handle with very verbose output</li>
+            <li class="success">Handle with empty components</li>
+            <li class="success">Handle with verbose output for commit message</li>
+            <li class="success">Get commit type from issue type with unknown type</li>
+            <li class="success">Get commit type from issue type</li>
+        </ul>
+        <h2>Config Validator (App\Tests\Service\ConfigValidator)</h2>
+        <ul>
+            <li class="success">Validate command requirements with all keys present</li>
+            <li class="success">Validate command requirements with missing global keys</li>
+            <li class="success">Validate command requirements with missing project keys</li>
+            <li class="success">Validate command requirements with unknown command</li>
+            <li class="success">Validate command requirements with empty values</li>
+            <li class="success">Auto detect base branch</li>
+            <li class="success">Auto detect base branch returns null when not found</li>
+            <li class="success">Auto detect base branch returns null when git repository is null</li>
+            <li class="success">Auto detect key with unknown key</li>
+            <li class="success">Prompt for missing keys with auto detection</li>
+            <li class="success">Prompt for missing keys without auto detection</li>
+            <li class="success">Has missing keys</li>
+            <li class="success">Has missing keys returns false when no missing keys</li>
+            <li class="success">Auto detect base branch handles exception</li>
+            <li class="success">Find missing keys</li>
+            <li class="success">Find missing keys with whitespace only</li>
+            <li class="success">Prompt for missing keys with empty value</li>
+            <li class="success">Prompt for missing keys with null value</li>
+            <li class="success">Prompt for missing keys with whitespace value</li>
+            <li class="success">Prompt for missing keys with valid value</li>
+            <li class="success">Auto detect base branch with main</li>
+            <li class="success">Auto detect base branch with master</li>
+            <li class="success">Auto detect base branch with null git repository</li>
+        </ul>
+        <h2>Deploy Handler (App\Tests\Handler\DeployHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with no local branch</li>
+            <li class="success">Handle with no remote branch</li>
+            <li class="success">Handle with no local and remote branches</li>
+            <li class="success">Handle on non release branch</li>
+            <li class="success">Handle with stale remote ref</li>
+            <li class="success">Handle with stale remote ref force delete fails</li>
+            <li class="success">Handle with remote exists and deletion fails</li>
+        </ul>
+        <h2>Description Formatter (App\Tests\Service\DescriptionFormatter)</h2>
+        <ul>
+            <li class="success">Sanitize content with consecutive empty lines</li>
+            <li class="success">Sanitize content with no consecutive empty lines</li>
+            <li class="success">Sanitize content with single empty line</li>
+            <li class="success">Parse sections with no dividers</li>
+            <li class="success">Parse sections with dividers</li>
+            <li class="success">Parse sections with empty description</li>
+            <li class="success">Parse sections with whitespace only</li>
+            <li class="success">Parse sections with single line not header</li>
+            <li class="success">Parse sections with section header pattern</li>
+            <li class="success">Parse sections with empty line after title</li>
+            <li class="success">Parse sections with description containing dividers</li>
+            <li class="success">Parse sections with multiple newlines</li>
+            <li class="success">Parse sections with user story header</li>
+            <li class="success">Parse sections with acceptance criteria header</li>
+            <li class="success">Format content for display with checkboxes</li>
+            <li class="success">Format content for display with checkboxes and sub items</li>
+            <li class="success">Format content for display with mixed content</li>
+            <li class="success">Format content for display with empty lines</li>
+            <li class="success">Format content for display with only text</li>
+            <li class="success">Format content for display with checkbox at end</li>
+            <li class="success">Format content for display with checked checkbox</li>
+            <li class="success">Format content for display with empty sub item</li>
+            <li class="success">Format content for display with last list item having sub items</li>
+            <li class="success">Format content for display with last list item no sub items</li>
+            <li class="success">Format content for display with multiple checkboxes and sub items</li>
+            <li class="success">Format content for display with text then checkbox then text</li>
+        </ul>
+        <h2>Error Responder (App\Tests\Responder\ErrorResponder)</h2>
+        <ul>
+            <li class="success">Respond displays error</li>
+            <li class="success">Respond displays error string</li>
+        </ul>
+        <h2>File System (App\Tests\Service\FileSystem)</h2>
+        <ul>
+            <li class="success">File exists</li>
+            <li class="success">Parse file</li>
+            <li class="success">Parse file throws when file does not exist</li>
+            <li class="success">Dump file</li>
+            <li class="success">Is dir</li>
+            <li class="success">Mkdir</li>
+            <li class="success">File put contents</li>
+            <li class="success">Dirname</li>
+            <li class="success">Create local</li>
+            <li class="success">Mkdir throws exception on failure</li>
+            <li class="success">Read</li>
+            <li class="success">Read throws when file does not exist</li>
+            <li class="success">Delete</li>
+            <li class="success">Delete throws exception on failure</li>
+            <li class="success">List directory</li>
+            <li class="success">List directory throws exception on failure</li>
+            <li class="success">Write</li>
+            <li class="success">Write calls filesystem write</li>
+            <li class="success">Chmod returns false for non local filesystem</li>
+            <li class="success">Chmod returns false on exception</li>
+            <li class="success">Chmod returns false when reflection throws exception</li>
+            <li class="success">Chmod returns false when adapter is not local</li>
+            <li class="success">Chmod returns false when file does not exist</li>
+            <li class="success">Chmod with local filesystem adapter</li>
+            <li class="success">Validate path rejects null bytes</li>
+            <li class="success">Validate path rejects control characters</li>
+            <li class="success">Is path within root prevents path traversal</li>
+            <li class="success">Is path within root with symlinks</li>
+            <li class="success">File exists with invalid path characters</li>
+            <li class="success">Read with invalid path characters</li>
+            <li class="success">Write with invalid path characters</li>
+            <li class="success">Delete with invalid path characters</li>
+            <li class="success">Parse file with invalid path characters</li>
+            <li class="success">Dump file with invalid path characters</li>
+            <li class="success">Is dir with invalid path characters</li>
+            <li class="success">Mkdir with invalid path characters</li>
+            <li class="success">Dirname with invalid path characters</li>
+            <li class="success">List directory with invalid path characters</li>
+            <li class="success">Chmod with invalid path characters</li>
+            <li class="success">Should use native operations for temp files</li>
+            <li class="success">Path validation allows valid paths</li>
+            <li class="success">Is dir with native operations for path outside root</li>
+            <li class="success">Should use native operations for absolute path outside root</li>
+        </ul>
+        <h2>Filter List Handler (App\Tests\Handler\FilterListHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with no filters found</li>
+            <li class="success">Handle with jira service exception</li>
+            <li class="success">Handle sorts filters by name</li>
+            <li class="success">Handle with null description</li>
+        </ul>
+        <h2>Filter Show Handler (App\Tests\Handler\FilterShowHandler)</h2>
+        <ul>
+            <li class="success">Handle returns success response with issues</li>
+            <li class="success">Handle returns success response with empty issues</li>
+            <li class="success">Handle returns error response on exception</li>
+        </ul>
+        <h2>Filter Show Responder (App\Tests\Responder\FilterShowResponder)</h2>
+        <ul>
+            <li class="success">Respond returns zero on empty issues</li>
+            <li class="success">Respond renders table on success</li>
+            <li class="success">Respond shows verbose output when verbose</li>
+            <li class="success">Respond shows verbose output without color helper uses fallback</li>
+            <li class="success">Respond shows verbose output with color helper</li>
+            <li class="success">Respond with color helper registers styles</li>
+        </ul>
+        <h2>Filter Show Response (App\Tests\Response\FilterShowResponse)</h2>
+        <ul>
+            <li class="success">Success factory method creates successful response</li>
+            <li class="success">Error factory method creates error response</li>
+        </ul>
+        <h2>Flatten Handler (App\Tests\Handler\FlattenHandler)</h2>
+        <ul>
+            <li class="success">Handle with dirty working directory</li>
+            <li class="success">Handle with no fixup commits</li>
+            <li class="success">Handle with fixup commits success</li>
+            <li class="success">Handle with rebase failure</li>
+            <li class="success">Handle with rebase failure git exception</li>
+        </ul>
+        <h2>Git Exception (App\Tests\Exception\GitException)</h2>
+        <ul>
+            <li class="success">Get technical details returns technical details</li>
+            <li class="success">Get message returns user message</li>
+            <li class="success">Previous exception is preserved</li>
+            <li class="success">Code is zero</li>
+        </ul>
+        <h2>Git Lab Provider (App\Tests\Service\GitLabProvider)</h2>
+        <ul>
+            <li class="success">Create pull request success</li>
+            <li class="success">Create pull request with draft</li>
+            <li class="success">Create pull request failure</li>
+            <li class="success">Find pull request by branch success</li>
+            <li class="success">Find pull request by branch not found</li>
+            <li class="success">Find pull request by branch name</li>
+            <li class="success">Add labels to pull request success</li>
+            <li class="success">Add labels to pull request failure</li>
+            <li class="success">Create comment success</li>
+            <li class="success">Update pull request to draft</li>
+            <li class="success">Get labels success</li>
+            <li class="success">Create label success</li>
+            <li class="success">Get all pull requests with state all</li>
+            <li class="success">Get all pull requests with pagination</li>
+            <li class="success">Extract branch name from owner branch format</li>
+            <li class="success">Extract branch name from branch only</li>
+            <li class="success">Normalize color removes hash</li>
+            <li class="success">Normalize color keeps color without hash</li>
+            <li class="success">Map state to git lab</li>
+            <li class="success">Map state from git lab</li>
+            <li class="success">Find pull request by branch with state closed</li>
+            <li class="success">Find pull request by branch with state all returns open first</li>
+            <li class="success">Find pull request by branch with state all returns closed when open not found</li>
+            <li class="success">Find pull request by branch failure</li>
+            <li class="success">Update pull request from draft</li>
+            <li class="success">Update pull request failure</li>
+            <li class="success">Create comment failure</li>
+            <li class="success">Get labels failure</li>
+            <li class="success">Create label without description</li>
+            <li class="success">Create label failure</li>
+            <li class="success">Get all pull requests with state open</li>
+            <li class="success">Get all pull requests with state closed</li>
+            <li class="success">Get all pull requests failure</li>
+            <li class="success">Get all pull requests with empty result</li>
+            <li class="success">Has next page with x total pages header</li>
+            <li class="success">Has next page with x next page header</li>
+            <li class="success">Has next page returns false when no next page</li>
+            <li class="success">Has next page returns false when no headers</li>
+            <li class="success">Normalize merge request data</li>
+            <li class="success">Extract technical details</li>
+            <li class="success">Extract technical details with truncated response</li>
+            <li class="success">Extract technical details with exception</li>
+            <li class="success">Extract technical details with empty response</li>
+            <li class="success">Extract technical details includes owner repo and project path</li>
+            <li class="success">Create pull request with nested group path</li>
+            <li class="success">Create pull request with deeply nested group path</li>
+            <li class="success">Get client creates client when not provided</li>
+        </ul>
+        <h2>Git Repository (App\Tests\Service\GitRepository)</h2>
+        <ul>
+            <li class="success">Get jira key from branch name</li>
+            <li class="success">Get jira key from branch name returns null if not found</li>
+            <li class="success">Get jira key from branch name returns null if not successful</li>
+            <li class="success">Get upstream branch</li>
+            <li class="success">Get upstream branch returns null if no upstream</li>
+            <li class="success">Get upstream branch returns null if not successful</li>
+            <li class="success">Force push with lease</li>
+            <li class="success">Find latest logical sha</li>
+            <li class="success">Find latest logical sha returns null if not found</li>
+            <li class="success">Find latest logical sha returns null if not successful</li>
+            <li class="success">Stage all changes</li>
+            <li class="success">Commit fixup</li>
+            <li class="success">Commit</li>
+            <li class="success">Fetch</li>
+            <li class="success">Create branch</li>
+            <li class="success">Get porcelain status</li>
+            <li class="success">Get current branch name</li>
+            <li class="success">Push to origin</li>
+            <li class="success">Get merge base</li>
+            <li class="success">Find first logical sha</li>
+            <li class="success">Find first logical sha returns null if not found</li>
+            <li class="success">Find first logical sha returns null if not successful</li>
+            <li class="success">Get commit message</li>
+            <li class="success">Local branch exists</li>
+            <li class="success">Local branch does not exist</li>
+            <li class="success">Remote branch exists</li>
+            <li class="success">Remote branch does not exist</li>
+            <li class="success">Run</li>
+            <li class="success">Run throws git exception on failure</li>
+            <li class="success">Run throws git exception with output when error output empty</li>
+            <li class="success">Run throws git exception with default message when both outputs empty</li>
+            <li class="success">Run quietly</li>
+            <li class="success">Add</li>
+            <li class="success">Checkout</li>
+            <li class="success">Pull</li>
+            <li class="success">Merge</li>
+            <li class="success">Tag</li>
+            <li class="success">Push tags</li>
+            <li class="success">Rebase</li>
+            <li class="success">Has fixup commits with fixups</li>
+            <li class="success">Has fixup commits without fixups</li>
+            <li class="success">Has fixup commits with failed process</li>
+            <li class="success">Rebase autosquash</li>
+            <li class="success">Rebase autosquash cleans up backup file</li>
+            <li class="success">Delete branch</li>
+            <li class="success">Delete branch with remote exists true</li>
+            <li class="success">Delete branch with remote exists false</li>
+            <li class="success">Delete branch force</li>
+            <li class="success">Prune remote tracking refs</li>
+            <li class="success">Prune remote tracking refs with custom remote</li>
+            <li class="success">Delete remote branch</li>
+            <li class="success">Force push with lease remote</li>
+            <li class="success">Get repository owner with ssh url</li>
+            <li class="success">Get repository owner with https url</li>
+            <li class="success">Get repository owner with https url without git extension</li>
+            <li class="success">Get repository owner returns null if not successful</li>
+            <li class="success">Get repository owner with git lab ssh url</li>
+            <li class="success">Get repository owner with git lab https url</li>
+            <li class="success">Get repository name with git lab ssh url</li>
+            <li class="success">Get repository owner returns null if url does not match pattern</li>
+            <li class="success">Get repository name with ssh url</li>
+            <li class="success">Get repository name with https url</li>
+            <li class="success">Get repository name with https url without git extension</li>
+            <li class="success">Get repository name returns null if not successful</li>
+            <li class="success">Get repository owner with custom git lab instance ssh url</li>
+            <li class="success">Get repository owner with custom git lab instance https url</li>
+            <li class="success">Get repository name with custom git lab instance ssh url</li>
+            <li class="success">Get repository name with custom git lab instance https url</li>
+            <li class="success">Get repository owner with git lab nested group ssh url</li>
+            <li class="success">Get repository owner with git lab nested group https url</li>
+            <li class="success">Get repository name with git lab nested group ssh url</li>
+            <li class="success">Get repository name with git lab nested group https url</li>
+            <li class="success">Get repository owner with custom git lab instance nested group ssh url</li>
+            <li class="success">Get repository owner with custom git lab instance nested group https url</li>
+            <li class="success">Get repository name with custom git lab instance nested group ssh url</li>
+            <li class="success">Get repository name with custom git lab instance nested group https url</li>
+            <li class="success">Get repository name returns null if url does not match pattern</li>
+            <li class="success">Get project config path</li>
+            <li class="success">Get project config path with trailing slash</li>
+            <li class="success">Get project config path throws exception if not git repo</li>
+            <li class="success">Read project config returns empty array when file does not exist</li>
+            <li class="success">Read project config returns parsed config</li>
+            <li class="success">Write project config</li>
+            <li class="success">Write project config preserves migration version</li>
+            <li class="success">Write project config does not add migration version when not exists</li>
+            <li class="success">Write project config throws exception when directory does not exist</li>
+            <li class="success">Read project config returns empty array when parse file throws exception</li>
+            <li class="success">Get project key from issue key</li>
+            <li class="success">Get project key from issue key throws exception for invalid format</li>
+            <li class="success">Rename local branch renames current branch</li>
+            <li class="success">Rename local branch renames different branch</li>
+            <li class="success">Rename remote branch</li>
+            <li class="success">Rename remote branch when local already renamed</li>
+            <li class="success">Get branch commits ahead</li>
+            <li class="success">Get branch commits ahead returns zero on failure</li>
+            <li class="success">Get branch commits behind</li>
+            <li class="success">Get branch commits behind returns zero on failure</li>
+            <li class="success">Can rebase branch returns true when ancestor</li>
+            <li class="success">Can rebase branch falls back to dry run</li>
+            <li class="success">Can rebase branch returns false when both fail</li>
+            <li class="success">Switch branch</li>
+            <li class="success">Switch to remote branch</li>
+            <li class="success">Switch to remote branch with custom remote</li>
+            <li class="success">Find branches by issue key returns local branches</li>
+            <li class="success">Find branches by issue key returns remote branches</li>
+            <li class="success">Get branch status</li>
+            <li class="success">Get branch status without remote</li>
+            <li class="success">Is branch based on returns true</li>
+            <li class="success">Is branch based on returns false</li>
+            <li class="success">Is branch based on returns false on exception</li>
+            <li class="success">Pull with rebase</li>
+            <li class="success">Get all local branches</li>
+            <li class="success">Get all local branches returns empty array on failure</li>
+            <li class="success">Get all local branches returns empty array on empty output</li>
+            <li class="success">Is branch merged into returns true</li>
+            <li class="success">Is branch merged into returns false</li>
+            <li class="success">Is branch merged into returns false on failure</li>
+            <li class="success">Is branch merged into returns false on empty output</li>
+            <li class="success">Get all remote branches</li>
+            <li class="success">Get all remote branches returns empty array on failure</li>
+            <li class="success">Get all remote branches returns empty array on empty output</li>
+            <li class="success">Detect base branch returns develop when present</li>
+            <li class="success">Detect base branch returns main when develop not present</li>
+            <li class="success">Detect base branch returns null when no candidates found</li>
+            <li class="success">Get base branch returns from config</li>
+            <li class="success">Get base branch returns from config with origin prefix</li>
+            <li class="success">Get base branch auto detects when not in config</li>
+            <li class="success">Get base branch throws exception when not configured and cannot detect</li>
+            <li class="success">Ensure base branch configured returns configured branch when valid</li>
+            <li class="success">Ensure base branch configured returns configured branch with origin prefix</li>
+            <li class="success">Ensure base branch configured prompts when configured branch invalid</li>
+            <li class="success">Ensure base branch configured prompts when not configured with auto detection</li>
+            <li class="success">Ensure base branch configured throws when not in git repo</li>
+            <li class="success">Ensure base branch configured throws when user enters invalid branch</li>
+            <li class="success">Ensure base branch configured throws when user enters empty branch</li>
+            <li class="success">Ensure base branch configured validator rejects empty input</li>
+            <li class="success">Get git provider returns configured provider</li>
+            <li class="success">Get git provider returns null when not configured</li>
+            <li class="success">Ensure git token configured returns token from project config</li>
+            <li class="success">Ensure git token configured returns token from global config</li>
+            <li class="success">Get git provider returns auto detected provider</li>
+            <li class="success">Ensure git provider configured returns configured provider</li>
+            <li class="success">Ensure git provider configured throws when not in git repo</li>
+            <li class="success">Ensure git token configured returns token from global config for git lab</li>
+            <li class="success">Ensure git token configured throws when not in git repo</li>
+            <li class="success">Ensure git token configured warns on token type mismatch</li>
+            <li class="success">Ensure git token configured shows global suggestion when no tokens</li>
+            <li class="success">Ensure git provider configured prompts when not configured with auto detection</li>
+            <li class="success">Ensure git provider configured prompts when not configured without auto detection</li>
+            <li class="success">Ensure git provider configured throws when invalid choice</li>
+            <li class="success">Ensure git token configured prompts and saves token</li>
+            <li class="success">Ensure git token configured returns null when user skips</li>
+        </ul>
+        <h2>Github Provider (App\Tests\Service\GithubProvider)</h2>
+        <ul>
+            <li class="success">Create pull request success</li>
+            <li class="success">Create pull request with draft</li>
+            <li class="success">Create pull request failure</li>
+            <li class="success">Get latest release success</li>
+            <li class="success">Get latest release failure</li>
+            <li class="success">Get latest release failure with truncated response</li>
+            <li class="success">Get latest release failure with get content exception</li>
+            <li class="success">Get latest release failure with empty response</li>
+            <li class="success">Get changelog content success</li>
+            <li class="success">Get changelog content failure</li>
+            <li class="success">Get changelog content invalid encoding</li>
+            <li class="success">Get changelog content missing content</li>
+            <li class="success">Get changelog content base 64 decode failure</li>
+            <li class="success">Get labels success</li>
+            <li class="success">Get labels failure</li>
+            <li class="success">Create label success</li>
+            <li class="success">Create label without description</li>
+            <li class="success">Create label failure</li>
+            <li class="success">Add labels to pull request success</li>
+            <li class="success">Add labels to pull request failure</li>
+            <li class="success">Find pull request by branch success</li>
+            <li class="success">Find pull request by branch not found</li>
+            <li class="success">Find pull request by branch failure</li>
+            <li class="success">Update pull request to draft</li>
+            <li class="success">Update pull request from draft</li>
+            <li class="success">Update pull request failure</li>
+            <li class="success">Create comment success</li>
+            <li class="success">Create comment failure</li>
+            <li class="success">Update pull request head success</li>
+            <li class="success">Update pull request head throws exception on error</li>
+            <li class="success">Find pull request by branch with state open</li>
+            <li class="success">Find pull request by branch with state closed</li>
+            <li class="success">Find pull request by branch with state all returns open first</li>
+            <li class="success">Find pull request by branch with state all returns closed when open not found</li>
+            <li class="success">Find pull request by branch name</li>
+            <li class="success">Find pull request by branch name returns null when not found</li>
+            <li class="success">Get all pull requests with state open</li>
+            <li class="success">Get all pull requests with state closed</li>
+            <li class="success">Get all pull requests with state all</li>
+            <li class="success">Get all pull requests with pagination</li>
+            <li class="success">Get all pull requests failure</li>
+            <li class="success">Get all pull requests with empty result</li>
+            <li class="success">Has next page with non array link header</li>
+            <li class="success">Has next page with empty link array</li>
+            <li class="success">Get client creates client when not provided</li>
+            <li class="success">Extract technical details includes owner repo</li>
+        </ul>
+        <h2>Help Service (App\Tests\Service\HelpService)</h2>
+        <ul>
+            <li class="success">Get command help for existing command</li>
+            <li class="success">Get command help for non existent command</li>
+            <li class="success">Get command help for all supported commands</li>
+            <li class="success">Display command help for existing command</li>
+            <li class="success">Display command help for non existent command</li>
+            <li class="success">Display command help calls section</li>
+            <li class="success">Display command help for non existent command calls section</li>
+            <li class="success">Display command help falls back to translation when command not found</li>
+            <li class="success">Display command help uses translation when readme returns null</li>
+            <li class="success">Display command help with alias and arguments</li>
+            <li class="success">Display command help with version argument</li>
+            <li class="success">Display command help with jql argument</li>
+            <li class="success">Display command help with shell argument</li>
+            <li class="success">Display command help with labels option</li>
+            <li class="success">Display command help with message option</li>
+            <li class="success">Display command help with key option</li>
+            <li class="success">Display command help with multiple options</li>
+            <li class="success">Display command help with commit multiple options</li>
+            <li class="success">Format command help from translation with version argument</li>
+            <li class="success">Format command help from translation with items list first option with argument</li>
+            <li class="success">Format command help from translation with submit first option with argument</li>
+            <li class="success">Format command help from translation with key argument</li>
+            <li class="success">Display command help with pr comment command</li>
+            <li class="success">Format command help from translation with pr comment</li>
+            <li class="success">Display command help with filters show</li>
+            <li class="success">Format command help from translation with filters show</li>
+            <li class="success">Get command help for filters show</li>
+            <li class="success">Format command help from translation with items transition</li>
+            <li class="success">Format command help from translation with branch rename</li>
+            <li class="success">Format command help from translation with items list sort option</li>
+            <li class="success">Format command help from translation with first option argument</li>
+            <li class="success">Format command help from translation with second option argument</li>
+            <li class="success">Format command help from translation with branch rename name option</li>
+            <li class="success">Format command help from translation with items list value option</li>
+            <li class="success">Format command help from translation with items list second option key</li>
+            <li class="success">Format command help from translation with submit second option labels</li>
+            <li class="success">Format command help from translation with commit second option message</li>
+            <li class="success">Format command help from translation with no options</li>
+            <li class="success">Format command help from translation with no alias</li>
+            <li class="success">Format command help from translation with single option</li>
+            <li class="success">Format command help from translation with no arguments</li>
+            <li class="success">Format command help from translation with alias but no arguments</li>
+            <li class="success">Get command help returns null when file read throws exception</li>
+        </ul>
+        <h2>Init Handler (App\Tests\Handler\InitHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with existing config</li>
+            <li class="success">Handle with new config and directory creation</li>
+            <li class="success">Handle with empty tokens preserves existing</li>
+            <li class="success">Handle jira url trimming</li>
+            <li class="success">Handle with both tokens</li>
+            <li class="success">Handle with empty components</li>
+            <li class="success">Handle with bash shell and completion yes</li>
+            <li class="success">Handle with zsh shell and completion yes</li>
+            <li class="success">Handle with unsupported shell</li>
+            <li class="success">Detect shell</li>
+            <li class="success">Handle with completion no and verbose</li>
+            <li class="success">Detect system locale from lc all</li>
+            <li class="success">Detect system locale from lang</li>
+            <li class="success">Detect system locale extracts language code</li>
+            <li class="success">Detect system locale returns null for unsupported language</li>
+            <li class="success">Detect system locale returns null when no locale set</li>
+            <li class="success">Detect system locale handles all supported languages</li>
+            <li class="success">Get latest migration id with empty array</li>
+        </ul>
+        <h2>Init Handler Migration Version Integration (App\Tests\Integration\InitHandlerMigrationVersionIntegration)</h2>
+        <ul>
+            <li class="success">Init handler preserves migration version from existing config</li>
+        </ul>
+        <h2>Item List Handler (App\Tests\Handler\ItemListHandler)</h2>
+        <ul>
+            <li class="success">Handle default returns success response</li>
+            <li class="success">Handle all returns success response</li>
+            <li class="success">Handle project returns success response</li>
+            <li class="success">Handle with sort by key sorts issues</li>
+            <li class="success">Handle with sort by status sorts issues</li>
+            <li class="success">Handle returns success response with empty issues</li>
+            <li class="success">Handle returns error response on exception</li>
+        </ul>
+        <h2>Item List Responder (App\Tests\Responder\ItemListResponder)</h2>
+        <ul>
+            <li class="success">Respond returns zero on empty issues</li>
+            <li class="success">Respond renders table on success</li>
+            <li class="success">Respond shows verbose output when verbose</li>
+            <li class="success">Respond shows verbose output without color helper uses fallback</li>
+            <li class="success">Respond shows verbose output with color helper</li>
+            <li class="success">Respond shows verbose output with project</li>
+            <li class="success">Respond with color helper registers styles</li>
+        </ul>
+        <h2>Item List Response (App\Tests\Response\ItemListResponse)</h2>
+        <ul>
+            <li class="success">Success factory method creates successful response</li>
+            <li class="success">Success factory method with null project</li>
+            <li class="success">Error factory method creates error response</li>
+        </ul>
+        <h2>Item Show Handler (App\Tests\Handler\ItemShowHandler)</h2>
+        <ul>
+            <li class="success">Handle returns success response</li>
+            <li class="success">Handle returns error response on exception</li>
+            <li class="success">Handle normalizes key to uppercase</li>
+        </ul>
+        <h2>Item Show Responder (App\Tests\Responder\ItemShowResponder)</h2>
+        <ul>
+            <li class="success">Respond displays error when response is not successful</li>
+            <li class="success">Respond displays definition list when successful</li>
+            <li class="success">Respond displays verbose output when verbose</li>
+            <li class="success">Respond displays description sections</li>
+            <li class="success">Respond handles empty description</li>
+            <li class="success">Respond displays labels correctly</li>
+            <li class="success">Respond uses custom description formatter</li>
+            <li class="success">Respond handles null issue gracefully</li>
+            <li class="success">Respond displays content with lists and text</li>
+            <li class="success">Respond with color helper applies colors</li>
+            <li class="success">Respond with color helper and verbose applies colors to verbose message</li>
+            <li class="success">Respond with color helper and verbose without color helper uses fallback</li>
+            <li class="success">Display description with color helper applies colors</li>
+            <li class="success">Display content with color helper applies colors to listing</li>
+            <li class="success">Display content with color helper applies colors to text array</li>
+        </ul>
+        <h2>Item Show Response (App\Tests\Response\ItemShowResponse)</h2>
+        <ul>
+            <li class="success">Success factory method creates successful response</li>
+            <li class="success">Error factory method creates error response</li>
+        </ul>
+        <h2>Item Start Handler (App\Tests\Handler\ItemStartHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with issue not found</li>
+            <li class="success">Handle with issue not found api exception</li>
+            <li class="success">Handle with verbose output</li>
+            <li class="success">Get branch prefix from issue type</li>
+            <li class="success">Handle with transition enabled and cached transition</li>
+            <li class="success">Handle with transition enabled and cached transition non verbose</li>
+            <li class="success">Handle with transition enabled and interactive selection</li>
+            <li class="success">Handle with transition enabled and user declines to save</li>
+            <li class="success">Handle with transition enabled but no transitions available</li>
+            <li class="success">Handle with transition enabled and assignment error</li>
+            <li class="success">Handle with transition enabled and assignment error verbose</li>
+            <li class="success">Handle with transition enabled and transition fetch error</li>
+            <li class="success">Handle with transition enabled and transition execution error</li>
+            <li class="success">Handle with transition enabled and assignment api exception verbose</li>
+            <li class="success">Handle with transition enabled and get transitions api exception verbose</li>
+            <li class="success">Handle with transition enabled and transition execution api exception verbose</li>
+            <li class="success">Handle with transition enabled and cached transition verbose</li>
+            <li class="success">Handle with transition enabled and verbose save message</li>
+            <li class="success">Handle with transition enabled and cached transition for different project</li>
+            <li class="success">Handle with transition enabled and config missing project key</li>
+            <li class="success">Handle with transition enabled and non in progress transition</li>
+            <li class="success">Handle transition with invalid transition selection</li>
+            <li class="success">Handle switches to existing local branch</li>
+            <li class="success">Handle switches to existing remote branch</li>
+            <li class="success">Handle creates branch when none exists</li>
+            <li class="success">Handle switches to first local branch when generated branch not exists</li>
+            <li class="success">Handle switches to first remote branch when generated branch not exists</li>
+        </ul>
+        <h2>Item Takeover Handler (App\Tests\Handler\ItemTakeoverHandler)</h2>
+        <ul>
+            <li class="success">Handle with dirty working directory</li>
+            <li class="success">Handle with issue not found</li>
+            <li class="success">Handle with issue not found api exception</li>
+            <li class="success">Handle with assignment failure</li>
+            <li class="success">Handle with no branches and start fresh</li>
+            <li class="success">Handle with assignment api exception verbose</li>
+            <li class="success">Handle with single remote branch</li>
+            <li class="success">Handle with single local branch</li>
+            <li class="success">Handle already on branch</li>
+            <li class="success">Handle with wrong base branch</li>
+            <li class="success">Handle with branch behind remote</li>
+            <li class="success">Handle with diverged branch</li>
+            <li class="success">Handle with no branches and user declines start fresh</li>
+            <li class="success">Handle with multiple branches</li>
+            <li class="success">Handle with multiple branches user cancels</li>
+            <li class="success">Handle with single remote branch user declines</li>
+            <li class="success">Handle with branch ahead of remote</li>
+            <li class="success">Handle with branch behind base</li>
+            <li class="success">Handle with branch sync with base</li>
+        </ul>
+        <h2>Item Transition Handler (App\Tests\Handler\ItemTransitionHandler)</h2>
+        <ul>
+            <li class="success">Handle with provided key</li>
+            <li class="success">Handle with key detection from branch and confirmation</li>
+            <li class="success">Handle with key detection from branch and rejection</li>
+            <li class="success">Handle with key prompt when not detected</li>
+            <li class="success">Handle with invalid key format</li>
+            <li class="success">Handle with empty key prompt</li>
+            <li class="success">Handle with issue not found</li>
+            <li class="success">Handle with issue not found api exception</li>
+            <li class="success">Handle with no transitions</li>
+            <li class="success">Handle with transition fetch error</li>
+            <li class="success">Handle with transition fetch error api exception</li>
+            <li class="success">Handle with transition execution error</li>
+            <li class="success">Handle with transition execution error api exception</li>
+            <li class="success">Handle with verbose output</li>
+            <li class="success">Resolve key with provided key</li>
+            <li class="success">Resolve key with lowercase key</li>
+            <li class="success">Resolve key with null prompted key</li>
+            <li class="success">Resolve key with invalid format</li>
+        </ul>
+        <h2>Jira Html Converter (App\Tests\Service\JiraHtmlConverter)</h2>
+        <ul>
+            <li class="success">To plain text with simple html</li>
+            <li class="success">To plain text with lists</li>
+            <li class="success">To plain text with code blocks</li>
+            <li class="success">To plain text with hr tags</li>
+            <li class="success">To plain text with hr tags variations</li>
+            <li class="success">To plain text with hr tags with attributes</li>
+            <li class="success">To plain text with empty string</li>
+            <li class="success">To plain text with links</li>
+            <li class="success">To markdown with simple html</li>
+            <li class="success">To markdown preserves formatting</li>
+            <li class="success">To markdown handles jira artifacts</li>
+            <li class="success">To markdown with links</li>
+            <li class="success">To markdown with empty string</li>
+            <li class="success">To markdown with malformed html</li>
+            <li class="success">To ascii doc returns content as is</li>
+            <li class="success">To ascii doc with empty string</li>
+            <li class="success">Constructor with custom transformer</li>
+            <li class="success">Implements html converter interface</li>
+            <li class="success">Implements can convert to plain text interface</li>
+            <li class="success">Implements can convert to markdown interface</li>
+            <li class="success">Implements can convert to ascii doc interface</li>
+            <li class="success">To markdown exception fallback</li>
+            <li class="success">To markdown with very large content</li>
+            <li class="success">To markdown with logger when extension available</li>
+            <li class="success">To markdown handles d o m document exception</li>
+            <li class="success">To markdown handles non d o m document exception</li>
+            <li class="success">Constructor with logger</li>
+            <li class="success">To markdown handles d o m document exception without logger</li>
+            <li class="success">To markdown handles non d o m document exception without logger</li>
+            <li class="success">To markdown handles d o m document exception with different message</li>
+        </ul>
+        <h2>Jira Service (App\Tests\Service\JiraService)</h2>
+        <ul>
+            <li class="success">Get issue success</li>
+            <li class="success">Get issue with rendered fields</li>
+            <li class="success">Get issue not found</li>
+            <li class="success">Get issue not found with truncated response</li>
+            <li class="success">Get issue not found with get content exception</li>
+            <li class="success">Get issue not found with empty response</li>
+            <li class="success">Search issues success</li>
+            <li class="success">Search issues empty result</li>
+            <li class="success">Search issues failure</li>
+            <li class="success">Get projects success</li>
+            <li class="success">Get projects empty result</li>
+            <li class="success">Get projects failure</li>
+            <li class="success">Get filters success</li>
+            <li class="success">Get filters empty result</li>
+            <li class="success">Get filters with null description</li>
+            <li class="success">Get filters failure</li>
+            <li class="success">Map to work item with html description</li>
+            <li class="success">Map to work item with assignee null</li>
+            <li class="success">Map to work item with adf description fallback</li>
+            <li class="success">Map to work item with priority</li>
+            <li class="success">Map to work item with null priority</li>
+            <li class="success">Map to work item with priority missing name</li>
+            <li class="success">Get transitions success</li>
+            <li class="success">Get transitions failure</li>
+            <li class="success">Transition issue success</li>
+            <li class="success">Transition issue failure</li>
+            <li class="success">Get current user account id</li>
+            <li class="success">Get current user account id caching</li>
+            <li class="success">Get current user account id failure</li>
+            <li class="success">Get current user account id missing account id</li>
+            <li class="success">Assign issue to current user</li>
+            <li class="success">Assign issue to specific user</li>
+            <li class="success">Assign issue failure</li>
+            <li class="success">Assign issue to current user uses cache</li>
+        </ul>
+        <h2>Logger (App\Tests\Service\Logger)</h2>
+        <ul>
+            <li class="success">Error respects verbosity</li>
+            <li class="success">Error suppressed when quiet</li>
+            <li class="success">Warning respects verbosity</li>
+            <li class="success">Note respects verbosity</li>
+            <li class="success">Success respects verbosity</li>
+            <li class="success">Text respects verbosity</li>
+            <li class="success">Writeln respects verbosity</li>
+            <li class="success">Verbose message not shown at normal level</li>
+            <li class="success">Very verbose message not shown at verbose level</li>
+            <li class="success">Debug message shown at debug level</li>
+            <li class="success">Jira writeln applies jira color</li>
+            <li class="success">Jira writeln respects verbosity</li>
+            <li class="success">Git writeln applies git color</li>
+            <li class="success">Git writeln respects verbosity</li>
+            <li class="success">Jira text applies jira color</li>
+            <li class="success">Jira text with array applies jira color</li>
+            <li class="success">Git text applies git color</li>
+            <li class="success">Git text with array applies git color</li>
+            <li class="success">Jira writeln falls back to default color</li>
+            <li class="success">Git writeln falls back to default color</li>
+            <li class="success">Get current verbosity returns very verbose</li>
+            <li class="success">Title respects verbosity</li>
+            <li class="success">Listing respects verbosity</li>
+            <li class="success">Comment respects verbosity</li>
+            <li class="success">Comment with array respects verbosity</li>
+            <li class="success">Info respects verbosity</li>
+            <li class="success">Info with array respects verbosity</li>
+            <li class="success">Caution respects verbosity</li>
+            <li class="success">Caution with array respects verbosity</li>
+            <li class="success">Table respects verbosity</li>
+            <li class="success">Horizontal table respects verbosity</li>
+            <li class="success">Definition list respects verbosity</li>
+            <li class="success">New line respects verbosity</li>
+            <li class="success">Ask hidden returns string</li>
+            <li class="success">Ask hidden returns null</li>
+            <li class="success">Ask returns string</li>
+            <li class="success">Ask returns null</li>
+            <li class="success">Error with details displays both messages</li>
+            <li class="success">Error with details respects verbosity</li>
+            <li class="success">Error with details suppressed when quiet</li>
+            <li class="success">Error with details skips empty technical details</li>
+            <li class="success">Error with details skips whitespace only technical details</li>
+        </ul>
+        <h2>Migration Executor (App\Tests\Service\MigrationExecutor)</h2>
+        <ul>
+            <li class="success">Execute migrations updates version</li>
+            <li class="success">Execute migrations handles prerequisite failure</li>
+            <li class="success">Execute migrations handles non prerequisite failure</li>
+            <li class="success">Execute migrations executes in order</li>
+            <li class="success">Execute migrations with empty array</li>
+            <li class="success">Execute migrations with non abstract migration</li>
+        </ul>
+        <h2>Migration Registry (App\Tests\Service\MigrationRegistry)</h2>
+        <ul>
+            <li class="success">Discover global migrations calls discover migrations</li>
+            <li class="success">Discover project migrations calls discover migrations</li>
+            <li class="success">Discover global migrations</li>
+            <li class="success">Discover project migrations</li>
+            <li class="success">Get pending migrations with no current version</li>
+            <li class="success">Get pending migrations with current version</li>
+            <li class="success">Get pending migrations with empty array</li>
+            <li class="success">Get pending migrations with empty version</li>
+            <li class="success">Migrations are sorted by id</li>
+            <li class="success">Sort migrations directly</li>
+            <li class="success">Get pending migrations filters correctly</li>
+            <li class="success">Discover migrations with non existent directory</li>
+            <li class="success">Get class name from file with invalid file</li>
+            <li class="success">Get class name from file with file without class</li>
+            <li class="success">Discover migrations skips file when get class name from file returns null</li>
+            <li class="success">Compare migration id</li>
+            <li class="success">Get class name from file with namespace</li>
+            <li class="success">Get class name from file without namespace</li>
+            <li class="success">Discover migrations with scandir failure</li>
+            <li class="success">Discover migrations with non php file</li>
+            <li class="success">Discover migrations skips dot and dot dot</li>
+            <li class="success">Get class name from file with file get contents failure</li>
+            <li class="success">Get class name from file with no namespace match</li>
+            <li class="success">Discover migrations with class exists false</li>
+            <li class="success">Discover migrations with exception during instantiation</li>
+            <li class="success">Discover migrations with class not implementing interface</li>
+            <li class="success">Discover migrations with wrong scope</li>
+        </ul>
+        <h2>Migration202501150000001_Git Token Format (App\Tests\Migrations\GlobalMigrations\Migration202501150000001_GitTokenFormat)</h2>
+        <ul>
+            <li class="success">Get id</li>
+            <li class="success">Get description</li>
+            <li class="success">Get scope</li>
+            <li class="success">Is prerequisite</li>
+            <li class="success">Up with no old token</li>
+            <li class="success">Up with token and provider github</li>
+            <li class="success">Up with token and provider gitlab</li>
+            <li class="success">Up with token and provider but new token exists</li>
+            <li class="success">Up with token and provider but new token exists empty</li>
+            <li class="success">Up with token but no provider</li>
+            <li class="success">Up with empty token</li>
+            <li class="success">Down with github token</li>
+            <li class="success">Down with gitlab token</li>
+            <li class="success">Down with existing git token</li>
+            <li class="success">Down with no tokens</li>
+        </ul>
+        <h2>Page View Config (App\Tests\View\PageViewConfig)</h2>
+        <ul>
+            <li class="success">Get type returns page</li>
+            <li class="success">Render renders sections correctly</li>
+            <li class="success">Render does nothing when empty dtos</li>
+            <li class="success">Render definition list calls io with correct data</li>
+            <li class="success">Render content with listing formatter</li>
+            <li class="success">Render content with text formatter</li>
+            <li class="success">Render content with string content</li>
+            <li class="success">Render content with non callable extractor</li>
+            <li class="success">Render section with both definition items and content</li>
+            <li class="success">Render with color helper registers styles</li>
+            <li class="success">Render section with color helper applies colors to section title</li>
+            <li class="success">Render definition list with color helper applies colors</li>
+            <li class="success">Render content with color helper applies colors to listing</li>
+            <li class="success">Render content with color helper applies colors to text</li>
+            <li class="success">Render content with color helper applies colors to text array</li>
+        </ul>
+        <h2>Please Handler (App\Tests\Handler\PleaseHandler)</h2>
+        <ul>
+            <li class="success">Handle with upstream</li>
+            <li class="success">Handle without upstream</li>
+        </ul>
+        <h2>Pr Comment Handler (App\Tests\Handler\PrCommentHandler)</h2>
+        <ul>
+            <li class="success">Handle success with argument</li>
+            <li class="success">Handle with empty argument and no stdin</li>
+            <li class="success">Handle with no provider</li>
+            <li class="success">Handle with no input</li>
+            <li class="success">Handle with no pr found</li>
+            <li class="success">Handle with api error</li>
+            <li class="success">Get comment body with argument</li>
+            <li class="success">Get comment body with empty argument</li>
+            <li class="success">Get comment body with null argument</li>
+            <li class="success">Read stdin with tty</li>
+            <li class="success">Find active pull request success</li>
+            <li class="success">Find active pull request with no owner</li>
+            <li class="success">Find active pull request not found</li>
+            <li class="success">Find active pull request with exception</li>
+            <li class="success">Handle success with verbose output</li>
+            <li class="success">Get comment body with verbose output</li>
+            <li class="success">Find active pull request with verbose output</li>
+            <li class="success">Find active pull request with exception and verbose</li>
+            <li class="success">Handle with empty string argument</li>
+            <li class="success">Handle with whitespace only argument</li>
+            <li class="success">Find active pull request with pr missing number key</li>
+            <li class="success">Find active pull request with empty pr array</li>
+            <li class="success">Get comment body with verbose and stdin</li>
+            <li class="success">Read stdin when not resource</li>
+            <li class="success">Read stdin fallback path</li>
+            <li class="success">Read stdin returns empty when tty</li>
+            <li class="success">Get comment body with stdin and verbose</li>
+            <li class="success">Get comment body with stdin content</li>
+            <li class="success">Get comment body with stdin content and verbose</li>
+        </ul>
+        <h2>Project List Handler (App\Tests\Handler\ProjectListHandler)</h2>
+        <ul>
+            <li class="success">Handle returns success response with projects</li>
+            <li class="success">Handle returns success response with empty projects</li>
+            <li class="success">Handle returns error response on exception</li>
+        </ul>
+        <h2>Project List Responder (App\Tests\Responder\ProjectListResponder)</h2>
+        <ul>
+            <li class="success">Respond returns zero on empty projects</li>
+            <li class="success">Respond renders table on success</li>
+            <li class="success">Respond with color helper registers styles</li>
+        </ul>
+        <h2>Project List Response (App\Tests\Response\ProjectListResponse)</h2>
+        <ul>
+            <li class="success">Success factory method creates successful response</li>
+            <li class="success">Error factory method creates error response</li>
+        </ul>
+        <h2>Release Handler (App\Tests\Handler\ReleaseHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with publish option</li>
+            <li class="success">Handle without publish option and user confirms</li>
+            <li class="success">Handle without publish option and user declines</li>
+            <li class="success">Update changelog</li>
+            <li class="success">Update composer version with file read error</li>
+            <li class="success">Update composer version with invalid json</li>
+            <li class="success">Update changelog with file read error</li>
+            <li class="success">Calculate next version patch</li>
+            <li class="success">Calculate next version minor</li>
+            <li class="success">Calculate next version major</li>
+            <li class="success">Calculate next version invalid format</li>
+            <li class="success">Calculate next version invalid bump type</li>
+            <li class="success">Handle with patch bump</li>
+            <li class="success">Handle with minor bump</li>
+            <li class="success">Handle with major bump</li>
+            <li class="success">Handle with default patch bump</li>
+            <li class="success">Get current version</li>
+            <li class="success">Get current version with file read error</li>
+            <li class="success">Get current version with missing version</li>
+            <li class="success">Constructor</li>
+        </ul>
+        <h2>Search Handler (App\Tests\Handler\SearchHandler)</h2>
+        <ul>
+            <li class="success">Handle returns success response with issues</li>
+            <li class="success">Handle returns success response with empty issues</li>
+            <li class="success">Handle returns error response on exception</li>
+        </ul>
+        <h2>Search Responder (App\Tests\Responder\SearchResponder)</h2>
+        <ul>
+            <li class="success">Respond returns zero on empty issues</li>
+            <li class="success">Respond renders table on success</li>
+            <li class="success">Respond shows verbose output when verbose</li>
+            <li class="success">Respond shows verbose output without color helper uses fallback</li>
+            <li class="success">Respond shows verbose output with color helper</li>
+            <li class="success">Respond with color helper registers styles</li>
+        </ul>
+        <h2>Search Response (App\Tests\Response\SearchResponse)</h2>
+        <ul>
+            <li class="success">Success factory method creates successful response</li>
+            <li class="success">Error factory method creates error response</li>
+        </ul>
+        <h2>Status Handler (App\Tests\Handler\StatusHandler)</h2>
+        <ul>
+            <li class="success">Handle</li>
+            <li class="success">Handle with no jira key</li>
+            <li class="success">Handle with jira service exception</li>
+            <li class="success">Handle with jira service api exception</li>
+            <li class="success">Handle with clean working directory</li>
+            <li class="success">Handle with verbose output</li>
+        </ul>
+        <h2>Submit Handler (App\Tests\Handler\SubmitHandler)</h2>
+        <ul>
+            <li class="success">Handle success</li>
+            <li class="success">Handle success with draft</li>
+            <li class="success">Handle with dirty working directory</li>
+            <li class="success">Handle on base branch</li>
+            <li class="success">Handle when push fails</li>
+            <li class="success">Handle with no logical commit</li>
+            <li class="success">Handle with no jira key in commit message</li>
+            <li class="success">Handle with no jira key in commit or branch</li>
+            <li class="success">Handle with jira key in branch name takes priority</li>
+            <li class="success">Handle with jira service exception for pr body</li>
+            <li class="success">Handle with empty jira description</li>
+            <li class="success">Handle with pull request creation api exception non 422</li>
+            <li class="success">Handle with jira fetch api exception verbose</li>
+            <li class="success">Handle with no git provider configured</li>
+            <li class="success">Handle with git provider api exception</li>
+            <li class="success">Handle with pull request already exists</li>
+            <li class="success">Handle with verbose output</li>
+            <li class="success">Handle with null remote owner falls back to branch name</li>
+            <li class="success">Validate and process labels all valid</li>
+            <li class="success">Validate and process labels empty input</li>
+            <li class="success">Validate and process labels null input</li>
+            <li class="success">Validate and process labels case insensitive</li>
+            <li class="success">Handle success with labels</li>
+            <li class="success">Handle with labels fetch error</li>
+            <li class="success">Handle with labels fetch error api exception</li>
+            <li class="success">Validate and process labels create missing label</li>
+            <li class="success">Validate and process labels ignore missing label</li>
+            <li class="success">Validate and process labels retry missing label</li>
+            <li class="success">Validate and process labels create label fails</li>
+            <li class="success">Validate and process labels create label fails api exception</li>
+            <li class="success">Validate and process labels ignore with verbose</li>
+            <li class="success">Handle with labels add labels error</li>
+            <li class="success">Handle with labels no provider</li>
+            <li class="success">Handle with existing p r and labels</li>
+            <li class="success">Handle with existing p r and draft</li>
+            <li class="success">Handle with existing p r and labels and draft</li>
+            <li class="success">Handle with existing p r already draft</li>
+            <li class="success">Handle with existing p r find fails</li>
+            <li class="success">Handle with existing p r add labels fails</li>
+            <li class="success">Handle with existing p r update draft fails</li>
+            <li class="success">Handle with existing p r no provider</li>
+            <li class="success">Handle with html converter d o m document exception</li>
+        </ul>
+        <h2>Table View Config (App\Tests\View\TableViewConfig)</h2>
+        <ul>
+            <li class="success">Get type returns page</li>
+            <li class="success">Render calls table with correct headers and rows</li>
+            <li class="success">Conditional column visibility shows priority when present</li>
+            <li class="success">Conditional column visibility hides priority when absent</li>
+            <li class="success">Column formatters are applied correctly</li>
+            <li class="success">Build headers uses translation service</li>
+            <li class="success">Should show column returns true when no condition</li>
+            <li class="success">Should show column returns true when condition met</li>
+            <li class="success">Should show column returns false when condition not met</li>
+            <li class="success">Get property value with array dto</li>
+            <li class="success">Get property value with object dto</li>
+            <li class="success">Get property value returns null when property not found</li>
+            <li class="success">Evaluate condition returns false for empty string</li>
+            <li class="success">Extract value returns null when value is null</li>
+            <li class="success">Extract value converts value to string</li>
+            <li class="success">Get visible columns filters columns</li>
+            <li class="success">Extract value with two parameter formatter</li>
+            <li class="success">Extract value with one parameter formatter that throws</li>
+            <li class="success">Extract value with one parameter formatter that returns null</li>
+            <li class="success">Get formatter parameter count with closure</li>
+            <li class="success">Get formatter parameter count with string function</li>
+            <li class="success">Get formatter parameter count with array method</li>
+            <li class="success">Get formatter parameter count with unknown type</li>
+            <li class="success">Get formatter parameter count with non existent string function</li>
+            <li class="success">Get formatter parameter count with invalid array</li>
+            <li class="success">Render table with color helper applies colors to headers</li>
+        </ul>
+        <h2>Theme Detector (App\Tests\Service\ThemeDetector)</h2>
+        <ul>
+            <li class="success">Detect returns light by default</li>
+            <li class="success">Detect returns dark for light terminal background</li>
+            <li class="success">Detect returns light for dark terminal background</li>
+            <li class="success">Detect returns dark for light terminal program</li>
+        </ul>
+        <h2>Translation Service (App\Tests\Service\TranslationService)</h2>
+        <ul>
+            <li class="success">Get locale</li>
+            <li class="success">Trans</li>
+            <li class="success">Trans with parameters</li>
+            <li class="success">All translation files have same keys</li>
+        </ul>
+        <h2>Update Handler (App\Tests\Handler\UpdateHandler)</h2>
+        <ul>
+            <li class="success">Handle already on latest version</li>
+            <li class="success">Handle with newer version available</li>
+            <li class="success">Handle with non writable binary</li>
+            <li class="success">Handle with no phar asset</li>
+            <li class="success">Handle with no releases found</li>
+            <li class="success">Handle with verbose output</li>
+            <li class="success">Handle with versioned asset name</li>
+            <li class="success">Handle with multiple assets picks correct one</li>
+            <li class="success">Handle with empty assets array</li>
+            <li class="success">Handle with version prefix handling</li>
+            <li class="success">Handle with version equal comparison</li>
+            <li class="success">Handle with download failure</li>
+            <li class="success">Handle with binary replacement failure</li>
+            <li class="success">Handle with 404 no releases</li>
+            <li class="success">Handle with non 404 api error</li>
+            <li class="success">Handle with git token provided</li>
+            <li class="success">Handle with older version than current</li>
+            <li class="success">Get binary path uses provided path</li>
+            <li class="success">Get binary path with phar running</li>
+            <li class="success">Handle with git token uses auth for download</li>
+            <li class="success">Handle with rollback on failure</li>
+            <li class="success">Handle with missing asset id</li>
+            <li class="success">Display changelog with breaking changes</li>
+            <li class="success">Display changelog with regular sections</li>
+            <li class="success">Display changelog when fetch fails</li>
+            <li class="success">Display changelog when fetch fails api exception verbose</li>
+            <li class="success">Parse changelog with multiple versions</li>
+            <li class="success">Parse changelog with breaking section</li>
+            <li class="success">Parse changelog stops at current version</li>
+            <li class="success">Get section title</li>
+            <li class="success">Display changelog with empty changes</li>
+            <li class="success">Display changelog with no changes returns early</li>
+            <li class="success">Display changelog with empty items in section</li>
+            <li class="success">Display changelog with verbose error logging</li>
+            <li class="success">Parse changelog with empty sections</li>
+            <li class="success">Parse changelog with version prefixes</li>
+            <li class="success">Parse changelog skips versions outside range</li>
+            <li class="success">Handle with info flag displays changelog and exits</li>
+            <li class="success">Handle with info flag and breaking changes</li>
+            <li class="success">Handle with info flag already on latest version</li>
+            <li class="success">Handle with info flag and changelog fetch fails</li>
+            <li class="success">Handle with get latest release generic exception with 404 message</li>
+            <li class="success">Handle with get latest release generic exception without 404 message</li>
+            <li class="success">Display changelog when fetch fails generic exception</li>
+            <li class="success">Handle with hash verification success</li>
+            <li class="success">Handle with hash verification failure user aborts</li>
+            <li class="success">Handle with hash verification failure user overrides</li>
+            <li class="success">Handle with missing digest user aborts</li>
+            <li class="success">Handle with missing digest user overrides</li>
+            <li class="success">Verify hash with hash calculation failure</li>
+            <li class="success">Log verbose when verbose</li>
+            <li class="success">Log verbose when not verbose</li>
+            <li class="success">Verify hash with digest without prefix</li>
+            <li class="success">Verify hash with digest without prefix mismatch</li>
+            <li class="success">Create github provider without http client</li>
+            <li class="success">Create github provider with git token</li>
+            <li class="success">Create github provider with http client provided</li>
+            <li class="success">Create github provider with git token and http client</li>
+            <li class="success">Find phar asset with asset missing name key</li>
+            <li class="success">Run prerequisite migrations with no config file</li>
+            <li class="success">Run prerequisite migrations with exception</li>
+            <li class="success">Handle with prerequisite migration failure</li>
+            <li class="success">Run prerequisite migrations with no pending migrations</li>
+            <li class="success">Download phar with asset missing id</li>
+            <li class="success">Download phar with exception</li>
+            <li class="success">Get config path with home not set</li>
+            <li class="success">Run prerequisite migrations with exception in real method</li>
+            <li class="success">Load config and version returns null when config does not exist</li>
+            <li class="success">Load config and version returns config data when config exists</li>
+            <li class="success">Load config and version returns default version when not set</li>
+            <li class="success">Discover prerequisite migrations returns empty array in test environment</li>
+            <li class="success">Handle migration error returns zero in test environment</li>
+        </ul>
+        <h2>Update Handler Integration (App\Tests\Integration\UpdateHandlerIntegration)</h2>
+        <ul>
+            <li class="success">Update workflow end to end</li>
+            <li class="success">Hash verification with real file</li>
+        </ul>
+        <h2>Update Handler Migration Integration (App\Tests\Integration\UpdateHandlerMigrationIntegration)</h2>
+        <ul>
+            <li class="success">Execute pending migrations with real migration execution</li>
+            <li class="success">Execute pending migrations with multiple migrations</li>
+        </ul>
+        <h2>Version Check Bootstrap (App\Tests\VersionCheckBootstrap)</h2>
+        <ul>
+            <li class="success">Version check listener displays warning when update available</li>
+            <li class="success">Version check listener does not display when no message</li>
+            <li class="success">Version check listener does not display when quiet</li>
+            <li class="success">Version check bootstrap with valid constants</li>
+            <li class="success">Version check bootstrap handles missing constants</li>
+            <li class="success">Version check bootstrap handles invalid repo slug</li>
+        </ul>
+        <h2>Version Check Service (App\Tests\Service\VersionCheckService)</h2>
+        <ul>
+            <li class="success">Constructor</li>
+            <li class="success">Check for update with fresh cache</li>
+            <li class="success">Check for update with stale cache</li>
+            <li class="success">Check for update with no cache</li>
+            <li class="success">Check for update fails silently on git hub error</li>
+            <li class="success">Check for update does not display when already on latest</li>
+            <li class="success">Check for update does not display when on newer version</li>
+            <li class="success">Is newer version</li>
+            <li class="success">Is cache fresh</li>
+            <li class="success">Get cache path throws exception when home not set</li>
+            <li class="success">Get cache path creates directory if not exists</li>
+            <li class="success">Get cache path when directory already exists</li>
+            <li class="success">Check for update creates cache directory if not exists</li>
+            <li class="success">Read cache returns null when file does not exist</li>
+            <li class="success">Read cache returns null when file get contents fails</li>
+            <li class="success">Read cache returns null when json is invalid</li>
+            <li class="success">Read cache returns null when timestamp missing</li>
+            <li class="success">Create github provider without token</li>
+            <li class="success">Create github provider with token</li>
+            <li class="success">Create github provider without http client</li>
+            <li class="success">Create github provider without token and without http client</li>
+            <li class="success">Fetch latest version from git hub with no tag name</li>
+            <li class="success">Check for update with fresh cache but null version</li>
+            <li class="success">Write cache</li>
+            <li class="success">Write cache with null version</li>
+        </ul>
+    </body>
+</html>

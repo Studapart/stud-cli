@@ -80,8 +80,8 @@ The purpose of `stud-cli` is to streamline a developer's daily workflow by tight
 -   **Stateless (No Local Cache):** The tool does not use a local cache. The current Jira ticket key is parsed from the current Git branch name on every run, preventing stale data issues.
 -   **Modern Git Practices:** Employs modern, unambiguous Git commands like `git switch -c`.
 -   **User-Centric Defaults:** Commands like `items list` prioritize showing relevant information to the current user by default.
--   **Command Syntax:** Follows an `object:verb` pattern (e.g., `stud items:list`).
--   **Responder Pattern:** The application follows the Responder pattern (ADR - Action Domain Responder) to separate domain logic from presentation logic:
+-   **Command Syntax:** Follows an `object:verb` pattern (e.g., `stud items:list`). See [ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md) for details.
+-   **Responder Pattern:** The application follows the Responder pattern (ADR - Action Domain Responder) to separate domain logic from presentation logic. See [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) for details.
     - **Action (Task):** Orchestrates the use case in `castor.php`
     - **Domain (Handler):** Contains pure business logic and returns `Response` objects
     - **Responder:** Contains `ViewConfig` and renders `Response` objects to console output
@@ -212,6 +212,8 @@ This project is configured to be compiled into a single, executable PHAR file us
 ### Configuration Migration System
 
 `stud-cli` includes a migration system that allows configuration format changes to be automatically applied when the tool is updated. This enables backward compatibility and smooth transitions when configuration schemas evolve.
+
+**See [ADR-007: Migration System Architecture](documentation/adr-007-migration-system-architecture.md) for detailed documentation of the migration system design and implementation.**
 
 #### Migration Types
 

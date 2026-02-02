@@ -96,4 +96,45 @@ class CacheClearHandlerTest extends CommandTestCase
             }
         }
     }
+
+    public function testHandleWithDeleteException(): void
+    {
+        // Create cache file in in-memory filesystem
+        $this->flysystem->write($this->tempCacheFile, json_encode(['latest_version' => '1.0.0', 'timestamp' => time()]));
+
+        // Override HOME to use our test directory
+        $originalHome = $_SERVER['HOME'] ?? null;
+        $_SERVER['HOME'] = $this->tempCacheDir;
+
+        // Create a mock FileSystem that throws an exception on delete
+        $mockFileSystem = $this->createMock(FileSystem::class);
+        $mockFileSystem->method('fileExists')
+            ->with($this->tempCacheFile)
+            ->willReturn(true);
+        $mockFileSystem->method('delete')
+            ->with($this->tempCacheFile)
+            ->willThrowException(new \RuntimeException('Delete failed'));
+
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $handler = new CacheClearHandler($this->translationService, $logger, $mockFileSystem);
+
+        try {
+            $output = new BufferedOutput();
+            $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+            $result = $handler->handle($io);
+
+            $this->assertSame(1, $result);
+            // Test intent: error() was called and handler returned error code, verified by return value
+        } finally {
+            if ($originalHome !== null) {
+                $_SERVER['HOME'] = $originalHome;
+            } else {
+                unset($_SERVER['HOME']);
+            }
+        }
+    }
 }

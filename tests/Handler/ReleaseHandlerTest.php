@@ -70,7 +70,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -113,7 +113,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, true, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -156,7 +156,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -198,7 +198,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -242,7 +242,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
         $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, 'Release ' . $version . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
 
         // Verify CHANGELOG.md was updated correctly
@@ -265,7 +265,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/nonexistent/composer.json';
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -284,7 +284,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, 'invalid json');
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format');
@@ -305,7 +305,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read CHANGELOG.md');
@@ -317,7 +317,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), 'composer.json', 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, 'composer.json', 'CHANGELOG.md');
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'patch']);
         $this->assertSame('2.6.3', $result);
@@ -327,7 +327,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal());
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'minor']);
         $this->assertSame('2.7.0', $result);
@@ -337,7 +337,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal());
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'major']);
         $this->assertSame('3.0.0', $result);
@@ -347,7 +347,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal());
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid version format: invalid. Expected format: X.Y.Z");
@@ -359,7 +359,7 @@ class ReleaseHandlerTest extends CommandTestCase
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal());
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid bump type: invalid. Must be 'major', 'minor', or 'patch'");
@@ -402,7 +402,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->confirm(Argument::type('string'), false)->willReturn(false);
         $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, 'Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), null, false, 'patch');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -444,7 +444,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->confirm(Argument::type('string'), false)->willReturn(false);
         $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, 'Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), null, false, 'minor');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -486,7 +486,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->confirm(Argument::type('string'), false)->willReturn(false);
         $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, 'Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), null, false, 'major');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
@@ -528,7 +528,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->confirm(Argument::type('string'), false)->willReturn(false);
         $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, 'Release ' . $targetVersion . ' is ready to be deployed.')->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         // No version and no bump type - should default to patch
         $handler->handle($io->reveal(), null, false, null);
 
@@ -546,7 +546,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
         $result = $this->callPrivateMethod($handler, 'getCurrentVersion');
 
         $this->assertSame($currentVersion, $result);
@@ -560,7 +560,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/nonexistent/composer_' . uniqid() . '.json';
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -577,7 +577,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['name' => 'test/package']));
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, 'CHANGELOG.md', $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format or missing version field');
@@ -592,30 +592,8 @@ class ReleaseHandlerTest extends CommandTestCase
         $changelogPath = '/CHANGELOG.md';
 
         $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $composerJsonPath, $changelogPath, $this->fileSystem);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
 
         $this->assertInstanceOf(ReleaseHandler::class, $handler);
-    }
-
-    public function testGetFileSystemFallback(): void
-    {
-        // Test that getFileSystem() falls back to createLocal() when FileSystem is not injected
-        $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler(
-            $gitRepository->reveal(),
-            $this->translationService,
-            $logger->reveal(),
-            'composer.json',
-            'CHANGELOG.md',
-            null // No FileSystem injected
-        );
-
-        $reflection = new \ReflectionClass($handler);
-        $method = $reflection->getMethod('getFileSystem');
-        $method->setAccessible(true);
-
-        $fileSystem = $method->invoke($handler);
-        $this->assertInstanceOf(FileSystem::class, $fileSystem);
     }
 }

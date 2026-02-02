@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
-         colors="true">
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         defaultTimeLimit="30"
+         failOnDeprecation="true"
+         failOnWarning="false">
     <testsuites>
-        <testsuite name="stud-cli Test Suite">
-            <directory>tests</directory>
+        <testsuite name="Unit Tests">
+            <directory>tests/Handler</directory>
+            <directory>tests/Service</directory>
+            <directory>tests/Migrations</directory>
+            <directory>tests/Exception</directory>
+            <directory>tests/Responder</directory>
+            <directory>tests/Response</directory>
+            <directory>tests/View</directory>
+            <file>tests/VersionCheckBootstrapTest.php</file>
+        </testsuite>
+        <testsuite name="Integration Tests">
+            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
     <source>
@@ -17,6 +30,7 @@
             <file>./src/config/constants.php</file>
             <file>./src/config/colours.php</file>
             <file>./src/repack/logo.php</file>
+            <file>./src/Migrations/MigrationScope.php</file>
         </exclude>
     </source>
     <php>

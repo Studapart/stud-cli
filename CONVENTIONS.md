@@ -2,6 +2,31 @@
 
 This document serves as the single source of truth for coding standards, visibility, and testing philosophy for all contributions to `stud-cli`. It ensures that all code is high-quality, maintainable, and highly testable.
 
+## Related Architecture Decision Records (ADRs)
+
+The conventions in this document are informed by architectural decisions documented in our ADRs. For deeper understanding of the "why" behind these conventions, refer to the relevant ADRs:
+
+### Architecture & Patterns
+- **[ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md)** - Explains the Action-Domain-Responder pattern used throughout the codebase
+- **[ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md)** - Documents the `object:verb` command naming pattern
+- **[ADR-007: Migration System Architecture](documentation/adr-007-migration-system-architecture.md)** - Details the configuration migration system
+- **[ADR-009: Service Locator Pattern in castor.php](documentation/adr-009-service-locator-pattern-in-castor.md)** - Explains how services are provided via helper functions
+
+### Conventions & Best Practices
+- **[ADR-008: Visibility and Testability Conventions](documentation/adr-008-visibility-and-testability-conventions.md)** - Rationale for `protected` vs `private` visibility choices
+- **[ADR-010: Internationalization Strategy](documentation/adr-010-internationalization-strategy.md)** - Translation system and locale handling
+- **[ADR-011: Code Quality Metrics and Enforcement](documentation/adr-011-code-quality-metrics-and-enforcement.md)** - Detailed explanation of all quality metrics
+
+### Technical Decisions
+- **[ADR-001: FileSystem Abstraction with Flysystem](documentation/adr-001-filesystem-abstraction-with-flysystem.md)** - FileSystem service design
+- **[ADR-002: Test Environment Detection](documentation/adr-002-test-environment-detection.md)** - Multi-method test detection strategy
+- **[ADR-003: Path Security and Validation](documentation/adr-003-path-security-and-validation.md)** - Security measures for file operations
+- **[ADR-004: Test Safety and Isolation](documentation/adr-004-test-safety-and-isolation.md)** - Test isolation strategy
+
+All ADRs are located in the `documentation/` directory.
+
+---
+
 ## Code Architecture
 
 ### Foundation: PSR-12 & SOLID
@@ -40,9 +65,13 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 **Rationale**: By making complex methods `protected` instead of `private`, we enable direct unit testing of these methods without requiring complex mocking or integration tests. This aligns with our goal of 100% test coverage.
 
+**See also:** [ADR-008: Visibility and Testability Conventions](documentation/adr-008-visibility-and-testability-conventions.md) for detailed rationale and examples.
+
 ### Code Quality and Complexity Standards
 
 To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds. These metrics are enforced through static analysis tools (PHPStan) and manual code review during the development process.
+
+**See also:** [ADR-011: Code Quality Metrics and Enforcement](documentation/adr-011-code-quality-metrics-and-enforcement.md) for detailed explanation of each metric, enforcement strategies, and refactoring guidance.
 
 #### Project Quality Metric Blueprint
 

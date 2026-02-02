@@ -36,13 +36,8 @@ class HelpService
 
     public function __construct(
         private readonly TranslationService $translator,
-        private readonly ?FileSystem $fileSystem = null
+        private readonly FileSystem $fileSystem
     ) {
-    }
-
-    private function getFileSystem(): FileSystem
-    {
-        return $this->fileSystem ?? FileSystem::createLocal();
     }
 
     /**
@@ -82,13 +77,11 @@ class HelpService
             return null;
         }
 
-        $fileSystem = $this->getFileSystem();
-
         // Resolve absolute paths to relative paths if they're within the current working directory
         $readmePath = $this->resolvePath(self::README_PATH);
 
         try {
-            $readmeContent = $fileSystem->read($readmePath);
+            $readmeContent = $this->fileSystem->read($readmePath);
         } catch (\RuntimeException $e) {
             // File read failure is extremely rare and hard to simulate in tests
             // @codeCoverageIgnoreStart
