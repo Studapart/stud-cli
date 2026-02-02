@@ -71,6 +71,18 @@ config:
     git_token_detected: Đã phát hiện định dạng token Git cũ. Yêu cầu di chuyển.
     git_provider_prompt: Chọn nhà cung cấp Git cho token của bạn
     git_migration_complete: "Cấu hình Git đã được di chuyển thành công. Token đã được cấu hình cho %provider%."
+    global:
+      running: "Đang chạy các di chuyển cấu hình toàn cục..."
+      complete: "Các di chuyển cấu hình toàn cục đã hoàn thành thành công."
+    project:
+      running: "Đang chạy các di chuyển cấu hình dự án..."
+      complete: "Các di chuyển cấu hình dự án đã hoàn thành thành công."
+    running: "Đang chạy di chuyển %id%: %description%"
+    error: "Di chuyển %id% thất bại: %error%"
+    version_updated: "Phiên bản di chuyển đã được cập nhật lên %version%"
+  missing_global_key: "Thiếu khóa cấu hình toàn cục bắt buộc: %key%"
+  missing_project_key: "Thiếu khóa cấu hình dự án bắt buộc: %key%"
+  auto_detected: "Tự động phát hiện %key%: %value%"
 item:
   start:
     section: Bắt đầu làm việc trên %key%
@@ -311,9 +323,11 @@ branch:
 commit:
   section: Trợ lý Commit thông thường
   staging: Đang staging tất cả các thay đổi...
+  staging_conditional: Đang staging tất cả các thay đổi...
   committing: Đang commit với thông báo được cung cấp...
   committing_simple: Đang commit...
   success: Commit đã được tạo thành công!
+  no_staged_changes: Không tìm thấy thay đổi đã được stage. Sử dụng 'stud commit --all' để stage tất cả các thay đổi, hoặc stage các tệp thủ công bằng 'git add'.
   checking_logical: Đang kiểm tra commit logic trước đó...
   found_logical: 'Đã tìm thấy commit logic SHA: %sha%'
   creating_fixup: Đang tạo commit fixup cho %sha%...
@@ -481,6 +495,7 @@ help:
   option_items_list_sort: Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)
   option_commit_new: Tạo một commit logic mới thay vì fixup
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
+  option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật

@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\FileSystem;
 use App\Service\Logger;
+use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
@@ -88,16 +89,59 @@ class InitHandler
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 
-        $configDir = $this->fileSystem->dirname($this->configPath);
-        if (! $this->fileSystem->isDir($configDir)) {
-            $this->fileSystem->mkdir($configDir, 0700, true);
+        // Preserve migration_version from existing config, or set to latest migration ID if not present
+        if (isset($existingConfig['migration_version'])) {
+            // Tested via integration test (InitHandlerMigrationVersionIntegrationTest)
+            $config['migration_version'] = $existingConfig['migration_version'];
+        } else {
+            $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
+            $globalMigrations = $registry->discoverGlobalMigrations();
+            $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
+            if ($latestMigrationId !== null) {
+                $config['migration_version'] = $latestMigrationId;
+            }
         }
 
-        $this->fileSystem->filePutContents($this->configPath, Yaml::dump(array_filter($config)));
+        $configDir = $this->fileSystem->dirname($this->configPath);
+        if (! $this->fileSystem->isDir($configDir)) {
+            try {
+                $this->fileSystem->mkdir($configDir, 0700, true);
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException("Failed to create config directory: {$configDir}", 0, $e);
+            }
+        }
+
+        // Filter out only empty strings, preserve null values (they indicate optional fields that weren't set)
+        $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
+
+        $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
 
         // Shell completion setup
         $this->promptForCompletion();
+    }
+
+    /**
+     * Gets the latest migration ID from the list of migrations.
+     *
+     * @param array<\App\Migrations\MigrationInterface> $migrations
+     * @return string|null The latest migration ID, or null if no migrations exist
+     */
+    protected function getLatestMigrationId(array $migrations): ?string
+    {
+        if (empty($migrations)) {
+            return null;
+        }
+
+        $latestId = null;
+        foreach ($migrations as $migration) {
+            $migrationId = $migration->getId();
+            if ($latestId === null || strcmp($migrationId, $latestId) > 0) {
+                $latestId = $migrationId;
+            }
+        }
+
+        return $latestId;
     }
 
     protected function promptForCompletion(): void
@@ -181,5 +225,20 @@ class InitHandler
 
         // Language not supported, return null to fallback to 'en'
         return null;
+    }
+
+    /**
+     * Filters out empty strings from config array while preserving null values.
+     *
+     * This method is used as a callback for array_filter to remove empty strings
+     * from the configuration while preserving null values (which indicate optional
+     * fields that weren't set).
+     *
+     * @param mixed $value The value to check
+     * @return bool True if the value should be kept (not an empty string), false otherwise
+     */
+    private function filterEmptyStrings($value): bool
+    {
+        return $value !== '';
     }
 }

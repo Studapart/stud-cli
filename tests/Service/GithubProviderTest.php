@@ -1179,4 +1179,46 @@ class GithubProviderTest extends TestCase
 
         $this->assertFalse($result);
     }
+
+    public function testGetClientCreatesClientWhenNotProvided(): void
+    {
+        // Create provider without passing a client
+        $provider = new GithubProvider(
+            self::GITHUB_TOKEN,
+            self::GITHUB_OWNER,
+            self::GITHUB_REPO,
+            null
+        );
+
+        // Use reflection to access protected getClient method
+        $reflection = new \ReflectionClass($provider);
+        $method = $reflection->getMethod('getClient');
+        $method->setAccessible(true);
+
+        $client = $method->invoke($provider);
+
+        // Verify client is created
+        $this->assertInstanceOf(HttpClientInterface::class, $client);
+
+        // Verify calling getClient again returns the same instance
+        $client2 = $method->invoke($provider);
+        $this->assertSame($client, $client2);
+    }
+
+    public function testExtractTechnicalDetailsIncludesOwnerRepo(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $reflection = new \ReflectionClass($this->githubProvider);
+        $method = $reflection->getMethod('extractTechnicalDetails');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->githubProvider, $responseMock, 'POST', '/repos/test_owner/test_repo/pulls');
+
+        $this->assertStringContainsString('Owner: test_owner', $result);
+        $this->assertStringContainsString('Repo: test_repo', $result);
+        $this->assertStringContainsString('Full URL: https://api.github.com/repos/test_owner/test_repo/pulls', $result);
+    }
 }

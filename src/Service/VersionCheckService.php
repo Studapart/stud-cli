@@ -16,6 +16,7 @@ class VersionCheckService
         private readonly string $repoOwner,
         private readonly string $repoName,
         private readonly string $currentVersion,
+        private readonly FileSystem $fileSystem,
         private ?string $gitToken = null,
         private ?HttpClientInterface $httpClient = null
     ) {
@@ -62,8 +63,12 @@ class VersionCheckService
         $dir = dirname($path);
 
         // Ensure cache directory exists
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        if (! $this->fileSystem->isDir($dir)) {
+            try {
+                $this->fileSystem->mkdir($dir, 0755, true);
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException("Failed to create cache directory: {$dir}", 0, $e);
+            }
         }
 
         return $path;
@@ -74,12 +79,13 @@ class VersionCheckService
      */
     protected function readCache(string $cachePath): ?array
     {
-        if (! file_exists($cachePath)) {
+        if (! $this->fileSystem->fileExists($cachePath)) {
             return null;
         }
 
-        $content = @file_get_contents($cachePath);
-        if ($content === false) {
+        try {
+            $content = $this->fileSystem->read($cachePath);
+        } catch (\RuntimeException $e) {
             return null;
         }
 
@@ -141,7 +147,15 @@ class VersionCheckService
             'timestamp' => time(),
         ];
 
-        @file_put_contents($cachePath, json_encode($data, JSON_PRETTY_PRINT));
+        $encoded = json_encode($data, JSON_PRETTY_PRINT);
+        // @codeCoverageIgnoreStart
+        // json_encode returning false is extremely rare (only with circular references or invalid UTF-8)
+        // and is difficult to test in isolation
+        if ($encoded === false) {
+            throw new \RuntimeException('Failed to encode cache data');
+        }
+        // @codeCoverageIgnoreEnd
+        $this->fileSystem->filePutContents($cachePath, $encoded);
     }
 
     protected function isNewerVersion(string $latestVersion): bool
@@ -151,4 +165,8 @@ class VersionCheckService
 
         return version_compare($latest, $current, '>');
     }
+
+    /**
+     * Gets the FileSystem instance, creating one if not provided.
+     */
 }

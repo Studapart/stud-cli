@@ -6,6 +6,7 @@ use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 
 abstract class CommandTestCase extends TestCase
 {
@@ -42,5 +43,13 @@ abstract class CommandTestCase extends TestCase
         $method->setAccessible(true);
 
         return $method->invokeArgs($object, $parameters);
+    }
+
+    protected function createMockProcess(bool $isSuccessful): Process
+    {
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn($isSuccessful);
+
+        return $process;
     }
 }

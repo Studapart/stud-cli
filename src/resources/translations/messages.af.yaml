@@ -71,6 +71,18 @@ config:
     git_token_detected: Ou Git token formaat gedetecteer. Migrasie vereis.
     git_provider_prompt: Kies Git verskaffer vir jou token
     git_migration_complete: "Git konfigurasie suksesvol gemigreer. Token gekonfigureer vir %provider%."
+    global:
+      running: "Uitvoer van globale konfigurasie migrasies..."
+      complete: "Globale konfigurasie migrasies suksesvol voltooi."
+    project:
+      running: "Uitvoer van projek konfigurasie migrasies..."
+      complete: "Projek konfigurasie migrasies suksesvol voltooi."
+    running: "Uitvoer van migrasie %id%: %description%"
+    error: "Migrasie %id% het misluk: %error%"
+    version_updated: "Migrasie weergawe opgedateer na %version%"
+  missing_global_key: "Ontbrekende vereiste globale konfigurasie sleutel: %key%"
+  missing_project_key: "Ontbrekende vereiste projek konfigurasie sleutel: %key%"
+  auto_detected: "Outomaties gedetecteer %key%: %value%"
 item:
   start:
     section: Begin werk aan %key%
@@ -311,9 +323,11 @@ branch:
 commit:
   section: Konvensionele Commit Helper
   staging: Staging alle veranderinge...
+  staging_conditional: Staging alle veranderinge...
   committing: Commit met verskafde boodskap...
   committing_simple: Commit...
   success: Commit suksesvol geskep!
+  no_staged_changes: Geen gestageerde veranderinge gevind. Gebruik 'stud commit --all' om alle veranderinge te stage, of stage lêers handmatig met 'git add'.
   checking_logical: Gaan vorige logiese commit na...
   found_logical: 'Logiese commit SHA gevind: %sha%'
   creating_fixup: Skep fixup commit vir %sha%...
@@ -481,6 +495,7 @@ help:
   option_items_list_sort: Sorteer resultate volgens Key of Status (gebruik --sort of -s)
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
   option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
+  option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
   option_submit_draft: Skep 'n Draft Pull Request (gemerk as "Draft" op GitHub)
   option_submit_labels: Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys
   option_update_info: Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer

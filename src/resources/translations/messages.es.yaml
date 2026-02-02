@@ -71,6 +71,18 @@ config:
     git_token_detected: Formato de token Git antiguo detectado. Migración requerida.
     git_provider_prompt: Seleccione el proveedor Git para su token
     git_migration_complete: "Configuración Git migrada exitosamente. Token configurado para %provider%."
+    global:
+      running: "Ejecutando migraciones de configuración global..."
+      complete: "Migraciones de configuración global completadas exitosamente."
+    project:
+      running: "Ejecutando migraciones de configuración del proyecto..."
+      complete: "Migraciones de configuración del proyecto completadas exitosamente."
+    running: "Ejecutando migración %id%: %description%"
+    error: "La migración %id% falló: %error%"
+    version_updated: "Versión de migración actualizada a %version%"
+  missing_global_key: "Falta la clave de configuración global requerida: %key%"
+  missing_project_key: "Falta la clave de configuración del proyecto requerida: %key%"
+  auto_detected: "Auto-detectado %key%: %value%"
 item:
   start:
     section: Iniciando trabajo en %key%
@@ -311,9 +323,11 @@ branch:
 commit:
   section: Asistente de commit convencional
   staging: Preparando todos los cambios...
+  staging_conditional: Preparando todos los cambios...
   committing: Haciendo commit con el mensaje proporcionado...
   committing_simple: Haciendo commit...
   success: ¡Commit creado exitosamente!
+  no_staged_changes: No se encontraron cambios preparados. Use 'stud commit --all' para preparar todos los cambios, o prepare los archivos manualmente con 'git add'.
   checking_logical: Verificando commit lógico anterior...
   found_logical: 'SHA de commit lógico encontrado: %sha%'
   creating_fixup: Creando commit fixup para %sha%...
@@ -481,6 +495,7 @@ help:
   option_items_list_sort: Ordenar resultados por Key o Status (use --sort o -s)
   option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
   option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
+  option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
   option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar

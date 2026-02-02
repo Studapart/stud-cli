@@ -10,8 +10,10 @@ use Symfony\Component\Process\Process;
 
 class GitRepository
 {
-    public function __construct(private readonly ProcessFactory $processFactory)
-    {
+    public function __construct(
+        private readonly ProcessFactory $processFactory,
+        private readonly FileSystem $fileSystem
+    ) {
     }
 
     public function getJiraKeyFromBranchName(): ?string
@@ -129,8 +131,8 @@ SCRIPT;
         }
         // @codeCoverageIgnoreEnd
 
-        file_put_contents($tempScript, $scriptContent);
-        chmod($tempScript, 0755);
+        $this->fileSystem->write($tempScript, $scriptContent);
+        $this->fileSystem->chmod($tempScript, 0755);
 
         try {
             // Set GIT_SEQUENCE_EDITOR to our script and run rebase
@@ -141,10 +143,18 @@ SCRIPT;
             $process->setEnv($env);
             $process->mustRun();
         } finally {
-            @unlink($tempScript);
+            try {
+                $this->fileSystem->delete($tempScript);
+            } catch (\RuntimeException $e) {
+                // Ignore cleanup errors - file may already be deleted
+            }
             $backupFile = $tempScript . '.bak';
-            if (file_exists($backupFile)) {
-                @unlink($backupFile);
+            if ($this->fileSystem->fileExists($backupFile)) {
+                try {
+                    $this->fileSystem->delete($backupFile);
+                } catch (\RuntimeException $e) {
+                    // Ignore cleanup errors - file may already be deleted
+                }
             }
         }
     }
@@ -327,11 +337,12 @@ SCRIPT;
             ];
         }
 
-        // Parse GitLab URLs
-        // SSH format: git@gitlab.com:owner/repo.git
-        // HTTPS format: https://gitlab.com/owner/repo.git
-        // Custom instance: https://git.example.com/owner/repo.git
-        if (preg_match('#gitlab\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+        // Parse GitLab URLs (supports nested groups)
+        // SSH format: git@gitlab.com:owner/repo.git or git@gitlab.com:group/subgroup/repo.git
+        // HTTPS format: https://gitlab.com/owner/repo.git or https://gitlab.com/group/subgroup/repo.git
+        // Custom instance: https://git.example.com/owner/repo.git or https://git.example.com/group/subgroup/repo.git
+        // For nested groups, capture all path segments except the last one as owner
+        if (preg_match('#gitlab\.com[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             return [
                 'owner' => $matches[1],
                 'name' => $matches[2],
@@ -339,11 +350,13 @@ SCRIPT;
             ];
         }
 
-        // Parse custom GitLab instance URLs (e.g., self-hosted)
+        // Parse custom GitLab instance URLs (e.g., self-hosted, supports nested groups)
         // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
+        // Pattern: https://git.example.com/group/subgroup/repo.git or git@git.example.com:group/subgroup/repo.git
         // This is a fallback that matches any host that isn't github.com
-        // We check for the common GitLab URL structure: host/owner/repo
-        if (preg_match('#(?:git@|https?://)([^/:]+)[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
+        // We check for the common GitLab URL structure: host/path/to/repo
+        // For nested groups, capture all path segments except the last one as owner
+        if (preg_match('#(?:git@|https?://)([^/:]+)[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
             $host = $matches[1];
             // Only treat as GitLab if it's not github.com (already handled above)
             if ($host !== 'github.com') {
@@ -419,41 +432,49 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string}
      */
     public function readProjectConfig(): array
     {
         $configPath = $this->getProjectConfigPath();
-        if (! file_exists($configPath)) {
+
+        if (! $this->fileSystem->fileExists($configPath)) {
             return [];
         }
 
-        $content = @file_get_contents($configPath);
-        if ($content === false) {
+        try {
+            $config = $this->fileSystem->parseFile($configPath);
+
+            return $config;
+        } catch (\Exception $e) {
             return [];
         }
-
-        $config = \Symfony\Component\Yaml\Yaml::parse($content);
-
-        return is_array($config) ? $config : [];
     }
 
     /**
      * Writes the project-specific config file.
+     * Preserves migration_version if it exists in the current config.
      *
-     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
         $configPath = $this->getProjectConfigPath();
         $configDir = dirname($configPath);
 
-        if (! is_dir($configDir)) {
+        if (! $this->fileSystem->isDir($configDir)) {
             throw new \RuntimeException("Git directory not found: {$configDir}");
         }
 
-        $yaml = \Symfony\Component\Yaml\Yaml::dump($config);
-        file_put_contents($configPath, $yaml);
+        // Preserve migration_version if it exists in current config
+        if ($this->fileSystem->fileExists($configPath)) {
+            $existingConfig = $this->readProjectConfig();
+            if (isset($existingConfig['migration_version'])) {
+                $config['migration_version'] = $existingConfig['migration_version'];
+            }
+        }
+
+        $this->fileSystem->dumpFile($configPath, $config);
     }
 
     /**

@@ -66,6 +66,18 @@ config:
     git_token_detected: "Detected old Git token format. Migration required."
     git_provider_prompt: "Select Git provider for your token"
     git_migration_complete: "Git configuration migrated successfully. Token configured for %provider%."
+    global:
+      running: "Running global configuration migrations..."
+      complete: "Global configuration migrations completed successfully."
+    project:
+      running: "Running project configuration migrations..."
+      complete: "Project configuration migrations completed successfully."
+    running: "Running migration %id%: %description%"
+    error: "Migration %id% failed: %error%"
+    version_updated: "Migration version updated to %version%"
+  missing_global_key: "Missing required global configuration key: %key%"
+  missing_project_key: "Missing required project configuration key: %key%"
+  auto_detected: "Auto-detected %key%: %value%"
 
 # Item Start Handler
 item:
@@ -311,9 +323,11 @@ pr:
 commit:
   section: "Conventional Commit Helper"
   staging: "Staging all changes..."
+  staging_conditional: "Staging all changes..."
   committing: "Committing with provided message..."
   committing_simple: "Committing..."
   success: "Commit created successfully!"
+  no_staged_changes: "No staged changes found. Use 'stud commit --all' to stage all changes, or stage files manually with 'git add'."
   checking_logical: "Checking for previous logical commit..."
   found_logical: "Found logical commit SHA: %sha%"
   creating_fixup: "Creating fixup commit for %sha%..."
@@ -494,6 +508,7 @@ help:
   option_items_list_sort: "Sort results by Key or Status (use --sort or -s)"
   option_commit_new: "Create a new logical commit instead of a fixup"
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
+  option_commit_all: "Stage all changes before committing (restores old behavior)"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
   option_update_info: "Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating"

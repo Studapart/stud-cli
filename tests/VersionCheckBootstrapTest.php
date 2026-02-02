@@ -9,16 +9,9 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 class VersionCheckBootstrapTest extends TestCase
 {
-    private string $tempCacheDir;
-    private string $tempCacheFile;
-
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->tempCacheDir = sys_get_temp_dir() . '/stud-test-bootstrap-' . uniqid();
-        $this->tempCacheFile = $this->tempCacheDir . '/.cache/stud/last_update_check.json';
-        @mkdir(dirname($this->tempCacheFile), 0755, true);
 
         // Reset global variable
         $GLOBALS['_version_check_message'] = null;
@@ -26,11 +19,6 @@ class VersionCheckBootstrapTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Clean up
-        @unlink($this->tempCacheFile);
-        @rmdir(dirname($this->tempCacheFile));
-        @rmdir($this->tempCacheDir . '/.cache');
-        @rmdir($this->tempCacheDir);
         $GLOBALS['_version_check_message'] = null;
         parent::tearDown();
     }
@@ -66,9 +54,12 @@ class VersionCheckBootstrapTest extends TestCase
             $latestVersion
         ));
 
+        // Test behavior, not text content per CONVENTIONS.md
+        // Verify that warning() was called by checking output is not empty
+        // and contains the version number (which is the key data, not the translation)
         $outputContent = $output->fetch();
-        $this->assertStringContainsString('A new version (v1.2.0) is available', $outputContent);
-        $this->assertStringContainsString("Run 'stud up' to update", $outputContent);
+        $this->assertNotEmpty($outputContent, 'Warning should be displayed when update is available');
+        $this->assertStringContainsString('1.2.0', $outputContent, 'Output should contain the version number');
     }
 
     public function testVersionCheckListenerDoesNotDisplayWhenNoMessage(): void
@@ -133,7 +124,7 @@ class VersionCheckBootstrapTest extends TestCase
         // to be defined, but we can test that it doesn't crash
 
         $originalHome = $_SERVER['HOME'] ?? null;
-        $_SERVER['HOME'] = $this->tempCacheDir;
+        $_SERVER['HOME'] = '/test/home';
 
         // Define constants temporarily for this test
         if (! defined('APP_VERSION')) {

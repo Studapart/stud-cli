@@ -22,7 +22,7 @@ class CommitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $isNew, ?string $message): int
+    public function handle(SymfonyStyle $io, bool $isNew, ?string $message, bool $stageAll = false): int
     {
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.section'));
 
@@ -36,8 +36,14 @@ class CommitHandler
 
         // If a message is provided via the -m flag, use it directly.
         if (! empty($message)) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging'));
-            $this->gitRepository->stageAllChanges();
+            if ($stageAll) {
+                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
+                $this->gitRepository->stageAllChanges();
+            } elseif (! $this->hasStagedChanges()) {
+                $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
+
+                return 1;
+            }
 
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.committing'));
             $this->gitRepository->commit($message);
@@ -59,8 +65,14 @@ class CommitHandler
 
         // 2. If a logical commit is found and --new is not used, create a fixup commit
         if ($latestLogicalSha) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging'));
-            $this->gitRepository->stageAllChanges();
+            if ($stageAll) {
+                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
+                $this->gitRepository->stageAllChanges();
+            } elseif (! $this->hasStagedChanges()) {
+                $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
+
+                return 1;
+            }
 
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.creating_fixup', ['sha' => $latestLogicalSha]));
             $this->gitRepository->commitFixup($latestLogicalSha);
@@ -127,8 +139,14 @@ class CommitHandler
 
         $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.generated_message', ['message' => $commitMessage])}");
 
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging'));
-        $this->gitRepository->stageAllChanges();
+        if ($stageAll) {
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
+            $this->gitRepository->stageAllChanges();
+        } elseif (! $this->hasStagedChanges()) {
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
+
+            return 1;
+        }
 
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.committing_simple'));
         $this->gitRepository->commit($commitMessage);
@@ -146,5 +164,14 @@ class CommitHandler
             'task', 'sub-task' => 'chore',
             default => 'feat',
         };
+    }
+
+    protected function hasStagedChanges(): bool
+    {
+        $process = $this->gitRepository->runQuietly('git diff --cached --quiet');
+
+        // git diff --cached --quiet returns 0 if there are no staged changes, 1 if there are staged changes
+        // So we return !isSuccessful() to indicate if there are staged changes
+        return ! $process->isSuccessful();
     }
 }

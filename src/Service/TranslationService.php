@@ -16,12 +16,15 @@ class TranslationService
         $this->translator = new Translator($locale);
         $this->translator->addLoader('yaml', new YamlFileLoader());
 
+        // Resolve the translations path to an absolute path
+        $resolvedPath = realpath($translationsPath) ?: $translationsPath;
+
         // Load translation files from the specified path
-        // Use opendir/readdir for PHAR compatibility (glob doesn't always work with phar://)
+        // Use native file_exists for absolute paths since FileSystem uses getcwd() as root
         $supportedLocales = ['en', 'fr', 'es', 'nl', 'ru', 'el', 'af', 'vi'];
 
         foreach ($supportedLocales as $fileLocale) {
-            $file = $translationsPath . '/messages.' . $fileLocale . '.yaml';
+            $file = $resolvedPath . '/messages.' . $fileLocale . '.yaml';
             if (file_exists($file)) {
                 $this->translator->addResource('yaml', $file, $fileLocale);
             }

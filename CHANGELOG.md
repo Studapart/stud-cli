@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-02-02
+
+### Breaking
+- Changed default commit behavior to only commit staged changes [SCI-47]
+  - `stud commit` (without flags) now commits only already-staged changes (no automatic `git add -A`)
+  - Added `--all` or `-a` flag to restore old behavior (stage all changes then commit)
+  - Error message shown when no staged changes exist and `--all` flag is not used
+  - All three commit paths respect `--all` flag: fixup commit path, new commit path (interactive prompter), and message flag path
+  - Migration path: Users can use `stud commit --all` or `stud co -a` to restore old behavior
+  - This aligns with standard git commit behavior where users explicitly stage files
+
+### Fixed
+- Fixed GitLab 404 errors when creating merge requests [SCI-48]
+  - Enhanced error messages to include owner, repo, and project path for better debugging
+  - Fixed nested group parsing in GitLab URL parsing to support repositories in nested groups (e.g., `group/subgroup/repo`)
+  - Project path construction now correctly handles nested groups with proper URL encoding
+  - Added comprehensive tests for nested group support and enhanced error reporting
+- Fixed `FileSystem::createLocal()` to use current working directory instead of filesystem root
+  - Resolves issue where `stud submit` and `stud please` commands failed with "Cannot save project configuration: not in a git repository"
+  - FileSystem now correctly detects `.git` directory and project configuration files
+
+### Changed
+- Improved consistency between GitHub and GitLab providers
+  - Refactored both providers to use lazy client initialization via `getClient()` method
+  - Enhanced GitHub provider error messages to include owner and repo information (matching GitLab provider)
+  - Both providers now have consistent error reporting format for better debugging
+
+### Added
+- Configuration migration system with automatic updates and config validation [SCI-46]
+  - Migration infrastructure: `MigrationInterface`, `AbstractMigration`, and `MigrationScope` enum for global and project migrations
+  - `MigrationRegistry` service discovers and filters migrations by version
+  - `MigrationExecutor` service executes migrations in order and updates version tracking
+  - `ConfigValidator` service validates command requirements and prompts for missing keys
+  - Global migrations run automatically during `stud update` (prerequisite migrations)
+  - Project migrations run on-demand when commands execute in a git repository (lazy migrations)
+  - Auto-detection for common configuration keys (e.g., `baseBranch` from git branches)
+  - Interactive prompting for missing mandatory configuration keys
+  - Non-interactive mode exits with helpful error messages for missing mandatory keys
+  - Existing Git token migration converted to proper migration class (`Migration202501150000001_GitTokenFormat`)
+  - Migration version tracking added to both global and project config files
+  - Config pass listener runs migrations and validates config before command execution
+  - Commands declare their required configuration keys
+  - Translation keys added for all supported languages (English, Greek, Afrikaans, Russian, Vietnamese, Spanish, Dutch, French)
+  - Comprehensive unit test coverage for all migration services and validators
+
 ## [3.3.0] - 2026-01-30
 
 ### Added

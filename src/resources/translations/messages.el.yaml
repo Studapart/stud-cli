@@ -71,6 +71,18 @@ config:
     git_token_detected: Ανιχνεύτηκε παλιά μορφή token Git. Απαιτείται μετάβαση.
     git_provider_prompt: Επιλέξτε τον παροχέα Git για το token σας
     git_migration_complete: "Η ρύθμιση Git μεταφέρθηκε με επιτυχία. Το token ρυθμίστηκε για %provider%."
+    global:
+      running: "Εκτέλεση μεταναστεύσεων καθολικής διαμόρφωσης..."
+      complete: "Οι μεταναστεύσεις καθολικής διαμόρφωσης ολοκληρώθηκαν με επιτυχία."
+    project:
+      running: "Εκτέλεση μεταναστεύσεων διαμόρφωσης έργου..."
+      complete: "Οι μεταναστεύσεις διαμόρφωσης έργου ολοκληρώθηκαν με επιτυχία."
+    running: "Εκτέλεση μετανάστευσης %id%: %description%"
+    error: "Η μετανάστευση %id% απέτυχε: %error%"
+    version_updated: "Η έκδοση μετανάστευσης ενημερώθηκε σε %version%"
+  missing_global_key: "Λείπει το απαιτούμενο κλειδί καθολικής διαμόρφωσης: %key%"
+  missing_project_key: "Λείπει το απαιτούμενο κλειδί διαμόρφωσης έργου: %key%"
+  auto_detected: "Αυτόματη ανίχνευση %key%: %value%"
 item:
   start:
     section: Έναρξη εργασίας στο %key%
@@ -311,9 +323,11 @@ branch:
 commit:
   section: Βοηθός Συμβατικού Commit
   staging: Staging όλων των αλλαγών...
+  staging_conditional: Staging όλων των αλλαγών...
   committing: Commit με το παρεχόμενο μήνυμα...
   committing_simple: Commit...
   success: Το commit δημιουργήθηκε με επιτυχία!
+  no_staged_changes: Δεν βρέθηκαν προετοιμασμένες αλλαγές. Χρησιμοποιήστε 'stud commit --all' για προετοιμασία όλων των αλλαγών, ή προετοιμάστε αρχεία χειροκίνητα με 'git add'.
   checking_logical: Έλεγχος για προηγούμενο λογικό commit...
   found_logical: 'Βρέθηκε λογικό commit SHA: %sha%'
   creating_fixup: Δημιουργία fixup commit για %sha%...
@@ -481,6 +495,7 @@ help:
   option_items_list_sort: Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
+  option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
   option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση

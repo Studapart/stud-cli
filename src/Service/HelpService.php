@@ -35,8 +35,37 @@ class HelpService
     ];
 
     public function __construct(
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly FileSystem $fileSystem
     ) {
+    }
+
+    /**
+     * Resolves an absolute path to a relative path if it's within the current working directory.
+     * This is needed because FileSystem::createLocal() uses getcwd() as the root.
+     *
+     * @param string $path The path to resolve
+     * @return string The resolved path (relative to cwd if absolute, or original if already relative)
+     */
+    /**
+     * @codeCoverageIgnore
+     * Tested indirectly through getCommandHelp()
+     */
+    private function resolvePath(string $path): string
+    {
+        $cwd = getcwd();
+        if ($cwd === false) {
+            return $path;
+        }
+
+        // If path is absolute and starts with cwd, make it relative
+        if (str_starts_with($path, '/') && str_starts_with($path, $cwd)) {
+            $relative = ltrim(str_replace($cwd, '', $path), '/');
+
+            return $relative !== '' ? $relative : '.';
+        }
+
+        return $path;
     }
 
     /**
@@ -48,13 +77,17 @@ class HelpService
             return null;
         }
 
-        $readmeContent = @file_get_contents(self::README_PATH);
-        // File read failure is extremely rare and hard to simulate in tests
-        // @codeCoverageIgnoreStart
-        if ($readmeContent === false) {
+        // Resolve absolute paths to relative paths if they're within the current working directory
+        $readmePath = $this->resolvePath(self::README_PATH);
+
+        try {
+            $readmeContent = $this->fileSystem->read($readmePath);
+        } catch (\RuntimeException $e) {
+            // File read failure is extremely rare and hard to simulate in tests
+            // @codeCoverageIgnoreStart
             return null;
+            // @codeCoverageIgnoreEnd
         }
-        // @codeCoverageIgnoreEnd
 
         $pattern = self::COMMAND_PATTERNS[$commandName];
         $lines = explode("\n", $readmeContent);
@@ -231,6 +264,7 @@ class HelpService
                 'options' => [
                     ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
                     ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
+                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
                 ],
                 'arguments' => [],
             ],

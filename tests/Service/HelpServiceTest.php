@@ -2,8 +2,11 @@
 
 namespace App\Tests\Service;
 
+use App\Service\FileSystem;
 use App\Service\HelpService;
 use App\Service\TranslationService;
+use League\Flysystem\Filesystem as FlysystemFilesystem;
+use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -11,6 +14,7 @@ class HelpServiceTest extends TestCase
 {
     private HelpService $helpService;
     private TranslationService $translationService;
+    private FileSystem $fileSystem;
 
     protected function setUp(): void
     {
@@ -22,7 +26,21 @@ class HelpServiceTest extends TestCase
                 return $id . (empty($parameters) ? '' : ' ' . json_encode($parameters));
             });
         $this->translationService->method('getLocale')->willReturn('en');
-        $this->helpService = new HelpService($this->translationService);
+
+        // Create in-memory filesystem
+        $adapter = new InMemoryFilesystemAdapter();
+        $flysystem = new FlysystemFilesystem($adapter);
+        $this->fileSystem = new FileSystem($flysystem);
+
+        // Create README.md in in-memory filesystem for tests that need it
+        // Use relative path from project root
+        $readmePath = 'README.md';
+        if (file_exists(__DIR__ . '/../../README.md')) {
+            $readmeContent = file_get_contents(__DIR__ . '/../../README.md');
+            $flysystem->write($readmePath, $readmeContent);
+        }
+
+        $this->helpService = new HelpService($this->translationService, $this->fileSystem);
     }
 
     public function testGetCommandHelpForExistingCommand(): void
@@ -356,16 +374,23 @@ class HelpServiceTest extends TestCase
     public function testFormatCommandHelpFromTranslationWithVersionArgument(): void
     {
         // Test formatCommandHelpFromTranslation directly with release command
-        // This covers line 281: version argument type
+        // This covers the release command definition (lines 292-301) and version argument handling
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
         $method->setAccessible(true);
 
         $result = $method->invoke($this->helpService, 'release');
 
-        // Test intent: should return formatted help text
+        // Test intent: should return formatted help text with release command details
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
+        // Verify release command specific content is present
+        $this->assertStringContainsString('stud release', $result);
+        $this->assertStringContainsString('stud rl', $result);
+        $this->assertStringContainsString('--major', $result);
+        $this->assertStringContainsString('--minor', $result);
+        $this->assertStringContainsString('--patch', $result);
+        $this->assertStringContainsString('--publish', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithItemsListFirstOptionWithArgument(): void
@@ -760,5 +785,19 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('(Alias: stud ss)', $result);
         // Alias should not have arguments appended
         $this->assertStringNotContainsString('(Alias: stud ss ', $result);
+    }
+
+    public function testGetCommandHelpReturnsNullWhenFileReadThrowsException(): void
+    {
+        // Test that getCommandHelp returns null when file read throws RuntimeException
+        // This covers line 60 (catch block)
+        $fileSystem = $this->createMock(\App\Service\FileSystem::class);
+        $fileSystem->method('read')
+            ->willThrowException(new \RuntimeException('File read failed'));
+
+        $helpService = new HelpService($this->translationService, $fileSystem);
+
+        $result = $helpService->getCommandHelp('commit');
+        $this->assertNull($result);
     }
 }
