@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-02-02
+
 ### Breaking
 - Changed default commit behavior to only commit staged changes [SCI-47]
   - `stud commit` (without flags) now commits only already-staged changes (no automatic `git add -A`)
