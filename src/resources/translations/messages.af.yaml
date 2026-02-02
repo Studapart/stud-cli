@@ -323,9 +323,11 @@ branch:
 commit:
   section: Konvensionele Commit Helper
   staging: Staging alle veranderinge...
+  staging_conditional: Staging alle veranderinge...
   committing: Commit met verskafde boodskap...
   committing_simple: Commit...
   success: Commit suksesvol geskep!
+  no_staged_changes: Geen gestageerde veranderinge gevind. Gebruik 'stud commit --all' om alle veranderinge te stage, of stage lêers handmatig met 'git add'.
   checking_logical: Gaan vorige logiese commit na...
   found_logical: 'Logiese commit SHA gevind: %sha%'
   creating_fixup: Skep fixup commit vir %sha%...
@@ -493,6 +495,7 @@ help:
   option_items_list_sort: Sorteer resultate volgens Key of Status (gebruik --sort of -s)
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
   option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
+  option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
   option_submit_draft: Skep 'n Draft Pull Request (gemerk as "Draft" op GitHub)
   option_submit_labels: Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys
   option_update_info: Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer

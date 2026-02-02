@@ -34,7 +34,7 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
         // Test intent: note() was called for clean working tree, verified by return value
@@ -51,13 +51,42 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
         // Test intent: note() was called for clean working tree (with whitespace), verified by return value
     }
 
     public function testHandleWithMessage(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message');
+
+        $this->logger->method('success');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'my message', false);
+
+        $this->assertSame(0, $result);
+        // Test intent: success() was called, verified by return value
+    }
+
+    public function testHandleWithMessageAndAllFlag(): void
     {
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
@@ -71,17 +100,89 @@ class CommitHandlerTest extends CommandTestCase
             ->with('my message');
 
         $this->logger->method('success');
+        $this->logger->method('text');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, 'my message');
+        $result = $this->handler->handle($io, false, 'my message', true);
 
         $this->assertSame(0, $result);
         // Test intent: success() was called, verified by return value
     }
 
+    public function testHandleWithMessageNoStagedChanges(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(true)); // No staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->never())
+            ->method('commit');
+
+        $this->logger->expects($this->once())
+            ->method('error');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, false, 'my message', false);
+
+        $this->assertSame(1, $result);
+        // Test intent: error() was called, verified by return value
+    }
+
     public function testHandleWithAutoFixup(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->with('origin/develop')
+            ->willReturn('abcdef');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->once())
+            ->method('commitFixup')
+            ->with('abcdef');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $loggerCalls = [];
+        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+            $loggerCalls[] = $message;
+        });
+
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('success');
+
+        $result = $this->handler->handle($io, false, null, false);
+
+        $this->assertSame(0, $result);
+        // Test intent: verbose output was shown (Logger was called)
+        $this->assertNotEmpty($loggerCalls);
+    }
+
+    public function testHandleWithAutoFixupAndAllFlag(): void
     {
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
@@ -111,14 +212,119 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('text');
         $this->logger->method('success');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, true);
 
         $this->assertSame(0, $result);
         // Test intent: verbose output was shown (Logger was called)
         $this->assertNotEmpty($loggerCalls);
     }
 
+    public function testHandleWithAutoFixupNoStagedChanges(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->with('origin/develop')
+            ->willReturn('abcdef');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(true)); // No staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->never())
+            ->method('commitFixup');
+
+        $this->logger->expects($this->once())
+            ->method('error');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $this->logger->method('section');
+        $this->logger->method('gitWriteln');
+
+        $result = $this->handler->handle($io, false, null, false);
+
+        $this->assertSame(1, $result);
+        // Test intent: error() was called, verified by return value
+    }
+
     public function testHandleWithInteractivePrompter(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->willReturn(null);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn('TPW-35');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('feat(api): My awesome feature [TPW-35]');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $this->logger->expects($this->exactly(3))
+            ->method('ask')
+            ->willReturnCallback(
+                fn (string $question, ?string $default) => match (true) {
+                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
+                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
+                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                    default => throw new \RuntimeException('Unexpected question: ' . $question),
+                }
+            );
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln');
+
+        $result = $this->handler->handle($io, false, null, false);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithInteractivePrompterAndAllFlag(): void
     {
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
@@ -176,9 +382,77 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('success');
         $this->logger->method('jiraWriteln');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, true);
 
         $this->assertSame(0, $result);
+    }
+
+    public function testHandleWithInteractivePrompterNoStagedChanges(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->willReturn(null);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn('TPW-35');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(true)); // No staged changes
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->never())
+            ->method('commit');
+
+        $this->logger->expects($this->once())
+            ->method('error');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('jiraWriteln');
+        $this->logger->expects($this->exactly(3))
+            ->method('ask')
+            ->willReturnCallback(
+                fn (string $question, ?string $default) => match (true) {
+                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
+                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
+                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                    default => throw new \RuntimeException('Unexpected question: ' . $question),
+                }
+            );
+
+        $result = $this->handler->handle($io, false, null, false);
+
+        $this->assertSame(1, $result);
+        // Test intent: error() was called, verified by return value
     }
 
     public function testHandleWithNoJiraKeyInBranchName(): void
@@ -200,7 +474,7 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(1, $result);
         // Test intent: error() was called, verified by return value
@@ -230,7 +504,7 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(1, $result);
         // Test intent: error() was called, verified by return value
@@ -266,7 +540,7 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(1, $result);
     }
@@ -303,6 +577,11 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
         $this->gitRepository->expects($this->once())
@@ -333,7 +612,7 @@ class CommitHandlerTest extends CommandTestCase
             }
         });
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
         // Test intent: verbose output was shown, verified by return value
@@ -371,6 +650,11 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
         $this->gitRepository->expects($this->once())
@@ -397,7 +681,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('success');
         $this->logger->method('jiraWriteln');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
     }
@@ -434,6 +718,11 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
         $this->gitRepository->expects($this->once())
@@ -469,7 +758,7 @@ class CommitHandlerTest extends CommandTestCase
             }
         });
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
         // Test intent: verbose output was shown, verified by return value
@@ -510,6 +799,11 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false)); // Has staged changes
+
+        $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
         $this->gitRepository->expects($this->once())
@@ -533,7 +827,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('success');
         $this->logger->method('jiraWriteln');
 
-        $result = $this->handler->handle($io, false, null);
+        $result = $this->handler->handle($io, false, null, false);
 
         $this->assertSame(0, $result);
     }

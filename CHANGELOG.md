@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+- Changed default commit behavior to only commit staged changes [SCI-47]
+  - `stud commit` (without flags) now commits only already-staged changes (no automatic `git add -A`)
+  - Added `--all` or `-a` flag to restore old behavior (stage all changes then commit)
+  - Error message shown when no staged changes exist and `--all` flag is not used
+  - All three commit paths respect `--all` flag: fixup commit path, new commit path (interactive prompter), and message flag path
+  - Migration path: Users can use `stud commit --all` or `stud co -a` to restore old behavior
+  - This aligns with standard git commit behavior where users explicitly stage files
+
 ### Fixed
 - Fixed GitLab 404 errors when creating merge requests [SCI-48]
   - Enhanced error messages to include owner, repo, and project path for better debugging

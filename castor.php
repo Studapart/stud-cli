@@ -1121,6 +1121,8 @@ function commit(
     bool $isNew = false,
     #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')]
     ?string $message = null,
+    #[AsOption(name: 'all', shortcut: 'a', description: 'Stage all changes before committing')]
+    bool $stageAll = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
     bool $help = false
 ): void {
@@ -1132,7 +1134,7 @@ function commit(
         return;
     }
     $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $handler->handle(io(), $isNew, $message);
+    $handler->handle(io(), $isNew, $message, $stageAll);
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
