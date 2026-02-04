@@ -358,4 +358,262 @@ class MigrationExecutorTest extends TestCase
         $writtenConfig = $this->fileSystem->parseFile($this->testConfigPath);
         $this->assertSame($expectedConfig, $writtenConfig);
     }
+
+    public function testExecuteMigrationsPrerequisiteFailureWithTranslationFallback(): void
+    {
+        $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
+            public function getId(): string
+            {
+                return '202501160000001';
+            }
+
+            public function getDescription(): string
+            {
+                return 'Test migration';
+            }
+
+            public function getScope(): MigrationScope
+            {
+                return MigrationScope::GLOBAL;
+            }
+
+            public function isPrerequisite(): bool
+            {
+                return true;
+            }
+
+            public function up(array $config): array
+            {
+                throw new \RuntimeException('Failed to write file: /home/user/.config/stud/config.yml');
+            }
+
+            public function down(array $config): array
+            {
+                return $config;
+            }
+        };
+
+        $config = ['existing_key' => 'existing_value'];
+
+        // Mock translator to return the key itself (simulating translation failure)
+        $this->translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    // Return the key itself to simulate translation failure
+                    return 'migration.error';
+                }
+
+                return $key . (empty($params) ? '' : ' ' . json_encode($params));
+            });
+
+        // Verify that error is called with fallback message
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                $this->callback(function ($messages) {
+                    $message = is_array($messages) ? $messages[0] : $messages;
+
+                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                })
+            );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Prerequisite migration');
+
+        $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
+    }
+
+    public function testExecuteMigrationsNonPrerequisiteFailureWithTranslationFallback(): void
+    {
+        $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
+            public function getId(): string
+            {
+                return '202501160000001';
+            }
+
+            public function getDescription(): string
+            {
+                return 'Test migration';
+            }
+
+            public function getScope(): MigrationScope
+            {
+                return MigrationScope::GLOBAL;
+            }
+
+            public function isPrerequisite(): bool
+            {
+                return false;
+            }
+
+            public function up(array $config): array
+            {
+                throw new \RuntimeException('Failed to write file: /home/user/.config/stud/config.yml');
+            }
+
+            public function down(array $config): array
+            {
+                return $config;
+            }
+        };
+
+        $config = ['existing_key' => 'existing_value'];
+
+        // Mock translator to return the key itself (simulating translation failure)
+        $this->translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    // Return the key itself to simulate translation failure
+                    return 'migration.error';
+                }
+
+                return $key . (empty($params) ? '' : ' ' . json_encode($params));
+            });
+
+        // Verify that warning is called with fallback message
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                $this->callback(function ($messages) {
+                    $message = is_array($messages) ? $messages[0] : $messages;
+
+                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                })
+            );
+
+        // Non-prerequisite failures should not throw, just log
+        $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
+
+        $this->assertSame($config, $result);
+    }
+
+    public function testExecuteMigrationsPrerequisiteFailureWithTranslationException(): void
+    {
+        $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
+            public function getId(): string
+            {
+                return '202501160000001';
+            }
+
+            public function getDescription(): string
+            {
+                return 'Test migration';
+            }
+
+            public function getScope(): MigrationScope
+            {
+                return MigrationScope::GLOBAL;
+            }
+
+            public function isPrerequisite(): bool
+            {
+                return true;
+            }
+
+            public function up(array $config): array
+            {
+                throw new \RuntimeException('Failed to write file: /home/user/.config/stud/config.yml');
+            }
+
+            public function down(array $config): array
+            {
+                return $config;
+            }
+        };
+
+        $config = ['existing_key' => 'existing_value'];
+
+        // Mock translator to throw exception when translating migration.error
+        $this->translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    throw new \RuntimeException('Translation service error');
+                }
+
+                return $key . (empty($params) ? '' : ' ' . json_encode($params));
+            });
+
+        // Verify that error is called with fallback message
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                $this->callback(function ($messages) {
+                    $message = is_array($messages) ? $messages[0] : $messages;
+
+                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                })
+            );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Prerequisite migration');
+
+        $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
+    }
+
+    public function testExecuteMigrationsNonPrerequisiteFailureWithTranslationException(): void
+    {
+        $migration = new class ($this->logger, $this->translator) extends AbstractMigration {
+            public function getId(): string
+            {
+                return '202501160000001';
+            }
+
+            public function getDescription(): string
+            {
+                return 'Test migration';
+            }
+
+            public function getScope(): MigrationScope
+            {
+                return MigrationScope::GLOBAL;
+            }
+
+            public function isPrerequisite(): bool
+            {
+                return false;
+            }
+
+            public function up(array $config): array
+            {
+                throw new \RuntimeException('Failed to write file: /home/user/.config/stud/config.yml');
+            }
+
+            public function down(array $config): array
+            {
+                return $config;
+            }
+        };
+
+        $config = ['existing_key' => 'existing_value'];
+
+        // Mock translator to throw exception when translating migration.error
+        $this->translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    throw new \RuntimeException('Translation service error');
+                }
+
+                return $key . (empty($params) ? '' : ' ' . json_encode($params));
+            });
+
+        // Verify that warning is called with fallback message
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with(
+                Logger::VERBOSITY_NORMAL,
+                $this->callback(function ($messages) {
+                    $message = is_array($messages) ? $messages[0] : $messages;
+
+                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                })
+            );
+
+        // Non-prerequisite failures should not throw, just log
+        $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
+
+        $this->assertSame($config, $result);
+    }
 }
