@@ -465,6 +465,36 @@ class UpdateHandler
     }
 
     /**
+     * Gets a formatted error message for migration failures with fallback.
+     *
+     * Attempts to translate the error message. If translation fails (returns the key
+     * or throws an exception), returns a fallback English message.
+     *
+     * @param string $migrationId The migration ID
+     * @param string $errorMessage The original error message
+     * @return string The formatted error message
+     */
+    private function getErrorMessage(string $migrationId, string $errorMessage): string
+    {
+        try {
+            $translated = $this->translator->trans('migration.error', [
+                'id' => $migrationId,
+                'error' => $errorMessage,
+            ]);
+
+            // If translation returns the key itself, it means translation failed
+            if ($translated === 'migration.error') {
+                return "Migration {$migrationId} failed: {$errorMessage}";
+            }
+
+            return $translated;
+        } catch (\Throwable $e) {
+            // If translation throws an exception, use fallback
+            return "Migration {$migrationId} failed: {$errorMessage}";
+        }
+    }
+
+    /**
      * Handles errors that occur during migration execution.
      *
      * @param \Throwable $e The exception that occurred
@@ -482,12 +512,10 @@ class UpdateHandler
         // @codeCoverageIgnoreStart
         // Safely log error - if logging fails, still return 1
         try {
+            $errorMessage = $this->getErrorMessage('prerequisite', $e->getMessage());
             $this->logger->error(
                 Logger::VERBOSITY_NORMAL,
-                explode("\n", $this->translator->trans('migration.error', [
-                    'id' => 'prerequisite',
-                    'error' => $e->getMessage(),
-                ]))
+                explode("\n", $errorMessage)
             );
         } catch (\Throwable $logError) {
             // If logging fails, silently continue - we still return 1 to indicate failure

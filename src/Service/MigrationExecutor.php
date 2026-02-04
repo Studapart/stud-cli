@@ -20,6 +20,36 @@ class MigrationExecutor
     }
 
     /**
+     * Gets a formatted error message for migration failures with fallback.
+     *
+     * Attempts to translate the error message. If translation fails (returns the key
+     * or throws an exception), returns a fallback English message.
+     *
+     * @param string $migrationId The migration ID
+     * @param string $errorMessage The original error message
+     * @return string The formatted error message
+     */
+    private function getErrorMessage(string $migrationId, string $errorMessage): string
+    {
+        try {
+            $translated = $this->translator->trans('migration.error', [
+                'id' => $migrationId,
+                'error' => $errorMessage,
+            ]);
+
+            // If translation returns the key itself, it means translation failed
+            if ($translated === 'migration.error') {
+                return "Migration {$migrationId} failed: {$errorMessage}";
+            }
+
+            return $translated;
+        } catch (\Throwable $e) {
+            // If translation throws an exception, use fallback
+            return "Migration {$migrationId} failed: {$errorMessage}";
+        }
+    }
+
+    /**
      * Executes a list of migrations in order and updates the config file.
      * Saves the config after each successful migration and updates the migration_version.
      *
@@ -64,15 +94,14 @@ class MigrationExecutor
                     ])
                 );
             } catch (\Throwable $e) {
+                $errorMessage = $this->getErrorMessage($migration->getId(), $e->getMessage());
+
                 // Handle errors based on migration type
                 if ($migration->isPrerequisite()) {
                     // Prerequisite migrations must succeed
                     $this->logger->error(
                         Logger::VERBOSITY_NORMAL,
-                        explode("\n", $this->translator->trans('migration.error', [
-                            'id' => $migration->getId(),
-                            'error' => $e->getMessage(),
-                        ]))
+                        explode("\n", $errorMessage)
                     );
 
                     throw new \RuntimeException(
@@ -85,10 +114,7 @@ class MigrationExecutor
                 // Non-prerequisite migrations: log error but continue
                 $this->logger->warning(
                     Logger::VERBOSITY_NORMAL,
-                    explode("\n", $this->translator->trans('migration.error', [
-                        'id' => $migration->getId(),
-                        'error' => $e->getMessage(),
-                    ]))
+                    explode("\n", $errorMessage)
                 );
             }
         }

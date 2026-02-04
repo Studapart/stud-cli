@@ -66,11 +66,8 @@ class FileSystem
     {
         $this->validatePath($path);
 
-        try {
-            $content = $this->filesystem->read($path);
-        } catch (\League\Flysystem\FilesystemException $e) {
-            throw new \RuntimeException("Failed to read file: {$path}", 0, $e);
-        }
+        // Use read() method which handles paths outside Flysystem root
+        $content = $this->read($path);
 
         $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
         if (! is_array($parsed)) {

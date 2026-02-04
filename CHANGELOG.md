@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-02-04
+
+### Fixed
+- Fixed migration error messages displaying raw translation keys instead of translated messages [SCI-51]
+  - Added fallback mechanism in `MigrationExecutor::getErrorMessage()` to provide helpful English error messages when translation fails
+  - Added fallback mechanism in `UpdateHandler::getErrorMessage()` to provide helpful English error messages when translation fails
+  - Error messages now always display meaningful information even when translation service fails or returns the key itself
+  - Fallback format: "Migration {id} failed: {error}" ensures users can understand what went wrong
+
 ## [3.4.0] - 2026-02-02
 
 ### Breaking

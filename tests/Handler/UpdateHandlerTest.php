@@ -3780,6 +3780,110 @@ CHANGELOG;
         $this->assertFalse($result2, 'Non-prerequisite migration should return false');
     }
 
+    public function testGetErrorMessageWithTranslationSuccess(): void
+    {
+        $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+
+        // Mock translator to return a translated message
+        $translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    return "Migration {$params['id']} failed: {$params['error']}";
+                }
+
+                return $key;
+            });
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $translator,
+            $this->changelogParser,
+            new UpdateFileService($translator),
+            $this->createMock(\App\Service\Logger::class),
+            $inMemoryFileSystem,
+            null,
+            $this->httpClient
+        );
+
+        $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['202501160000001', 'Failed to write file']);
+
+        $this->assertSame('Migration 202501160000001 failed: Failed to write file', $result);
+    }
+
+    public function testGetErrorMessageWithTranslationReturnsKey(): void
+    {
+        $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+
+        // Mock translator to return the key itself (simulating translation failure)
+        $translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    return 'migration.error';
+                }
+
+                return $key;
+            });
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $translator,
+            $this->changelogParser,
+            new UpdateFileService($translator),
+            $this->createMock(\App\Service\Logger::class),
+            $inMemoryFileSystem,
+            null,
+            $this->httpClient
+        );
+
+        $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
+
+        // Should return fallback message when translation returns the key
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+    }
+
+    public function testGetErrorMessageWithTranslationException(): void
+    {
+        $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+
+        // Mock translator to throw exception when translating migration.error
+        $translator->method('trans')
+            ->willReturnCallback(function ($key, $params = []) {
+                if ($key === 'migration.error') {
+                    throw new \RuntimeException('Translation service error');
+                }
+
+                return $key;
+            });
+
+        $handler = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $translator,
+            $this->changelogParser,
+            new UpdateFileService($translator),
+            $this->createMock(\App\Service\Logger::class),
+            $inMemoryFileSystem,
+            null,
+            $this->httpClient
+        );
+
+        $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
+
+        // Should return fallback message when translation throws exception
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+    }
+
     public function testHandleWithHashVerificationFailureAndCleanupError(): void
     {
         // Test line 87: cleanup error catch block when hash verification fails
