@@ -345,17 +345,17 @@ Before installing `stud-cli`, ensure you have:
 
 This is the recommended installation method as it allows you to use `stud update` without needing `sudo`.
 
-1.  **Download the `stud.phar` file:**
-    Download the `stud.phar` file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub.
+1.  **Download the PHAR file:**
+    Download the PHAR file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub. The file will be named something like `stud-3.4.1.phar` (the version number will vary).
 
 2.  **Move it to a user-owned binary directory:**
-    Move the `stud.phar` file to a directory in your user's home directory that is in your shell's `$PATH`. Common locations include:
+    Move the downloaded PHAR file to a directory in your user's home directory that is in your shell's `$PATH`, and rename it to `stud`. Common locations include:
     - `~/.local/bin/` (standard on modern Linux/macOS)
     - `~/bin/` (custom directory)
 
-    Example command:
+    Example command (replace `stud-3.4.1.phar` with the actual filename you downloaded):
     ```bash
-    mv ./stud.phar ~/.local/bin/stud
+    mv ./stud-3.4.1.phar ~/.local/bin/stud
     chmod +x ~/.local/bin/stud
     ```
 
@@ -377,7 +377,8 @@ This is the recommended installation method as it allows you to use `stud update
 If you prefer to install `stud` globally for all users, you can use the traditional method:
 
 ```bash
-sudo mv ./stud.phar /usr/local/bin/stud
+# Replace 'stud-3.4.1.phar' with the actual filename you downloaded
+sudo mv ./stud-3.4.1.phar /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
