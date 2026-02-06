@@ -67,6 +67,18 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 **See also:** [ADR-008: Visibility and Testability Conventions](documentation/adr-008-visibility-and-testability-conventions.md) for detailed rationale and examples.
 
+### Responder Pattern and ViewConfig
+
+All features that display structured data to the console **must** follow the Action–Domain–Responder flow with ViewConfig:
+
+- **Handler:** Pure business logic only; returns a `Response` DTO (no I/O).
+- **Responder:** All presentation logic; uses `PageViewConfig` (with `TableBlock` + `Column` for tables, or `DefinitionItem`, `Section`, `Content` for definition lists and content blocks) to render the Response to console.
+- **Task (castor.php):** Wires Handler → Responder and calls `respond($io, $response)`.
+
+This ensures consistent output behaviour, testability (Handlers are I/O-free), and a single place to change presentation. The only documented exception is `StatusHandler`, which uses a custom dashboard format by explicit decision.
+
+**See also:** [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) for the full ViewConfig inventory, Response/Responder class list, and the requirement that new features use this pattern.
+
 ### Code Quality and Complexity Standards
 
 To maintain code quality and prevent technical debt, all code in `stud-cli` must adhere to the following measurable thresholds. These metrics are enforced through static analysis tools (PHPStan) and manual code review during the development process.

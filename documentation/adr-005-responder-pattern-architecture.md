@@ -79,7 +79,7 @@ The architecture consists of:
 * [x] Create `ResponseInterface` for type safety
 * [x] Refactor handlers to return Response objects instead of handling I/O
 * [x] Create `Responder` classes for each handler type
-* [x] Create `ViewConfig` infrastructure (`TableViewConfig`, `PageViewConfig`)
+* [x] Create `ViewConfig` infrastructure (`PageViewConfig`, `TableBlock`, and supporting value objects)
 * [x] Create supporting value objects (`Column`, `DefinitionItem`, `Section`, `Content`)
 * [x] Update `castor.php` task functions to orchestrate Handler → Responder flow
 * [x] Refactor tests to test pure domain logic (no I/O mocking)
@@ -124,12 +124,16 @@ The architecture consists of:
    ```php
    class ItemListResponder {
        public function respond(SymfonyStyle $io, ItemListResponse $response): void {
-           $config = TableViewConfig::fromResponse($response, [
-               Column::create('key', 'table.key'),
-               Column::create('status', 'table.status'),
-               Column::create('summary', 'table.summary'),
+           $viewConfig = new PageViewConfig([
+               new Section('', [
+                   new TableBlock([
+                       Column::create('key', 'table.key'),
+                       Column::create('status', 'table.status'),
+                       Column::create('summary', 'table.summary'),
+                   ]),
+               ]),
            ]);
-           $this->renderTable($io, $config);
+           $viewConfig->render($response->getData(), $io, $context);
        }
    }
    ```
@@ -140,14 +144,66 @@ The architecture consists of:
 - Implement `ResponseInterface` for type safety
 
 **ViewConfig Infrastructure:**
-- `TableViewConfig`: For tabular data with conditional columns
-- `PageViewConfig`: For page-style output with sections and definition lists
+- `PageViewConfig`: Implements `ViewConfigInterface`; renders sections that can contain definition lists, content blocks, and tables (via `TableBlock`).
+- `TableBlock`: Represents a table inside a section; holds an array of `Column` (property, translation key, formatter, optional visibility condition).
 - Value objects: `Column`, `DefinitionItem`, `Section`, `Content`
 
 **Exception:**
 - `StatusHandler` does not follow Responder pattern (intentionally)
 - It's a simple dashboard (~60 lines) with unique format
 - Refactoring would add complexity without benefit
+
+---
+
+## 7. ViewConfig Approach and Consistent Feature Implementation
+
+### 7.1 Purpose
+
+To ensure **all features that display data** behave in a consistent way, we standardise on the ViewConfig infrastructure. Handlers return Response DTOs; Responders use `PageViewConfig` (with `TableBlock` for tables, or definition lists and content blocks) to render. This section documents the full approach and the requirement that new features use it.
+
+### 7.2 ViewConfig Infrastructure (`src/View/`)
+
+- **ViewConfigInterface:** Contract for rendering DTOs to console output.
+- **PageViewConfig:** The single view config implementation. Renders sections that can contain definition lists, content blocks, and **tables** (via `TableBlock`). Page-style output with sections, optional section titles, and consistent formatting.
+- **TableBlock:** Represents a table content block inside a `PageViewConfig` section. Holds an array of `Column`; supports conditional column visibility and column formatters (callables). Used by all responders that display tabular data.
+- **Supporting value objects:**
+  - **Column:** Table column (property, translation key, formatter, optional visibility condition). Used inside `TableBlock`.
+  - **DefinitionItem:** Definition list item (translation key, value extractor).
+  - **Section:** Groups definition items, content blocks, and `TableBlock`s.
+  - **Content:** Content block with optional formatters.
+
+### 7.3 Response and Responder Inventory
+
+**Response classes** (`src/Response/`): DTOs extending `AbstractResponse`, implementing `ResponseInterface`, with static `success()` / `error()` factories.
+
+| Response class | Use case |
+|----------------|----------|
+| `FilterShowResponse` | Filter show operations |
+| `ItemListResponse` | Item list operations |
+| `ItemShowResponse` | Item show operations |
+| `ProjectListResponse` | Project list operations |
+| `SearchResponse` | Search operations |
+
+**Responder classes** (`src/Responder/`): Consume Response DTOs and `PageViewConfig`, handle errors, empty states, section headers, verbose output. Table data is rendered via `PageViewConfig` sections containing `TableBlock` + `Column`.
+
+| Responder class | Structure | Renders |
+|-----------------|-----------|---------|
+| `FilterShowResponder` | PageViewConfig + TableBlock | Key, Status, Priority (conditional), Description, Jira URL |
+| `ItemListResponder` | PageViewConfig + TableBlock | Key, Status, Summary |
+| `ItemShowResponder` | PageViewConfig (definition lists, content) | Definition lists, formatted description sections |
+| `ProjectListResponder` | PageViewConfig + TableBlock | Key, Name |
+| `SearchResponder` | PageViewConfig + TableBlock | Key, Status, Priority (conditional), Jira URL |
+
+### 7.4 Requirement: New Features Use This Pattern
+
+- **All new commands that display structured data** must follow: Handler → Response DTO → Responder using `PageViewConfig` (with `TableBlock` for tables, or definition lists and content). This keeps output behaviour consistent and testable.
+- **Handlers:** Pure domain logic only; return a Response; no direct I/O.
+- **Responders:** All presentation (sections, errors, tables, formatting) via `PageViewConfig` (and `TableBlock` + `Column` for tables) and the shared responder helpers.
+- **When to deviate:** Only when a command has a one-off, non-tabular/non-page layout (e.g. a custom dashboard like StatusHandler). Document the exception in code and in this ADR. Prefer extending the View infrastructure (e.g. new block types in sections) over adding ad-hoc output.
+
+### 7.5 Documented Exception
+
+- **StatusHandler:** Does not use Response/Responder/ViewConfig. It is a small dashboard combining Jira status, Git branch, and local changes in a unique format. Refactoring to the full pattern would add complexity without clear benefit. No other handlers should follow this exception without explicit decision and ADR update.
 
 ---
 
