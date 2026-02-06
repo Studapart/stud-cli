@@ -157,6 +157,216 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertNull($upstream);
     }
 
+    public function testIsHeadPushedReturnsFalseWhenNoUpstream(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --abbrev-ref @{u} 2>/dev/null')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(false);
+
+        $this->assertFalse($this->gitRepository->isHeadPushed());
+    }
+
+    public function testIsHeadPushedReturnsFalseWhenHeadRevParseFails(): void
+    {
+        $upstreamProcess = $this->createMock(Process::class);
+        $upstreamProcess->expects($this->once())->method('run');
+        $upstreamProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $upstreamProcess->expects($this->once())->method('getOutput')->willReturn('origin/main');
+
+        $headProcess = $this->createMock(Process::class);
+        $headProcess->expects($this->once())->method('run');
+        $headProcess->expects($this->once())->method('isSuccessful')->willReturn(false);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess) {
+                if (str_contains($command, '--abbrev-ref @{u}')) {
+                    return $upstreamProcess;
+                }
+                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                    return $headProcess;
+                }
+
+                throw new \RuntimeException('Unexpected command: ' . $command);
+            });
+
+        $this->assertFalse($this->gitRepository->isHeadPushed());
+    }
+
+    public function testIsHeadPushedReturnsFalseWhenUpstreamRevParseFails(): void
+    {
+        $upstreamProcess = $this->createMock(Process::class);
+        $upstreamProcess->expects($this->once())->method('run');
+        $upstreamProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $upstreamProcess->expects($this->once())->method('getOutput')->willReturn('origin/main');
+
+        $headProcess = $this->createMock(Process::class);
+        $headProcess->expects($this->once())->method('run');
+        $headProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $headProcess->expects($this->never())->method('getOutput');
+
+        $atUProcess = $this->createMock(Process::class);
+        $atUProcess->expects($this->once())->method('run');
+        $atUProcess->expects($this->once())->method('isSuccessful')->willReturn(false);
+
+        $this->processFactory->expects($this->exactly(3))
+            ->method('create')
+            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (str_contains($command, '--abbrev-ref @{u}')) {
+                    return $upstreamProcess;
+                }
+                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                    return $headProcess;
+                }
+                if (str_contains($command, 'rev-parse @{u}')) {
+                    return $atUProcess;
+                }
+
+                throw new \RuntimeException('Unexpected command: ' . $command);
+            });
+
+        $this->assertFalse($this->gitRepository->isHeadPushed());
+    }
+
+    public function testIsHeadPushedReturnsTrueWhenHeadEqualsUpstream(): void
+    {
+        $sameSha = 'abc123def456';
+
+        $upstreamProcess = $this->createMock(Process::class);
+        $upstreamProcess->expects($this->once())->method('run');
+        $upstreamProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $upstreamProcess->expects($this->once())->method('getOutput')->willReturn('origin/main');
+
+        $headProcess = $this->createMock(Process::class);
+        $headProcess->expects($this->once())->method('run');
+        $headProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $headProcess->expects($this->once())->method('getOutput')->willReturn($sameSha);
+
+        $atUProcess = $this->createMock(Process::class);
+        $atUProcess->expects($this->once())->method('run');
+        $atUProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $atUProcess->expects($this->once())->method('getOutput')->willReturn($sameSha);
+
+        $this->processFactory->expects($this->exactly(3))
+            ->method('create')
+            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (str_contains($command, '--abbrev-ref @{u}')) {
+                    return $upstreamProcess;
+                }
+                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                    return $headProcess;
+                }
+                if (str_contains($command, 'rev-parse @{u}')) {
+                    return $atUProcess;
+                }
+
+                throw new \RuntimeException('Unexpected command: ' . $command);
+            });
+
+        $this->assertTrue($this->gitRepository->isHeadPushed());
+    }
+
+    public function testIsHeadPushedReturnsFalseWhenHeadDiffersFromUpstream(): void
+    {
+        $upstreamProcess = $this->createMock(Process::class);
+        $upstreamProcess->expects($this->once())->method('run');
+        $upstreamProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $upstreamProcess->expects($this->once())->method('getOutput')->willReturn('origin/main');
+
+        $headProcess = $this->createMock(Process::class);
+        $headProcess->expects($this->once())->method('run');
+        $headProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $headProcess->expects($this->once())->method('getOutput')->willReturn('abc123');
+
+        $atUProcess = $this->createMock(Process::class);
+        $atUProcess->expects($this->once())->method('run');
+        $atUProcess->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $atUProcess->expects($this->once())->method('getOutput')->willReturn('def456');
+
+        $this->processFactory->expects($this->exactly(3))
+            ->method('create')
+            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (str_contains($command, '--abbrev-ref @{u}')) {
+                    return $upstreamProcess;
+                }
+                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                    return $headProcess;
+                }
+                if (str_contains($command, 'rev-parse @{u}')) {
+                    return $atUProcess;
+                }
+
+                throw new \RuntimeException('Unexpected command: ' . $command);
+            });
+
+        $this->assertFalse($this->gitRepository->isHeadPushed());
+    }
+
+    public function testHasAtLeastOneCommitReturnsTrueWhenHeadExists(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->expects($this->once())->method('isSuccessful')->willReturn(true);
+
+        $this->assertTrue($this->gitRepository->hasAtLeastOneCommit());
+    }
+
+    public function testHasAtLeastOneCommitReturnsFalseWhenNoCommits(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->expects($this->once())->method('isSuccessful')->willReturn(false);
+
+        $this->assertFalse($this->gitRepository->hasAtLeastOneCommit());
+    }
+
+    public function testUndoLastCommitRunsReset(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git reset HEAD~1')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('mustRun');
+
+        $this->gitRepository->undoLastCommit();
+    }
+
+    public function testUndoLastCommitThrowsWhenResetFails(): void
+    {
+        $this->expectException(\App\Exception\GitException::class);
+
+        $process = $this->createMock(Process::class);
+        $process->expects($this->once())->method('mustRun')
+            ->willThrowException(new \Symfony\Component\Process\Exception\ProcessFailedException($process));
+
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git reset HEAD~1')
+            ->willReturn($process);
+
+        $this->gitRepository->undoLastCommit();
+    }
+
     public function testForcePushWithLease(): void
     {
         $process = $this->createMock(Process::class);

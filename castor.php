@@ -1229,6 +1229,22 @@ function please(
     $handler->handle(io());
 }
 
+#[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
+function commit_undo(
+    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
+    bool $help = false
+): void {
+    _load_constants();
+    if ($help) {
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService->displayCommandHelp(io(), 'commit:undo');
+
+        return;
+    }
+    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
+    exit($handler->handle(io()));
+}
+
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
 function flatten(
 
@@ -1343,6 +1359,7 @@ function help(
             'to' => 'items:takeover',
             'rn' => 'branch:rename',
             'co' => 'commit',
+            'undo' => 'commit:undo',
             'pl' => 'please',
             'su' => 'submit',
             'pc' => 'pr:comment',
@@ -1491,6 +1508,11 @@ function help(
                 'name' => 'commit',
                 'alias' => 'co',
                 'description' => $translator->trans('help.command_commit'),
+            ],
+            [
+                'name' => 'commit:undo',
+                'alias' => 'undo',
+                'description' => $translator->trans('help.command_commit_undo'),
             ],
             [
                 'name' => 'please',

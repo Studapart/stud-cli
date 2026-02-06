@@ -760,6 +760,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud pl
         ```
 
+-   **`stud commit:undo`** (Alias: `stud undo`)
+    -   **Description:** Removes the last commit and keeps its changes in the working tree (unstaged). Equivalent to `git reset HEAD~1` (mixed). If the last commit is already pushed to the remote, the command warns and asks for confirmation, since undoing would require a force-push to update the remote. After undoing in that case, you can run `stud please` to safely force-push.
+    -   **Usage:**
+        ```bash
+        stud commit:undo
+        stud undo
+        ```
+    -   **Note:** If the last commit is already pushed, the command will either refuse or prompt for confirmation. The message will mention that you can use `stud please` to force-push after undoing.
+
 -   **`stud flatten`** (Alias: `stud ft`)
     -   **Description:** Automatically squash all `fixup!` and `squash!` commits into their target commits. This command performs a non-interactive rebase with autosquash, eliminating the need to manually edit the interactive rebase file. The command will fail if there are uncommitted changes in the working directory, and will warn that history will be rewritten (requiring a `stud please` push afterward).
     -   **Usage:**

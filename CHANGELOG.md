@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud commit:undo` command (alias `stud undo`) to remove the last commit and keep changes unstaged [SCI-54]
+  - Equivalent to `git reset HEAD~1` (mixed). When the last commit is already pushed, the command warns and prompts for confirmation; message mentions using `stud please` to force-push after undoing. Documented in README and command help.
 - Add `stud config:validate` command to validate configuration and connectivity to Jira and Git provider [SCI-53]
   - New command checks that config is loadable and performs one lightweight read to Jira and one to the configured Git provider
   - Displays per-component result: Jira: OK / Fail (reason) / Skipped, Git provider: OK / Fail (reason) / Skipped
