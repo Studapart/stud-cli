@@ -374,6 +374,23 @@ stud config:show
 
 **Note:** This command works even when no configuration file exists yet (it will show a clear message). Output is safe for sharing—no credentials are ever displayed.
 
+#### `stud config:validate`
+
+**Description:** Validates that your configuration file is present and that Jira and the configured Git provider are reachable with your credentials. It performs one lightweight read to Jira (e.g. project list) and one to the Git provider (e.g. labels). Use it after `config:init` to verify setup, to debug connectivity or token issues, or as a health check in CI or scripts. The command is read-only and does not modify any data.
+
+**Options:**
+- `--skip-jira`: Skip the Jira connectivity check. Use when only Git is configured (e.g. CI with Git only).
+- `--skip-git`: Skip the Git provider connectivity check. Use when only Jira is configured.
+
+**Usage:**
+```bash
+stud config:validate
+stud config:validate --skip-jira
+stud config:validate --skip-git
+```
+
+**Output:** Displays a short result per component: **Jira: OK** / **Jira: Fail (reason)** / **Jira: Skipped**, and **Git provider: OK** / **Git provider: Fail (reason)** / **Git provider: Skipped**. If the configuration file is missing or invalid, the command fails with a clear message (no silent success).
+
 #### `stud completion <shell>`
 
 **Description:** Generates shell completion scripts for bash or zsh. This command is used to set up auto-completion for all `stud-cli` commands, including aliases like `init` (for `config:init`).

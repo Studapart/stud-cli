@@ -23,6 +23,7 @@ use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\ConfigShowHandler;
+use App\Handler\ConfigValidateHandler;
 use App\Handler\DeployHandler;
 use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
@@ -42,6 +43,7 @@ use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
 use App\Responder\ConfigShowResponder;
+use App\Responder\ConfigValidateResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemListResponder;
@@ -956,6 +958,47 @@ function config_show(): void
     $responder->respond(io(), $response);
 }
 
+#[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]
+function config_validate(
+    #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
+    bool $skipJira = false,
+    #[AsOption(name: 'skip-git', description: 'Skip the Git provider connectivity check')]
+    bool $skipGit = false,
+): void {
+    _load_constants();
+    _get_config();
+
+    $jiraService = $skipJira ? null : _get_jira_service();
+    $gitProvider = null;
+    $skipGitForHandler = $skipGit;
+
+    if (! $skipGit) {
+        try {
+            $gitRepository = _get_git_repository();
+            $gitRepository->getProjectConfigPath();
+        } catch (\RuntimeException) {
+            $skipGitForHandler = true;
+        }
+        if (! $skipGitForHandler) {
+            $gitProvider = _get_git_provider();
+            if ($gitProvider === null) {
+                $translator = _get_translation_service();
+                io()->error($translator->trans('config.git_provider_not_configured'));
+                exit(1);
+            }
+        }
+    }
+
+    $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
+    $response = $handler->handle();
+    $responder = new ConfigValidateResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
+
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
+}
+
 // =================================================================================
 // "Noun" Commands (Jira Info)
 // =================================================================================
@@ -1360,6 +1403,14 @@ function help(
                 'name' => 'config:init',
                 'alias' => 'init',
                 'description' => $translator->trans('help.command_config_init'),
+            ],
+            [
+                'name' => 'config:show',
+                'description' => $translator->trans('help.command_config_show'),
+            ],
+            [
+                'name' => 'config:validate',
+                'description' => $translator->trans('help.command_config_validate'),
             ],
             [
                 'name' => 'completion',

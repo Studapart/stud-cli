@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud config:validate` command to validate configuration and connectivity to Jira and Git provider [SCI-53]
+  - New command checks that config is loadable and performs one lightweight read to Jira and one to the configured Git provider
+  - Displays per-component result: Jira: OK / Fail (reason) / Skipped, Git provider: OK / Fail (reason) / Skipped
+  - Options `--skip-jira` and `--skip-git` allow partial checks (e.g. CI with only Git configured)
+  - Fails with a clear message when config is missing or invalid; documented in README and command help
 - Add `stud config:show` command to display current configuration (global and project) with secrets redacted [SCI-52]
   - New command shows global config from `~/.config/stud/config.yml` and, when inside a git repo, project config from `.git/stud.config`
   - All secret keys (e.g. JIRA_API_TOKEN, GITHUB_TOKEN, GITLAB_TOKEN) and any key whose name contains TOKEN, PASSWORD, or SECRET are redacted as `*** REDACTED ***`

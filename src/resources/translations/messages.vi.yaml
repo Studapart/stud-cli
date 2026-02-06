@@ -38,6 +38,13 @@ config:
     section_global: "Cấu hình toàn cục"
     section_project: "Cấu hình dự án"
     no_config_found: "Không tìm thấy tệp cấu hình. Chạy 'stud config:init' để tạo. Đầu ra an toàn để chia sẻ (bí mật được ẩn)."
+  validate:
+    section_title: "Xác thực cấu hình"
+    label_jira: "Jira"
+    label_git_provider: "Nhà cung cấp Git"
+    status_ok: "OK"
+    status_fail: "Lỗi"
+    status_skipped: "Đã bỏ qua"
   error:
     not_found: 'Không tìm thấy tệp cấu hình tại: %path%
 
@@ -468,6 +475,8 @@ help:
   category_release_commands: Lệnh Phát hành
   example_prefix: 'Ví dụ: %example%'
   command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
+  command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
+  command_config_validate: "Xác thực rằng cấu hình có mặt và Jira cùng nhà cung cấp Git có thể truy cập. Dùng --skip-jira hoặc --skip-git để kiểm tra từng phần."
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).

@@ -38,6 +38,13 @@ config:
     section_global: "Configuración global"
     section_project: "Configuración del proyecto"
     no_config_found: "No se encontró archivo de configuración. Ejecute 'stud config:init' para crear uno. La salida es segura para compartir (los secretos están ocultos)."
+  validate:
+    section_title: "Validación de configuración"
+    label_jira: "Jira"
+    label_git_provider: "Proveedor Git"
+    status_ok: "OK"
+    status_fail: "Fallo"
+    status_skipped: "Omitido"
   error:
     not_found: 'Archivo de configuración no encontrado en: %path%
 
@@ -468,6 +475,8 @@ help:
   category_release_commands: Comandos de Release
   example_prefix: 'Ejemplo: %example%'
   command_config_init: Asistente interactivo para configurar los detalles de conexión de Jira y Git.
+  command_config_show: "Mostrar la configuración actual (global y proyecto) con secretos ocultos; seguro para compartir."
+  command_config_validate: "Validar que la configuración está presente y que Jira y el proveedor Git son accesibles. Use --skip-jira o --skip-git para comprobaciones parciales."
   command_completion: Genera scripts de auto-completado para bash o zsh.
   command_projects_list: Lista todos los proyectos de Jira visibles.
   command_items_list: Lista elementos de trabajo activos (su panel de control).
