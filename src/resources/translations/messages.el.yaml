@@ -38,6 +38,13 @@ config:
     section_global: "Καθολική ρύθμιση"
     section_project: "Ρύθμιση έργου"
     no_config_found: "Δεν βρέθηκε αρχείο ρυθμίσεων. Εκτελέστε 'stud config:init' για δημιουργία. Η έξοδος είναι ασφαλής για κοινοποίηση (τα μυστικά αποκρύπτονται)."
+  validate:
+    section_title: "Επικύρωση ρυθμίσεων"
+    label_jira: "Jira"
+    label_git_provider: "Πάροχος Git"
+    status_ok: "OK"
+    status_fail: "Αποτυχία"
+    status_skipped: "Παραλείφθηκε"
   error:
     not_found: 'Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%
 
@@ -468,6 +475,8 @@ help:
   category_release_commands: Εντολές Release
   example_prefix: 'Παράδειγμα: %example%'
   command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
+  command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
+  command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).

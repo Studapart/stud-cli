@@ -38,6 +38,13 @@ config:
     section_global: "Globale configuratie"
     section_project: "Projectconfiguratie"
     no_config_found: "Geen configuratiebestand gevonden. Voer 'stud config:init' uit om er een aan te maken. Output is veilig te delen (geheimen zijn geredigeerd)."
+  validate:
+    section_title: "Configuratievalidatie"
+    label_jira: "Jira"
+    label_git_provider: "Git-provider"
+    status_ok: "OK"
+    status_fail: "Mislukt"
+    status_skipped: "Overgeslagen"
   error:
     not_found: 'Configuratiebestand niet gevonden op: %path%
 
@@ -510,6 +517,8 @@ help:
   category_release_commands: Release Commando's
   example_prefix: 'Voorbeeld: %example%'
   command_config_init: Interactieve wizard om Jira & Git verbindingsdetails in te stellen.
+  command_config_show: "Toon huidige configuratie (globaal en project) met geredigeerde geheimen; veilig om te delen."
+  command_config_validate: "Valideer dat configuratie aanwezig is en dat Jira en de Git-provider bereikbaar zijn. Gebruik --skip-jira of --skip-git voor gedeeltelijke controles."
   command_completion: Genereert shell auto-aanvulling scripts voor bash of zsh.
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).

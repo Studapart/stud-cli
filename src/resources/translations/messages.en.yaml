@@ -39,6 +39,13 @@ config:
     section_global: "Global configuration"
     section_project: "Project configuration"
     no_config_found: "No configuration file found. Run 'stud config:init' to create one. Output is safe for sharing (secrets are redacted)."
+  validate:
+    section_title: "Configuration validation"
+    label_jira: "Jira"
+    label_git_provider: "Git provider"
+    status_ok: "OK"
+    status_fail: "Fail"
+    status_skipped: "Skipped"
   error:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
@@ -479,6 +486,8 @@ help:
   category_release_commands: "Release Commands"
   example_prefix: "Example: %example%"
   command_config_init: "Interactive wizard to set up Jira & Git connection details."
+  command_config_show: "Display current configuration (global and project) with secrets redacted; safe for sharing."
+  command_config_validate: "Validate that configuration is present and that Jira and the Git provider are reachable. Use --skip-jira or --skip-git to run partial checks."
   command_completion: "Generates shell completion scripts for bash or zsh."
   command_projects_list: "Lists all visible Jira projects."
   command_items_list: "Lists active work items (your dashboard)."
