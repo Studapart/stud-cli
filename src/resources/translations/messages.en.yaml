@@ -35,6 +35,10 @@ config:
       zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
       reload_instruction: "Then, restart your shell or run 'source ~/.%shellrc%'"
       skipped: "Shell auto-completion setup skipped."
+  show:
+    section_global: "Global configuration"
+    section_project: "Project configuration"
+    no_config_found: "No configuration file found. Run 'stud config:init' to create one. Output is safe for sharing (secrets are redacted)."
   error:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."

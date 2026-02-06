@@ -34,6 +34,10 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Sau đó, khởi động lại shell của bạn hoặc chạy 'source ~/.%shellrc%'
       skipped: Thiết lập tự động hoàn thành shell đã bị bỏ qua.
+  show:
+    section_global: "Cấu hình toàn cục"
+    section_project: "Cấu hình dự án"
+    no_config_found: "Không tìm thấy tệp cấu hình. Chạy 'stud config:init' để tạo. Đầu ra an toàn để chia sẻ (bí mật được ẩn)."
   error:
     not_found: 'Không tìm thấy tệp cấu hình tại: %path%
 

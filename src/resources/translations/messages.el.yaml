@@ -34,6 +34,10 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Στη συνέχεια, κάντε επανεκκίνηση του shell σας ή εκτελέστε 'source ~/.%shellrc%'
       skipped: Η ρύθμιση αυτόματης συμπλήρωσης shell παραλείφθηκε.
+  show:
+    section_global: "Καθολική ρύθμιση"
+    section_project: "Ρύθμιση έργου"
+    no_config_found: "Δεν βρέθηκε αρχείο ρυθμίσεων. Εκτελέστε 'stud config:init' για δημιουργία. Η έξοδος είναι ασφαλής για κοινοποίηση (τα μυστικά αποκρύπτονται)."
   error:
     not_found: 'Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%
 

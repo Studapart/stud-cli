@@ -34,6 +34,10 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Ensuite, redémarrez votre shell ou exécutez 'source ~/.%shellrc%'
       skipped: Configuration de l'auto-complétion du shell ignorée.
+  show:
+    section_global: "Configuration globale"
+    section_project: "Configuration du projet"
+    no_config_found: "Aucun fichier de configuration trouvé. Exécutez 'stud config:init' pour en créer un. La sortie est sûre à partager (les secrets sont masqués)."
   error:
     not_found: 'Fichier de configuration introuvable à : %path%
 

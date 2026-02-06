@@ -34,6 +34,10 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Затем перезапустите оболочку или выполните 'source ~/.%shellrc%'
       skipped: Настройка автодополнения оболочки пропущена.
+  show:
+    section_global: "Глобальная конфигурация"
+    section_project: "Конфигурация проекта"
+    no_config_found: "Файл конфигурации не найден. Запустите 'stud config:init' для создания. Вывод безопасен для обмена (секреты скрыты)."
   error:
     not_found: 'Файл конфигурации не найден по адресу: %path%
 
