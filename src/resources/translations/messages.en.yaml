@@ -224,6 +224,14 @@ please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
 
+# Commit Undo Handler
+commit_undo:
+  error_not_repo: "Not in a git repository."
+  error_no_commit: "There is no commit to undo."
+  warning_pushed: "The last commit is already pushed to the remote. Undoing would require a force-push to update the remote. After undoing, you can run 'stud please' to safely force-push."
+  confirm_continue: "Continue? [y/N]"
+  success: "Last commit removed. Changes are left unstaged in your working tree."
+
 # Flatten Handler
 flatten:
   section: "Flattening fixup commits"
@@ -500,6 +508,7 @@ help:
   command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
   command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
   command_commit: "Guides you through making a conventional commit."
+  command_commit_undo: "Removes the last commit and keeps changes unstaged. Refuses or prompts when the last commit is already pushed; use 'stud please' to force-push after undoing."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."

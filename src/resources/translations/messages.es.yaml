@@ -213,6 +213,12 @@ please:
 
     Para el push inicial y para crear una Pull Request, por favor use "stud submit".'
   warning_force: ⚠️  Forzando con lease...
+commit_undo:
+  error_not_repo: No está en un repositorio git.
+  error_no_commit: No hay commit que deshacer.
+  warning_pushed: "El último commit ya está en el remoto. Deshacer requeriría un force-push. Después puede ejecutar 'stud please' para force-push de forma segura."
+  confirm_continue: "¿Continuar? [y/N]"
+  success: Último commit eliminado. Los cambios quedan sin preparar en su árbol de trabajo.
 flatten:
   section: Aplanando commits fixup
   error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de aplanar.
@@ -489,6 +495,7 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Le guía a través de la creación de un commit convencional.
+  command_commit_undo: "Elimina el último commit y deja los cambios sin preparar. Avisa o pide confirmación si ya está pusheado; use 'stud please' para force-push después."
   command_please: Un force-push seguro para usuario avanzado (force-with-lease).
   command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.

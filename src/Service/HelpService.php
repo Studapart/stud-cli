@@ -21,6 +21,7 @@ class HelpService
         'filters:show' => 'stud filters:show',
         'branch:rename' => 'stud branch:rename',
         'commit' => 'stud commit',
+        'commit:undo' => 'stud commit:undo',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
         'cache:clear' => 'stud cache:clear',
