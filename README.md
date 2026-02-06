@@ -927,4 +927,4 @@ These commands help you manage the release process.
 
 ---
 
-Feel free to contribute or suggest improvements!
+See [CONTRIBUTING](CONTRIBUTING.md) for how to contribute, and [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for community standards.

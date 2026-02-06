@@ -1,0 +1,9 @@
+# Issue template chooser for stud-cli
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/studapart/stud-cli/discussions
+    about: Ask questions or discuss ideas
