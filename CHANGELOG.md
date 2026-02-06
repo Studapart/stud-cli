@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `stud config:show` command to display current configuration (global and project) with secrets redacted [SCI-52]
+  - New command shows global config from `~/.config/stud/config.yml` and, when inside a git repo, project config from `.git/stud.config`
+  - All secret keys (e.g. JIRA_API_TOKEN, GITHUB_TOKEN, GITLAB_TOKEN) and any key whose name contains TOKEN, PASSWORD, or SECRET are redacted as `*** REDACTED ***`
+  - URLs with query strings are redacted to avoid leaking tokens; output is safe for sharing with support
+  - Command works without an existing config file (whitelisted); documented in README and help
+
 ## [3.4.1] - 2026-02-04
 
 ### Fixed

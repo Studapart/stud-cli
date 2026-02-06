@@ -22,6 +22,7 @@ use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
+use App\Handler\ConfigShowHandler;
 use App\Handler\DeployHandler;
 use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
@@ -40,6 +41,7 @@ use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\ConfigShowResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemListResponder;
@@ -603,6 +605,7 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without config
     $whitelistedCommands = [
         'config:init',
+        'config:show',
         'init', // alias
         'help',
         'main', // default command
@@ -749,6 +752,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without config pass
     $whitelistedCommands = [
         'config:init',
+        'config:show',
         'init', // alias
         'help',
         'main', // default command
@@ -928,6 +932,28 @@ function config_init(): void
     _load_constants();
     $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
+}
+
+#[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
+function config_show(): void
+{
+    _load_constants();
+    $gitRepository = null;
+
+    try {
+        $gitRepository = _get_git_repository();
+    } catch (\RuntimeException) {
+        // Not in a git repository
+    }
+    $handler = new ConfigShowHandler(_get_file_system(), _get_config_path(), $gitRepository);
+    $response = $handler->handle();
+    if (! $response->isSuccess()) {
+        $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+        $responder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 // =================================================================================

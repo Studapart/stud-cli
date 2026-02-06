@@ -363,6 +363,17 @@ stud config:init
 stud init
 ```
 
+#### `stud config:show`
+
+**Description:** Displays your current configuration (global and, when run inside a git repository, project configuration from `.git/stud.config`). All secret keys (tokens, passwords, and keys whose names contain TOKEN, PASSWORD, or SECRET) are redacted with a fixed placeholder, so the output is **safe to share** with support or for debugging. Use this to verify your setup or to troubleshoot configuration issues.
+
+**Usage:**
+```bash
+stud config:show
+```
+
+**Note:** This command works even when no configuration file exists yet (it will show a clear message). Output is safe for sharing—no credentials are ever displayed.
+
 #### `stud completion <shell>`
 
 **Description:** Generates shell completion scripts for bash or zsh. This command is used to set up auto-completion for all `stud-cli` commands, including aliases like `init` (for `config:init`).
