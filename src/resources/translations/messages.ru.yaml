@@ -298,6 +298,23 @@ pr:
     success: '✅ Комментарий успешно опубликован в Pull Request #%number%'
     using_stdin: Чтение комментария из STDIN...
     using_argument: Использование комментария из аргумента...
+  comments:
+    section: 'Комментарии PR #%number%'
+    error_no_provider: Провайдер Git не настроен для этого проекта.
+    error_no_pr: PR/MR для текущей ветки не найдена.
+    error_fetch: 'Ошибка получения комментариев PR.
+
+      Ошибка: %error%'
+    issue_comments: Комментарии к issue
+    reviews: Ревью
+    review_comments: Комментарии ревью
+    no_comments: Нет комментариев
+    table:
+      author: Автор
+      date: Дата
+      body: Текст
+      path: Файл
+      line: Строка
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
   command_submit: Отправляет текущую ветку и создает Pull Request.
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
+  command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
   command_status: Быстрая панель управления "где я?".
   command_release: Создает новую ветку релиза и увеличивает версию.
   command_deploy: Развертывает текущую ветку релиза.

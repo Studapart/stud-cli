@@ -298,6 +298,23 @@ pr:
     success: '✅ Commentaar succesvol geplaatst op Pull Request #%number%'
     using_stdin: Commentaar lezen van STDIN...
     using_argument: Commentaar gebruiken van argument...
+  comments:
+    section: 'PR #%number% commentaren'
+    error_no_provider: Geen Git provider geconfigureerd voor dit project.
+    error_no_pr: Geen PR/MR gevonden voor de huidige branch.
+    error_fetch: 'Fout bij ophalen van PR-commentaren.
+
+      Fout: %error%'
+    issue_comments: Issuecommentaren
+    reviews: Beoordelingen
+    review_comments: Beoordelingscommentaren
+    no_comments: Geen commentaren
+    table:
+      author: Auteur
+      date: Datum
+      body: Inhoud
+      path: Bestand
+      line: Regel
 branch:
   rename:
     section: Renaming branch
@@ -543,6 +560,7 @@ help:
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
   command_submit: Pusht de huidige tak en maakt een Pull Request.
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
+  command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
   command_status: Een snelle "waar ben ik?" dashboard.
   command_release: Maakt een nieuwe release tak en verhoogt de versie.
   command_deploy: Deployt de huidige release tak.

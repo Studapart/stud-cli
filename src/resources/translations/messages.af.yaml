@@ -298,6 +298,23 @@ pr:
     success: '✅ Kommentaar suksesvol geplaas op Pull Request #%number%'
     using_stdin: Lees kommentaar van STDIN...
     using_argument: Gebruik kommentaar van argument...
+  comments:
+    section: 'PR #%number% kommentare'
+    error_no_provider: Geen Git verskaffer gekonfigureer vir hierdie projek nie.
+    error_no_pr: Geen PR/MR vir die huidige tak gevind nie.
+    error_fetch: 'Kon nie PR-kommentare ophaal nie.
+
+      Fout: %error%'
+    issue_comments: Issue-kommentare
+    reviews: Oorsigte
+    review_comments: Oorsigkommentare
+    no_comments: Geen kommentare
+    table:
+      author: Outeur
+      date: Datum
+      body: Inhoud
+      path: Lêer
+      line: Reël
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.
   command_submit: Stuur die huidige tak en skep 'n Pull Request.
   command_pr_comment: Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument.
+  command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit.
   command_status: '''n Vinnige "waar is ek?" dashboard.'
   command_release: Skep 'n nuwe vrystelling tak en verhoog die weergawe.
   command_deploy: Deploy die huidige vrystelling tak.

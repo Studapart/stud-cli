@@ -298,6 +298,23 @@ pr:
     success: '✅ Comentario publicado exitosamente en Pull Request #%number%'
     using_stdin: Leyendo comentario desde STDIN...
     using_argument: Usando comentario desde argumento...
+  comments:
+    section: 'Comentarios de la PR #%number%'
+    error_no_provider: No hay proveedor Git configurado para este proyecto.
+    error_no_pr: No se encontró PR/MR para la rama actual.
+    error_fetch: 'Error al obtener comentarios de la PR.
+
+      Error: %error%'
+    issue_comments: Comentarios de la issue
+    reviews: Revisiones
+    review_comments: Comentarios de revisión
+    no_comments: Sin comentarios
+    table:
+      author: Autor
+      date: Fecha
+      body: Cuerpo
+      path: Archivo
+      line: Línea
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
   command_submit: Envía la rama actual y crea una Pull Request.
   command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
+  command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual.
   command_status: Un panel de control rápido "¿dónde estoy?".
   command_release: Crea una nueva rama de release y aumenta la versión.
   command_deploy: Despliega la rama de release actual.

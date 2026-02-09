@@ -33,6 +33,9 @@ class PrCommentHandler
 
         // Get comment body with precedence: STDIN first, then argument
         $commentBody = $this->getCommentBody($message);
+        if ($commentBody !== null) {
+            $commentBody = $this->unescapeCheckboxMarkdown($commentBody);
+        }
 
         if (empty($commentBody)) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_input'));
@@ -137,6 +140,15 @@ class PrCommentHandler
         // @codeCoverageIgnoreStart
         return '';
         // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * Unescapes backslash-bracket sequences so GitHub/GitLab task list checkboxes render correctly.
+     * Content from scripts or tools often escapes [ ] as \[ \] or \[\], which would break checkboxes.
+     */
+    protected function unescapeCheckboxMarkdown(string $body): string
+    {
+        return str_replace(['\]', '\['], [']', '['], $body);
     }
 
     /**

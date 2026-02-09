@@ -298,6 +298,23 @@ pr:
     success: '✅ Commentaire publié avec succès sur la Pull Request #%number%'
     using_stdin: Lecture du commentaire depuis STDIN...
     using_argument: Utilisation du commentaire depuis l'argument...
+  comments:
+    section: 'Commentaires de la PR #%number%'
+    error_no_provider: Aucun fournisseur Git configuré pour ce projet.
+    error_no_pr: Aucune PR/MR trouvée pour la branche actuelle.
+    error_fetch: 'Échec de la récupération des commentaires de la PR.
+
+      Erreur : %error%'
+    issue_comments: Commentaires sur la PR
+    reviews: Revues
+    review_comments: Commentaires de revue
+    no_comments: Aucun commentaire
+    table:
+      author: Auteur
+      date: Date
+      body: Corps
+      path: Fichier
+      line: Ligne
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
   command_submit: Pousse la branche actuelle et crée une Pull Request.
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
+  command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
   command_status: Un tableau de bord rapide "où suis-je ?".
   command_release: Crée une nouvelle branche de release et incrémente la version.
   command_deploy: Déploie la branche de release actuelle.

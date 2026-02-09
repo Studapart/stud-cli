@@ -28,6 +28,7 @@ class HelpService
         'status' => 'stud status',
         'submit' => 'stud submit',
         'pr:comment' => 'stud pr:comment',
+        'pr:comments' => 'stud pr:comments',
         'update' => 'stud update',
         'release' => 'stud release',
         'deploy' => 'stud deploy',
@@ -307,6 +308,12 @@ class HelpService
                 'description_key' => 'help.command_pr_comment',
                 'options' => [],
                 'arguments' => ['<message>'],
+            ],
+            'pr:comments' => [
+                'alias' => 'pcs',
+                'description_key' => 'help.command_pr_comments',
+                'options' => [],
+                'arguments' => [],
             ],
             'update' => [
                 'alias' => 'up',

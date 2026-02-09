@@ -298,6 +298,23 @@ pr:
     success: '✅ Bình luận đã được đăng thành công trên Pull Request #%number%'
     using_stdin: Đang đọc bình luận từ STDIN...
     using_argument: Đang sử dụng bình luận từ đối số...
+  comments:
+    section: 'Bình luận PR #%number%'
+    error_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.
+    error_no_pr: Không tìm thấy PR/MR cho nhánh hiện tại.
+    error_fetch: 'Không thể tải bình luận PR.
+
+      Lỗi: %error%'
+    issue_comments: Bình luận issue
+    reviews: Đánh giá
+    review_comments: Bình luận đánh giá
+    no_comments: Không có bình luận
+    table:
+      author: Tác giả
+      date: Ngày
+      body: Nội dung
+      path: Tệp
+      line: Dòng
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
   command_submit: Đẩy nhánh hiện tại và tạo Pull Request.
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
+  command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
   command_release: Tạo nhánh phát hành mới và tăng phiên bản.
   command_deploy: Triển khai nhánh phát hành hiện tại.

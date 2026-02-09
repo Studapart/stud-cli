@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
@@ -378,6 +379,125 @@ class GitLabProvider implements GitProviderInterface
         }
 
         return false;
+    }
+
+    private const COMMENTS_PAGE_SIZE = 50;
+    private const COMMENTS_MAX_PAGES = 1;
+
+    /**
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestComments(int $issueNumber): array
+    {
+        $iid = $this->getIidFromNumber($issueNumber);
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/notes";
+        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'order_by' => 'created_at', 'sort' => 'desc']);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->getClient()->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
+
+            throw new ApiException(
+                "Failed to get comments for merge request #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $comments = [];
+        $count = 0;
+        foreach ($data as $row) {
+            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                // Pagination cap for notes
+                // @codeCoverageIgnoreStart
+                break;
+                // @codeCoverageIgnoreEnd
+            }
+            $comments[] = $this->mapNoteToDto($row);
+            ++$count;
+        }
+
+        return array_reverse($comments);
+    }
+
+    /**
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviewComments(int $pullNumber): array
+    {
+        $iid = $this->getIidFromNumber($pullNumber);
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/discussions";
+        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->getClient()->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
+
+            throw new ApiException(
+                "Failed to get review comments for merge request #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $discussions = $response->toArray();
+        $comments = [];
+        $count = 0;
+        foreach ($discussions as $discussion) {
+            // Pagination cap for discussions
+            // @codeCoverageIgnoreStart
+            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                break;
+            }
+            // @codeCoverageIgnoreEnd
+            $position = $discussion['position'] ?? null;
+            if (! is_array($position)) {
+                continue;
+            }
+            $path = isset($position['new_path']) ? (string) $position['new_path'] : (isset($position['old_path']) ? (string) $position['old_path'] : null);
+            $line = isset($position['new_line']) ? (int) $position['new_line'] : (isset($position['old_line']) ? (int) $position['old_line'] : null);
+            $notes = $discussion['notes'] ?? [];
+            foreach ($notes as $note) {
+                if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                    // Inner pagination cap
+                    // @codeCoverageIgnoreStart
+                    break;
+                    // @codeCoverageIgnoreEnd
+                }
+                $comments[] = $this->mapNoteToDto($note, $path, $line);
+                ++$count;
+            }
+        }
+
+        return array_reverse($comments);
+    }
+
+    /**
+     * GitLab has no direct equivalent to GitHub's pull request reviews (review body). Returns empty array.
+     *
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviews(int $pullNumber): array
+    {
+        return [];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    protected function mapNoteToDto(array $row, ?string $path = null, ?int $line = null): PullRequestComment
+    {
+        $authorData = $row['author'] ?? [];
+        $author = is_array($authorData) && isset($authorData['username']) ? (string) $authorData['username'] : 'unknown';
+        $createdAt = isset($row['created_at']) ? new \DateTimeImmutable((string) $row['created_at']) : new \DateTimeImmutable();
+        $body = isset($row['body']) ? (string) $row['body'] : '';
+
+        return new PullRequestComment($author, $createdAt, $body, $path, $line);
     }
 
     /**

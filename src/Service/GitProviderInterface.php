@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 
 /**
@@ -89,4 +90,28 @@ interface GitProviderInterface
      * @return array<int, array<string, mixed>> Array of PR data arrays
      */
     public function getAllPullRequests(string $state = 'all'): array;
+
+    /**
+     * Fetches issue-level comments for a pull request (GitHub: issue comments; GitLab: MR notes).
+     * Results may be capped (e.g. last 50) to limit output and respect rate limits.
+     *
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestComments(int $issueNumber): array;
+
+    /**
+     * Fetches review/inline comments for a pull request (GitHub: pull request review comments; GitLab: MR discussion threads with position).
+     * Results may be capped (e.g. last 50). Includes path/line when provided by the API.
+     *
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviewComments(int $pullNumber): array;
+
+    /**
+     * Fetches PR review bodies (GitHub: pull request reviews with body, e.g. "Request changes" / "Comment"; GitLab: no direct equivalent, returns empty).
+     * Distinct from inline review comments: this is the main review comment submitted with the review.
+     *
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviews(int $pullNumber): array;
 }

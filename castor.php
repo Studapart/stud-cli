@@ -36,6 +36,7 @@ use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
+use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
@@ -48,6 +49,7 @@ use App\Responder\ErrorResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
+use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
 use App\Service\ChangelogParser;
@@ -454,6 +456,14 @@ function _get_color_helper(): \App\Service\ColorHelper
     }
 
     return $colorHelper;
+}
+
+/**
+ * Gets the CommentBodyParser service (stateless, no dependencies).
+ */
+function _get_comment_body_parser(): \App\Service\CommentBodyParser
+{
+    return new \App\Service\CommentBodyParser();
 }
 
 /**
@@ -1329,6 +1339,28 @@ function pr_comment(
     exit($exitCode);
 }
 
+#[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
+function pr_comments(): void
+{
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $gitProvider = _get_git_provider();
+
+    $handler = new PrCommentsHandler(
+        $gitRepository,
+        $gitProvider,
+        _get_translation_service()
+    );
+    $response = $handler->handle();
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new PrCommentsResponder(_get_translation_service(), _get_comment_body_parser(), _get_color_helper());
+    $responder->respond(io(), $response);
+}
+
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(
     #[AsArgument(name: 'command_name', description: 'The command name to get help for')]
@@ -1363,6 +1395,7 @@ function help(
             'pl' => 'please',
             'su' => 'submit',
             'pc' => 'pr:comment',
+            'pcs' => 'pr:comments',
             'ss' => 'status',
             'rl' => 'release',
             'mep' => 'deploy',
@@ -1523,6 +1556,17 @@ function help(
                 'name' => 'submit',
                 'alias' => 'su',
                 'description' => $translator->trans('help.command_submit'),
+            ],
+            [
+                'name' => 'pr:comment',
+                'alias' => 'pc',
+                'args' => '[<message>]',
+                'description' => $translator->trans('help.command_pr_comment'),
+            ],
+            [
+                'name' => 'pr:comments',
+                'alias' => 'pcs',
+                'description' => $translator->trans('help.command_pr_comments'),
             ],
             [
                 'name' => 'status',
