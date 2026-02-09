@@ -22,6 +22,7 @@
     - [Configuration Commands](#configuration-commands)
     - [Jira Information Commands](#jira-information-commands)
     - [Git Workflow Commands](#git-workflow-commands)
+    - [Scripting & CI](#scripting--ci)
   - [User Troubleshooting](#user-troubleshooting)
 
 ---
@@ -81,73 +82,13 @@ The purpose of `stud-cli` is to streamline a developer's daily workflow by tight
 -   **Modern Git Practices:** Employs modern, unambiguous Git commands like `git switch -c`.
 -   **User-Centric Defaults:** Commands like `items list` prioritize showing relevant information to the current user by default.
 -   **Command Syntax:** Follows an `object:verb` pattern (e.g., `stud items:list`). See [ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md) for details.
--   **Responder Pattern:** The application follows the Responder pattern (ADR - Action Domain Responder) to separate domain logic from presentation logic. See [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) for details.
-    - **Action (Task):** Orchestrates the use case in `castor.php`
-    - **Domain (Handler):** Contains pure business logic and returns `Response` objects
-    - **Responder:** Contains `ViewConfig` and renders `Response` objects to console output
-
-#### Responder Pattern Architecture
-
-The Responder pattern separates concerns between business logic (Handlers) and presentation logic (Responders):
-
-**Response Classes** (`src/Response/`):
-- Response classes are DTOs (Data Transfer Objects) that encapsulate the result of a Handler operation
-- All Response classes extend `AbstractResponse` and implement `ResponseInterface`
-- Response classes use static factory methods (`success()` and `error()`) for creation
-- Available Response classes:
-  - `FilterShowResponse`: For filter show operations
-  - `ItemListResponse`: For item list operations
-  - `ItemShowResponse`: For item show operations
-  - `ProjectListResponse`: For project list operations
-  - `SearchResponse`: For search operations
-
-**Responder Classes** (`src/Responder/`):
-- Responder classes handle all presentation logic and render Response objects to console output
-- Responders use `ViewConfig` instances (typically `TableViewConfig` or `PageViewConfig`) to render data
-- Responders handle error messages, empty states, section headers, and verbose output
-- Available Responder classes:
-  - `FilterShowResponder`: Renders filter show results with Priority and Jira URL columns
-  - `ItemListResponder`: Renders item list results (Key, Status, Summary columns)
-  - `ItemShowResponder`: Renders item show results with definition lists and formatted description sections
-  - `ProjectListResponder`: Renders project list results (Key, Name columns)
-  - `SearchResponder`: Renders search results with Priority and Jira URL columns
-
-**ViewConfig Infrastructure** (`src/View/`):
-- `ViewConfigInterface`: Defines the contract for rendering DTOs to console output
-- `TableViewConfig`: Renders data in table format with support for:
-  - Conditional column visibility (e.g., Priority column only shown when at least one item has a priority)
-  - Column formatters (callables for value transformation)
-- `PageViewConfig`: Renders data in page format with support for:
-  - Sections with titles
-  - Definition lists (key-value pairs)
-  - Content blocks (text, listings, etc.)
-- Supporting value objects:
-  - `Column`: Defines table column structure (property, translation key, formatter, condition)
-  - `DefinitionItem`: Defines definition list items (translation key, value extractor)
-  - `Section`: Groups definition items and content blocks
-  - `Content`: Defines content blocks with optional formatters
-
-**Usage Example:**
-```php
-// In castor.php task function:
-$handler = new FilterShowHandler($jiraService);
-$response = $handler->handle($filterName);
-
-$responder = new FilterShowResponder($translator, $jiraConfig);
-exit($responder->respond($io, $response));
-
-// Handler contains pure domain logic (no IO)
-// Responder handles all presentation (sections, errors, tables)
-```
-
-**Note on StatusHandler:**
-The `StatusHandler` is kept as-is and does not follow the Responder pattern. It's a simple dashboard view (~60 lines) that combines Jira status, Git branch, and local changes in a unique format. Refactoring it would add complexity without architectural benefit, as it doesn't fit the standard table/page pattern used by other handlers.
+-   **Responder Pattern:** The application follows the Responder pattern (Action–Domain–Responder): Handlers return Response DTOs; Responders use `PageViewConfig` (with `TableBlock` for tables, or definition lists and content) to render output. All features that display data use this pattern for consistency. See [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) and [CONVENTIONS.md](CONVENTIONS.md#responder-pattern-and-viewconfig) for the coding requirement.
 
 This architecture enables:
 - Separation of concerns (business logic vs. presentation)
 - Testability (Handlers return data, Responders handle output)
 - Extensibility (new view types can be added without modifying Handlers)
-- Reusability (ViewConfigs can be reused across different Handlers)
+- Reusability (PageViewConfig and TableBlock can be reused across different Handlers)
 
 ### Developer Setup
 
@@ -345,17 +286,17 @@ Before installing `stud-cli`, ensure you have:
 
 This is the recommended installation method as it allows you to use `stud update` without needing `sudo`.
 
-1.  **Download the `stud.phar` file:**
-    Download the `stud.phar` file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub.
+1.  **Download the PHAR file:**
+    Download the PHAR file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub. The file will be named something like `stud-3.4.1.phar` (the version number will vary).
 
 2.  **Move it to a user-owned binary directory:**
-    Move the `stud.phar` file to a directory in your user's home directory that is in your shell's `$PATH`. Common locations include:
+    Move the downloaded PHAR file to a directory in your user's home directory that is in your shell's `$PATH`, and rename it to `stud`. Common locations include:
     - `~/.local/bin/` (standard on modern Linux/macOS)
     - `~/bin/` (custom directory)
 
-    Example command:
+    Example command (replace `stud-3.4.1.phar` with the actual filename you downloaded):
     ```bash
-    mv ./stud.phar ~/.local/bin/stud
+    mv ./stud-3.4.1.phar ~/.local/bin/stud
     chmod +x ~/.local/bin/stud
     ```
 
@@ -377,7 +318,8 @@ This is the recommended installation method as it allows you to use `stud update
 If you prefer to install `stud` globally for all users, you can use the traditional method:
 
 ```bash
-sudo mv ./stud.phar /usr/local/bin/stud
+# Replace 'stud-3.4.1.phar' with the actual filename you downloaded
+sudo mv ./stud-3.4.1.phar /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -421,6 +363,34 @@ At the end of the setup, the wizard will detect your shell (bash or zsh) and off
 stud config:init
 stud init
 ```
+
+#### `stud config:show`
+
+**Description:** Displays your current configuration (global and, when run inside a git repository, project configuration from `.git/stud.config`). All secret keys (tokens, passwords, and keys whose names contain TOKEN, PASSWORD, or SECRET) are redacted with a fixed placeholder, so the output is **safe to share** with support or for debugging. Use this to verify your setup or to troubleshoot configuration issues.
+
+**Usage:**
+```bash
+stud config:show
+```
+
+**Note:** This command works even when no configuration file exists yet (it will show a clear message). Output is safe for sharing—no credentials are ever displayed.
+
+#### `stud config:validate`
+
+**Description:** Validates that your configuration file is present and that Jira and the configured Git provider are reachable with your credentials. It performs one lightweight read to Jira (e.g. project list) and one to the Git provider (e.g. labels). Use it after `config:init` to verify setup, to debug connectivity or token issues, or as a health check in CI or scripts. The command is read-only and does not modify any data.
+
+**Options:**
+- `--skip-jira`: Skip the Jira connectivity check. Use when only Git is configured (e.g. CI with Git only).
+- `--skip-git`: Skip the Git provider connectivity check. Use when only Jira is configured.
+
+**Usage:**
+```bash
+stud config:validate
+stud config:validate --skip-jira
+stud config:validate --skip-git
+```
+
+**Output:** Displays a short result per component: **Jira: OK** / **Jira: Fail (reason)** / **Jira: Skipped**, and **Git provider: OK** / **Git provider: Fail (reason)** / **Git provider: Skipped**. If the configuration file is missing or invalid, the command fails with a clear message (no silent success).
 
 #### `stud completion <shell>`
 
@@ -520,6 +490,7 @@ GITLAB_INSTANCE_URL: https://git.example.com  # Optional, defaults to gitlab.com
 **What Git Provider Tokens Enable:**
 - `stud submit`: Creating Pull Requests (GitHub) or Merge Requests (GitLab)
 - `stud pr:comment`: Adding comments to PRs/MRs
+- `stud pr:comments`: Fetching and displaying PR/MR comments (issue and review) in the terminal
 - `stud branch:rename`: Managing PRs/MRs and labels during branch rename
 - `stud branches:list` and `stud branches:clean`: PR/MR detection for branch status
 - Label management and PR/MR operations
@@ -791,6 +762,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud pl
         ```
 
+-   **`stud commit:undo`** (Alias: `stud undo`)
+    -   **Description:** Removes the last commit and keeps its changes in the working tree (unstaged). Equivalent to `git reset HEAD~1` (mixed). If the last commit is already pushed to the remote, the command warns and asks for confirmation, since undoing would require a force-push to update the remote. After undoing in that case, you can run `stud please` to safely force-push.
+    -   **Usage:**
+        ```bash
+        stud commit:undo
+        stud undo
+        ```
+    -   **Note:** If the last commit is already pushed, the command will either refuse or prompt for confirmation. The message will mention that you can use `stud please` to force-push after undoing.
+
 -   **`stud flatten`** (Alias: `stud ft`)
     -   **Description:** Automatically squash all `fixup!` and `squash!` commits into their target commits. This command performs a non-interactive rebase with autosquash, eliminating the need to manually edit the interactive rebase file. The command will fail if there are uncommitted changes in the working directory, and will warn that history will be rewritten (requiring a `stud please` push afterward).
     -   **Usage:**
@@ -841,6 +821,15 @@ These commands integrate directly with your local Git repository to streamline y
         echo "Comment text" | stud pc
         ```
     -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
+
+-   **`stud pr:comments`** (Alias: `stud pcs`)
+    -   **Description:** Fetches and displays issue comments and review (inline) comments for the active Pull Request or Merge Request on the current branch. Complements `stud pr:comment` (which posts a comment) by letting you read all PR/MR feedback in the terminal.
+    -   **Usage:**
+        ```bash
+        stud pr:comments
+        stud pcs
+        ```
+    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits.
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
@@ -906,6 +895,40 @@ These commands help you manage the release process.
         stud deploy --clean
         ```
 
+#### Scripting & CI
+
+When running `stud-cli` in scripts, CI pipelines, or automation, use non-interactive flags so commands do not prompt for input. This subsection summarizes the main options; for full command reference see the sections above.
+
+**Non-interactive flags by command:**
+
+| Command | Flags | Purpose |
+|---------|--------|---------|
+| `stud commit` | `--message <message>` / `-m` | Bypass interactive commit prompter |
+| `stud commit` | `--all` / `-a` | Stage all changes before committing |
+| `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
+| `stud submit` | `--draft` / `-d` | Create a draft Pull Request |
+| `stud submit` | `--labels "…"` | Add labels without being prompted |
+| `stud release` | `--publish` / `-p` | Publish the release branch to remote |
+| `stud deploy` | `--clean` | Clean up merged branches after deployment (non-interactive) |
+| `stud branch:rename` | `--quiet` / `-q` | Bypass confirmation and rebase prompts |
+
+**Example snippets:**
+
+```bash
+stud commit -m "feat: add feature X"
+stud submit --draft
+stud submit --draft --labels "bug,ui"
+stud branches:clean --quiet
+```
+
+**Exit codes:** Commands exit with `0` on success and a non-zero code on error. Scripts can check `$?` (or equivalent) to detect failures.
+
+**CI guidance:**
+
+- **Config must be complete:** Ensure global config (`~/.config/stud/config.yml`) and, if needed, project config (`.git/stud.config`) are present and valid so commands do not prompt. Use `stud config:validate` (optionally with `--skip-jira` or `--skip-git`) as a health check.
+- **Prefer non-interactive flags:** Use `--quiet`, `-m`, `--draft`, `--labels`, `--all`, etc. where available to avoid prompts.
+- **Environment:** Set `HOME` (or the config path) in CI so `stud` can find its config; avoid relying on interactive wizards like `stud config:init` in CI.
+
 ### User Troubleshooting
 
 -   **`Configuration file not found`:** Run `stud config:init` to set up your Jira credentials.
@@ -926,4 +949,4 @@ These commands help you manage the release process.
 
 ---
 
-Feel free to contribute or suggest improvements!
+See [CONTRIBUTING](CONTRIBUTING.md) for how to contribute, and [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for community standards.

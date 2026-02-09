@@ -717,6 +717,157 @@ class GitLabProviderTest extends TestCase
         $this->gitlabProvider->createComment($issueNumber, $body);
     }
 
+    public function testGetPullRequestCommentsSuccess(): void
+    {
+        $issueNumber = 123;
+        $apiResponse = [
+            [
+                'author' => ['username' => 'alice'],
+                'body' => 'MR note body',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains('/projects/' . self::PROJECT_PATH . '/merge_requests/123/notes')
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestComments($issueNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('alice', $result[0]->author);
+        $this->assertSame('MR note body', $result[0]->body);
+        $this->assertNull($result[0]->path);
+        $this->assertNull($result[0]->line);
+    }
+
+    public function testGetPullRequestReviewCommentsSuccess(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'id' => 'disc-1',
+                'notes' => [
+                    [
+                        'author' => ['username' => 'bob'],
+                        'body' => 'Inline review',
+                        'created_at' => '2025-01-15T11:00:00Z',
+                    ],
+                ],
+                'position' => [
+                    'new_path' => 'src/File.php',
+                    'new_line' => 10,
+                ],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains('/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions')
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('bob', $result[0]->author);
+        $this->assertSame('Inline review', $result[0]->body);
+        $this->assertSame('src/File.php', $result[0]->path);
+        $this->assertSame(10, $result[0]->line);
+    }
+
+    public function testGetPullRequestReviewCommentsFailure(): void
+    {
+        $pullNumber = 123;
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains('/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions'))
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to get review comments for merge request #{$pullNumber}.");
+
+        $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+    }
+
+    public function testGetPullRequestReviewsReturnsEmpty(): void
+    {
+        $pullNumber = 123;
+
+        $result = $this->gitlabProvider->getPullRequestReviews($pullNumber);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testGetPullRequestCommentsFailure(): void
+    {
+        $issueNumber = 123;
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to get comments for merge request #{$issueNumber}.");
+
+        $this->gitlabProvider->getPullRequestComments($issueNumber);
+    }
+
+    public function testGetPullRequestReviewCommentsSkipsDiscussionWithoutPosition(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'id' => 'disc-1',
+                'notes' => [['author' => ['username' => 'alice'], 'body' => 'Note', 'created_at' => '2025-01-15T10:00:00Z']],
+                'position' => null,
+            ],
+            [
+                'id' => 'disc-2',
+                'notes' => [
+                    ['author' => ['username' => 'bob'], 'body' => 'Inline', 'created_at' => '2025-01-15T11:00:00Z'],
+                ],
+                'position' => ['old_path' => 'src/Old.php', 'old_line' => 5],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('bob', $result[0]->author);
+        $this->assertSame('src/Old.php', $result[0]->path);
+        $this->assertSame(5, $result[0]->line);
+    }
+
     public function testGetLabelsFailure(): void
     {
         $errorMessage = 'Not Found';

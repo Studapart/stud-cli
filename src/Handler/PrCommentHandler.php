@@ -7,6 +7,7 @@ namespace App\Handler;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\Logger;
+use App\Service\MarkdownHelper;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -33,6 +34,9 @@ class PrCommentHandler
 
         // Get comment body with precedence: STDIN first, then argument
         $commentBody = $this->getCommentBody($message);
+        if ($commentBody !== null) {
+            $commentBody = MarkdownHelper::unescapeCheckboxMarkdown($commentBody);
+        }
 
         if (empty($commentBody)) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_input'));

@@ -34,6 +34,17 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Затем перезапустите оболочку или выполните 'source ~/.%shellrc%'
       skipped: Настройка автодополнения оболочки пропущена.
+  show:
+    section_global: "Глобальная конфигурация"
+    section_project: "Конфигурация проекта"
+    no_config_found: "Файл конфигурации не найден. Запустите 'stud config:init' для создания. Вывод безопасен для обмена (секреты скрыты)."
+  validate:
+    section_title: "Проверка конфигурации"
+    label_jira: "Jira"
+    label_git_provider: "Git-провайдер"
+    status_ok: "OK"
+    status_fail: "Ошибка"
+    status_skipped: "Пропущено"
   error:
     not_found: 'Файл конфигурации не найден по адресу: %path%
 
@@ -202,6 +213,12 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+commit_undo:
+  error_not_repo: Не в git-репозитории.
+  error_no_commit: Нет коммита для отмены.
+  warning_pushed: "Последний коммит уже отправлен в удалённый репозиторий. Для отмены потребуется force-push. После отмены выполните 'stud please' для безопасного force-push."
+  confirm_continue: "Продолжить? [y/N]"
+  success: Последний коммит удалён. Изменения остаются в рабочем дереве без индексации.
 flatten:
   section: Сжатие fixup коммитов
   error_dirty_working: Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед сжатием.
@@ -281,6 +298,23 @@ pr:
     success: '✅ Комментарий успешно опубликован в Pull Request #%number%'
     using_stdin: Чтение комментария из STDIN...
     using_argument: Использование комментария из аргумента...
+  comments:
+    section: 'Комментарии PR #%number%'
+    error_no_provider: Провайдер Git не настроен для этого проекта.
+    error_no_pr: PR/MR для текущей ветки не найдена.
+    error_fetch: 'Ошибка получения комментариев PR.
+
+      Ошибка: %error%'
+    issue_comments: Комментарии к issue
+    reviews: Ревью
+    review_comments: Комментарии ревью
+    no_comments: Нет комментариев
+    table:
+      author: Автор
+      date: Дата
+      body: Текст
+      path: Файл
+      line: Строка
 branch:
   rename:
     section: Renaming branch
@@ -464,6 +498,8 @@ help:
   category_release_commands: Команды релиза
   example_prefix: 'Пример: %example%'
   command_config_init: Интерактивный мастер для настройки деталей подключения Jira и Git.
+  command_config_show: "Показать текущую конфигурацию (глобальную и проекта) с скрытыми секретами; безопасно для обмена."
+  command_config_validate: "Проверить наличие конфигурации и доступность Jira и Git-провайдера. Используйте --skip-jira или --skip-git для частичных проверок."
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
   command_projects_list: Список всех видимых проектов Jira.
   command_items_list: Список активных элементов работы (ваша панель управления).
@@ -476,11 +512,13 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Проводит вас через создание обычного коммита.
+  command_commit_undo: "Удаляет последний коммит и оставляет изменения без индексации. Предупреждает или запрашивает подтверждение, если уже отправлен; используйте 'stud please' для force-push после отмены."
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
   command_submit: Отправляет текущую ветку и создает Pull Request.
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
+  command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
   command_status: Быстрая панель управления "где я?".
   command_release: Создает новую ветку релиза и увеличивает версию.
   command_deploy: Развертывает текущую ветку релиза.

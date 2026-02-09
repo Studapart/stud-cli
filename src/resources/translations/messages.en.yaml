@@ -35,6 +35,17 @@ config:
       zsh_command: "echo 'eval \"$(stud completion zsh)\"' >> ~/.zshrc"
       reload_instruction: "Then, restart your shell or run 'source ~/.%shellrc%'"
       skipped: "Shell auto-completion setup skipped."
+  show:
+    section_global: "Global configuration"
+    section_project: "Project configuration"
+    no_config_found: "No configuration file found. Run 'stud config:init' to create one. Output is safe for sharing (secrets are redacted)."
+  validate:
+    section_title: "Configuration validation"
+    label_jira: "Jira"
+    label_git_provider: "Git provider"
+    status_ok: "OK"
+    status_fail: "Fail"
+    status_skipped: "Skipped"
   error:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
@@ -213,6 +224,14 @@ please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
 
+# Commit Undo Handler
+commit_undo:
+  error_not_repo: "Not in a git repository."
+  error_no_commit: "There is no commit to undo."
+  warning_pushed: "The last commit is already pushed to the remote. Undoing would require a force-push to update the remote. After undoing, you can run 'stud please' to safely force-push."
+  confirm_continue: "Continue? [y/N]"
+  success: "Last commit removed. Changes are left unstaged in your working tree."
+
 # Flatten Handler
 flatten:
   section: "Flattening fixup commits"
@@ -318,6 +337,21 @@ pr:
     success: "✅ Comment posted successfully to Pull Request #%number%"
     using_stdin: "Reading comment from STDIN..."
     using_argument: "Using comment from argument..."
+  comments:
+    section: "PR #%number% comments"
+    error_no_provider: "No Git provider configured for this project."
+    error_no_pr: "No PR/MR found for the current branch."
+    error_fetch: "Failed to fetch PR comments.\nError: %error%"
+    issue_comments: "Issue comments"
+    reviews: "Reviews"
+    review_comments: "Review comments"
+    no_comments: "No comments"
+    table:
+      author: "Author"
+      date: "Date"
+      body: "Body"
+      path: "Path"
+      line: "Line"
 
 # Commit Handler
 commit:
@@ -475,6 +509,8 @@ help:
   category_release_commands: "Release Commands"
   example_prefix: "Example: %example%"
   command_config_init: "Interactive wizard to set up Jira & Git connection details."
+  command_config_show: "Display current configuration (global and project) with secrets redacted; safe for sharing."
+  command_config_validate: "Validate that configuration is present and that Jira and the Git provider are reachable. Use --skip-jira or --skip-git to run partial checks."
   command_completion: "Generates shell completion scripts for bash or zsh."
   command_projects_list: "Lists all visible Jira projects."
   command_items_list: "Lists active work items (your dashboard)."
@@ -487,11 +523,13 @@ help:
   command_items_takeover: "Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists."
   command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
   command_commit: "Guides you through making a conventional commit."
+  command_commit_undo: "Removes the last commit and keeps changes unstaged. Refuses or prompts when the last commit is already pushed; use 'stud please' to force-push after undoing."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
   command_submit: "Pushes the current branch and creates a Pull Request."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
+  command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."

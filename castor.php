@@ -22,6 +22,8 @@ use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
+use App\Handler\ConfigShowHandler;
+use App\Handler\ConfigValidateHandler;
 use App\Handler\DeployHandler;
 use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
@@ -34,16 +36,22 @@ use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
+use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\BranchListResponder;
+use App\Responder\ConfigShowResponder;
+use App\Responder\ConfigValidateResponder;
 use App\Responder\ErrorResponder;
+use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
+use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
 use App\Service\ChangelogParser;
@@ -453,6 +461,14 @@ function _get_color_helper(): \App\Service\ColorHelper
 }
 
 /**
+ * Gets the CommentBodyParser service (stateless, no dependencies).
+ */
+function _get_comment_body_parser(): \App\Service\CommentBodyParser
+{
+    return new \App\Service\CommentBodyParser();
+}
+
+/**
  * Gets a FileSystem instance with Local adapter (for production use).
  */
 function _get_file_system(): FileSystem
@@ -603,6 +619,7 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without config
     $whitelistedCommands = [
         'config:init',
+        'config:show',
         'init', // alias
         'help',
         'main', // default command
@@ -749,6 +766,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without config pass
     $whitelistedCommands = [
         'config:init',
+        'config:show',
         'init', // alias
         'help',
         'main', // default command
@@ -930,6 +948,69 @@ function config_init(): void
     $handler->handle(io());
 }
 
+#[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
+function config_show(): void
+{
+    _load_constants();
+    $gitRepository = null;
+
+    try {
+        $gitRepository = _get_git_repository();
+    } catch (\RuntimeException) {
+        // Not in a git repository
+    }
+    $handler = new ConfigShowHandler(_get_file_system(), _get_config_path(), $gitRepository);
+    $response = $handler->handle();
+    if (! $response->isSuccess()) {
+        $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+        $responder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
+}
+
+#[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]
+function config_validate(
+    #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
+    bool $skipJira = false,
+    #[AsOption(name: 'skip-git', description: 'Skip the Git provider connectivity check')]
+    bool $skipGit = false,
+): void {
+    _load_constants();
+    _get_config();
+
+    $jiraService = $skipJira ? null : _get_jira_service();
+    $gitProvider = null;
+    $skipGitForHandler = $skipGit;
+
+    if (! $skipGit) {
+        try {
+            $gitRepository = _get_git_repository();
+            $gitRepository->getProjectConfigPath();
+        } catch (\RuntimeException) {
+            $skipGitForHandler = true;
+        }
+        if (! $skipGitForHandler) {
+            $gitProvider = _get_git_provider();
+            if ($gitProvider === null) {
+                $translator = _get_translation_service();
+                io()->error($translator->trans('config.git_provider_not_configured'));
+                exit(1);
+            }
+        }
+    }
+
+    $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
+    $response = $handler->handle();
+    $responder = new ConfigValidateResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
+
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
+}
+
 // =================================================================================
 // "Noun" Commands (Jira Info)
 // =================================================================================
@@ -954,8 +1035,15 @@ function projects_list(
 function filters_list(): void
 {
     _load_constants();
-    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $response = $handler->handle();
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new FilterListResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
@@ -1110,9 +1198,12 @@ function branches_list(): int
     _load_constants();
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service());
+    $response = $handler->handle();
+    $responder = new BranchListResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 
-    return $handler->handle(io());
+    return 0;
 }
 
 #[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
@@ -1158,6 +1249,22 @@ function please(
     _load_constants();
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $handler->handle(io());
+}
+
+#[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
+function commit_undo(
+    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
+    bool $help = false
+): void {
+    _load_constants();
+    if ($help) {
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService->displayCommandHelp(io(), 'commit:undo');
+
+        return;
+    }
+    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
+    exit($handler->handle(io()));
 }
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
@@ -1244,6 +1351,28 @@ function pr_comment(
     exit($exitCode);
 }
 
+#[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
+function pr_comments(): void
+{
+    _load_constants();
+    $gitRepository = _get_git_repository();
+    $gitProvider = _get_git_provider();
+
+    $handler = new PrCommentsHandler(
+        $gitRepository,
+        $gitProvider,
+        _get_translation_service()
+    );
+    $response = $handler->handle();
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new PrCommentsResponder(_get_translation_service(), _get_comment_body_parser(), _get_color_helper());
+    $responder->respond(io(), $response);
+}
+
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 function help(
     #[AsArgument(name: 'command_name', description: 'The command name to get help for')]
@@ -1274,9 +1403,11 @@ function help(
             'to' => 'items:takeover',
             'rn' => 'branch:rename',
             'co' => 'commit',
+            'undo' => 'commit:undo',
             'pl' => 'please',
             'su' => 'submit',
             'pc' => 'pr:comment',
+            'pcs' => 'pr:comments',
             'ss' => 'status',
             'rl' => 'release',
             'mep' => 'deploy',
@@ -1334,6 +1465,14 @@ function help(
                 'name' => 'config:init',
                 'alias' => 'init',
                 'description' => $translator->trans('help.command_config_init'),
+            ],
+            [
+                'name' => 'config:show',
+                'description' => $translator->trans('help.command_config_show'),
+            ],
+            [
+                'name' => 'config:validate',
+                'description' => $translator->trans('help.command_config_validate'),
             ],
             [
                 'name' => 'completion',
@@ -1416,6 +1555,11 @@ function help(
                 'description' => $translator->trans('help.command_commit'),
             ],
             [
+                'name' => 'commit:undo',
+                'alias' => 'undo',
+                'description' => $translator->trans('help.command_commit_undo'),
+            ],
+            [
                 'name' => 'please',
                 'alias' => 'pl',
                 'description' => $translator->trans('help.command_please'),
@@ -1424,6 +1568,17 @@ function help(
                 'name' => 'submit',
                 'alias' => 'su',
                 'description' => $translator->trans('help.command_submit'),
+            ],
+            [
+                'name' => 'pr:comment',
+                'alias' => 'pc',
+                'args' => '[<message>]',
+                'description' => $translator->trans('help.command_pr_comment'),
+            ],
+            [
+                'name' => 'pr:comments',
+                'alias' => 'pcs',
+                'description' => $translator->trans('help.command_pr_comments'),
             ],
             [
                 'name' => 'status',

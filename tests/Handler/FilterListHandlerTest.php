@@ -1,96 +1,63 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Handler;
 
 use App\DTO\Filter;
 use App\Handler\FilterListHandler;
-use App\Service\Logger;
 use App\Tests\CommandTestCase;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterListHandlerTest extends CommandTestCase
 {
     private FilterListHandler $handler;
-    private Logger $logger;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->logger = $this->createMock(Logger::class);
-        $this->handler = new FilterListHandler($this->jiraService, $this->translationService, $this->logger);
+        $this->handler = new FilterListHandler($this->jiraService, $this->translationService);
     }
 
-    public function testHandle(): void
+    public function testHandleReturnsSuccessWithFilters(): void
     {
-        $filter = new Filter(
-            'My Filter',
-            'Filter description'
-        );
+        $filter = new Filter('My Filter', 'Filter description');
 
         $this->jiraService->expects($this->once())
             ->method('getFilters')
             ->willReturn([$filter]);
 
-        $this->logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $this->logger->expects($this->once())
-            ->method('table')
-            ->with(
-                Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($headers) {
-                    return is_array($headers) && count($headers) === 2;
-                }),
-                $this->callback(function ($rows) {
-                    return is_array($rows) &&
-                        count($rows) === 1 &&
-                        count($rows[0]) === 2 &&
-                        $rows[0][0] === 'My Filter' &&
-                        $rows[0][1] === 'Filter description';
-                })
-            );
+        $response = $this->handler->handle();
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->handler->handle($io);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->filters);
+        $this->assertSame('My Filter', $response->filters[0]->name);
+        $this->assertSame('Filter description', $response->filters[0]->description);
     }
 
-    public function testHandleWithNoFiltersFound(): void
+    public function testHandleReturnsSuccessWithEmptyFilters(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getFilters')
             ->willReturn([]);
 
-        $this->logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $this->logger->expects($this->once())
-            ->method('note')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
-                return is_string($message) && ! empty($message);
-            }));
+        $response = $this->handler->handle();
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->handler->handle($io);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(0, $response->filters);
     }
 
-    public function testHandleWithJiraServiceException(): void
+    public function testHandleReturnsErrorOnJiraServiceException(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getFilters')
             ->willThrowException(new \Exception('Jira API error'));
 
-        $this->logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $this->logger->expects($this->once())
-            ->method('error')
-            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
-                return is_string($message) && ! empty($message);
-            }));
+        $response = $this->handler->handle();
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->handler->handle($io);
+        $this->assertFalse($response->isSuccess());
+        $this->assertNotNull($response->getError());
+        $this->assertStringContainsString('Jira API error', $response->getError());
+        $this->assertCount(0, $response->filters);
     }
 
     public function testHandleSortsFiltersByName(): void
@@ -103,60 +70,28 @@ class FilterListHandlerTest extends CommandTestCase
             ->method('getFilters')
             ->willReturn([$filter1, $filter2, $filter3]);
 
-        $this->logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $this->logger->expects($this->once())
-            ->method('table')
-            ->with(
-                Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($headers) {
-                    return is_array($headers) && count($headers) === 2;
-                }),
-                $this->callback(function ($rows) {
-                    return is_array($rows) &&
-                        count($rows) === 3 &&
-                        $rows[0][0] === 'Alpha Filter' &&
-                        $rows[1][0] === 'Beta Filter' &&
-                        $rows[2][0] === 'Zebra Filter';
-                })
-            );
+        $response = $this->handler->handle();
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->handler->handle($io);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(3, $response->filters);
+        $this->assertSame('Alpha Filter', $response->filters[0]->name);
+        $this->assertSame('Beta Filter', $response->filters[1]->name);
+        $this->assertSame('Zebra Filter', $response->filters[2]->name);
     }
 
     public function testHandleWithNullDescription(): void
     {
-        $filter = new Filter(
-            'My Filter',
-            null
-        );
+        $filter = new Filter('My Filter', null);
 
         $this->jiraService->expects($this->once())
             ->method('getFilters')
             ->willReturn([$filter]);
 
-        $this->logger->expects($this->once())
-            ->method('section')
-            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
-        $this->logger->expects($this->once())
-            ->method('table')
-            ->with(
-                Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($headers) {
-                    return is_array($headers) && count($headers) === 2;
-                }),
-                $this->callback(function ($rows) {
-                    return is_array($rows) &&
-                        count($rows) === 1 &&
-                        count($rows[0]) === 2 &&
-                        $rows[0][0] === 'My Filter' &&
-                        $rows[0][1] === '';
-                })
-            );
+        $response = $this->handler->handle();
 
-        $io = $this->createMock(SymfonyStyle::class);
-        $this->handler->handle($io);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->filters);
+        $this->assertSame('My Filter', $response->filters[0]->name);
+        $this->assertNull($response->filters[0]->description);
     }
 }

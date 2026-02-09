@@ -5,48 +5,31 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\Filter;
+use App\Response\FilterListResponse;
 use App\Service\JiraService;
-use App\Service\Logger;
 use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterListHandler
 {
     public function __construct(
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        private readonly TranslationService $translator
     ) {
     }
 
-    public function handle(SymfonyStyle $io): void
+    public function handle(): FilterListResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.section'));
-
         try {
             $filters = $this->jiraService->getFilters();
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.error_fetch', ['error' => $e->getMessage()]));
-
-            return;
-        }
-
-        if (empty($filters)) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('filter.list.no_filters'));
-
-            return;
+            return FilterListResponse::error(
+                $this->translator->trans('filter.list.error_fetch', ['error' => $e->getMessage()])
+            );
         }
 
         $this->sortFiltersByName($filters);
 
-        $table = array_map(fn (Filter $filter) => [
-            $filter->name,
-            $filter->description ?? '',
-        ], $filters);
-        $this->logger->table(Logger::VERBOSITY_NORMAL, [
-            $this->translator->trans('table.name'),
-            $this->translator->trans('table.description'),
-        ], $table);
+        return FilterListResponse::success($filters);
     }
 
     /**

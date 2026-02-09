@@ -34,6 +34,17 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Start vervolgens uw shell opnieuw of voer 'source ~/.%shellrc%' uit
       skipped: Shell auto-aanvulling instellen overgeslagen.
+  show:
+    section_global: "Globale configuratie"
+    section_project: "Projectconfiguratie"
+    no_config_found: "Geen configuratiebestand gevonden. Voer 'stud config:init' uit om er een aan te maken. Output is veilig te delen (geheimen zijn geredigeerd)."
+  validate:
+    section_title: "Configuratievalidatie"
+    label_jira: "Jira"
+    label_git_provider: "Git-provider"
+    status_ok: "OK"
+    status_fail: "Mislukt"
+    status_skipped: "Overgeslagen"
   error:
     not_found: 'Configuratiebestand niet gevonden op: %path%
 
@@ -202,6 +213,12 @@ please:
 
     Voor de eerste push en om een Pull Request te maken, gebruik alstublieft "stud submit".'
   warning_force: ⚠️  Forceren met lease...
+commit_undo:
+  error_not_repo: Niet in een git repository.
+  error_no_commit: Er is geen commit om ongedaan te maken.
+  warning_pushed: "De laatste commit is al naar de remote gepusht. Ongedaan maken zou een force-push vereisen. Daarna kunt u 'stud please' uitvoeren om veilig force-push te doen."
+  confirm_continue: "Doorgaan? [y/N]"
+  success: Laatste commit verwijderd. Wijzigingen blijven unstaged in uw werkboom.
 flatten:
   section: Fixup commits afvlakken
   error_dirty_working: Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u afvlakt.
@@ -281,6 +298,23 @@ pr:
     success: '✅ Commentaar succesvol geplaatst op Pull Request #%number%'
     using_stdin: Commentaar lezen van STDIN...
     using_argument: Commentaar gebruiken van argument...
+  comments:
+    section: 'PR #%number% commentaren'
+    error_no_provider: Geen Git provider geconfigureerd voor dit project.
+    error_no_pr: Geen PR/MR gevonden voor de huidige branch.
+    error_fetch: 'Fout bij ophalen van PR-commentaren.
+
+      Fout: %error%'
+    issue_comments: Issuecommentaren
+    reviews: Beoordelingen
+    review_comments: Beoordelingscommentaren
+    no_comments: Geen commentaren
+    table:
+      author: Auteur
+      date: Datum
+      body: Inhoud
+      path: Bestand
+      line: Regel
 branch:
   rename:
     section: Renaming branch
@@ -506,6 +540,8 @@ help:
   category_release_commands: Release Commando's
   example_prefix: 'Voorbeeld: %example%'
   command_config_init: Interactieve wizard om Jira & Git verbindingsdetails in te stellen.
+  command_config_show: "Toon huidige configuratie (globaal en project) met geredigeerde geheimen; veilig om te delen."
+  command_config_validate: "Valideer dat configuratie aanwezig is en dat Jira en de Git-provider bereikbaar zijn. Gebruik --skip-jira of --skip-git voor gedeeltelijke controles."
   command_completion: Genereert shell auto-aanvulling scripts voor bash of zsh.
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).
@@ -518,11 +554,13 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Begeleidt u bij het maken van een conventionele commit.
+  command_commit_undo: "Verwijdert de laatste commit en houdt wijzigingen unstaged. Waarschuwt of vraagt bevestiging als al gepusht; gebruik 'stud please' om daarna force-push te doen."
   command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
   command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
   command_submit: Pusht de huidige tak en maakt een Pull Request.
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
+  command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
   command_status: Een snelle "waar ben ik?" dashboard.
   command_release: Maakt een nieuwe release tak en verhoogt de versie.
   command_deploy: Deployt de huidige release tak.

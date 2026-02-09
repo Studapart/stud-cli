@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-02-09
+
+### Changed
+- Align `filters:list`, `branches:list`, and `items:show` with Responder pattern and ViewConfig (ADR-005) [SCI-57]
+  - `filters:list`: `FilterListHandler` now returns `FilterListResponse`; new `FilterListResponder` renders via `PageViewConfig` + `TableBlock`
+  - `branches:list`: `BranchListHandler` now returns `BranchListResponse`; new `BranchListResponder` renders via `PageViewConfig` + `TableBlock`
+  - `items:show`: `ItemShowResponder` now renders definition list and description sections via `PageViewConfig` (`DefinitionItem`, `Section`, `Content`) instead of raw `$io` calls
+  - Audit document added: `documentation/audit-sci57-command-compliance.md`; ADR-005 §7.3 updated with new Response/Responder inventory
+
+### Added
+- Add "Scripting & CI" subsection to README [SCI-56]
+  - Documents non-interactive flags (`--quiet`, `-m`/`--message`, `--all`, `--draft`, `--labels`, `--publish`, `--clean`) and the commands they apply to
+  - Includes example snippets and brief CI guidance (config complete, prefer non-interactive flags, environment considerations)
+  - Table of Contents updated to link to the new subsection
+- Add `stud pr:comments` command (alias `stud pcs`) to fetch and display issue and review comments for the current branch's PR/MR [SCI-55]
+  - Works with both GitHub and GitLab; uses the same PR/MR resolution as `stud pr:comment`
+  - Displays two sections: "Issue comments" and "Review comments" (with author, date, body; review comments include file path and line when available)
+  - Exits with a clear error when no Git provider is configured or no PR/MR is found for the current branch
+  - Documented in README and command help; complements `stud pr:comment` (which posts a comment)
+- Add `stud commit:undo` command (alias `stud undo`) to remove the last commit and keep changes unstaged [SCI-54]
+  - Equivalent to `git reset HEAD~1` (mixed). When the last commit is already pushed, the command warns and prompts for confirmation; message mentions using `stud please` to force-push after undoing. Documented in README and command help.
+- Add `stud config:validate` command to validate configuration and connectivity to Jira and Git provider [SCI-53]
+  - New command checks that config is loadable and performs one lightweight read to Jira and one to the configured Git provider
+  - Displays per-component result: Jira: OK / Fail (reason) / Skipped, Git provider: OK / Fail (reason) / Skipped
+  - Options `--skip-jira` and `--skip-git` allow partial checks (e.g. CI with only Git configured)
+  - Fails with a clear message when config is missing or invalid; documented in README and command help
+- Add `stud config:show` command to display current configuration (global and project) with secrets redacted [SCI-52]
+  - New command shows global config from `~/.config/stud/config.yml` and, when inside a git repo, project config from `.git/stud.config`
+  - All secret keys (e.g. JIRA_API_TOKEN, GITHUB_TOKEN, GITLAB_TOKEN) and any key whose name contains TOKEN, PASSWORD, or SECRET are redacted as `*** REDACTED ***`
+  - URLs with query strings are redacted to avoid leaking tokens; output is safe for sharing with support
+  - Command works without an existing config file (whitelisted); documented in README and help
+
 ## [3.4.1] - 2026-02-04
 
 ### Fixed

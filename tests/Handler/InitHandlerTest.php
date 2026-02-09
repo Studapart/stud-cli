@@ -204,6 +204,71 @@ class InitHandlerTest extends CommandTestCase
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
 
+    public function testHandlePreservesLegacyGitTokenWhenPromptsEmpty(): void
+    {
+        $existingConfig = [
+            'LANGUAGE' => 'en',
+            'JIRA_URL' => 'https://jira.example.com',
+            'JIRA_EMAIL' => 'existing@example.com',
+            'JIRA_API_TOKEN' => 'existing_jira_token',
+            'GIT_TOKEN' => 'my_legacy_github_token',
+            'GIT_PROVIDER' => 'github',
+        ];
+
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->with('/tmp/config.yml')
+            ->willReturn(true);
+
+        $this->fileSystem->expects($this->once())
+            ->method('filePutContents')
+            ->with(
+                '/tmp/config.yml',
+                $this->callback(function (string $yaml) {
+                    $config = Yaml::parse($yaml);
+
+                    return isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'my_legacy_github_token'
+                        && (! isset($config['GITLAB_TOKEN']) || $config['GITLAB_TOKEN'] === null);
+                })
+            );
+
+        $this->fileSystem->expects($this->once())
+            ->method('dirname')
+            ->with('/tmp/config.yml')
+            ->willReturn('/tmp');
+
+        $this->fileSystem->expects($this->exactly(2))
+            ->method('isDir')
+            ->willReturnCallback(function ($path) {
+                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+            });
+
+        $this->setupMigrationMocks();
+
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->with('/tmp/config.yml')
+            ->willReturn($existingConfig);
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "0\n"); // Language: English
+        fwrite($inputStream, "https://jira.example.com/\n");
+        fwrite($inputStream, "existing@example.com\n");
+        fwrite($inputStream, "\n"); // Jira token empty -> keep existing
+        fwrite($inputStream, "\n"); // GitHub token empty -> should use GIT_TOKEN
+        fwrite($inputStream, "\n"); // GitLab token empty
+        fwrite($inputStream, "1\n"); // Completion: No
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $handler = $this->createHandlerWithRealLogger($io);
+        $handler->handle($io);
+    }
+
     public function testHandleWithNewConfigAndDirectoryCreation(): void
     {
         $this->fileSystem->expects($this->once())
@@ -1069,5 +1134,75 @@ class InitHandlerTest extends CommandTestCase
 
         $result = $this->callPrivateMethod($handler, 'filterEmptyStrings', [false]);
         $this->assertTrue($result, 'False should return true');
+    }
+
+    public function testResolveGitTokenForInitUsesUserInputWhenNonEmpty(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            'user_entered_token',
+            'GITHUB_TOKEN',
+            ['GIT_TOKEN' => 'legacy', 'GIT_PROVIDER' => 'github'],
+        ]);
+        $this->assertSame('user_entered_token', $result);
+    }
+
+    public function testResolveGitTokenForInitPreservesExistingNewKeyWhenPromptEmpty(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITHUB_TOKEN',
+            ['GITHUB_TOKEN' => 'existing_github'],
+        ]);
+        $this->assertSame('existing_github', $result);
+    }
+
+    public function testResolveGitTokenForInitPreservesLegacyTokenForGithubWhenProviderUnset(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITHUB_TOKEN',
+            ['GIT_TOKEN' => 'legacy_token'],
+        ]);
+        $this->assertSame('legacy_token', $result);
+    }
+
+    public function testResolveGitTokenForInitPreservesLegacyTokenForGithubWhenProviderGithub(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITHUB_TOKEN',
+            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'github'],
+        ]);
+        $this->assertSame('legacy_token', $result);
+    }
+
+    public function testResolveGitTokenForInitReturnsNullForGithubWhenProviderGitlab(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITHUB_TOKEN',
+            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'gitlab'],
+        ]);
+        $this->assertNull($result);
+    }
+
+    public function testResolveGitTokenForInitPreservesLegacyTokenForGitlabWhenProviderGitlab(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITLAB_TOKEN',
+            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'gitlab'],
+        ]);
+        $this->assertSame('legacy_token', $result);
+    }
+
+    public function testResolveGitTokenForInitReturnsNullWhenNoExistingToken(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
+            null,
+            'GITHUB_TOKEN',
+            [],
+        ]);
+        $this->assertNull($result);
     }
 }

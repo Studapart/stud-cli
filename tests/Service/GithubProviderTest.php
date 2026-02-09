@@ -1180,6 +1180,255 @@ class GithubProviderTest extends TestCase
         $this->assertFalse($result);
     }
 
+    public function testGetPullRequestCommentsSuccess(): void
+    {
+        $issueNumber = 123;
+        $apiResponse = [
+            [
+                'user' => ['login' => 'alice'],
+                'body' => 'Issue comment body',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains("/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/issues/{$issueNumber}/comments")
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestComments($issueNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('alice', $result[0]->author);
+        $this->assertSame('Issue comment body', $result[0]->body);
+        $this->assertNull($result[0]->path);
+        $this->assertNull($result[0]->line);
+    }
+
+    public function testGetPullRequestReviewCommentsSuccess(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'user' => ['login' => 'bob'],
+                'body' => 'Review comment',
+                'created_at' => '2025-01-15T11:00:00Z',
+                'path' => 'src/File.php',
+                'line' => 10,
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains("/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}/comments")
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('bob', $result[0]->author);
+        $this->assertSame('Review comment', $result[0]->body);
+        $this->assertSame('src/File.php', $result[0]->path);
+        $this->assertSame(10, $result[0]->line);
+    }
+
+    public function testGetPullRequestReviewCommentsFailure(): void
+    {
+        $pullNumber = 123;
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains("/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}/comments"))
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to get review comments for pull request #{$pullNumber}.");
+
+        $this->githubProvider->getPullRequestReviewComments($pullNumber);
+    }
+
+    public function testGetPullRequestReviewsSuccess(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'id' => 80,
+                'user' => ['login' => 'reviewer'],
+                'body' => 'Please address the suggested changes.',
+                'state' => 'CHANGES_REQUESTED',
+                'submitted_at' => '2025-01-15T12:00:00Z',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'GET',
+                $this->stringContains("/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}/reviews")
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviews($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('reviewer', $result[0]->author);
+        $this->assertSame('Please address the suggested changes.', $result[0]->body);
+        $this->assertNull($result[0]->path);
+        $this->assertNull($result[0]->line);
+    }
+
+    public function testGetPullRequestReviewsFailure(): void
+    {
+        $pullNumber = 123;
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(500);
+        $responseMock->method('getContent')->with(false)->willReturn('Server Error');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains("/repos/" . self::GITHUB_OWNER . "/" . self::GITHUB_REPO . "/pulls/{$pullNumber}/reviews"))
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to get reviews for pull request #{$pullNumber}.");
+
+        $this->githubProvider->getPullRequestReviews($pullNumber);
+    }
+
+    public function testGetPullRequestReviewsUsesCreatedAtWhenSubmittedAtMissing(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'id' => 81,
+                'user' => ['login' => 'user1'],
+                'body' => 'Review body',
+                'state' => 'COMMENT',
+                'created_at' => '2025-01-15T11:00:00Z',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())->method('request')->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviews($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('2025-01-15 11:00:00', $result[0]->date->format('Y-m-d H:i:s'));
+    }
+
+    public function testGetPullRequestReviewsSkipsEmptyBody(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            ['id' => 1, 'user' => ['login' => 'u1'], 'body' => null, 'submitted_at' => '2025-01-15T12:00:00Z'],
+            ['id' => 2, 'user' => ['login' => 'u2'], 'body' => '  ', 'submitted_at' => '2025-01-15T12:01:00Z'],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())->method('request')->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviews($pullNumber);
+
+        $this->assertCount(0, $result);
+    }
+
+    public function testGetPullRequestCommentsFailure(): void
+    {
+        $issueNumber = 123;
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not Found');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage("Failed to get comments for issue #{$issueNumber}.");
+
+        $this->githubProvider->getPullRequestComments($issueNumber);
+    }
+
+    public function testGetPullRequestCommentsCapsAtPageSize(): void
+    {
+        $issueNumber = 123;
+        $manyComments = [];
+        for ($i = 0; $i < 55; ++$i) {
+            $manyComments[] = [
+                'user' => ['login' => 'user' . $i],
+                'body' => 'Comment ' . $i,
+                'created_at' => '2025-01-15T10:00:00Z',
+            ];
+        }
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($manyComments);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestComments($issueNumber);
+
+        $this->assertCount(50, $result);
+    }
+
+    public function testGetPullRequestReviewCommentsWithMissingPathAndLine(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'user' => ['login' => 'bob'],
+                'body' => 'Review without path/line',
+                'created_at' => '2025-01-15T11:00:00Z',
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('bob', $result[0]->author);
+        $this->assertNull($result[0]->path);
+        $this->assertNull($result[0]->line);
+    }
+
     public function testGetClientCreatesClientWhenNotProvided(): void
     {
         // Create provider without passing a client

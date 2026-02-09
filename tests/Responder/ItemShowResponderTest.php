@@ -8,7 +8,6 @@ use App\Response\ItemShowResponse;
 use App\Service\ColorHelper;
 use App\Service\DescriptionFormatter;
 use App\Tests\CommandTestCase;
-use Symfony\Component\Console\Helper\TableSeparator;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemShowResponderTest extends CommandTestCase
@@ -91,7 +90,6 @@ class ItemShowResponderTest extends CommandTestCase
                 $this->callback(function ($arg) {
                     return is_array($arg) && ! empty($arg);
                 }),
-                $this->isInstanceOf(TableSeparator::class),
                 $this->callback(function ($arg) {
                     return is_array($arg) && in_array('https://your-company.atlassian.net/browse/TPW-35', $arg, true);
                 })
@@ -163,6 +161,44 @@ class ItemShowResponderTest extends CommandTestCase
         $this->responder->respond($io, $response, 'TPW-35');
     }
 
+    public function testRespondHandlesDescriptionSectionWithEmptyContent(): void
+    {
+        $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
+        $descriptionFormatter->method('parseSections')
+            ->with('Desc')
+            ->willReturn([
+                ['title' => 'SectionWithNoContent', 'contentLines' => []],
+            ]);
+        $responder = new ItemShowResponder(
+            $this->translationService,
+            ['JIRA_URL' => 'https://example.com'],
+            $descriptionFormatter,
+            null
+        );
+        $issue = new WorkItem(
+            '1000',
+            'TPW-35',
+            'Test',
+            'To Do',
+            'User',
+            'Desc',
+            [],
+            'Task',
+            [],
+            null
+        );
+        $response = ItemShowResponse::success($issue);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->callback(fn ($t) => is_string($t) && $t !== ''));
+        $io->expects($this->once())
+            ->method('definitionList');
+
+        $responder->respond($io, $response, 'TPW-35');
+    }
+
     public function testRespondHandlesEmptyDescription(): void
     {
         $issue = new WorkItem(
@@ -222,7 +258,6 @@ class ItemShowResponderTest extends CommandTestCase
                     // Should contain translated "none" label
                     return is_array($arg) && ! empty($arg);
                 }),
-                $this->anything(),
                 $this->anything()
             );
 
@@ -361,7 +396,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::success($issue);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
             ->with($io);
         $colorHelper->expects($this->atLeastOnce())
@@ -401,7 +436,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::success($issue);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
             ->with($io);
         $colorHelper->expects($this->atLeastOnce())
@@ -478,7 +513,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::success($issue);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
             ->with($io);
         $colorHelper->expects($this->atLeastOnce())
@@ -519,7 +554,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::success($issue);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
             ->with($io);
         $colorHelper->expects($this->atLeastOnce())
@@ -579,7 +614,7 @@ class ItemShowResponderTest extends CommandTestCase
                 'text' => [['Line 1', 'Line 2']], // Array of text lines
             ]);
 
-        $colorHelper->expects($this->once())
+        $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
             ->with($io);
         $colorHelper->expects($this->atLeastOnce())

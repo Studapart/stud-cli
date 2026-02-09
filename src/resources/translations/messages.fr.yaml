@@ -34,6 +34,17 @@ config:
       zsh_command: echo 'eval "$(stud completion zsh)"' >> ~/.zshrc
       reload_instruction: Ensuite, redémarrez votre shell ou exécutez 'source ~/.%shellrc%'
       skipped: Configuration de l'auto-complétion du shell ignorée.
+  show:
+    section_global: "Configuration globale"
+    section_project: "Configuration du projet"
+    no_config_found: "Aucun fichier de configuration trouvé. Exécutez 'stud config:init' pour en créer un. La sortie est sûre à partager (les secrets sont masqués)."
+  validate:
+    section_title: "Validation de la configuration"
+    label_jira: "Jira"
+    label_git_provider: "Fournisseur Git"
+    status_ok: "OK"
+    status_fail: "Échec"
+    status_skipped: "Ignoré"
   error:
     not_found: 'Fichier de configuration introuvable à : %path%
 
@@ -202,6 +213,12 @@ please:
 
     Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
   warning_force: ⚠️  Forçage avec lease...
+commit_undo:
+  error_not_repo: Pas dans un dépôt git.
+  error_no_commit: Il n'y a pas de commit à annuler.
+  warning_pushed: "Le dernier commit est déjà poussé sur le remote. L'annuler nécessiterait un force-push pour mettre à jour le remote. Après l'annulation, vous pouvez exécuter 'stud please' pour force-push en toute sécurité."
+  confirm_continue: "Continuer ? [y/N]"
+  success: Dernier commit supprimé. Les modifications restent non indexées dans votre arbre de travail.
 flatten:
   section: Aplatissement des commits fixup
   error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant d'aplatir.
@@ -281,6 +298,23 @@ pr:
     success: '✅ Commentaire publié avec succès sur la Pull Request #%number%'
     using_stdin: Lecture du commentaire depuis STDIN...
     using_argument: Utilisation du commentaire depuis l'argument...
+  comments:
+    section: 'Commentaires de la PR #%number%'
+    error_no_provider: Aucun fournisseur Git configuré pour ce projet.
+    error_no_pr: Aucune PR/MR trouvée pour la branche actuelle.
+    error_fetch: 'Échec de la récupération des commentaires de la PR.
+
+      Erreur : %error%'
+    issue_comments: Commentaires sur la PR
+    reviews: Revues
+    review_comments: Commentaires de revue
+    no_comments: Aucun commentaire
+    table:
+      author: Auteur
+      date: Date
+      body: Corps
+      path: Fichier
+      line: Ligne
 branch:
   rename:
     section: Renaming branch
@@ -464,6 +498,8 @@ help:
   category_release_commands: Commandes de Release
   example_prefix: 'Exemple : %example%'
   command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
+  command_config_show: "Afficher la configuration actuelle (globale et projet) avec les secrets masqués ; sûr à partager."
+  command_config_validate: "Valider que la configuration est présente et que Jira et le fournisseur Git sont accessibles. Utilisez --skip-jira ou --skip-git pour des vérifications partielles."
   command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
@@ -476,11 +512,13 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Vous guide à travers la création d'un commit conventionnel.
+  command_commit_undo: "Supprime le dernier commit et garde les modifications non indexées. Refuse ou demande confirmation si le dernier commit est déjà poussé ; utilisez 'stud please' pour force-push après annulation."
   command_please: Un force-push sûr pour utilisateur avancé (force-with-lease).
   command_flatten: Fusionner automatiquement tous les commits fixup! dans leurs commits cibles.
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
   command_submit: Pousse la branche actuelle et crée une Pull Request.
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
+  command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
   command_status: Un tableau de bord rapide "où suis-je ?".
   command_release: Crée une nouvelle branche de release et incrémente la version.
   command_deploy: Déploie la branche de release actuelle.

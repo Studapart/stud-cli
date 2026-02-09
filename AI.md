@@ -113,7 +113,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - If coverage is not 100%, identify missing lines using the Clover XML report and add tests to cover them.
     - **DO NOT PROCEED TO COMMIT** until 100% coverage is confirmed.
 
-6.  **Commit**: Use `stud commit` to generate the commit message. Only commit if there are meaningful, relevant changes.
+6.  **Commit**: Use `stud commit -a` to generate the commit message. Only commit if there are meaningful, relevant changes.
 
 **Deliverable**: All changes committed with a proper conventional commit message, and the entire project maintains 100% code coverage and meets all quality thresholds.
 
@@ -149,6 +149,6 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 ### Commit Best Practices for Gemini
 
-*   **Meaningful Changes Only:** When instructed to commit changes (e.g., via `stud commit`), ensure that the codebase has undergone actual, meaningful modifications relevant to the task.
+*   **Meaningful Changes Only:** When instructed to commit changes (e.g., via `stud commit -a`), ensure that the codebase has undergone actual, meaningful modifications relevant to the task.
 *   **Avoid Artificial Commits:** Never introduce artificial or 'placeholder' changes (such as empty comments, whitespace adjustments, or non-functional code) solely to create a commit for testing purposes.
-*   **Handle No Changes Gracefully:** If a `stud commit` operation is requested but no relevant changes have been made to the working directory, inform the user of this state and ask for clarification on how to proceed, rather than attempting to force a commit with irrelevant modifications.
+*   **Handle No Changes Gracefully:** If a `stud commit -a` operation is requested but no relevant changes have been made to the working directory, inform the user of this state and ask for clarification on how to proceed, rather than attempting to force a commit with irrelevant modifications.
