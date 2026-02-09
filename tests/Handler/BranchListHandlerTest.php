@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Handler;
 
 use App\Handler\BranchListHandler;
@@ -7,9 +9,6 @@ use App\Service\GithubProvider;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchListHandlerTest extends CommandTestCase
 {
@@ -19,41 +18,41 @@ class BranchListHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $logger = $this->createMock(Logger::class);
-        $this->handler = new BranchListHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $logger);
+        $this->handler = new BranchListHandler(
+            $this->gitRepository,
+            $this->githubProvider,
+            'origin/develop',
+            $this->translationService
+        );
     }
 
-    public function testHandleWithNoBranches(): void
+    public function testHandleWithNoBranchesReturnsEmptyRows(): void
     {
         $this->gitRepository->method('getAllLocalBranches')->willReturn([]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(0, $response->rows);
     }
 
-    public function testHandleWithBranches(): void
+    public function testHandleWithBranchesReturnsRows(): void
     {
         $branches = ['develop', 'feat/PROJ-123', 'main'];
         $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
-            return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
-        });
+        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(
+            fn ($branch, $base) => $branch === 'feat/PROJ-123' && $base === 'origin/develop'
+        );
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(3, $response->rows);
     }
 
     public function testHandleWithBranchHavingPr(): void
@@ -75,18 +74,16 @@ class BranchListHandlerTest extends CommandTestCase
             ],
         ]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
+        $this->assertSame('✓', $response->rows[0]->pr);
     }
 
     public function testHandleWithGithubProviderNull(): void
     {
-        $logger = $this->createMock(Logger::class);
-        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $logger);
+        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService);
 
         $branches = ['feat/PROJ-123'];
         $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
@@ -94,12 +91,11 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $handler->handle();
 
-        $result = $handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
+        $this->assertSame('✗', $response->rows[0]->pr);
     }
 
     public function testHandleWithGithubProviderException(): void
@@ -112,12 +108,10 @@ class BranchListHandlerTest extends CommandTestCase
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willThrowException(new \Exception('API error'));
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
     }
 
     public function testHandleWithMergedBranchOnRemote(): void
@@ -129,12 +123,11 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
+        $this->assertStringContainsString('merged', $response->rows[0]->status);
     }
 
     public function testHandleWithStaleBranch(): void
@@ -146,12 +139,11 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
+        $this->assertStringContainsString('stale', $response->rows[0]->status);
     }
 
     public function testHandleWithPrMapOptimization(): void
@@ -162,7 +154,6 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
 
-        // Mock getAllPullRequests to return PRs for both branches
         $allPrs = [
             [
                 'number' => 123,
@@ -185,15 +176,14 @@ class BranchListHandlerTest extends CommandTestCase
         ];
 
         $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
-        // Should not call findPullRequestByBranchName when PR map is used
         $this->githubProvider->expects($this->never())->method('findPullRequestByBranchName');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(2, $response->rows);
+        $this->assertSame('✓', $response->rows[0]->pr);
+        $this->assertSame('✓', $response->rows[1]->pr);
     }
 
     public function testHandleWithPrMapFallbackOnError(): void
@@ -203,17 +193,13 @@ class BranchListHandlerTest extends CommandTestCase
         $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
         $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
-
-        // getAllPullRequests fails, should fall back to per-branch calls
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle($io);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->rows);
     }
 
     public function testBuildPrMapExcludesForkPrs(): void
@@ -233,7 +219,7 @@ class BranchListHandlerTest extends CommandTestCase
                 'state' => 'open',
                 'head' => [
                     'ref' => 'feat/PROJ-456',
-                    'repo' => ['full_name' => 'fork_owner/test_repo'], // Fork PR
+                    'repo' => ['full_name' => 'fork_owner/test_repo'],
                 ],
                 'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
             ],
@@ -241,13 +227,8 @@ class BranchListHandlerTest extends CommandTestCase
 
         $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('buildPrMap');
-        $method->setAccessible(true);
+        $prMap = $this->callPrivateMethod($this->handler, 'buildPrMap', []);
 
-        $prMap = $method->invoke($this->handler);
-
-        // Should only include PR from same repo, exclude fork PR
         $this->assertCount(1, $prMap);
         $this->assertArrayHasKey('feat/PROJ-123', $prMap);
         $this->assertArrayNotHasKey('feat/PROJ-456', $prMap);
@@ -268,36 +249,25 @@ class BranchListHandlerTest extends CommandTestCase
             [
                 'number' => 456,
                 'state' => 'open',
-                'head' => [], // Missing ref
+                'head' => [],
                 'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
             ],
         ];
 
         $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('buildPrMap');
-        $method->setAccessible(true);
+        $prMap = $this->callPrivateMethod($this->handler, 'buildPrMap', []);
 
-        $prMap = $method->invoke($this->handler);
-
-        // Should only include PR with head.ref
         $this->assertCount(1, $prMap);
         $this->assertArrayHasKey('feat/PROJ-123', $prMap);
     }
 
     public function testBuildPrMapHandlesException(): void
     {
-        // Test that buildPrMap handles exceptions gracefully
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('buildPrMap');
-        $method->setAccessible(true);
+        $prMap = $this->callPrivateMethod($this->handler, 'buildPrMap', []);
 
-        $prMap = $method->invoke($this->handler);
-
-        // Should return empty map on exception
         $this->assertSame([], $prMap);
     }
 
@@ -318,7 +288,6 @@ class BranchListHandlerTest extends CommandTestCase
                 'state' => 'open',
                 'head' => [
                     'ref' => 'feat/PROJ-456',
-                    // Missing repo info
                 ],
                 'base' => ['repo' => ['full_name' => 'test_owner/test_repo']],
             ],
@@ -329,42 +298,28 @@ class BranchListHandlerTest extends CommandTestCase
                     'ref' => 'feat/PROJ-789',
                     'repo' => ['full_name' => 'test_owner/test_repo'],
                 ],
-                // Missing base repo info
             ],
         ];
 
         $this->githubProvider->method('getAllPullRequests')->with('all')->willReturn($allPrs);
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('buildPrMap');
-        $method->setAccessible(true);
+        $prMap = $this->callPrivateMethod($this->handler, 'buildPrMap', []);
 
-        $prMap = $method->invoke($this->handler);
-
-        // Should only include PR with complete repo info
         $this->assertCount(1, $prMap);
         $this->assertArrayHasKey('feat/PROJ-123', $prMap);
-        $this->assertArrayNotHasKey('feat/PROJ-456', $prMap);
-        $this->assertArrayNotHasKey('feat/PROJ-789', $prMap);
     }
 
     public function testHasPullRequestWithNullGithubProvider(): void
     {
-        $logger = $this->createMock(Logger::class);
-        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $logger);
+        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService);
 
-        $reflection = new \ReflectionClass($handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($handler, 'feat/PROJ-123', null);
+        $result = $this->callPrivateMethod($handler, 'hasPullRequest', ['feat/PROJ-123', null]);
 
         $this->assertFalse($result);
     }
 
     public function testHasPullRequestWithFallbackPath(): void
     {
-        // Test hasPullRequest when prMap is null (fallback to per-branch API call)
         $pr = [
             'number' => 123,
             'state' => 'open',
@@ -375,50 +330,35 @@ class BranchListHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123', 'all')
             ->willReturn($pr);
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+        $result = $this->callPrivateMethod($this->handler, 'hasPullRequest', ['feat/PROJ-123', null]);
 
         $this->assertTrue($result);
     }
 
     public function testHasPullRequestWithFallbackPathNoPr(): void
     {
-        // Test hasPullRequest fallback when no PR is found
         $this->githubProvider->method('findPullRequestByBranchName')
             ->with('feat/PROJ-123', 'all')
             ->willReturn(null);
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+        $result = $this->callPrivateMethod($this->handler, 'hasPullRequest', ['feat/PROJ-123', null]);
 
         $this->assertFalse($result);
     }
 
     public function testHasPullRequestWithFallbackPathException(): void
     {
-        // Test hasPullRequest fallback when API call throws exception
         $this->githubProvider->method('findPullRequestByBranchName')
             ->with('feat/PROJ-123', 'all')
             ->willThrowException(new \Exception('API error'));
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->handler, 'feat/PROJ-123', null);
+        $result = $this->callPrivateMethod($this->handler, 'hasPullRequest', ['feat/PROJ-123', null]);
 
         $this->assertFalse($result);
     }
 
     public function testHasPullRequestWithPrMapFound(): void
     {
-        // Test hasPullRequest with PR map when PR is found
         $prMap = [
             'feat/PROJ-123' => [
                 'number' => 123,
@@ -427,18 +367,13 @@ class BranchListHandlerTest extends CommandTestCase
             ],
         ];
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->handler, 'feat/PROJ-123', $prMap);
+        $result = $this->callPrivateMethod($this->handler, 'hasPullRequest', ['feat/PROJ-123', $prMap]);
 
         $this->assertTrue($result);
     }
 
     public function testHasPullRequestWithPrMapNotFound(): void
     {
-        // Test hasPullRequest with PR map when PR is not found
         $prMap = [
             'feat/PROJ-456' => [
                 'number' => 456,
@@ -447,11 +382,7 @@ class BranchListHandlerTest extends CommandTestCase
             ],
         ];
 
-        $reflection = new \ReflectionClass($this->handler);
-        $method = $reflection->getMethod('hasPullRequest');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($this->handler, 'feat/PROJ-123', $prMap);
+        $result = $this->callPrivateMethod($this->handler, 'hasPullRequest', ['feat/PROJ-123', $prMap]);
 
         $this->assertFalse($result);
     }

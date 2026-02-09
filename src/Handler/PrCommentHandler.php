@@ -7,6 +7,7 @@ namespace App\Handler;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\Logger;
+use App\Service\MarkdownHelper;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -34,7 +35,7 @@ class PrCommentHandler
         // Get comment body with precedence: STDIN first, then argument
         $commentBody = $this->getCommentBody($message);
         if ($commentBody !== null) {
-            $commentBody = $this->unescapeCheckboxMarkdown($commentBody);
+            $commentBody = MarkdownHelper::unescapeCheckboxMarkdown($commentBody);
         }
 
         if (empty($commentBody)) {
@@ -140,15 +141,6 @@ class PrCommentHandler
         // @codeCoverageIgnoreStart
         return '';
         // @codeCoverageIgnoreEnd
-    }
-
-    /**
-     * Unescapes backslash-bracket sequences so GitHub/GitLab task list checkboxes render correctly.
-     * Content from scripts or tools often escapes [ ] as \[ \] or \[\], which would break checkboxes.
-     */
-    protected function unescapeCheckboxMarkdown(string $body): string
-    {
-        return str_replace(['\]', '\['], [']', '['], $body);
     }
 
     /**

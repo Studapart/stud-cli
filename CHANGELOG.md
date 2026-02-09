@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Align `filters:list`, `branches:list`, and `items:show` with Responder pattern and ViewConfig (ADR-005) [SCI-57]
+  - `filters:list`: `FilterListHandler` now returns `FilterListResponse`; new `FilterListResponder` renders via `PageViewConfig` + `TableBlock`
+  - `branches:list`: `BranchListHandler` now returns `BranchListResponse`; new `BranchListResponder` renders via `PageViewConfig` + `TableBlock`
+  - `items:show`: `ItemShowResponder` now renders definition list and description sections via `PageViewConfig` (`DefinitionItem`, `Section`, `Content`) instead of raw `$io` calls
+  - Audit document added: `documentation/audit-sci57-command-compliance.md`; ADR-005 §7.3 updated with new Response/Responder inventory
+
 ### Added
 - Add `stud pr:comments` command (alias `stud pcs`) to fetch and display issue and review comments for the current branch's PR/MR [SCI-55]
   - Works with both GitHub and GitLab; uses the same PR/MR resolution as `stud pr:comment`

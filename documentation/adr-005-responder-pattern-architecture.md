@@ -178,6 +178,8 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 | Response class | Use case |
 |----------------|----------|
+| `BranchListResponse` | Branch list operations |
+| `FilterListResponse` | Filter list operations |
 | `FilterShowResponse` | Filter show operations |
 | `ItemListResponse` | Item list operations |
 | `ItemShowResponse` | Item show operations |
@@ -188,6 +190,8 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 | Responder class | Structure | Renders |
 |-----------------|-----------|---------|
+| `BranchListResponder` | PageViewConfig + TableBlock | Branch, Status, Remote, PR |
+| `FilterListResponder` | PageViewConfig + TableBlock | Name, Description |
 | `FilterShowResponder` | PageViewConfig + TableBlock | Key, Status, Priority (conditional), Description, Jira URL |
 | `ItemListResponder` | PageViewConfig + TableBlock | Key, Status, Summary |
 | `ItemShowResponder` | PageViewConfig (definition lists, content) | Definition lists, formatted description sections |
