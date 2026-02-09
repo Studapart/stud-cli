@@ -43,9 +43,11 @@ use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\BranchListResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
 use App\Responder\ErrorResponder;
+use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
@@ -1033,8 +1035,15 @@ function projects_list(
 function filters_list(): void
 {
     _load_constants();
-    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $response = $handler->handle();
+    $errorResponder = _get_error_responder();
+    if (! $response->isSuccess()) {
+        $errorResponder->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new FilterListResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
@@ -1189,9 +1198,12 @@ function branches_list(): int
     _load_constants();
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service());
+    $response = $handler->handle();
+    $responder = new BranchListResponder(_get_translation_service(), _get_color_helper());
+    $responder->respond(io(), $response);
 
-    return $handler->handle(io());
+    return 0;
 }
 
 #[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]

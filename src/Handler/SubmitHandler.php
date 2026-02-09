@@ -11,6 +11,7 @@ use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
+use App\Service\MarkdownHelper;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -113,6 +114,7 @@ class SubmitHandler
             // Convert HTML to Markdown for better readability on GitHub
             try {
                 $prBody = $this->htmlConverter->toMarkdown($prBody);
+                $prBody = MarkdownHelper::unescapeCheckboxMarkdown($prBody);
                 $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description');
             } catch (\Exception $e) {
                 $errorMessage = $e->getMessage();
