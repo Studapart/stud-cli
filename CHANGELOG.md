@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-02-09
+
 ### Changed
 - Align `filters:list`, `branches:list`, and `items:show` with Responder pattern and ViewConfig (ADR-005) [SCI-57]
   - `filters:list`: `FilterListHandler` now returns `FilterListResponse`; new `FilterListResponder` renders via `PageViewConfig` + `TableBlock`
