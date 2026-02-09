@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Audit document added: `documentation/audit-sci57-command-compliance.md`; ADR-005 §7.3 updated with new Response/Responder inventory
 
 ### Added
+- Add "Scripting & CI" subsection to README [SCI-56]
+  - Documents non-interactive flags (`--quiet`, `-m`/`--message`, `--all`, `--draft`, `--labels`, `--publish`, `--clean`) and the commands they apply to
+  - Includes example snippets and brief CI guidance (config complete, prefer non-interactive flags, environment considerations)
+  - Table of Contents updated to link to the new subsection
 - Add `stud pr:comments` command (alias `stud pcs`) to fetch and display issue and review comments for the current branch's PR/MR [SCI-55]
   - Works with both GitHub and GitLab; uses the same PR/MR resolution as `stud pr:comment`
   - Displays two sections: "Issue comments" and "Review comments" (with author, date, body; review comments include file path and line when available)

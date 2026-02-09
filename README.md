@@ -22,6 +22,7 @@
     - [Configuration Commands](#configuration-commands)
     - [Jira Information Commands](#jira-information-commands)
     - [Git Workflow Commands](#git-workflow-commands)
+    - [Scripting & CI](#scripting--ci)
   - [User Troubleshooting](#user-troubleshooting)
 
 ---
@@ -893,6 +894,40 @@ These commands help you manage the release process.
         stud mep
         stud deploy --clean
         ```
+
+#### Scripting & CI
+
+When running `stud-cli` in scripts, CI pipelines, or automation, use non-interactive flags so commands do not prompt for input. This subsection summarizes the main options; for full command reference see the sections above.
+
+**Non-interactive flags by command:**
+
+| Command | Flags | Purpose |
+|---------|--------|---------|
+| `stud commit` | `--message <message>` / `-m` | Bypass interactive commit prompter |
+| `stud commit` | `--all` / `-a` | Stage all changes before committing |
+| `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
+| `stud submit` | `--draft` / `-d` | Create a draft Pull Request |
+| `stud submit` | `--labels "…"` | Add labels without being prompted |
+| `stud release` | `--publish` / `-p` | Publish the release branch to remote |
+| `stud deploy` | `--clean` | Clean up merged branches after deployment (non-interactive) |
+| `stud branch:rename` | `--quiet` / `-q` | Bypass confirmation and rebase prompts |
+
+**Example snippets:**
+
+```bash
+stud commit -m "feat: add feature X"
+stud submit --draft
+stud submit --draft --labels "bug,ui"
+stud branches:clean --quiet
+```
+
+**Exit codes:** Commands exit with `0` on success and a non-zero code on error. Scripts can check `$?` (or equivalent) to detect failures.
+
+**CI guidance:**
+
+- **Config must be complete:** Ensure global config (`~/.config/stud/config.yml`) and, if needed, project config (`.git/stud.config`) are present and valid so commands do not prompt. Use `stud config:validate` (optionally with `--skip-jira` or `--skip-git`) as a health check.
+- **Prefer non-interactive flags:** Use `--quiet`, `-m`, `--draft`, `--labels`, `--all`, etc. where available to avoid prompts.
+- **Environment:** Set `HOME` (or the config path) in CI so `stud` can find its config; avoid relying on interactive wizards like `stud config:init` in CI.
 
 ### User Troubleshooting
 
