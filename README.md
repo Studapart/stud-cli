@@ -489,6 +489,7 @@ GITLAB_INSTANCE_URL: https://git.example.com  # Optional, defaults to gitlab.com
 **What Git Provider Tokens Enable:**
 - `stud submit`: Creating Pull Requests (GitHub) or Merge Requests (GitLab)
 - `stud pr:comment`: Adding comments to PRs/MRs
+- `stud pr:comments`: Fetching and displaying PR/MR comments (issue and review) in the terminal
 - `stud branch:rename`: Managing PRs/MRs and labels during branch rename
 - `stud branches:list` and `stud branches:clean`: PR/MR detection for branch status
 - Label management and PR/MR operations
@@ -819,6 +820,15 @@ These commands integrate directly with your local Git repository to streamline y
         echo "Comment text" | stud pc
         ```
     -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
+
+-   **`stud pr:comments`** (Alias: `stud pcs`)
+    -   **Description:** Fetches and displays issue comments and review (inline) comments for the active Pull Request or Merge Request on the current branch. Complements `stud pr:comment` (which posts a comment) by letting you read all PR/MR feedback in the terminal.
+    -   **Usage:**
+        ```bash
+        stud pr:comments
+        stud pcs
+        ```
+    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits.
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.

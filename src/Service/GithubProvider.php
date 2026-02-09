@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
@@ -439,6 +440,171 @@ class GithubProvider implements GitProviderInterface
         }
 
         return $response->toArray();
+    }
+
+    private const COMMENTS_PAGE_SIZE = 50;
+    private const COMMENTS_MAX_PAGES = 1;
+
+    /**
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestComments(int $issueNumber): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
+        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'sort' => 'created', 'direction' => 'desc']);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->getClient()->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
+
+            throw new ApiException(
+                "Failed to get comments for issue #{$issueNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $comments = [];
+        $count = 0;
+        foreach ($data as $row) {
+            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                // Pagination cap; hit when API returns more than COMMENTS_PAGE_SIZE items
+                // @codeCoverageIgnoreStart
+                break;
+                // @codeCoverageIgnoreEnd
+            }
+            $comments[] = $this->mapIssueCommentToDto($row);
+            ++$count;
+        }
+
+        return array_reverse($comments);
+    }
+
+    /**
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviewComments(int $pullNumber): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/comments";
+        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->getClient()->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
+
+            throw new ApiException(
+                "Failed to get review comments for pull request #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $comments = [];
+        $count = 0;
+        foreach ($data as $row) {
+            // Pagination cap for review comments
+            // @codeCoverageIgnoreStart
+            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                break;
+            }
+            // @codeCoverageIgnoreEnd
+            $comments[] = $this->mapReviewCommentToDto($row);
+            ++$count;
+        }
+
+        return array_reverse($comments);
+    }
+
+    /**
+     * @return PullRequestComment[]
+     */
+    public function getPullRequestReviews(int $pullNumber): array
+    {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/reviews";
+        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
+        $apiUrl .= '?' . $queryParams;
+
+        $response = $this->getClient()->request('GET', $apiUrl);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
+
+            throw new ApiException(
+                "Failed to get reviews for pull request #{$pullNumber}.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $reviews = [];
+        $count = 0;
+        foreach ($data as $row) {
+            // Pagination cap for reviews
+            // @codeCoverageIgnoreStart
+            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+                break;
+            }
+            // @codeCoverageIgnoreEnd
+            $dto = $this->mapReviewToDto($row);
+            if ($dto !== null) {
+                $reviews[] = $dto;
+                ++$count;
+            }
+        }
+
+        return array_reverse($reviews);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    protected function mapReviewToDto(array $row): ?PullRequestComment
+    {
+        $body = isset($row['body']) ? trim((string) $row['body']) : '';
+        if ($body === '') {
+            return null;
+        }
+        $user = $row['user'] ?? [];
+        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
+        $submittedAt = isset($row['submitted_at']) ? (string) $row['submitted_at'] : ($row['created_at'] ?? null);
+        $date = $submittedAt !== null ? new \DateTimeImmutable($submittedAt) : new \DateTimeImmutable();
+
+        return new PullRequestComment($author, $date, $body, null, null);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    protected function mapIssueCommentToDto(array $row): PullRequestComment
+    {
+        $user = $row['user'] ?? [];
+        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
+        $createdAt = isset($row['created_at']) ? new \DateTimeImmutable((string) $row['created_at']) : new \DateTimeImmutable();
+        $body = isset($row['body']) ? (string) $row['body'] : '';
+
+        return new PullRequestComment($author, $createdAt, $body, null, null);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    protected function mapReviewCommentToDto(array $row): PullRequestComment
+    {
+        $user = $row['user'] ?? [];
+        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
+        $createdAt = isset($row['created_at']) ? new \DateTimeImmutable((string) $row['created_at']) : new \DateTimeImmutable();
+        $body = isset($row['body']) ? (string) $row['body'] : '';
+        $path = isset($row['path']) ? (string) $row['path'] : null;
+        $line = isset($row['line']) ? (int) $row['line'] : null;
+
+        return new PullRequestComment($author, $createdAt, $body, $path, $line);
     }
 
     /**

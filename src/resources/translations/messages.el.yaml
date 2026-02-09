@@ -298,6 +298,23 @@ pr:
     success: '✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%'
     using_stdin: Ανάγνωση σχολίου από STDIN...
     using_argument: Χρήση σχολίου από όρισμα...
+  comments:
+    section: 'Σχόλια PR #%number%'
+    error_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.
+    error_no_pr: Δεν βρέθηκε PR/MR για τον τρέχοντα κλάδο.
+    error_fetch: 'Αποτυχία λήψης σχολίων PR.
+
+      Σφάλμα: %error%'
+    issue_comments: Σχόλια issue
+    reviews: Αξιολογήσεις
+    review_comments: Σχόλια αξιολόγησης
+    no_comments: Χωρίς σχόλια
+    table:
+      author: Συγγραφέας
+      date: Ημερομηνία
+      body: Περικείμενο
+      path: Αρχείο
+      line: Γραμμή
 branch:
   rename:
     section: Renaming branch
@@ -501,6 +518,7 @@ help:
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
   command_submit: Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request.
   command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
+  command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου.
   command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".
   command_release: Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση.
   command_deploy: Αναπτύσσει τον τρέχοντα κλάδο release.

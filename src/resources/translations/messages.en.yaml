@@ -337,6 +337,21 @@ pr:
     success: "✅ Comment posted successfully to Pull Request #%number%"
     using_stdin: "Reading comment from STDIN..."
     using_argument: "Using comment from argument..."
+  comments:
+    section: "PR #%number% comments"
+    error_no_provider: "No Git provider configured for this project."
+    error_no_pr: "No PR/MR found for the current branch."
+    error_fetch: "Failed to fetch PR comments.\nError: %error%"
+    issue_comments: "Issue comments"
+    reviews: "Reviews"
+    review_comments: "Review comments"
+    no_comments: "No comments"
+    table:
+      author: "Author"
+      date: "Date"
+      body: "Body"
+      path: "Path"
+      line: "Line"
 
 # Commit Handler
 commit:
@@ -514,6 +529,7 @@ help:
   command_cache_clear: "Clear the update check cache to force a version check on next command."
   command_submit: "Pushes the current branch and creates a Pull Request."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
+  command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."

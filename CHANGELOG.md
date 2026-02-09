@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Add `stud pr:comments` command (alias `stud pcs`) to fetch and display issue and review comments for the current branch's PR/MR [SCI-55]
+  - Works with both GitHub and GitLab; uses the same PR/MR resolution as `stud pr:comment`
+  - Displays two sections: "Issue comments" and "Review comments" (with author, date, body; review comments include file path and line when available)
+  - Exits with a clear error when no Git provider is configured or no PR/MR is found for the current branch
+  - Documented in README and command help; complements `stud pr:comment` (which posts a comment)
 - Add `stud commit:undo` command (alias `stud undo`) to remove the last commit and keep changes unstaged [SCI-54]
   - Equivalent to `git reset HEAD~1` (mixed). When the last commit is already pushed, the command warns and prompts for confirmation; message mentions using `stud please` to force-push after undoing. Documented in README and command help.
 - Add `stud config:validate` command to validate configuration and connectivity to Jira and Git provider [SCI-53]

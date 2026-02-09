@@ -57,6 +57,34 @@ class PrCommentHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
+    public function testHandleUnescapesCheckboxMarkdownBeforePosting(): void
+    {
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/TPW-35-my-feature')
+            ->willReturn(['number' => 123]);
+
+        $bodyWithEscapedCheckboxes = "- \\[ \\] Unchecked\n- \\[x\\] Checked";
+        $expectedBody = "- [ ] Unchecked\n- [x] Checked";
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createComment')
+            ->with(123, $expectedBody)
+            ->willReturn(['id' => 456]);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, $bodyWithEscapedCheckboxes);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithEmptyArgumentAndNoStdin(): void
     {
         // When message is null and STDIN is empty (TTY), should fail early
