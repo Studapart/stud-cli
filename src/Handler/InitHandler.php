@@ -84,8 +84,16 @@ class InitHandler
             'JIRA_URL' => rtrim($jiraUrl, '/'),
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
-            'GITHUB_TOKEN' => $githubToken ?: ($existingConfig['GITHUB_TOKEN'] ?? null),
-            'GITLAB_TOKEN' => $gitlabToken ?: ($existingConfig['GITLAB_TOKEN'] ?? null),
+            'GITHUB_TOKEN' => $this->resolveGitTokenForInit(
+                $githubToken,
+                'GITHUB_TOKEN',
+                $existingConfig
+            ),
+            'GITLAB_TOKEN' => $this->resolveGitTokenForInit(
+                $gitlabToken,
+                'GITLAB_TOKEN',
+                $existingConfig
+            ),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
 
@@ -225,6 +233,42 @@ class InitHandler
 
         // Language not supported, return null to fallback to 'en'
         return null;
+    }
+
+    /**
+     * Resolves the Git token value for config:init when the user leaves the prompt empty.
+     * Preserves legacy GIT_TOKEN / GIT_PROVIDER so that re-running config:init does not wipe tokens.
+     *
+     * @param string|null $userInput   Value from the interactive prompt (null or empty = "keep existing or skip")
+     * @param string      $newKey     Either 'GITHUB_TOKEN' or 'GITLAB_TOKEN'
+     * @param array<string, mixed> $existingConfig The raw config read from file (may contain GIT_TOKEN, GIT_PROVIDER, or new keys)
+     * @return string|null The token to write, or null
+     */
+    protected function resolveGitTokenForInit(?string $userInput, string $newKey, array $existingConfig): ?string
+    {
+        if ($userInput !== null && trim($userInput) !== '') {
+            return trim($userInput);
+        }
+
+        $existingNew = $existingConfig[$newKey] ?? null;
+        if ($existingNew !== null && is_string($existingNew) && trim($existingNew) !== '') {
+            return trim($existingNew);
+        }
+
+        $legacyToken = $existingConfig['GIT_TOKEN'] ?? null;
+        if ($legacyToken === null || ! is_string($legacyToken) || trim($legacyToken) === '') {
+            return null;
+        }
+
+        $provider = isset($existingConfig['GIT_PROVIDER']) && is_string($existingConfig['GIT_PROVIDER'])
+            ? strtolower($existingConfig['GIT_PROVIDER'])
+            : null;
+
+        if ($newKey === 'GITHUB_TOKEN') {
+            return ($provider === 'gitlab') ? null : trim($legacyToken);
+        }
+
+        return ($provider === 'github') ? null : trim($legacyToken);
     }
 
     /**

@@ -44,6 +44,53 @@ class GitRepository
         return empty($upstream) ? null : $upstream;
     }
 
+    /**
+     * Returns true if the current HEAD is pushed to its upstream.
+     * If there is no upstream, returns false.
+     */
+    public function isHeadPushed(): bool
+    {
+        if ($this->getUpstreamBranch() === null) {
+            return false;
+        }
+
+        $headProcess = $this->runQuietly('git rev-parse HEAD');
+        if (! $headProcess->isSuccessful()) {
+            return false;
+        }
+
+        $upstreamProcess = $this->runQuietly('git rev-parse @{u} 2>/dev/null');
+        if (! $upstreamProcess->isSuccessful()) {
+            return false;
+        }
+
+        $headSha = trim($headProcess->getOutput());
+        $upstreamSha = trim($upstreamProcess->getOutput());
+
+        return $headSha === $upstreamSha;
+    }
+
+    /**
+     * Returns true if the repository has at least one commit (HEAD exists).
+     */
+    public function hasAtLeastOneCommit(): bool
+    {
+        $process = $this->runQuietly('git rev-parse HEAD');
+
+        return $process->isSuccessful();
+    }
+
+    /**
+     * Removes the last commit and leaves its changes in the working tree (unstaged).
+     * Equivalent to git reset HEAD~1 (mixed).
+     *
+     * @throws GitException If not in a repository or there is no commit to undo
+     */
+    public function undoLastCommit(): void
+    {
+        $this->run('git reset HEAD~1');
+    }
+
     public function forcePushWithLease(): Process
     {
         return $this->run('git push --force-with-lease');
