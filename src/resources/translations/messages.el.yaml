@@ -213,6 +213,12 @@ please:
 
     Για την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε "stud submit".'
   warning_force: ⚠️  Εξαναγκασμός με lease...
+commit_undo:
+  error_not_repo: Δεν βρίσκεστε σε git repository.
+  error_no_commit: Δεν υπάρχει commit προς ακύρωση.
+  warning_pushed: "Το τελευταίο commit έχει ήδη γίνει push στο remote. Η ακύρωση θα απαιτούσε force-push. Μετά μπορείτε να εκτελέσετε 'stud please' για ασφαλές force-push."
+  confirm_continue: "Συνέχεια; [y/N]"
+  success: Το τελευταίο commit αφαιρέθηκε. Οι αλλαγές παραμένουν unstaged στο working tree.
 flatten:
   section: Εξομάλυνση fixup commits
   error_dirty_working: Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την εξομάλυνση.
@@ -489,6 +495,7 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit.
+  command_commit_undo: "Αφαιρεί το τελευταίο commit και αφήνει τις αλλαγές unstaged. Προειδοποιεί ή ζητά επιβεβαίωση αν έχει ήδη γίνει push· χρησιμοποιήστε 'stud please' για force-push μετά."
   command_please: Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease).
   command_flatten: Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους.
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.

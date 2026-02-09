@@ -213,6 +213,12 @@ please:
 
     Vir die aanvanklike push en om ''n Pull Request te skep, gebruik asseblief "stud submit".'
   warning_force: ⚠️  Dwing met lease...
+commit_undo:
+  error_not_repo: Nie in 'n git repository nie.
+  error_no_commit: Daar is geen commit om ongedaan te maak nie.
+  warning_pushed: "Die laaste commit is reeds na die remote gepush. Ongedaan maak sal 'n force-push vereis. Daarna kan u 'stud please' uitvoer om veilig force-push te doen."
+  confirm_continue: "Gaan voort? [y/N]"
+  success: Laaste commit verwyder. Veranderinge bly unstaged in u werkboom.
 flatten:
   section: Maak fixup commits plat
   error_dirty_working: Jou werk gids is nie skoon nie. Commit asseblief jou veranderinge met 'stud commit' voordat jy plat maak.
@@ -489,6 +495,7 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Lei jou deur die maak van 'n konvensionele commit.
+  command_commit_undo: "Verwyder die laaste commit en hou veranderinge unstaged. Waarsku of vra bevestiging as reeds gepush; gebruik 'stud please' om daarna force-push te doen."
   command_please: '''n Veilige force-push vir gevorderde gebruikers (force-with-lease).'
   command_flatten: Voeg outomaties alle fixup! commits saam in hul teiken commits.
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.

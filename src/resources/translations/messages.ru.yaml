@@ -213,6 +213,12 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+commit_undo:
+  error_not_repo: Не в git-репозитории.
+  error_no_commit: Нет коммита для отмены.
+  warning_pushed: "Последний коммит уже отправлен в удалённый репозиторий. Для отмены потребуется force-push. После отмены выполните 'stud please' для безопасного force-push."
+  confirm_continue: "Продолжить? [y/N]"
+  success: Последний коммит удалён. Изменения остаются в рабочем дереве без индексации.
 flatten:
   section: Сжатие fixup коммитов
   error_dirty_working: Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед сжатием.
@@ -489,6 +495,7 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Проводит вас через создание обычного коммита.
+  command_commit_undo: "Удаляет последний коммит и оставляет изменения без индексации. Предупреждает или запрашивает подтверждение, если уже отправлен; используйте 'stud please' для force-push после отмены."
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.

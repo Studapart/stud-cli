@@ -213,6 +213,12 @@ please:
 
     Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
   warning_force: ⚠️  Đang ép buộc với lease...
+commit_undo:
+  error_not_repo: Không ở trong kho lưu trữ git.
+  error_no_commit: Không có commit nào để hoàn tác.
+  warning_pushed: "Commit cuối cùng đã được đẩy lên remote. Hoàn tác sẽ yêu cầu force-push. Sau đó bạn có thể chạy 'stud please' để force-push an toàn."
+  confirm_continue: "Tiếp tục? [y/N]"
+  success: Đã xóa commit cuối. Các thay đổi vẫn ở trạng thái chưa stage trong cây làm việc.
 flatten:
   section: Làm phẳng các commit fixup
   error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi làm phẳng.
@@ -489,6 +495,7 @@ help:
   command_items_takeover: Takes over an issue from another user. Assigns the issue to you and switches to existing branch if found, or starts fresh if no branch exists.
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Hướng dẫn bạn tạo một commit thông thường.
+  command_commit_undo: "Xóa commit cuối cùng và giữ các thay đổi chưa stage. Cảnh báo hoặc yêu cầu xác nhận nếu đã push; dùng 'stud please' để force-push sau đó."
   command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
   command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
