@@ -586,5 +586,6 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Lijst lokale/remote branches met status (samengevoegd, verouderd, actieve PR)
   command_branches_clean: Interactieve opruiming van samengevoegde/verouderde branches
+  option_quiet: "Niet-interactief: standaardwaarden gebruiken, geen prompts"
   option_branches_clean_quiet: Verwijder alle overeenkomende branches zonder te vragen
   option_deploy_clean: Ruim samengevoegde branches op na deployment

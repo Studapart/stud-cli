@@ -70,7 +70,7 @@ class ReleaseHandler
         return $composerJson['version'];
     }
 
-    public function handle(SymfonyStyle $io, ?string $version = null, bool $publish = false, ?string $bumpType = null): void
+    public function handle(SymfonyStyle $io, ?string $version = null, bool $publish = false, ?string $bumpType = null, bool $quiet = false): void
     {
         // Determine the target version
         if ($version !== null) {
@@ -117,7 +117,7 @@ class ReleaseHandler
             $this->gitRepository->pushToOrigin($releaseBranch);
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.published'));
         } else {
-            if ($this->logger->confirm($this->translator->trans('release.confirm_publish'), false)) {
+            if (! $quiet && $this->logger->confirm($this->translator->trans('release.confirm_publish'), false)) {
                 $this->gitRepository->pushToOrigin($releaseBranch);
                 $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.published'));
             }

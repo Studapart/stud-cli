@@ -905,20 +905,31 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 |---------|--------|---------|
 | `stud commit` | `--message <message>` / `-m` | Bypass interactive commit prompter |
 | `stud commit` | `--all` / `-a` | Stage all changes before committing |
-| `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
+| `stud commit` | `--quiet` / `-q` | Use detected type/scope/summary from Jira, no prompts |
+| `stud commit:undo` | `--quiet` / `-q` | Proceed with undo even when HEAD is pushed (no confirm) |
 | `stud submit` | `--draft` / `-d` | Create a draft Pull Request |
 | `stud submit` | `--labels "…"` | Add labels without being prompted |
+| `stud submit` | `--quiet` / `-q` | Use default base branch/provider; unknown labels ignored; fail if token missing |
+| `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
+| `stud branch:rename` | `--quiet` / `-q` | Use default for all confirmations (rename, remote only, rebase, create PR) |
+| `stud release` | `--quiet` / `-q` | Do not prompt to publish; use `--publish` to publish when quiet |
 | `stud release` | `--publish` / `-p` | Publish the release branch to remote |
+| `stud update` | `--quiet` / `-q` | Abort on hash verification failure without prompting |
+| `stud to <key>` | `--quiet` / `-q` | No branches: exit 0; one branch: switch without confirm; multiple: pick first |
 | `stud deploy` | `--clean` | Clean up merged branches after deployment (non-interactive) |
-| `stud branch:rename` | `--quiet` / `-q` | Bypass confirmation and rebase prompts |
+
+**Semantics of `--quiet`:** When a command supports `--quiet` (or `-q`), it means *non-interactive: use documented defaults and do not prompt*. Success/error/warning output is unchanged; only interactive prompts are skipped. Useful for scripts and CI.
 
 **Example snippets:**
 
 ```bash
 stud commit -m "feat: add feature X"
+stud commit -q --all                    # use Jira-derived message, no prompts
 stud submit --draft
 stud submit --draft --labels "bug,ui"
+stud submit -q                           # use default base branch and provider
 stud branches:clean --quiet
+stud to PROJ-123 -q                      # switch to first branch found, no prompts
 ```
 
 **Exit codes:** Commands exit with `0` on success and a non-zero code on error. Scripts can check `$?` (or equivalent) to detect failures.

@@ -18,7 +18,7 @@ class CommitUndoHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(SymfonyStyle $io, bool $quiet = false): int
     {
         try {
             $this->gitRepository->getProjectConfigPath();
@@ -46,13 +46,15 @@ class CommitUndoHandler
                 $this->translator->trans('commit_undo.warning_pushed')
             );
 
-            $confirmed = $this->logger->confirm(
-                $this->translator->trans('commit_undo.confirm_continue'),
-                false
-            );
+            if (! $quiet) {
+                $confirmed = $this->logger->confirm(
+                    $this->translator->trans('commit_undo.confirm_continue'),
+                    false
+                );
 
-            if (! $confirmed) {
-                return 1;
+                if (! $confirmed) {
+                    return 1;
+                }
             }
         }
 

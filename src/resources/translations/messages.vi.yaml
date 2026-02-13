@@ -544,6 +544,7 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Liệt kê các nhánh local/remote với trạng thái (đã hợp nhất, lỗi thời, PR đang hoạt động)
   command_branches_clean: Dọn dẹp tương tác các nhánh đã hợp nhất/lỗi thời
+  option_quiet: "Không tương tác: dùng mặc định, không nhắc"
   option_branches_clean_quiet: Xóa tất cả các nhánh khớp mà không hỏi
   option_deploy_clean: Dọn dẹp các nhánh đã hợp nhất sau khi triển khai
 branches:

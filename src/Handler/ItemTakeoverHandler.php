@@ -29,7 +29,7 @@ class ItemTakeoverHandler
         // $jiraConfig is kept for potential future use (e.g., transition handling)
     }
 
-    public function handle(SymfonyStyle $io, string $key): int
+    public function handle(SymfonyStyle $io, string $key, bool $quiet = false): int
     {
         $key = strtoupper($key);
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.section', ['key' => $key]));
@@ -69,10 +69,10 @@ class ItemTakeoverHandler
 
         // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
-            return $this->handleNoBranches($io, $key);
+            return $this->handleNoBranches($io, $key, $quiet);
         }
 
-        return $this->handleExistingBranches($key, $branches);
+        return $this->handleExistingBranches($key, $branches, $quiet);
     }
 
     protected function checkWorkingDirectory(): bool
@@ -100,11 +100,11 @@ class ItemTakeoverHandler
         }
     }
 
-    protected function handleNoBranches(SymfonyStyle $io, string $key): int
+    protected function handleNoBranches(SymfonyStyle $io, string $key, bool $quiet = false): int
     {
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.no_branches', ['key' => $key]));
 
-        $startFresh = $this->logger->confirm(
+        $startFresh = ! $quiet && $this->logger->confirm(
             $this->translator->trans('item.takeover.start_fresh_prompt'),
             true
         );
@@ -119,9 +119,9 @@ class ItemTakeoverHandler
     /**
      * @param array{local: array<string>, remote: array<string>} $branches
      */
-    protected function handleExistingBranches(string $key, array $branches): int
+    protected function handleExistingBranches(string $key, array $branches, bool $quiet = false): int
     {
-        $selectedBranch = $this->selectBranch($branches);
+        $selectedBranch = $this->selectBranch($branches, $quiet);
 
         if ($selectedBranch === null) {
             return 0;
@@ -158,24 +158,24 @@ class ItemTakeoverHandler
     /**
      * @param array{local: array<string>, remote: array<string>} $branches
      */
-    protected function selectBranch(array $branches): ?string
+    protected function selectBranch(array $branches, bool $quiet = false): ?string
     {
         $allBranches = $this->combineBranches($branches);
 
         if (count($allBranches) === 1) {
-            return $this->handleSingleBranch($allBranches[0]);
+            return $this->handleSingleBranch($allBranches[0], $quiet);
         }
 
-        return $this->handleMultipleBranches($allBranches);
+        return $this->handleMultipleBranches($allBranches, $quiet);
     }
 
     /**
      * @param array{name: string, is_remote: bool} $branch
      */
-    protected function handleSingleBranch(array $branch): ?string
+    protected function handleSingleBranch(array $branch, bool $quiet = false): ?string
     {
         if ($branch['is_remote']) {
-            $confirmed = $this->logger->confirm(
+            $confirmed = $quiet || $this->logger->confirm(
                 $this->translator->trans('item.takeover.confirm_branch', ['branch' => $branch['name']]),
                 true
             );
@@ -189,9 +189,16 @@ class ItemTakeoverHandler
     /**
      * @param array<int, array{name: string, is_remote: bool}> $allBranches
      */
-    protected function handleMultipleBranches(array $allBranches): ?string
+    protected function handleMultipleBranches(array $allBranches, bool $quiet = false): ?string
     {
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.branches_found', ['count' => count($allBranches)]));
+
+        if ($quiet) {
+            // First option (remotes first, then locals - same order as combineBranches)
+            $first = $allBranches[0] ?? null;
+
+            return $first !== null ? $first['name'] : null;
+        }
 
         $options = $this->buildBranchOptions($allBranches);
 
