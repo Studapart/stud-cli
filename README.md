@@ -897,7 +897,7 @@ These commands help you manage the release process.
 
 #### Scripting & CI
 
-When running `stud-cli` in scripts, CI pipelines, or automation, use non-interactive flags so commands do not prompt for input. This subsection summarizes the main options; for full command reference see the sections above.
+When running `stud-cli` in scripts, CI pipelines, or automation, use non-interactive flags so commands do not prompt for input. For automation and AI-driven workflows, follow the protocol in `AI.md` and use non-interactive flags (e.g. `--quiet`, `-m`, `--all`, `--labels`) as documented in the table and examples below. This subsection summarizes the main options; for full command reference see the sections above.
 
 **Non-interactive flags by command:**
 

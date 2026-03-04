@@ -63,3 +63,5 @@ coverage*
 # Temporary files created by stud-cli commands
 /tmp/stud-*
 tmp/stud-*
+
+.cursor/reports/*

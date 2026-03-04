@@ -29,19 +29,21 @@ class Logger
 
     /**
      * Logs an error message.
+     * Errors are always shown, even when output is quiet (--quiet means non-interactive, not suppress errors).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
      * @param string|array<string> $message
      */
     public function error(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
             $this->io->error($message);
         }
     }
 
     /**
      * Logs an error with both user-friendly and technical details.
+     * Errors are always shown, even when output is quiet (--quiet means non-interactive, not suppress errors).
      *
      * @param int $verbosity Minimum verbosity level to display
      * @param string $userMessage User-friendly translated message
@@ -49,7 +51,7 @@ class Logger
      */
     public function errorWithDetails(int $verbosity, string $userMessage, string $technicalDetails): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
             $this->io->error($userMessage);
             if (! empty(trim($technicalDetails))) {
                 $this->io->text(['', ' Technical details: ' . $technicalDetails]);
@@ -59,13 +61,14 @@ class Logger
 
     /**
      * Logs a warning message.
+     * Warnings are always shown, even when output is quiet (--quiet means non-interactive, not suppress output).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
      * @param string|array<string> $message
      */
     public function warning(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
             $this->io->warning($message);
         }
     }
@@ -85,13 +88,14 @@ class Logger
 
     /**
      * Logs a success message.
+     * Success is always shown, even when output is quiet (--quiet means non-interactive, not suppress output).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
      * @param string|array<string> $message
      */
     public function success(int $verbosity, string|array $message): void
     {
-        if ($this->shouldDisplay($verbosity)) {
+        if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
             $this->io->success($message);
         }
     }
@@ -373,11 +377,11 @@ class Logger
 
     /**
      * Checks if message should be displayed based on current verbosity level.
-     * Respects --quiet flag (suppresses all output).
+     * When output is quiet (--quiet), suppresses only non-essential output (informational messages).
+     * Errors, warnings, and success are handled by their methods and always shown when quiet.
      */
     protected function shouldDisplay(int $verbosity): bool
     {
-        // If quiet mode, suppress all output
         if ($this->io->isQuiet()) {
             return false;
         }
