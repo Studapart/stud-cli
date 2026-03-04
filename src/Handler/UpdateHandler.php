@@ -34,7 +34,7 @@ class UpdateHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $info = false): int
+    public function handle(SymfonyStyle $io, bool $info = false, bool $quiet = false): int
     {
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.section'));
 
@@ -80,7 +80,7 @@ class UpdateHandler
         }
 
         // Verify the downloaded file's hash before proceeding
-        $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset);
+        $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
             try {
                 $this->fileSystem->delete($tempFile);

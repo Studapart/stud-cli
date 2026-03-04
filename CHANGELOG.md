@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `--quiet` / `-q` to interactive commands for non-interactive and script usage [SCI-58]
+  - **commit:** When no `-m` and no fixup path, use detected type, scope, and summary from Jira without prompting
+  - **commit:undo:** Proceed with undo when HEAD is pushed without confirmation prompt
+  - **submit:** Use default/detected base branch and provider when possible; unknown labels ignored; clear error if token missing
+  - **branch:rename:** Use default for all confirmations (rename, remote only, rebase, create PR)
+  - **release:** Do not prompt to publish; use `--publish` with `--quiet` to publish without prompt
+  - **update:** Abort on hash verification failure without prompting
+  - **items:takeover** (`stud to <key>`): No branches exit 0; single branch switch without confirm; multiple branches select first (remotes then locals)
+  - **branches:clean:** Description aligned to "Non-interactive: use defaults, no prompts"
+  - **Config pass:** When any command is run with `--quiet` and config has missing mandatory keys, exit with error listing missing keys (no prompt)
+  - README "Scripting & CI" updated with `--quiet` semantics and all commands that support it
+
 ## [3.5.0] - 2026-02-09
 
 ### Changed
