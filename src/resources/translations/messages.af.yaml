@@ -544,6 +544,7 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Lys plaaslike/afstand takke met status (saamgevoeg, verouderd, aktiewe PR)
   command_branches_clean: Interaktiewe skoonmaak van saamgevoegde/verouderde takke
+  option_quiet: "Nie-interaktief: gebruik verstekwaardes, geen prompts"
   option_branches_clean_quiet: Verwyder alle ooreenstemmende takke sonder om te vra
   option_deploy_clean: Maak saamgevoegde takke skoon na ontplooiing
 branches:

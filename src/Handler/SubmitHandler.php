@@ -32,7 +32,7 @@ class SubmitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $draft = false, ?string $labels = null): int
+    public function handle(SymfonyStyle $io, bool $draft = false, ?string $labels = null, bool $quiet = false): int
     {
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.section'));
 
@@ -152,7 +152,7 @@ class SubmitHandler
         // 8. Validate and process labels if provided
         $finalLabels = [];
         if ($labels !== null && $this->githubProvider) {
-            $finalLabels = $this->validateAndProcessLabels($labels);
+            $finalLabels = $this->validateAndProcessLabels($labels, $quiet);
             if ($finalLabels === null) {
                 // User chose to retry, abort the command
                 return 1;
@@ -262,7 +262,7 @@ class SubmitHandler
     /**
      * @return array<string>|null
      */
-    protected function validateAndProcessLabels(string $labelsInput): ?array
+    protected function validateAndProcessLabels(string $labelsInput, bool $quiet = false): ?array
     {
         // 1. Parse input into clean array
         $requestedLabels = array_map('trim', explode(',', $labelsInput));
@@ -312,8 +312,13 @@ class SubmitHandler
             }
         }
 
-        // 4. Interactive resolution for unknown labels
+        // 4. Interactive resolution for unknown labels (when quiet: treat unknown as ignore)
         foreach ($unknownLabels as $unknownLabel) {
+            if ($quiet) {
+                // In quiet mode: ignore unknown labels, do not create, do not retry
+                continue;
+            }
+
             $choice = $this->logger->choice(
                 $this->translator->trans('submit.label_unknown_prompt', ['label' => $unknownLabel]),
                 [

@@ -9,7 +9,8 @@ Your objective is to automate the maintenance and feature development of the `st
 -   **Standards Compliance**: You MUST read, understand, and adhere to 100% of the rules defined in the `CONVENTIONS.md` file. This is a blocking requirement. All code will be rejected if it violates these standards.
 -   **Workflow Enforcement**: All Jira and Git operations MUST be performed via the `stud-cli` binary. Direct use of `git` or other VCS commands is forbidden. Refer to the `README.md` for a full command reference.
 -   **API Immutability**: You MUST NOT modify, alter, or update any Jira or GitHub API endpoints, authentication logic, or credentials. This is a critical system constraint.
--   **Idempotency**: Prefer default values when prompted by the `stud-cli` tool during the commit process, unless the Jira ticket explicitly requires a different value.
+-   **Non-Interactive Usage**: When using `stud-cli` for Jira/Git operations, the agent MUST use non-interactive flags where available. For commands that support `--quiet` or `-q`, the agent MUST pass that option unless the ticket explicitly requires interactive behavior.
+-   **Idempotency**: Use `--quiet` (and other non-interactive flags) so that default values are applied without prompts (e.g. commit uses Jira-derived message; submit uses default base branch and provider). Do not rely on "prefer defaults when prompted"—use quiet so defaults apply without prompting.
 
 ## 3. Four-Phase Development Protocol
 
@@ -113,7 +114,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - If coverage is not 100%, identify missing lines using the Clover XML report and add tests to cover them.
     - **DO NOT PROCEED TO COMMIT** until 100% coverage is confirmed.
 
-6.  **Commit**: Use `stud commit -a` to generate the commit message. Only commit if there are meaningful, relevant changes.
+6.  **Commit**: Use `stud co -a -q` (or `stud commit --all --quiet`) to generate the commit message. The agent MUST NOT use interactive commit mode for the protocol. Only commit if there are meaningful, relevant changes.
 
 **Deliverable**: All changes committed with a proper conventional commit message, and the entire project maintains 100% code coverage and meets all quality thresholds.
 
@@ -131,7 +132,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - A list of any assumptions made or deviations from the ticket requirements, with explanations for why they were necessary.
     - Any additional improvements or refactoring that was done beyond the ticket scope.
 
-2.  **Submit Pull Request**: Use `stud submit --labels "AI-Generated,RFR"` to create the pull request. This step MUST only be performed after all previous phases, including testing, documentation, and integrity checks, are complete.
+2.  **Submit Pull Request**: Use `stud submit -q --labels "AI-Generated,RFR"` (or `stud su -q --labels "AI-Generated,RFR"`) to create the pull request. With `-q`, default base branch and provider are used and prompts for labels/config are avoided. This step MUST only be performed after all previous phases, including testing, documentation, and integrity checks, are complete.
 
 3.  **PR Comment**: After submitting the PR (Step 2), pipe your report directly to the PR as a comment using `stud pr:comment` (or `stud pc`). For example: `echo "Your report content here" | stud pr:comment`
 
@@ -147,8 +148,8 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 -   **Dependencies**: See `composer.json` for a full list of dependencies.
 -   **Debugging**: When implementing new features, add contextual debug logs accessible via the `-v`, `-vv`, and `-vvv` verbosity flags.
 
-### Commit Best Practices for Gemini
+### Commit Best Practices for AI Agents
 
-*   **Meaningful Changes Only:** When instructed to commit changes (e.g., via `stud commit -a`), ensure that the codebase has undergone actual, meaningful modifications relevant to the task.
+*   **Meaningful Changes Only:** When instructed to commit changes (e.g., via `stud co -a -q` or `stud co -q`), ensure that the codebase has undergone actual, meaningful modifications relevant to the task.
 *   **Avoid Artificial Commits:** Never introduce artificial or 'placeholder' changes (such as empty comments, whitespace adjustments, or non-functional code) solely to create a commit for testing purposes.
-*   **Handle No Changes Gracefully:** If a `stud commit -a` operation is requested but no relevant changes have been made to the working directory, inform the user of this state and ask for clarification on how to proceed, rather than attempting to force a commit with irrelevant modifications.
+*   **Handle No Changes Gracefully:** If a commit operation is requested but no relevant changes have been made to the working directory, inform the user of this state and ask for clarification on how to proceed, rather than attempting to force a commit with irrelevant modifications. This applies when using `--quiet` as well.

@@ -249,7 +249,9 @@ class HelpService
             'items:takeover' => [
                 'alias' => 'to',
                 'description_key' => 'help.command_items_takeover',
-                'options' => [],
+                'options' => [
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                ],
                 'arguments' => ['<key>'],
             ],
             'branch:rename' => [
@@ -257,6 +259,7 @@ class HelpService
                 'description_key' => 'help.command_branch_rename',
                 'options' => [
                     ['name' => '--name', 'shortcut' => '-n', 'description_key' => 'help.option_branch_rename_name', 'argument' => '<name>'],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => ['[<branch>]', '[<key>]'],
             ],
@@ -267,6 +270,15 @@ class HelpService
                     ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
                     ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
                     ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
+            'commit:undo' => [
+                'alias' => 'undo',
+                'description_key' => 'help.command_commit_undo',
+                'options' => [
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
@@ -300,6 +312,7 @@ class HelpService
                 'options' => [
                     ['name' => '--draft', 'shortcut' => '-d', 'description_key' => 'help.option_submit_draft', 'argument' => null],
                     ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_submit_labels', 'argument' => '<labels>'],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
@@ -320,6 +333,7 @@ class HelpService
                 'description_key' => 'help.command_update',
                 'options' => [
                     ['name' => '--info', 'shortcut' => '-i', 'description_key' => 'help.option_update_info', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
@@ -331,6 +345,7 @@ class HelpService
                     ['name' => '--minor', 'shortcut' => '-m', 'description_key' => 'help.option_release_minor', 'argument' => null],
                     ['name' => '--patch', 'shortcut' => '-b', 'description_key' => 'help.option_release_patch', 'argument' => null],
                     ['name' => '--publish', 'shortcut' => '-p', 'description_key' => 'help.option_release_publish', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => ['[<version>]'],
             ],

@@ -22,7 +22,7 @@ class CommitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $isNew, ?string $message, bool $stageAll = false): int
+    public function handle(SymfonyStyle $io, bool $isNew, ?string $message, bool $stageAll = false, bool $quiet = false): int
     {
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.section'));
 
@@ -82,7 +82,7 @@ class CommitHandler
             return 0;
         }
 
-        // 3. If no logical commit is found OR --new is used, run the interactive prompter
+        // 3. If no logical commit is found OR --new is used, run the interactive prompter (or use defaults when quiet)
         $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.note_no_logical'));
 
         $key = $this->gitRepository->getJiraKeyFromBranchName();
@@ -120,18 +120,21 @@ class CommitHandler
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_components', ['components' => implode(', ', $issue->components)])}");
         }
 
-        // 4. Upgraded Interactive Prompter with Scope Inference
-        // IMPORTANT: Prompts are translated, but commit message itself stays in English
-        $scopePrompt = $this->translator->trans('commit.scope_prompt');
-        $defaultScope = null;
-        if (! empty($issue->components)) {
-            $defaultScope = $issue->components[0]; // Use the first component name
-            $scopePrompt = $this->translator->trans('commit.scope_auto', ['scope' => $defaultScope]);
+        // 4. Type, scope, summary: use detected when quiet, else prompt
+        $defaultScope = ! empty($issue->components) ? $issue->components[0] : null;
+        if ($quiet) {
+            $type = $detectedType;
+            $scope = $defaultScope;
+            $summary = $detectedSummary;
+        } else {
+            $scopePrompt = $this->translator->trans('commit.scope_prompt');
+            if (! empty($issue->components)) {
+                $scopePrompt = $this->translator->trans('commit.scope_auto', ['scope' => $defaultScope]);
+            }
+            $type = $this->logger->ask($this->translator->trans('commit.type_prompt', ['type' => $detectedType]), $detectedType);
+            $scope = $this->logger->ask($scopePrompt, $defaultScope);
+            $summary = $this->logger->ask($this->translator->trans('commit.summary_prompt'), $detectedSummary);
         }
-
-        $type = $this->logger->ask($this->translator->trans('commit.type_prompt', ['type' => $detectedType]), $detectedType);
-        $scope = $this->logger->ask($scopePrompt, $defaultScope);
-        $summary = $this->logger->ask($this->translator->trans('commit.summary_prompt'), $detectedSummary);
 
         // 5. Assemble commit message according to the new template
         // CRITICAL: Commit message MUST remain in English regardless of user's language

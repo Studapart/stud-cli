@@ -936,13 +936,15 @@ SCRIPT;
      * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
      * @param \App\Service\Logger $logger The logger instance
      * @param \App\Service\TranslationService $translator The translation service
+     * @param bool $quiet When true, use DEFAULT_BASE_BRANCH if not configured (no prompt); fail if invalid
      * @return string The base branch name with 'origin/' prefix
      * @throws \RuntimeException If not in a git repository or if base branch validation fails
      */
     public function ensureBaseBranchConfigured(
         \Symfony\Component\Console\Style\SymfonyStyle $io,
         \App\Service\Logger $logger,
-        \App\Service\TranslationService $translator
+        \App\Service\TranslationService $translator,
+        bool $quiet = false
     ): string {
         // Check if we're in a git repository
         try {
@@ -967,10 +969,29 @@ SCRIPT;
                 return $baseBranch;
             }
 
-            // Configured branch doesn't exist on remote, need to reconfigure
+            // Configured branch doesn't exist on remote
+            if ($quiet) {
+                throw new \RuntimeException(
+                    $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
+                );
+            }
+
             $logger->warning(
                 \App\Service\Logger::VERBOSITY_NORMAL,
                 $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
+            );
+        }
+
+        // Not configured: in quiet mode use DEFAULT_BASE_BRANCH if it exists on remote
+        if ($quiet) {
+            $defaultBranch = defined('DEFAULT_BASE_BRANCH') ? DEFAULT_BASE_BRANCH : 'origin/develop';
+            $branchName = str_replace('origin/', '', $defaultBranch);
+            if ($this->remoteBranchExists('origin', $branchName)) {
+                return str_starts_with($defaultBranch, 'origin/') ? $defaultBranch : 'origin/' . $defaultBranch;
+            }
+
+            throw new \RuntimeException(
+                'Base branch is not configured and default branch "' . $branchName . '" does not exist on remote. Run without --quiet to configure, or run "stud config:init".'
             );
         }
 
@@ -1064,13 +1085,15 @@ SCRIPT;
      * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
      * @param \App\Service\Logger $logger The logger instance
      * @param \App\Service\TranslationService $translator The translation service
+     * @param bool $quiet When true, use auto-detected provider or throw; do not prompt
      * @return string The provider type ('github' or 'gitlab')
      * @throws \RuntimeException If not in a git repository or if provider cannot be determined
      */
     public function ensureGitProviderConfigured(
         \Symfony\Component\Console\Style\SymfonyStyle $io,
         \App\Service\Logger $logger,
-        \App\Service\TranslationService $translator
+        \App\Service\TranslationService $translator,
+        bool $quiet = false
     ): string {
         // Check if we're in a git repository
         try {
@@ -1090,6 +1113,16 @@ SCRIPT;
         // Try auto-detection from remote URL
         $parsed = $this->parseGitUrl('origin');
         $detected = $parsed['provider'] ?? null;
+
+        if ($quiet) {
+            if ($detected !== null && in_array($detected, ['github', 'gitlab'], true)) {
+                return $detected;
+            }
+
+            throw new \RuntimeException(
+                'Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run "stud config:init".'
+            );
+        }
 
         if ($detected !== null) {
             $logger->note(
@@ -1135,14 +1168,15 @@ SCRIPT;
     /**
      * Ensures the git token is configured for the given provider.
      * Checks project config first, then global config.
-     * If not found, prompts user to configure it.
+     * If not found, prompts user to configure it (unless quiet).
      *
      * @param string $providerType The provider type ('github' or 'gitlab')
      * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
      * @param \App\Service\Logger $logger The logger instance
      * @param \App\Service\TranslationService $translator The translation service
      * @param array<string, mixed> $globalConfig The global configuration array
-     * @return string|null The token string, or null if user skipped or error occurred
+     * @param bool $quiet When true, do not prompt; return null if token missing
+     * @return string|null The token string, or null if user skipped or error occurred (or missing when quiet)
      * @throws \RuntimeException If not in a git repository
      */
     public function ensureGitTokenConfigured(
@@ -1150,7 +1184,8 @@ SCRIPT;
         \Symfony\Component\Console\Style\SymfonyStyle $io,
         \App\Service\Logger $logger,
         \App\Service\TranslationService $translator,
-        array $globalConfig
+        array $globalConfig,
+        bool $quiet = false
     ): ?string {
         // Check if we're in a git repository
         try {
@@ -1192,7 +1227,12 @@ SCRIPT;
             );
         }
 
-        // No token found - prompt user
+        // No token found - in quiet mode return null so caller can fail with clear error
+        if ($quiet) {
+            return null;
+        }
+
+        // Prompt user
         $logger->note(
             \App\Service\Logger::VERBOSITY_NORMAL,
             $translator->trans('config.git_token_not_configured')

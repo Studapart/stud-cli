@@ -121,11 +121,12 @@ class UpdateFileService
 
     /**
      * Verifies the hash of the downloaded file against the digest from GitHub API.
-     * Returns true if verification succeeds or user overrides, false if user aborts.
+     * Returns true if verification succeeds or user overrides, false if user aborts (or quiet and mismatch).
      *
      * @param array<string, mixed> $pharAsset
+     * @param bool $quiet When true, on verification failure do not prompt; return false (abort)
      */
-    public function verifyHash(SymfonyStyle $io, string $tempFile, array $pharAsset): bool
+    public function verifyHash(SymfonyStyle $io, string $tempFile, array $pharAsset, bool $quiet = false): bool
     {
         // Extract digest from the asset's JSON object (format: "sha256:...")
         $digest = $pharAsset['digest'] ?? null;
@@ -156,7 +157,7 @@ class UpdateFileService
             }
         }
 
-        // Case B: Mismatch or Missing Digest (Failed) - prompt user for override
+        // Case B: Mismatch or Missing Digest (Failed) - in quiet mode abort without prompting
         $errorMessage = $digest === null
             ? $this->translator->trans('update.error_digest_not_found')
             : $this->translator->trans('update.error_hash_mismatch', [
@@ -165,6 +166,10 @@ class UpdateFileService
             ]);
 
         $io->warning(explode("\n", $errorMessage));
+
+        if ($quiet) {
+            return false;
+        }
 
         $continue = $io->confirm(
             $this->translator->trans('update.prompt_continue_on_verification_failure'),

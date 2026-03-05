@@ -256,9 +256,10 @@ function _get_git_repository(): GitRepository
  * Reads provider from project config, tokens from project config (with global fallback).
  * Prompts user to configure provider and/or token if missing.
  *
+ * @param bool $quiet When true, use auto-detected provider or fail; do not prompt. Token missing fails with error.
  * @return \App\Service\GitProviderInterface|null The provider instance or null if not configured
  */
-function _get_git_provider(): ?\App\Service\GitProviderInterface
+function _get_git_provider(bool $quiet = false): ?\App\Service\GitProviderInterface
 {
     try {
         $gitRepository = _get_git_repository();
@@ -268,11 +269,12 @@ function _get_git_provider(): ?\App\Service\GitProviderInterface
         // Get provider from project config (with auto-detection)
         $providerType = $gitRepository->getGitProvider();
         if ($providerType === null) {
-            // Try to ensure it's configured (will prompt if needed)
+            // Try to ensure it's configured (will prompt if needed, unless quiet)
             $providerType = $gitRepository->ensureGitProviderConfigured(
                 io(),
                 $logger,
-                $translator
+                $translator,
+                $quiet
             );
         }
 
@@ -298,14 +300,15 @@ function _get_git_provider(): ?\App\Service\GitProviderInterface
         // Check if token exists
         $token = $projectConfig[$tokenKey] ?? $globalConfig[$globalTokenKey] ?? null;
 
-        // If token is missing, try to ensure it's configured (will prompt if needed)
+        // If token is missing, try to ensure it's configured (will prompt if needed, unless quiet)
         if ($token === null || (is_string($token) && trim($token) === '')) {
             $token = $gitRepository->ensureGitTokenConfigured(
                 $providerType,
                 io(),
                 $logger,
                 $translator,
-                $globalConfig
+                $globalConfig,
+                $quiet
             );
 
             // If user skipped or token is still null, return null
@@ -425,18 +428,20 @@ function _get_logger(): Logger
  * Gets the configured base branch for the repository.
  * Auto-detects or prompts user if not configured.
  * Returns branch name with 'origin/' prefix for consistency.
+ *
+ * @param bool $quiet When true, use DEFAULT_BASE_BRANCH if not configured (and validate it exists); do not prompt
  */
-function _get_base_branch(): string
+function _get_base_branch(bool $quiet = false): string
 {
-    static $baseBranch = null;
-    if ($baseBranch === null) {
+    static $baseBranchByQuiet = [];
+    if (! isset($baseBranchByQuiet[$quiet])) {
         $gitRepository = _get_git_repository();
         $logger = _get_logger();
         $translator = _get_translation_service();
-        $baseBranch = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator);
+        $baseBranchByQuiet[$quiet] = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator, $quiet);
     }
 
-    return $baseBranch;
+    return $baseBranchByQuiet[$quiet];
 }
 
 /**
@@ -845,16 +850,17 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
         // Step 4: Prompt for missing mandatory keys
         if ($validationResult->hasMissingKeys()) {
-            // Check if we're in non-interactive mode
+            // Check if we're in non-interactive mode (TTY not attached or --quiet)
             $input = $event->getInput();
             $isInteractive = $input->isInteractive();
+            $isQuiet = $input->hasOption('quiet') && $input->getOption('quiet');
 
-            if (! $isInteractive) {
+            if (! $isInteractive || $isQuiet) {
                 // Non-interactive mode: exit with error
                 $missingKeys = array_merge($validationResult->missingGlobalKeys, $validationResult->missingProjectKeys);
                 $io->error([
                     'Missing required configuration keys: ' . implode(', ', $missingKeys),
-                    'Please run "stud config:init" to configure these keys, or run the command in interactive mode.',
+                    'Please run "stud config:init" to configure these keys, or run the command without --quiet in interactive mode.',
                 ]);
                 $event->disableCommand();
                 $command->setCode(function () {
@@ -1158,12 +1164,14 @@ function items_start(
 function items_takeover(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')]
     string $key,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
 ): void {
     _load_constants();
     $baseBranch = _get_base_branch();
     $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
     $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
-    exit($handler->handle(io(), $key));
+    exit($handler->handle(io(), $key, $quiet));
 }
 
 #[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
@@ -1174,6 +1182,8 @@ function branch_rename(
     ?string $key = null,
     #[AsOption(name: 'name', shortcut: 'n', description: 'Explicit new branch name (no prefix will be added)')]
     ?string $explicitName = null,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
 ): void {
     _load_constants();
     $gitRepository = _get_git_repository();
@@ -1189,7 +1199,7 @@ function branch_rename(
         _get_logger(),
         _get_html_converter()
     );
-    exit($handler->handle(io(), $branch, $key, $explicitName));
+    exit($handler->handle(io(), $branch, $key, $explicitName, $quiet));
 }
 
 #[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
@@ -1208,7 +1218,7 @@ function branches_list(): int
 
 #[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
 function branches_clean(
-    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Remove all matching branches without prompting')]
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false
 ): int {
     _load_constants();
@@ -1228,6 +1238,8 @@ function commit(
     ?string $message = null,
     #[AsOption(name: 'all', shortcut: 'a', description: 'Stage all changes before committing')]
     bool $stageAll = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
     bool $help = false
 ): void {
@@ -1239,7 +1251,7 @@ function commit(
         return;
     }
     $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $handler->handle(io(), $isNew, $message, $stageAll);
+    $handler->handle(io(), $isNew, $message, $stageAll, $quiet);
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
@@ -1253,6 +1265,8 @@ function please(
 
 #[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
 function commit_undo(
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
     bool $help = false
 ): void {
@@ -1264,7 +1278,7 @@ function commit_undo(
         return;
     }
     $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
-    exit($handler->handle(io()));
+    exit($handler->handle(io(), $quiet));
 }
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
@@ -1291,11 +1305,13 @@ function submit(
     bool $draft = false,
     #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')]
     ?string $labels = null,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
 ): void {
     _load_constants();
     _load_constants();
     $gitRepository = _get_git_repository();
-    $gitProvider = _get_git_provider();
+    $gitProvider = _get_git_provider($quiet);
 
     if ($gitProvider === null) {
         $gitConfig = _get_git_config();
@@ -1324,12 +1340,12 @@ function submit(
         _get_jira_service(),
         $gitProvider,
         _get_jira_config(),
-        _get_base_branch(),
+        _get_base_branch($quiet),
         _get_translation_service(),
         _get_logger(),
         _get_html_converter()
     );
-    $handler->handle(io(), $draft, $labels);
+    $handler->handle(io(), $draft, $labels, $quiet);
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
@@ -1657,6 +1673,8 @@ function release(
     bool $patch = false,
     #[AsOption(name: 'publish', shortcut: 'p', description: 'Publish the release branch to the remote')]
     bool $publish = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
 ): void {
     _load_constants();
 
@@ -1687,7 +1705,7 @@ function release(
     }
 
     $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
-    $handler->handle(io(), $version, $publish, $bumpType);
+    $handler->handle(io(), $version, $publish, $bumpType, $quiet);
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
@@ -1712,6 +1730,8 @@ function deploy(
 function update(
     #[AsOption(name: 'info', shortcut: 'i', description: 'Preview the changelog of the latest available version without downloading')]
     bool $info = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
+    bool $quiet = false,
 ): void {
     _load_constants();
 
@@ -1769,6 +1789,6 @@ function update(
         _get_file_system(),
         $gitToken
     );
-    $result = $handler->handle(io(), $info);
+    $result = $handler->handle(io(), $info, $quiet);
     exit($result);
 }

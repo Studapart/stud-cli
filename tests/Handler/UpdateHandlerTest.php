@@ -2813,6 +2813,33 @@ CHANGELOG;
         @unlink($tempFile);
     }
 
+    public function testVerifyHashQuietReturnsFalseOnMismatchWithoutPrompting(): void
+    {
+        $pharContent = 'phar binary content';
+        $wrongHash = '0000000000000000000000000000000000000000000000000000000000000000';
+
+        $tempFile = '/tmp/stud-test-' . uniqid() . '.phar';
+        file_put_contents($tempFile, $pharContent);
+
+        $pharAsset = [
+            'id' => 12345678,
+            'name' => 'stud.phar',
+            'digest' => $wrongHash,
+        ];
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('warning')->willReturnSelf();
+        $io->method('error')->willReturnSelf();
+        $io->expects($this->never())->method('confirm');
+
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
+        $result = $updateFileService->verifyHash($io, $tempFile, $pharAsset, true);
+
+        $this->assertFalse($result);
+
+        @unlink($tempFile);
+    }
+
     public function testCreateGithubProviderWithoutHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);

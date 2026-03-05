@@ -3422,6 +3422,99 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame('origin/develop', $result);
     }
 
+    public function testEnsureBaseBranchConfiguredQuietUsesDefaultWhenNotConfigured(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump([]));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            } elseif (str_contains($command, 'ls-remote --heads origin develop')) {
+                $process->method('getOutput')->willReturn("abc123\trefs/heads/develop\n");
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->never())->method('ask');
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturnArgument(0);
+
+        if (! defined('DEFAULT_BASE_BRANCH')) {
+            define('DEFAULT_BASE_BRANCH', 'origin/develop');
+        }
+
+        $result = $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator, true);
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testEnsureBaseBranchConfiguredQuietThrowsWhenDefaultNotOnRemote(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump([]));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            } elseif (str_contains($command, 'ls-remote --heads origin develop')) {
+                $process->method('getOutput')->willReturn(''); // develop does not exist on remote
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('does not exist on remote');
+
+        $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator, true);
+    }
+
+    public function testEnsureBaseBranchConfiguredQuietThrowsWhenConfiguredBranchInvalid(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump(['baseBranch' => 'nonexistent']));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            } elseif (str_contains($command, 'ls-remote --heads origin nonexistent')) {
+                $process->method('getOutput')->willReturn('');
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturnArgument(0);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('config.base_branch_invalid');
+
+        $this->gitRepository->ensureBaseBranchConfigured($io, $logger, $translator, true);
+    }
+
     public function testGetGitProviderReturnsConfiguredProvider(): void
     {
         $configDir = '/test/git-dir';
@@ -3619,6 +3712,100 @@ class GitRepositoryTest extends CommandTestCase
         $this->expectExceptionMessage('Git provider is required');
 
         $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator);
+    }
+
+    public function testEnsureGitProviderConfiguredQuietReturnsDetected(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump([]));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                $process->method('getOutput')->willReturn('https://github.com/owner/repo.git');
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->never())->method('choice');
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturnArgument(0);
+
+        $result = $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator, true);
+
+        $this->assertSame('github', $result);
+    }
+
+    public function testEnsureGitProviderConfiguredQuietThrowsWhenNotDetected(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump([]));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            } elseif (str_contains($command, 'config --get remote.origin.url')) {
+                $process->method('getOutput')->willReturn('file:///path/to/repo.git');
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+        $translator->method('trans')->willReturnArgument(0);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Git provider is not configured');
+
+        $this->gitRepository->ensureGitProviderConfigured($io, $logger, $translator, true);
+    }
+
+    public function testEnsureGitTokenConfiguredQuietReturnsNullWhenMissing(): void
+    {
+        $configDir = '/test/git-dir';
+        $this->flysystem->createDirectory($configDir);
+        $this->flysystem->write($configDir . '/stud.config', \Symfony\Component\Yaml\Yaml::dump([]));
+
+        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+            $process = $this->createMock(Process::class);
+            $process->method('run');
+            $process->method('isSuccessful')->willReturn(true);
+            if (str_contains($command, 'rev-parse')) {
+                $process->method('getOutput')->willReturn($configDir);
+            }
+
+            return $process;
+        });
+
+        $io = $this->createMock(\Symfony\Component\Console\Style\SymfonyStyle::class);
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->never())->method('askHidden');
+        $translator = $this->createMock(\App\Service\TranslationService::class);
+
+        $result = $this->gitRepository->ensureGitTokenConfigured(
+            'github',
+            $io,
+            $logger,
+            $translator,
+            [],
+            true
+        );
+
+        $this->assertNull($result);
     }
 
     public function testEnsureGitTokenConfiguredReturnsTokenFromGlobalConfigForGitLab(): void

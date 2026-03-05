@@ -920,6 +920,81 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
+    public function testHandleWithMultipleBranchesQuietSelectsFirstWithoutPrompting(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'PROJ-123',
+            title: 'Test issue',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story'
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('PROJ-123')
+            ->willReturn($workItem);
+
+        $this->jiraService->expects($this->once())
+            ->method('assignIssue')
+            ->with('PROJ-123');
+
+        $this->gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('PROJ-123')
+            ->willReturn([
+                'local' => ['feat/PROJ-123-branch1'],
+                'remote' => ['feat/PROJ-123-branch2', 'fix/PROJ-123-branch3'],
+            ]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getCurrentBranchName')
+            ->willReturn('develop');
+
+        $this->gitRepository->expects($this->once())
+            ->method('switchToRemoteBranch')
+            ->with('feat/PROJ-123-branch2');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getBranchStatus')
+            ->with('feat/PROJ-123-branch2', 'origin/develop', 'origin/feat/PROJ-123-branch2')
+            ->willReturn([
+                'behind_remote' => 0,
+                'ahead_remote' => 0,
+                'behind_base' => 0,
+                'ahead_base' => 5,
+            ]);
+
+        $this->gitRepository->expects($this->once())
+            ->method('isBranchBasedOn')
+            ->with('feat/PROJ-123-branch2', 'origin/develop')
+            ->willReturn(true);
+
+        $this->logger->expects($this->never())
+            ->method('choice');
+
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('success');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'PROJ-123', true);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithMultipleBranchesUserCancels(): void
     {
         $workItem = new WorkItem(

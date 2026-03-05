@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-03-05
+
+### Added
+- Add `--quiet` / `-q` to interactive commands for non-interactive and script usage [SCI-58]
+
+### Fixed
+- Ensure `--quiet` only skips prompts; errors, warnings, and success output are always shown (Logger no longer suppresses them when output is quiet)
+
+### Changed
+- Update AI protocol and documentation to use stud-cli quiet mode for consistent, non-interactive agent execution [SCI-59]
+  - AI.md: Core Directives require non-interactive/quiet flags on stud-cli commands where supported; Idempotency refined to "use quiet so defaults apply"; Phase 3 commit step uses `stud commit --all --quiet`; Phase 4 submit step uses `stud submit --labels "AI-Generated,RFR" --quiet`; Commit Best Practices for AI Agents updated
+  - README Scripting & CI: sentence directing automation/AI workflows to AI.md and non-interactive flags
+  - CONVENTIONS.md: new "Automation and AI usage" subsection requiring non-interactive flags and referencing AI.md
+  - .github/ISSUE_TEMPLATE/documentation.md: checklist option for AI.md
+  - **commit:** When no `-m` and no fixup path, use detected type, scope, and summary from Jira without prompting
+  - **commit:undo:** Proceed with undo when HEAD is pushed without confirmation prompt
+  - **submit:** Use default/detected base branch and provider when possible; unknown labels ignored; clear error if token missing
+  - **branch:rename:** Use default for all confirmations (rename, remote only, rebase, create PR)
+  - **release:** Do not prompt to publish; use `--publish` with `--quiet` to publish without prompt
+  - **update:** Abort on hash verification failure without prompting
+  - **items:takeover** (`stud to <key>`): No branches exit 0; single branch switch without confirm; multiple branches select first (remotes then locals)
+  - **branches:clean:** Description aligned to "Non-interactive: use defaults, no prompts"
+  - **Config pass:** When any command is run with `--quiet` and config has missing mandatory keys, exit with error listing missing keys (no prompt)
+  - README "Scripting & CI" updated with `--quiet` semantics and all commands that support it
+
 ## [3.5.0] - 2026-02-09
 
 ### Changed

@@ -24,13 +24,14 @@ class LoggerTest extends CommandTestCase
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
     }
 
-    public function testErrorSuppressedWhenQuiet(): void
+    public function testErrorShownWhenQuiet(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
         $io->method('isQuiet')->willReturn(true);
 
-        $io->expects($this->never())
-            ->method('error');
+        $io->expects($this->once())
+            ->method('error')
+            ->with('Test error');
 
         $logger = new Logger($io, []);
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
@@ -63,6 +64,18 @@ class LoggerTest extends CommandTestCase
         $io->expects($this->once())
             ->method('note')
             ->with('Test note');
+
+        $logger = new Logger($io, []);
+        $logger->note(Logger::VERBOSITY_NORMAL, 'Test note');
+    }
+
+    public function testNoteSuppressedWhenQuiet(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(true);
+
+        $io->expects($this->never())
+            ->method('note');
 
         $logger = new Logger($io, []);
         $logger->note(Logger::VERBOSITY_NORMAL, 'Test note');
@@ -643,16 +656,18 @@ class LoggerTest extends CommandTestCase
         $logger->errorWithDetails(Logger::VERBOSITY_VERBOSE, 'User-friendly error message', 'Technical error details');
     }
 
-    public function testErrorWithDetailsSuppressedWhenQuiet(): void
+    public function testErrorWithDetailsShownWhenQuiet(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
         $io->method('isQuiet')->willReturn(true);
 
-        $io->expects($this->never())
-            ->method('error');
+        $io->expects($this->once())
+            ->method('error')
+            ->with('User-friendly error message');
 
-        $io->expects($this->never())
-            ->method('text');
+        $io->expects($this->once())
+            ->method('text')
+            ->with(['', ' Technical details: Technical error details']);
 
         $logger = new Logger($io, []);
         $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'User-friendly error message', 'Technical error details');

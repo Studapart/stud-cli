@@ -1178,6 +1178,32 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertNull($result);
     }
 
+    public function testValidateAndProcessLabelsQuietIgnoresUnknownLabels(): void
+    {
+        $remoteLabels = [
+            ['name' => 'bug'],
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('getLabels')
+            ->willReturn($remoteLabels);
+
+        $this->logger->expects($this->never())
+            ->method('choice');
+
+        $this->logger->method('text')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, 'bug,unknown-label', true);
+
+        $this->assertSame(['bug'], $result);
+    }
+
     public function testValidateAndProcessLabelsCreateLabelFails(): void
     {
         $remoteLabels = [
