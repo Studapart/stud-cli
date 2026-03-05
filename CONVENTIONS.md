@@ -553,6 +553,12 @@ vendor/bin/phpstan analyse
 
 **AI Agent Tooling**: During Phase 1 (Planning) and Phase 3 (Integrity), the AI Agent must use PHPStan and other static analysis techniques to calculate and enforce all quality metrics listed in the Project Quality Metric Blueprint.
 
+## Documentation and Automation
+
+### Automation and AI Usage
+
+Scripts and AI agents using `stud-cli` MUST use non-interactive flags where available (`--quiet` or `-q` on commands that support it) to avoid prompts and ensure consistent behavior. See `AI.md` for the full AI development protocol.
+
 ## Summary
 
 - **Code Architecture**: Follow PSR-12 and SOLID principles. Use `protected` for testable helper methods, avoid `final` on injectable services.

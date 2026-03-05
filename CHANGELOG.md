@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add `--quiet` / `-q` to interactive commands for non-interactive and script usage [SCI-58]
+
+### Fixed
+- Ensure `--quiet` only skips prompts; errors, warnings, and success output are always shown (Logger no longer suppresses them when output is quiet)
+
+### Changed
+- Update AI protocol and documentation to use stud-cli quiet mode for consistent, non-interactive agent execution [SCI-59]
+  - AI.md: Core Directives require non-interactive/quiet flags on stud-cli commands where supported; Idempotency refined to "use quiet so defaults apply"; Phase 3 commit step uses `stud commit --all --quiet`; Phase 4 submit step uses `stud submit --labels "AI-Generated,RFR" --quiet`; Commit Best Practices for AI Agents updated
+  - README Scripting & CI: sentence directing automation/AI workflows to AI.md and non-interactive flags
+  - CONVENTIONS.md: new "Automation and AI usage" subsection requiring non-interactive flags and referencing AI.md
+  - .github/ISSUE_TEMPLATE/documentation.md: checklist option for AI.md
   - **commit:** When no `-m` and no fixup path, use detected type, scope, and summary from Jira without prompting
   - **commit:undo:** Proceed with undo when HEAD is pushed without confirmation prompt
   - **submit:** Use default/detected base branch and provider when possible; unknown labels ignored; clear error if token missing
