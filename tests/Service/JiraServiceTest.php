@@ -931,6 +931,180 @@ echo 'hello';
         $this->assertTrue(true);
     }
 
+    public function testGetCreateMetaIssueTypesSuccess(): void
+    {
+        $projectKey = 'PROJ';
+        $mockData = [
+            'values' => [
+                ['id' => '10001', 'name' => 'Story'],
+                ['id' => '10002', 'name' => 'Task'],
+            ],
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockData);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes")
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+
+        $this->assertCount(2, $result);
+        $this->assertSame('10001', $result[0]['id']);
+        $this->assertSame('Story', $result[0]['name']);
+        $this->assertSame('10002', $result[1]['id']);
+        $this->assertSame('Task', $result[1]['name']);
+    }
+
+    public function testGetCreateMetaIssueTypesApiError(): void
+    {
+        $projectKey = 'PROJ';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes")
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Could not fetch create metadata for project');
+
+        $this->jiraService->getCreateMetaIssueTypes($projectKey);
+    }
+
+    public function testGetCreateMetaFieldsSuccess(): void
+    {
+        $projectKey = 'PROJ';
+        $issueTypeId = '10001';
+        $mockData = [
+            'fields' => [
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'description' => ['required' => false, 'name' => 'Description'],
+            ],
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockData);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes/{$issueTypeId}")
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+
+        $this->assertTrue($result['project']['required']);
+        $this->assertSame('Project', $result['project']['name']);
+        $this->assertFalse($result['description']['required']);
+    }
+
+    public function testGetCreateMetaFieldsSkipsNonArrayMeta(): void
+    {
+        $projectKey = 'PROJ';
+        $issueTypeId = '10001';
+        $mockData = [
+            'fields' => [
+                'project' => ['required' => true, 'name' => 'Project'],
+                'summary' => 'plain string',
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+            ],
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockData);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes/{$issueTypeId}")
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+
+        $this->assertCount(2, $result);
+        $this->assertArrayHasKey('project', $result);
+        $this->assertArrayHasKey('issuetype', $result);
+        $this->assertArrayNotHasKey('summary', $result);
+    }
+
+    public function testGetCreateMetaFieldsApiError(): void
+    {
+        $projectKey = 'PROJ';
+        $issueTypeId = '10001';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', "/rest/api/3/issue/createmeta/{$projectKey}/issuetypes/{$issueTypeId}")
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Could not fetch create field metadata');
+
+        $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+    }
+
+    public function testCreateIssueSuccess(): void
+    {
+        $fields = [
+            'project' => ['key' => 'PROJ'],
+            'issuetype' => ['id' => '10001'],
+            'summary' => 'Test issue',
+        ];
+        $mockResponse = ['key' => 'PROJ-42', 'self' => 'https://jira.example.com/rest/api/3/issue/123'];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn($mockResponse);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/rest/api/3/issue', $this->callback(function ($arg) use ($fields) {
+                return isset($arg['json']['fields'])
+                    && $arg['json']['fields'] === $fields;
+            }))
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->createIssue($fields);
+
+        $this->assertSame('PROJ-42', $result['key']);
+        $this->assertSame('https://jira.example.com/rest/api/3/issue/123', $result['self']);
+    }
+
+    public function testCreateIssueApiError(): void
+    {
+        $fields = [
+            'project' => ['key' => 'PROJ'],
+            'issuetype' => ['id' => '10001'],
+            'summary' => 'Test',
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->method('getContent')->with(false)->willReturn('Bad request');
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/rest/api/3/issue', $this->anything())
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Could not create issue');
+
+        $this->jiraService->createIssue($fields);
+    }
+
+    public function testPlainTextToDescriptionAdf(): void
+    {
+        $text = 'Hello world';
+        $adf = $this->jiraService->plainTextToDescriptionAdf($text);
+
+        $this->assertSame('doc', $adf['type']);
+        $this->assertSame(1, $adf['version']);
+        $this->assertIsArray($adf['content']);
+        $this->assertNotEmpty($adf['content']);
+        $this->assertSame('paragraph', $adf['content'][0]['type']);
+        $this->assertSame('Hello world', $adf['content'][0]['content'][0]['text']);
+    }
+
     // Helper to call private methods for testing
     private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {

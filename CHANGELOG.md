@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `stud items:create` (alias `ic`) to create Jira issues from the CLI [SCI-60]
+  - Options: `-p`/`--project`, `-t`/`--type` (default Story), `-m`/`--summary`, `-d`/`--description`; missing values prompted in interactive mode
+  - Default project from `JIRA_DEFAULT_PROJECT` in `.git/stud.config` only; when missing, prompt (interactive) or fail with clear message (non-interactive)
+  - Description: STDIN first, then `-d` (same as `stud pr:comment`); optional
+  - Calls createmeta before create; if required custom fields exist beyond project/issuetype/summary/description, fails with message to run interactively (no `--quiet`)
+
 ## [3.6.0] - 2026-03-05
 
 ### Added

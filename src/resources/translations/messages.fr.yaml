@@ -162,6 +162,18 @@ item:
     label_description: Description
     label_link: Lien
     label_none: Aucun
+  create:
+    section: "Création d'un ticket Jira"
+    prompt_project: "Clé projet"
+    prompt_type: "Type de ticket (défaut : Story)"
+    prompt_summary: "Résumé"
+    prompt_description: "Description (optionnel)"
+    error_no_project: "Le projet est requis. Définissez --project/-p, ou JIRA_DEFAULT_PROJECT dans .git/stud.config, ou exécutez en mode interactif."
+    error_no_summary: "Le résumé est requis. Définissez --summary/-m ou exécutez en mode interactif."
+    error_createmeta: "Impossible de récupérer les métadonnées de création : %error%"
+    error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
+    error_create: "Impossible de créer le ticket : %error%"
+    success: "Ticket %key% créé – %url%"
   transition:
     section: Transition d'un ticket Jira
     detected_key: Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?
@@ -504,6 +516,7 @@ help:
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
+  command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
   command_items_search: Rechercher des issues avec JQL.
   command_items_transition: Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle.
   command_filters_list: Liste tous les filtres Jira disponibles.
@@ -545,6 +558,10 @@ help:
   command_branches_list: Liste les branches locales/distantes avec statut (fusionnée, obsolète, PR active)
   command_branches_clean: Nettoyage interactif des branches fusionnées/obsolètes
   option_quiet: "Non-interactif : utiliser les valeurs par défaut, pas de questions"
+  option_items_create_project: "Clé projet Jira (ou JIRA_DEFAULT_PROJECT dans .git/stud.config)"
+  option_items_create_type: "Type de ticket (défaut : Story)"
+  option_items_create_summary: "Résumé/titre du ticket"
+  option_items_create_description: "Description du ticket (STDIN prioritaire en pipeline)"
   option_branches_clean_quiet: Supprimer toutes les branches correspondantes sans demander
   option_deploy_clean: Nettoyer les branches fusionnées après le déploiement
 branches:

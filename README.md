@@ -521,7 +521,7 @@ stud help co  # Works with aliases too
 
 #### Jira Information Commands
 
-These commands help you browse and view your Jira work items.
+These commands help you browse, view, and create Jira work items.
 
 -   **`stud projects:list`** (Alias: `stud pj`)
     -   **Description:** Lists all Jira projects visible to your configured user.
@@ -556,6 +556,17 @@ These commands help you browse and view your Jira work items.
         stud items:show PROJ-123
         stud sh BUG-456
         ```
+
+-   **`stud items:create`** (Alias: `stud ic`)
+    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. If the project/issue type has required custom fields beyond project, issuetype, summary, and description, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively.
+    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional). All optional from CLI; missing values trigger prompts in interactive mode.
+    -   **Usage:**
+        ```bash
+        stud items:create -p PROJ -m "My summary"
+        stud ic -p PROJ -t Task -m "Title" -d "Body text"
+        echo "Description from pipe" | stud ic -p PROJ -m "Summary"
+        ```
+    -   **Note:** No `--quiet` option. For detailed help run `stud help items:create`.
 
 -   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
     -   **Description:** Search for issues using JQL (Jira Query Language).

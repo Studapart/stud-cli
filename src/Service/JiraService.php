@@ -298,6 +298,114 @@ class JiraService
     }
 
     /**
+     * Returns create metadata issue types for a project.
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function getCreateMetaIssueTypes(string $projectIdOrKey): array
+    {
+        $url = "/rest/api/3/issue/createmeta/{$projectIdOrKey}/issuetypes";
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not fetch create metadata for project \"{$projectIdOrKey}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $values = $data['values'] ?? [];
+
+        return array_map(static fn (array $item): array => [
+            'id' => (string) ($item['id'] ?? ''),
+            'name' => (string) ($item['name'] ?? ''),
+        ], $values);
+    }
+
+    /**
+     * Returns create field metadata for a project and issue type.
+     * Keys of the returned array are field IDs; each value has 'required' and 'name'.
+     *
+     * @return array<string, array{required: bool, name: string}>
+     */
+    public function getCreateMetaFields(string $projectIdOrKey, string $issueTypeId): array
+    {
+        $url = "/rest/api/3/issue/createmeta/{$projectIdOrKey}/issuetypes/{$issueTypeId}";
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not fetch create field metadata for project \"{$projectIdOrKey}\" and issue type \"{$issueTypeId}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $fields = $data['fields'] ?? [];
+
+        $result = [];
+        foreach ($fields as $fieldId => $meta) {
+            if (! is_array($meta)) {
+                continue;
+            }
+            $result[$fieldId] = [
+                'required' => (bool) ($meta['required'] ?? false),
+                'name' => (string) ($meta['name'] ?? $fieldId),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Creates a Jira issue. Description must be ADF when provided.
+     *
+     * @param array{project: array{key: string}, issuetype: array{id?: string, name?: string}, summary: string, description?: array<string, mixed>} $fields
+     * @return array{key: string, self: string}
+     */
+    public function createIssue(array $fields): array
+    {
+        $payload = ['fields' => $fields];
+        $response = $this->client->request('POST', '/rest/api/3/issue', [
+            'json' => $payload,
+        ]);
+
+        if ($response->getStatusCode() !== 201) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                'Could not create issue.',
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+
+        return [
+            'key' => (string) ($data['key'] ?? ''),
+            'self' => (string) ($data['self'] ?? ''),
+        ];
+    }
+
+    /**
+     * Builds minimal ADF from plain text for issue description.
+     *
+     * @return array{type: string, version: int, content: array<int, mixed>}
+     */
+    public function plainTextToDescriptionAdf(string $plainText): array
+    {
+        return \App\Service\JiraAdfHelper::plainTextToAdf($plainText);
+    }
+
+    /**
      * Assigns an issue to a user.
      *
      * @param string $key The issue key

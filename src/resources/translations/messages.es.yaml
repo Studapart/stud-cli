@@ -162,6 +162,18 @@ item:
     label_description: Descripción
     label_link: Enlace
     label_none: Ninguno
+  create:
+    section: Creating Jira issue
+    prompt_project: Project key
+    prompt_type: Issue type (default Story)
+    prompt_summary: Summary
+    prompt_description: Description (optional)
+    error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_no_summary: Summary is required. Set --summary/-m or run interactively.
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: This project/issue type has required custom fields. Run interactively (stud items:create or stud ic).
+    error_create: "Could not create issue: %error%"
+    success: Created issue %key% - %url%
   transition:
     section: Transición de ticket Jira
     detected_key: Clave Jira detectada '%key%' desde la rama actual. ¿Usar esta clave?
@@ -503,6 +515,7 @@ help:
   command_completion: Genera scripts de auto-completado para bash o zsh.
   command_projects_list: Lista todos los proyectos de Jira visibles.
   command_items_list: Lista elementos de trabajo activos (su panel de control).
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description STDIN then -d. Custom required fields require interactive run.
   command_items_show: Muestra información detallada para un elemento de trabajo.
   command_items_search: Buscar issues usando JQL.
   command_items_transition: Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual.
@@ -544,6 +557,10 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Lista ramas locales/remotas con estado (fusionado, obsoleto, PR activa)
   command_branches_clean: Limpieza interactiva de ramas fusionadas/obsoletas
+  option_items_create_project: Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_quiet: "No interactivo: usar valores por defecto, sin preguntas"
   option_branches_clean_quiet: Eliminar todas las ramas coincidentes sin preguntar
   option_deploy_clean: Limpiar ramas fusionadas después del despliegue

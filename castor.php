@@ -29,6 +29,7 @@ use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
+use App\Handler\ItemCreateHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
@@ -49,6 +50,7 @@ use App\Responder\ConfigValidateResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
+use App\Responder\ItemCreateResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\PrCommentsResponder;
@@ -1136,6 +1138,29 @@ function items_show(
     $responder->respond(io(), $response, $key);
 }
 
+#[AsTask(name: 'items:create', aliases: ['ic'], description: 'Creates a Jira issue in a project')]
+function items_create(
+    #[AsOption(name: 'project', shortcut: 'p', description: 'Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)')]
+    ?string $project = null,
+    #[AsOption(name: 'type', shortcut: 't', description: 'Issue type (default: Story)')]
+    ?string $type = null,
+    #[AsOption(name: 'summary', shortcut: 'm', description: 'Issue summary/title')]
+    ?string $summary = null,
+    #[AsOption(name: 'description', shortcut: 'd', description: 'Issue description (STDIN takes precedence when piping)')]
+    ?string $description = null,
+): void {
+    _load_constants();
+    $interactive = function_exists('posix_isatty') && @posix_isatty(STDIN);
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description);
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
+    $responder->respond(io(), $response);
+}
+
 #[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
 function items_transition(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123). Optional - will detect from branch if not provided')]
@@ -1414,6 +1439,7 @@ function help(
             'fl' => 'filters:list',
             'fs' => 'filters:show',
             'sh' => 'items:show',
+            'ic' => 'items:create',
             'tx' => 'items:transition',
             'start' => 'items:start',
             'to' => 'items:takeover',
@@ -1515,6 +1541,12 @@ function help(
                 'args' => '<key>',
                 'description' => $translator->trans('help.command_items_show'),
                 'example' => 'stud sh PROJ-123',
+            ],
+            [
+                'name' => 'items:create',
+                'alias' => 'ic',
+                'description' => $translator->trans('help.command_items_create'),
+                'example' => 'stud ic -p PROJ -m "Summary"',
             ],
             [
                 'name' => 'items:search',
