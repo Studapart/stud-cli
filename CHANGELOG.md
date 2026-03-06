@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Default project from `JIRA_DEFAULT_PROJECT` in `.git/stud.config` only; when missing, prompt (interactive) or fail with clear message (non-interactive)
   - Description: STDIN first, then `-d` (same as `stud pr:comment`); optional
   - Calls createmeta before create; if required custom fields exist beyond project/issuetype/summary/description, fails with message to run interactively (no `--quiet`)
+- **items:create:** Markdown and sub-task support
+  - `--description-format plain|markdown`: when `markdown`, description is converted to ADF (headings, **bold**, *emphasis*, `code`, lists) via `damienharper/adf-tools` and `league/commonmark`
+  - `--parent <issue-key>`: create a sub-task under the given issue (issue type set to Sub-task; parent filled from createmeta)
+  - Assignee and reporter: when required by createmeta, both are set to the current Jira user (no prompt)
 
 ## [3.6.0] - 2026-03-05
 

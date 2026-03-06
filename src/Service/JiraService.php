@@ -93,6 +93,28 @@ class JiraService
     }
 
     /**
+     * Returns a single project by key or id. Use to validate that a project exists.
+     *
+     * @throws ApiException If the project is not found (e.g. 404) or the API request fails
+     */
+    public function getProject(string $projectIdOrKey): Project
+    {
+        $response = $this->client->request('GET', '/rest/api/3/project/' . $projectIdOrKey);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Project \"{$projectIdOrKey}\" not found.",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        return $this->mapToProject($response->toArray());
+    }
+
+    /**
      * @return Filter[]
      */
     public function getFilters(): array
@@ -241,7 +263,7 @@ class JiraService
      * @return string The account ID of the current user
      * @throws \RuntimeException If the API call fails
      */
-    protected function getCurrentUserAccountId(): string
+    public function getCurrentUserAccountId(): string
     {
         if ($this->currentUserAccountId !== null) {
             return $this->currentUserAccountId;
@@ -318,7 +340,7 @@ class JiraService
         }
 
         $data = $response->toArray();
-        $values = $data['values'] ?? [];
+        $values = $data['values'] ?? $data['issueTypes'] ?? [];
 
         return array_map(static fn (array $item): array => [
             'id' => (string) ($item['id'] ?? ''),
@@ -403,6 +425,20 @@ class JiraService
     public function plainTextToDescriptionAdf(string $plainText): array
     {
         return \App\Service\JiraAdfHelper::plainTextToAdf($plainText);
+    }
+
+    /**
+     * Builds ADF for issue description from plain text or Markdown.
+     *
+     * @return array{type: string, version: int, content: array<int, mixed>}
+     */
+    public function descriptionToAdf(string $text, string $format = 'plain'): array
+    {
+        if ($format === 'markdown') {
+            return (new \App\Service\MarkdownToAdfConverter())->convert($text);
+        }
+
+        return \App\Service\JiraAdfHelper::plainTextToAdf($text);
     }
 
     /**

@@ -371,6 +371,43 @@ class JiraServiceTest extends TestCase
         $this->jiraService->getProjects();
     }
 
+    public function testGetProjectSuccess(): void
+    {
+        $mockResponseData = ['key' => 'PROJ', 'name' => 'My Project'];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($mockResponseData);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/project/PROJ')
+            ->willReturn($responseMock);
+
+        $project = $this->jiraService->getProject('PROJ');
+
+        $this->assertInstanceOf(Project::class, $project);
+        $this->assertSame('PROJ', $project->key);
+        $this->assertSame('My Project', $project->name);
+    }
+
+    public function testGetProjectNotFound(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn('Not Found');
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/project/MISSING')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectExceptionMessage('Project "MISSING" not found.');
+
+        $this->jiraService->getProject('MISSING');
+    }
+
     public function testGetFiltersSuccess(): void
     {
         $mockResponseData = [
@@ -1103,6 +1140,38 @@ echo 'hello';
         $this->assertNotEmpty($adf['content']);
         $this->assertSame('paragraph', $adf['content'][0]['type']);
         $this->assertSame('Hello world', $adf['content'][0]['content'][0]['text']);
+    }
+
+    public function testDescriptionToAdfWithPlainFormat(): void
+    {
+        $adf = $this->jiraService->descriptionToAdf('Plain text', 'plain');
+
+        $this->assertSame('doc', $adf['type']);
+        $this->assertSame(1, $adf['version']);
+        $this->assertSame('paragraph', $adf['content'][0]['type']);
+        $this->assertSame('Plain text', $adf['content'][0]['content'][0]['text']);
+    }
+
+    public function testDescriptionToAdfWithMarkdownFormat(): void
+    {
+        $adf = $this->jiraService->descriptionToAdf('**bold** text', 'markdown');
+
+        $this->assertSame('doc', $adf['type']);
+        $this->assertSame(1, $adf['version']);
+        $this->assertIsArray($adf['content']);
+        $this->assertNotEmpty($adf['content']);
+        $content = $adf['content'][0]['content'];
+        $this->assertNotEmpty($content);
+        $boldNode = null;
+        foreach ($content as $node) {
+            if (isset($node['marks'][0]['type']) && $node['marks'][0]['type'] === 'strong') {
+                $boldNode = $node;
+
+                break;
+            }
+        }
+        $this->assertNotNull($boldNode);
+        $this->assertSame('bold', $boldNode['text']);
     }
 
     // Helper to call private methods for testing

@@ -41,9 +41,12 @@ class JiraAdfHelper
 
         foreach ($paragraphs as $para) {
             $para = trim($para);
+            // preg_split(\n\s*\n) never yields a segment that trims to empty; branch is defensive
+            // @codeCoverageIgnoreStart
             if ($para === '') {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
             $content[] = [
                 'type' => 'paragraph',
                 'content' => [
@@ -56,7 +59,8 @@ class JiraAdfHelper
         }
 
         // Fallback when every split segment trimmed to empty (e.g. trim($text) is only newlines - edge case)
-        // @codeCoverageIgnoreStart - unreachable with default trim; trim of all-whitespace is ''
+        // Unreachable with default trim; trim of all-whitespace is ''
+        // @codeCoverageIgnoreStart
         if ($content === []) {
             $content[] = [
                 'type' => 'paragraph',
