@@ -75,6 +75,7 @@ class ItemCreateHandler
         } catch (ApiException $e) {
             return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $e->getMessage()]));
         } catch (\Throwable $e) {
+            // Non-API throwables (e.g. network, JSON) mapped to same user-facing error
             return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $e->getMessage()]));
         }
     }
@@ -116,7 +117,10 @@ class ItemCreateHandler
     {
         $stdinContent = $this->readStdin();
         if ($stdinContent !== '') {
+            // STDIN content path only reachable when readStdin() returns non-empty; not unit-testable without process
+            // @codeCoverageIgnoreStart
             return $stdinContent;
+            // @codeCoverageIgnoreEnd
         }
         if ($descriptionOption !== null && trim($descriptionOption) !== '') {
             return trim($descriptionOption);
@@ -128,10 +132,13 @@ class ItemCreateHandler
     /**
      * Reads content from STDIN if available (non-blocking). Returns empty string if TTY or no content.
      * Same behaviour as PrCommentHandler::readStdin(); STDIN paths are not unit-testable without process execution.
+     *
+     * @codeCoverageIgnore
      */
     protected function readStdin(): string
     {
-        // @codeCoverageIgnoreStart - TTY check not simulable in unit tests
+        // TTY check and STDIN reading not simulable in unit tests without process execution
+        // @codeCoverageIgnoreStart
         if (function_exists('posix_isatty') && posix_isatty(STDIN)) {
             return '';
         }

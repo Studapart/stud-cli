@@ -159,6 +159,72 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
     }
 
+    public function testHandleReturnsErrorWhenGetCreateMetaIssueTypesThrows(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willThrowException(new \RuntimeException('API unavailable'));
+        $this->jiraService->expects($this->never())->method('getCreateMetaFields');
+        $this->jiraService->expects($this->never())->method('createIssue');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+    }
+
+    public function testHandleReturnsErrorWhenGetCreateMetaFieldsThrows(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willThrowException(new \RuntimeException('Fields API error'));
+        $this->jiraService->expects($this->never())->method('createIssue');
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+    }
+
+    public function testHandleReturnsErrorWhenCreateIssueThrowsNonApiException(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->willThrowException(new \RuntimeException('Network error'));
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
+    }
+
     public function testHandleReturnsErrorWhenCreateIssueThrows(): void
     {
         $this->jiraService->expects($this->once())

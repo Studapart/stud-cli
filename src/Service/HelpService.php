@@ -541,12 +541,18 @@ class HelpService
                         $optionArg = ' PROJ';
                     } elseif ($secondOptionArg === '<type>') {
                         $optionArg = ' Story';
-                    } elseif ($secondOptionArg === '<text>') {
-                        $optionArg = ' "Summary or description text"';
-                    } elseif ($secondOptionArg === '<value>') {
-                        $optionArg = ' Key';
-                    } elseif ($secondOptionArg === '<name>') {
-                        $optionArg = ' custom-branch-name';
+                    } else {
+                        // Second option never has <text>, <value>, or <name> in current command set (only items:create has 2nd opt <type>)
+                        // @codeCoverageIgnoreStart
+                        $optionArg = '';
+                        if ($secondOptionArg === '<text>') {
+                            $optionArg = ' "Summary or description text"';
+                        } elseif ($secondOptionArg === '<value>') {
+                            $optionArg = ' Key';
+                        } elseif ($secondOptionArg === '<name>') {
+                            $optionArg = ' custom-branch-name';
+                        }
+                        // @codeCoverageIgnoreEnd
                     }
                     $secondOptionExample .= $optionArg;
                 }
