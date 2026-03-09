@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-03-09
+
 ### Added
 - **config:show:** Add `-k`/`--key` and `-q`/`--quiet` for single-key lookup [SCI-63]
   - `stud config:show -k <key>`: show only one config value (whitelisted non-secret keys: LANGUAGE, JIRA_URL, JIRA_DEFAULT_PROJECT, projectKey, transitionId, baseBranch, gitProvider, gitlabInstanceUrl, migration_version). Effective value uses project-over-global precedence.
