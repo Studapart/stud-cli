@@ -368,9 +368,15 @@ stud init
 
 **Description:** Displays your current configuration (global and, when run inside a git repository, project configuration from `.git/stud.config`). All secret keys (tokens, passwords, and keys whose names contain TOKEN, PASSWORD, or SECRET) are redacted with a fixed placeholder, so the output is **safe to share** with support or for debugging. Use this to verify your setup or to troubleshoot configuration issues.
 
+**Options:**
+- `-k`/`--key <key>`: Show only the value for one config key. Only whitelisted non-secret keys are allowed (e.g. `LANGUAGE`, `JIRA_URL`, `JIRA_DEFAULT_PROJECT`, `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `gitlabInstanceUrl`, `migration_version`). Effective value uses project-over-global precedence.
+- `-q`/`--quiet`: With `--key`, output only the raw value (one line, no section or labels). Ignored when `--key` is not set.
+
 **Usage:**
 ```bash
 stud config:show
+stud config:show -k baseBranch
+stud config:show -k JIRA_URL -q
 ```
 
 **Note:** This command works even when no configuration file exists yet (it will show a clear message). Output is safe for sharing—no credentials are ever displayed.
@@ -558,8 +564,8 @@ These commands help you browse, view, and create Jira work items.
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)
-    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists). Use `--parent <key>` to create a sub-task under an existing issue. When assignee or reporter is required, they are set to the current user. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively.
-    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown), `--parent` (parent issue key for sub-tasks). All optional from CLI; missing values trigger prompts in interactive mode.
+    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `--assignee <accountId>` to set the assignee (when omitted and the field is required, the current user is used). When reporter is required, it is set to the current user. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively.
+    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `--assignee` (assignee account ID). All optional from CLI; missing values trigger prompts in interactive mode.
     -   **Usage:**
         ```bash
         stud items:create -p PROJ -m "My summary"
@@ -567,8 +573,9 @@ These commands help you browse, view, and create Jira work items.
         echo "Description from pipe" | stud ic -p PROJ -m "Summary"
         stud ic -p PROJ --parent PROJ-100 -m "Sub-task title"
         stud ic -p PROJ -m "Title" -d "# Heading\n**Bold**" --description-format markdown
+        stud help items:create
         ```
-    -   **Note:** No `--quiet` option. For detailed help run `stud help items:create`.
+    -   **Note:** No `--quiet` option. For detailed help and all options run `stud help items:create`.
 
 -   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
     -   **Description:** Search for issues using JQL (Jira Query Language).
@@ -639,10 +646,13 @@ These commands integrate directly with your local Git repository to streamline y
 -   **`stud items:takeover <key>`** (Alias: `stud to <key>`)
     -   **Description:** Takes over an issue from another user. Assigns the issue to you, detects existing branches (prioritizing remote over local), and switches to them if found. If no branches exist, prompts to start fresh using `items:start`. The command also checks branch status compared to remote and base branch, warns about wrong base branches or diverged commits, and automatically pulls with rebase when behind remote (if no local commits exist).
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
+    -   **Options:**
+        -   `--quiet` or `-q`: Non-interactive: no branches exit 0; single branch switch without confirmation; multiple branches pick first (remotes then locals).
     -   **Usage:**
         ```bash
         stud items:takeover PROJ-123
         stud to BUG-456
+        stud to PROJ-123 -q
         ```
     -   **Behavior:**
         -   Blocks execution if working directory has uncommitted changes.
@@ -665,6 +675,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   `<key>` (optional): The Jira issue key to regenerate the branch name from (e.g., `PROJ-123`). If not provided, the key will be extracted from the current branch name.
     -   **Options:**
         -   `--name <name>` or `-n <name>`: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument.
+        -   `--quiet` or `-q`: Non-interactive: use defaults for all confirmations (rename, remote only, rebase, create PR).
     -   **Usage:**
         ```bash
         # Rename current branch using its issue key (regenerate from Jira)
@@ -758,6 +769,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   `--new`: Create a new logical commit instead of a fixup.
         -   `--message <message>` or `-m <message>`: Bypass the interactive prompter and use the provided message for the commit.
         -   `--all` or `-a`: Stage all changes before committing (restores old behavior). By default, `stud commit` only commits already-staged changes.
+        -   `--quiet` or `-q`: Non-interactive: use detected type, scope, and summary from Jira; no prompts.
     -   **Usage:**
         ```bash
         stud commit
@@ -765,6 +777,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud commit -m "feat: My custom message"
         stud commit --all
         stud co -a
+        stud commit -q --all
         ```
 
 -   **`stud please`** (Alias: `stud pl`)
@@ -777,10 +790,13 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud commit:undo`** (Alias: `stud undo`)
     -   **Description:** Removes the last commit and keeps its changes in the working tree (unstaged). Equivalent to `git reset HEAD~1` (mixed). If the last commit is already pushed to the remote, the command warns and asks for confirmation, since undoing would require a force-push to update the remote. After undoing in that case, you can run `stud please` to safely force-push.
+    -   **Options:**
+        -   `--quiet` or `-q`: Non-interactive: proceed with undo even when the last commit is pushed (no confirmation prompt).
     -   **Usage:**
         ```bash
         stud commit:undo
         stud undo
+        stud undo -q
         ```
     -   **Note:** If the last commit is already pushed, the command will either refuse or prompt for confirmation. The message will mention that you can use `stud please` to force-push after undoing.
 
@@ -806,6 +822,7 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
+        -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
     -   **Usage:**
         ```bash
         stud submit
@@ -814,6 +831,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud su -d
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
+        stud submit -q
         ```
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
@@ -848,12 +866,14 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
     -   **Options:**
         -   `--info` or `-i`: Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating.
+        -   `--quiet` or `-q`: Non-interactive: abort on hash verification failure without prompting.
     -   **Usage:**
         ```bash
         stud update
         stud up
         stud update --info
         stud up -i
+        stud up -q
         ```
     -   **Note:** If the binary is not writable, you may need to run with elevated privileges: `sudo stud update`
 
@@ -878,6 +898,7 @@ These commands help you manage the release process.
         -   `--minor` or `-m`: Increment minor version (X.Y.0)
         -   `--patch` or `-b`: Increment patch version (X.Y.Z). This is the default if no flags are provided.
         -   `--publish` or `-p`: Publish the release branch to the remote
+        -   `--quiet` or `-q`: Non-interactive: do not prompt to publish; use `--publish` to publish when quiet.
     -   **Usage:**
         ```bash
         # Automatic patch bump (default)

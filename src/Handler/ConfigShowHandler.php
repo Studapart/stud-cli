@@ -18,7 +18,7 @@ class ConfigShowHandler
     ) {
     }
 
-    public function handle(): ConfigShowResponse
+    public function handle(?string $key = null): ConfigShowResponse
     {
         if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
             return ConfigShowResponse::error('config.show.no_config_found');
@@ -27,10 +27,36 @@ class ConfigShowHandler
         $globalConfig = $this->loadGlobalConfig();
         $projectConfig = $this->loadProjectConfig();
 
+        if ($key !== null) {
+            return $this->handleSingleKey($key, $globalConfig, $projectConfig);
+        }
+
         $redactedGlobal = SecretKeyPolicy::redact($globalConfig);
         $redactedProject = $projectConfig !== null ? SecretKeyPolicy::redact($projectConfig) : null;
 
         return ConfigShowResponse::success($redactedGlobal, $redactedProject);
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed>|null $projectConfig
+     */
+    protected function handleSingleKey(string $key, array $globalConfig, ?array $projectConfig): ConfigShowResponse
+    {
+        $allowedKeys = SecretKeyPolicy::getAllowedKeysForConfigShow();
+        if (! in_array($key, $allowedKeys, true)) {
+            return ConfigShowResponse::error('config.show.key_not_allowed', ['%key%' => $key]);
+        }
+
+        $effective = $projectConfig !== null ? array_merge($globalConfig, $projectConfig) : $globalConfig;
+        if (! array_key_exists($key, $effective)) {
+            return ConfigShowResponse::error('config.show.key_not_found', ['%key%' => $key]);
+        }
+
+        $value = $effective[$key];
+        $section = ($projectConfig !== null && array_key_exists($key, $projectConfig)) ? 'project' : 'global';
+
+        return ConfigShowResponse::successSingleKey($key, $value, $section);
     }
 
     /**

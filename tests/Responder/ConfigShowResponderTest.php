@@ -154,4 +154,75 @@ class ConfigShowResponderTest extends CommandTestCase
 
         $this->responder->respond($io, $response);
     }
+
+    public function testRespondSingleKeyQuietOutputsOnlyRawValue(): void
+    {
+        $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->never())
+            ->method('section');
+        $io->expects($this->never())
+            ->method('definitionList');
+        $io->expects($this->once())
+            ->method('writeln')
+            ->with('en');
+
+        $this->responder->respond($io, $response, true);
+    }
+
+    public function testRespondSingleKeyNotQuietRendersOneSectionOneRow(): void
+    {
+        $response = ConfigShowResponse::successSingleKey('baseBranch', 'main', 'project');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->anything());
+        $io->expects($this->once())
+            ->method('definitionList')
+            ->with($this->callback(function (array $row) {
+                return count($row) === 1 && isset($row['baseBranch']) || array_key_first($row) === 'baseBranch';
+            }));
+
+        $this->responder->respond($io, $response, false);
+    }
+
+    public function testRespondErrorWithParametersPassesThemToTranslator(): void
+    {
+        $response = ConfigShowResponse::error('config.show.key_not_allowed', ['%key%' => 'JIRA_API_TOKEN']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->once())
+            ->method('error')
+            ->with($this->callback(function (string $message) {
+                return str_contains($message, 'config.show.key_not_allowed') && str_contains($message, 'JIRA_API_TOKEN');
+            }));
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondSingleKeyNotQuietWithColorHelperFormatsSectionAndRow(): void
+    {
+        $colorHelper = $this->createMock(ColorHelper::class);
+        $responder = new ConfigShowResponder($this->translationService, $colorHelper);
+        $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $colorHelper->expects($this->once())
+            ->method('registerStyles')
+            ->with($io);
+        $colorHelper->expects($this->exactly(3))
+            ->method('format')
+            ->willReturnCallback(fn (string $color, string $text) => "<{$color}>{$text}</>");
+
+        $io->expects($this->once())
+            ->method('section')
+            ->with($this->anything());
+        $io->expects($this->once())
+            ->method('definitionList')
+            ->with($this->anything());
+
+        $responder->respond($io, $response, false);
+    }
 }

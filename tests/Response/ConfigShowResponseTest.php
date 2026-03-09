@@ -35,5 +35,26 @@ class ConfigShowResponseTest extends TestCase
         $this->assertSame('config.show.no_config_found', $response->getError());
         $this->assertEmpty($response->globalConfig);
         $this->assertNull($response->projectConfig);
+        $this->assertEmpty($response->getErrorParameters());
+    }
+
+    public function testErrorWithParameters(): void
+    {
+        $response = ConfigShowResponse::error('config.show.key_not_found', ['%key%' => 'FOO']);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.key_not_found', $response->getError());
+        $this->assertSame(['%key%' => 'FOO'], $response->getErrorParameters());
+    }
+
+    public function testSuccessSingleKey(): void
+    {
+        $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->isSingleKey());
+        $this->assertSame('LANGUAGE', $response->singleKey);
+        $this->assertSame('en', $response->singleKeyValue);
+        $this->assertSame('global', $response->singleKeySection);
     }
 }
