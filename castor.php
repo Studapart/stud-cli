@@ -29,6 +29,7 @@ use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
+use App\Handler\ItemCreateHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
@@ -49,6 +50,7 @@ use App\Responder\ConfigValidateResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
+use App\Responder\ItemCreateResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\PrCommentsResponder;
@@ -1136,6 +1138,67 @@ function items_show(
     $responder->respond(io(), $response, $key);
 }
 
+/**
+ * Normalizes summary for items:create: trim cast, and fallback to argv when option value is missing (e.g. Castor binding).
+ *
+ * @return string|null
+ */
+function _items_create_normalize_summary(?string $summary): ?string
+{
+    if ($summary !== null && trim($summary) !== '') {
+        return trim($summary);
+    }
+    if (! isset($_SERVER['argv']) || ! is_array($_SERVER['argv'])) {
+        return null;
+    }
+    $argv = $_SERVER['argv'];
+    foreach ($argv as $i => $arg) {
+        if ($arg === '-m' || $arg === '--summary') {
+            $next = $argv[$i + 1] ?? null;
+            if ($next !== null && $next !== '' && ! str_starts_with($next, '-')) {
+                return trim($next);
+            }
+
+            break;
+        }
+        if (str_starts_with($arg, '--summary=')) {
+            return trim(substr($arg, 10));
+        }
+    }
+
+    return null;
+}
+
+#[AsTask(name: 'items:create', aliases: ['ic'], description: 'Creates a Jira issue in a project')]
+function items_create(
+    #[AsOption(name: 'project', shortcut: 'p', description: 'Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)')]
+    ?string $project = null,
+    #[AsOption(name: 'type', shortcut: 't', description: 'Issue type (default: Story)')]
+    ?string $type = null,
+    #[AsOption(name: 'summary', shortcut: 'm', description: 'Issue summary/title')]
+    ?string $summary = null,
+    #[AsOption(name: 'description', shortcut: 'd', description: 'Issue description (STDIN takes precedence when piping)')]
+    ?string $description = null,
+    #[AsOption(name: 'description-format', description: 'Description format: plain (default) or markdown')]
+    ?string $descriptionFormat = null,
+    #[AsOption(name: 'parent', description: 'Parent issue key for creating a sub-task')]
+    ?string $parent = null,
+    #[AsOption(name: 'assignee', description: 'Assignee account ID (default: current user when field is present)')]
+    ?string $assignee = null,
+): void {
+    _load_constants();
+    $interactive = function_exists('posix_isatty') && @posix_isatty(STDIN);
+    $summary = _items_create_normalize_summary($summary);
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee);
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
+    $responder->respond(io(), $response);
+}
+
 #[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
 function items_transition(
     #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123). Optional - will detect from branch if not provided')]
@@ -1414,6 +1477,7 @@ function help(
             'fl' => 'filters:list',
             'fs' => 'filters:show',
             'sh' => 'items:show',
+            'ic' => 'items:create',
             'tx' => 'items:transition',
             'start' => 'items:start',
             'to' => 'items:takeover',
@@ -1515,6 +1579,12 @@ function help(
                 'args' => '<key>',
                 'description' => $translator->trans('help.command_items_show'),
                 'example' => 'stud sh PROJ-123',
+            ],
+            [
+                'name' => 'items:create',
+                'alias' => 'ic',
+                'description' => $translator->trans('help.command_items_create'),
+                'example' => 'stud ic -p PROJ -m "Summary"',
             ],
             [
                 'name' => 'items:search',

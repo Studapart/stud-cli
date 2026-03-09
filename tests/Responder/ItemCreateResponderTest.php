@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Tests\Responder;
+
+use App\Responder\ItemCreateResponder;
+use App\Response\ItemCreateResponse;
+use App\Tests\CommandTestCase;
+use Symfony\Component\Console\Style\SymfonyStyle;
+
+class ItemCreateResponderTest extends CommandTestCase
+{
+    public function testRespondCallsSuccessWithKeyAndUrl(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-42', 'https://jira.example.com/rest/api/3/issue/123');
+        $jiraConfig = ['JIRA_URL' => 'https://jira.example.com'];
+        $responder = new ItemCreateResponder($this->translationService, $jiraConfig);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->once())
+            ->method('success')
+            ->with($this->callback(function ($message) {
+                return is_string($message)
+                    && str_contains($message, 'PROJ-42')
+                    && (str_contains($message, 'jira.example.com') && str_contains($message, 'browse'));
+            }));
+
+        $responder->respond($io, $response);
+    }
+
+    public function testRespondDoesNotCallSuccessWhenResponseIsError(): void
+    {
+        $response = ItemCreateResponse::error('Something failed');
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->never())->method('success');
+
+        $responder->respond($io, $response);
+    }
+
+    public function testRespondUsesSelfWhenJiraUrlEmpty(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'https://api.jira/issue/1');
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => '']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->once())
+            ->method('success')
+            ->with($this->callback(function ($message) {
+                return str_contains($message, 'PROJ-1') && str_contains($message, 'api.jira');
+            }));
+
+        $responder->respond($io, $response);
+    }
+}

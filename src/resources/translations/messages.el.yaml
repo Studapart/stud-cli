@@ -162,6 +162,23 @@ item:
     label_description: Περιγραφή
     label_link: Σύνδεσμος
     label_none: Κανένα
+  create:
+    section: Creating Jira issue
+    prompt_project: Project key
+    prompt_project_not_found: "Project \"%key%\" not found. Enter project key"
+    prompt_type: Issue type (default Story)
+    prompt_summary: Summary
+    prompt_description: Description (optional)
+    prompt_description_required: Description (required)
+    prompt_custom_field: Value for "%name%" (required)
+    prompt_issue_type_choice: Issue type
+    error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_project_not_found: "Project \"%key%\" not found."
+    error_no_summary: Summary is required. Set --summary/-m or run interactively.
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
+    error_create: "Could not create issue: %error%"
+    success: Created issue %key% - %url%
   transition:
     section: Μετάβαση θέματος Jira
     detected_key: Εντοπισμένο κλειδί Jira '%key%' από τον τρέχοντα κλάδο. Χρήση αυτού του κλειδιού;
@@ -503,6 +520,7 @@ help:
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config.
   command_items_show: Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας.
   command_items_search: Αναζήτηση issues με JQL.
   command_items_transition: Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο.
@@ -544,6 +562,10 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Λίστα τοπικών/απομακρυσμένων κλάδων με κατάσταση (συγχωνευμένος, ξεπερασμένος, ενεργό PR)
   command_branches_clean: Διαδραστικός καθαρισμός συγχωνευμένων/ξεπερασμένων κλάδων
+  option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_quiet: "Μη διαδραστικό: χρήση προεπιλογών, χωρίς ερωτήσεις"
   option_branches_clean_quiet: Αφαίρεση όλων των αντίστοιχων κλάδων χωρίς ερώτηση
   option_deploy_clean: Καθαρισμός συγχωνευμένων κλάδων μετά την ανάπτυξη

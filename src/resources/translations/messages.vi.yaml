@@ -162,6 +162,23 @@ item:
     label_description: Mô tả
     label_link: Liên kết
     label_none: Không có
+  create:
+    section: "Creating Jira issue"
+    prompt_project: "Project key"
+    prompt_project_not_found: "Project \"%key%\" not found. Enter project key"
+    prompt_type: "Issue type (default: Story)"
+    prompt_summary: "Summary"
+    prompt_description: "Description (optional)"
+    prompt_description_required: "Description (required)"
+    prompt_custom_field: "Value for \"%name%\" (required)"
+    prompt_issue_type_choice: "Issue type"
+    error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_project_not_found: "Project \"%key%\" not found."
+    error_no_summary: "Summary is required. Set --summary/-m or run interactively."
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
+    error_create: "Could not create issue: %error%"
+    success: "Created issue %key% – %url%"
   transition:
     section: Chuyển đổi issue Jira
     detected_key: Phát hiện khóa Jira '%key%' từ nhánh hiện tại. Sử dụng khóa này?
@@ -503,6 +520,7 @@ help:
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config.
   command_items_show: Hiển thị thông tin chi tiết cho một mục công việc.
   command_items_search: Tìm kiếm các issue bằng JQL.
   command_items_transition: Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại.
@@ -544,6 +562,10 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Liệt kê các nhánh local/remote với trạng thái (đã hợp nhất, lỗi thời, PR đang hoạt động)
   command_branches_clean: Dọn dẹp tương tác các nhánh đã hợp nhất/lỗi thời
+  option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_quiet: "Không tương tác: dùng mặc định, không nhắc"
   option_branches_clean_quiet: Xóa tất cả các nhánh khớp mà không hỏi
   option_deploy_clean: Dọn dẹp các nhánh đã hợp nhất sau khi triển khai

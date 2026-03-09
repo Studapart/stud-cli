@@ -425,6 +425,22 @@ class HelpServiceTest extends TestCase
         $this->assertNotEmpty($result);
     }
 
+    public function testFormatCommandHelpFromTranslationWithItemsCreateSecondOptionWithType(): void
+    {
+        // items:create has second option --type <type>; exercises second-option argument branch
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->helpService, 'items:create');
+
+        $this->assertIsString($result);
+        $this->assertNotEmpty($result);
+        $this->assertStringContainsString('stud items:create', $result);
+        $this->assertStringContainsString('stud ic', $result);
+        $this->assertStringContainsString('Story', $result);
+    }
+
     public function testFormatCommandHelpFromTranslationWithKeyArgument(): void
     {
         // Test formatCommandHelpFromTranslation directly with items:show

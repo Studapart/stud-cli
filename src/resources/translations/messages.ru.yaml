@@ -162,6 +162,23 @@ item:
     label_description: Описание
     label_link: Ссылка
     label_none: Нет
+  create:
+    section: "Creating Jira issue"
+    prompt_project: "Project key"
+    prompt_project_not_found: "Project \"%key%\" not found. Enter project key"
+    prompt_type: "Issue type (default: Story)"
+    prompt_summary: "Summary"
+    prompt_description: "Description (optional)"
+    prompt_description_required: "Description (required)"
+    prompt_custom_field: "Value for \"%name%\" (required)"
+    prompt_issue_type_choice: "Issue type"
+    error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_project_not_found: "Project \"%key%\" not found."
+    error_no_summary: "Summary is required. Set --summary/-m or run interactively."
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
+    error_create: "Could not create issue: %error%"
+    success: "Created issue %key% – %url%"
   transition:
     section: Переход задачи Jira
     detected_key: Обнаружен ключ Jira '%key%' из текущей ветки. Использовать этот ключ?
@@ -503,6 +520,7 @@ help:
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
   command_projects_list: Список всех видимых проектов Jira.
   command_items_list: Список активных элементов работы (ваша панель управления).
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config.
   command_items_show: Показать подробную информацию об одном элементе работы.
   command_items_search: Поиск issues с помощью JQL.
   command_items_transition: Переводит задачу Jira в другой статус. Если ключ не указан, пытается определить из текущей ветки.
@@ -544,6 +562,10 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Список локальных/удалённых веток со статусом (слита, устарела, активная PR)
   command_branches_clean: Интерактивная очистка слитых/устаревших веток
+  option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_quiet: "Неинтерактивный режим: использовать значения по умолчанию, без запросов"
   option_branches_clean_quiet: Удалить все совпадающие ветки без запроса
   option_deploy_clean: Очистить слитые ветки после развёртывания

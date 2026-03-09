@@ -16,6 +16,7 @@ class HelpService
         'items:list' => 'stud items:list',
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',
+        'items:create' => 'stud items:create',
         'items:start' => 'stud items:start',
         'items:transition' => 'stud items:transition',
         'filters:show' => 'stud filters:show',
@@ -233,6 +234,17 @@ class HelpService
                 'description_key' => 'help.command_items_show',
                 'options' => [],
                 'arguments' => ['<key>'],
+            ],
+            'items:create' => [
+                'alias' => 'ic',
+                'description_key' => 'help.command_items_create',
+                'options' => [
+                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_items_create_project', 'argument' => '<key>'],
+                    ['name' => '--type', 'shortcut' => '-t', 'description_key' => 'help.option_items_create_type', 'argument' => '<type>'],
+                    ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_create_summary', 'argument' => '<text>'],
+                    ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_create_description', 'argument' => '<text>'],
+                ],
+                'arguments' => [],
             ],
             'items:transition' => [
                 'alias' => 'tx',
@@ -527,17 +539,19 @@ class HelpService
                         $optionArg = ' "feat: My custom message"';
                     } elseif ($secondOptionArg === '<key>') {
                         $optionArg = ' PROJ';
-                        // Currently no command has <value> as second option argument
-                        // This condition can never be true with current command set
+                    } elseif ($secondOptionArg === '<type>') {
+                        $optionArg = ' Story';
+                    } else {
+                        // Second option never has <text>, <value>, or <name> in current command set (only items:create has 2nd opt <type>)
                         // @codeCoverageIgnoreStart
-                    } elseif ($secondOptionArg === '<value>') {
-                        $optionArg = ' Key';
-                        // @codeCoverageIgnoreEnd
-                        // Currently no command has <name> as second option argument
-                        // This condition can never be true with current command set
-                        // @codeCoverageIgnoreStart
-                    } elseif ($secondOptionArg === '<name>') {
-                        $optionArg = ' custom-branch-name';
+                        $optionArg = '';
+                        if ($secondOptionArg === '<text>') {
+                            $optionArg = ' "Summary or description text"';
+                        } elseif ($secondOptionArg === '<value>') {
+                            $optionArg = ' Key';
+                        } elseif ($secondOptionArg === '<name>') {
+                            $optionArg = ' custom-branch-name';
+                        }
                         // @codeCoverageIgnoreEnd
                     }
                     $secondOptionExample .= $optionArg;
