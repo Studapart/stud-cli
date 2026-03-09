@@ -3,10 +3,10 @@
 ## 1. Entry (castor.php)
 
 - **Task:** `items:create` (alias `ic`).
-- **Options:** `--project`/`-p`, `--type`/`-t`, `--summary`/`-m`, `--description`/`-d`.
+- **Options:** `--project`/`-p`, `--type`/`-t`, `--summary`/`-m`, `--description`/`-d`, `--description-format` (plain|markdown), `--parent` (parent issue key for sub-tasks), `--assignee` (account ID).
 - **Interactive flag:** `$interactive = function_exists('posix_isatty') && @posix_isatty(STDIN)`  
   → `true` when stdin is a TTY (e.g. running in a terminal), `false` when piped or non-TTY.
-- Handler is called with: `handle(io(), $interactive, $project, $type, $summary, $description)`.
+- Handler is called with: `handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee)`.
 
 ## 2. Handler flow (ItemCreateHandler::handle)
 

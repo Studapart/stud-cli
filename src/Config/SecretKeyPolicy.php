@@ -32,6 +32,27 @@ final class SecretKeyPolicy
     private const SECRET_KEY_PATTERNS = ['TOKEN', 'PASSWORD', 'SECRET'];
 
     /**
+     * Config key names allowed for `stud config:show --key` (non-secret only).
+     * Case-sensitive; must match keys used in global and project config.
+     *
+     * @return list<string>
+     */
+    public static function getAllowedKeysForConfigShow(): array
+    {
+        return [
+            'LANGUAGE',
+            'JIRA_URL',
+            'JIRA_DEFAULT_PROJECT',
+            'projectKey',
+            'transitionId',
+            'baseBranch',
+            'gitProvider',
+            'gitlabInstanceUrl',
+            'migration_version',
+        ];
+    }
+
+    /**
      * Returns whether a config key should be treated as secret and redacted.
      */
     public static function isSecretKey(string $key): bool

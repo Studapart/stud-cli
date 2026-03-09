@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **config:show:** Add `-k`/`--key` and `-q`/`--quiet` for single-key lookup [SCI-63]
+  - `stud config:show -k <key>`: show only one config value (whitelisted non-secret keys: LANGUAGE, JIRA_URL, JIRA_DEFAULT_PROJECT, projectKey, transitionId, baseBranch, gitProvider, gitlabInstanceUrl, migration_version). Effective value uses project-over-global precedence.
+  - `stud config:show -k <key> -q`: output only the raw value (one line). `-q` without `-k` is ignored.
+  - New translation keys: config.show.key_not_found, config.show.key_not_allowed
+
+### Changed
+- **Documentation:** Full coverage of `stud items:create` and `stud config:show` options
+  - README: config:show documents -k/--key and -q/--quiet; items:create documents --description-format, --parent, --assignee
+  - `stud help` and `stud help items:create` / `stud help config:show`: all options listed (HelpService command map and translation keys)
+- **AI.md:** Add directive to invoke stud as `stud` (no path); binary assumed installed (e.g. ~/.local/bin/stud)
+
 ## [3.7.0] - 2026-03-09
 
 ### Added

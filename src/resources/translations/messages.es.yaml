@@ -38,6 +38,8 @@ config:
     section_global: "Configuración global"
     section_project: "Configuración del proyecto"
     no_config_found: "No se encontró archivo de configuración. Ejecute 'stud config:init' para crear uno. La salida es segura para compartir (los secretos están ocultos)."
+    key_not_found: "Clave de configuración '%key%' no encontrada."
+    key_not_allowed: "La clave de configuración '%key%' no puede mostrarse."
   validate:
     section_title: "Validación de configuración"
     label_jira: "Jira"
@@ -566,6 +568,13 @@ help:
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
   option_items_create_description: Issue description (STDIN takes precedence when piping)
+  option_items_create_description_format: "Description format: plain (default) or markdown (converts to Jira ADF)"
+  option_items_create_parent: Parent issue key for creating a sub-task
+  option_items_create_assignee: "Assignee account ID (default: current user when field is required)"
+  option_config_show_key: "Show only this config key (whitelisted non-secret keys only)"
+  option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
+  option_config_validate_skip_jira: "Skip the Jira connectivity check"
+  option_config_validate_skip_git: "Skip the Git provider connectivity check"
   option_quiet: "No interactivo: usar valores por defecto, sin preguntas"
   option_branches_clean_quiet: Eliminar todas las ramas coincidentes sin preguntar
   option_deploy_clean: Limpiar ramas fusionadas después del despliegue

@@ -38,6 +38,8 @@ config:
     section_global: "Configuration globale"
     section_project: "Configuration du projet"
     no_config_found: "Aucun fichier de configuration trouvé. Exécutez 'stud config:init' pour en créer un. La sortie est sûre à partager (les secrets sont masqués)."
+    key_not_found: "Clé de configuration '%key%' introuvable."
+    key_not_allowed: "La clé de configuration '%key%' ne peut pas être affichée."
   validate:
     section_title: "Validation de la configuration"
     label_jira: "Jira"
@@ -567,6 +569,13 @@ help:
   option_items_create_type: "Type de ticket (défaut : Story)"
   option_items_create_summary: "Résumé/titre du ticket"
   option_items_create_description: "Description du ticket (STDIN prioritaire en pipeline)"
+  option_items_create_description_format: "Format de la description : plain (défaut) ou markdown (converti en ADF Jira)"
+  option_items_create_parent: "Clé du ticket parent pour créer une sous-tâche"
+  option_items_create_assignee: "ID du compte assigné (défaut : utilisateur actuel si le champ est requis)"
+  option_config_show_key: "Afficher uniquement cette clé de config (clés non secrètes autorisées uniquement)"
+  option_config_show_quiet: "Avec --key : n'afficher que la valeur brute ; ignoré sans --key"
+  option_config_validate_skip_jira: "Ignorer la vérification de connexion Jira"
+  option_config_validate_skip_git: "Ignorer la vérification du fournisseur Git"
   option_branches_clean_quiet: Supprimer toutes les branches correspondantes sans demander
   option_deploy_clean: Nettoyer les branches fusionnées après le déploiement
 branches:
