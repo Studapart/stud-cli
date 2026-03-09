@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.1] - 2026-03-09
+
+### Fixed
+- **config:show:** `stud config:show -k <key> -q` now outputs the raw value on stdout when `--quiet` is set; output is routed through Logger so it is no longer suppressed [SCI-64]
+
 ## [3.8.0] - 2026-03-09
 
 ### Added
