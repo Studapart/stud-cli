@@ -68,4 +68,25 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertSame('fr', $result['LANGUAGE']);
         $this->assertTrue($result['JIRA_TRANSITION_ENABLED']);
     }
+
+    public function testGetAllowedKeysForConfigShowContainsOnlyNonSecretKeys(): void
+    {
+        $allowed = SecretKeyPolicy::getAllowedKeysForConfigShow();
+
+        $this->assertNotEmpty($allowed);
+        foreach ($allowed as $key) {
+            $this->assertFalse(SecretKeyPolicy::isSecretKey($key), "Whitelisted key {$key} must not be a secret key");
+        }
+    }
+
+    public function testGetAllowedKeysForConfigShowIncludesExpectedKeys(): void
+    {
+        $allowed = SecretKeyPolicy::getAllowedKeysForConfigShow();
+
+        $this->assertContains('LANGUAGE', $allowed);
+        $this->assertContains('JIRA_URL', $allowed);
+        $this->assertContains('JIRA_DEFAULT_PROJECT', $allowed);
+        $this->assertContains('baseBranch', $allowed);
+        $this->assertContains('gitProvider', $allowed);
+    }
 }

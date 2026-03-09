@@ -17,15 +17,21 @@ class ConfigShowResponder
     ) {
     }
 
-    public function respond(SymfonyStyle $io, ConfigShowResponse $response): void
+    public function respond(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet = false): void
     {
         if ($this->colorHelper !== null) {
             $this->colorHelper->registerStyles($io);
         }
 
         if (! $response->isSuccess()) {
-            $message = $this->translator->trans($response->getError() ?? '');
+            $message = $this->translator->trans($response->getError() ?? '', $response->getErrorParameters());
             $io->error($message);
+
+            return;
+        }
+
+        if ($response->isSingleKey()) {
+            $this->respondSingleKey($io, $response, $quiet);
 
             return;
         }
@@ -35,6 +41,30 @@ class ConfigShowResponder
         if ($response->projectConfig !== null && $response->projectConfig !== []) {
             $this->renderSection($io, 'config.show.section_project', $response->projectConfig);
         }
+    }
+
+    protected function respondSingleKey(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet): void
+    {
+        if ($quiet) {
+            $io->writeln($this->formatValue($response->singleKeyValue));
+
+            return;
+        }
+
+        $sectionKey = $response->singleKeySection === 'project' ? 'config.show.section_project' : 'config.show.section_global';
+        $sectionTitle = $this->translator->trans($sectionKey);
+        if ($this->colorHelper !== null) {
+            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
+        }
+        $io->section($sectionTitle);
+
+        $valueStr = $this->formatValue($response->singleKeyValue);
+        $label = $response->singleKey ?? '';
+        if ($this->colorHelper !== null) {
+            $label = $this->colorHelper->format('definition_key', $label);
+            $valueStr = $this->colorHelper->format('definition_value', $valueStr);
+        }
+        $io->definitionList([$label => $valueStr]);
     }
 
     /**

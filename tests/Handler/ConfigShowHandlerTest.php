@@ -142,4 +142,99 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertEmpty($response->globalConfig);
     }
+
+    public function testHandleWithKeyReturnsErrorWhenGlobalConfigDoesNotExist(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->with('/path/to/config.yml')
+            ->willReturn(false);
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', null);
+        $response = $handler->handle('LANGUAGE');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.no_config_found', $response->getError());
+    }
+
+    public function testHandleWithKeyInWhitelistPresentInGlobalOnlyReturnsSingleKeySectionGlobal(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->with('/path/to/config.yml')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', null);
+        $response = $handler->handle('LANGUAGE');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->isSingleKey());
+        $this->assertSame('LANGUAGE', $response->singleKey);
+        $this->assertSame('en', $response->singleKeyValue);
+        $this->assertSame('global', $response->singleKeySection);
+    }
+
+    public function testHandleWithKeyInWhitelistPresentInProjectReturnsSingleKeySectionProject(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->with('/path/to/config.yml')
+            ->willReturn(['JIRA_DEFAULT_PROJECT' => 'GLOBAL']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['JIRA_DEFAULT_PROJECT' => 'PROJ']);
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_DEFAULT_PROJECT');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('JIRA_DEFAULT_PROJECT', $response->singleKey);
+        $this->assertSame('PROJ', $response->singleKeyValue);
+        $this->assertSame('project', $response->singleKeySection);
+    }
+
+    public function testHandleWithKeyNotInWhitelistReturnsError(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['JIRA_API_TOKEN' => 'secret']);
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', null);
+        $response = $handler->handle('JIRA_API_TOKEN');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.key_not_allowed', $response->getError());
+        $this->assertSame(['%key%' => 'JIRA_API_TOKEN'], $response->getErrorParameters());
+    }
+
+    public function testHandleWithKeyInWhitelistMissingFromEffectiveConfigReturnsError(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_DEFAULT_PROJECT');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.key_not_found', $response->getError());
+        $this->assertSame(['%key%' => 'JIRA_DEFAULT_PROJECT'], $response->getErrorParameters());
+    }
 }

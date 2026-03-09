@@ -8,6 +8,7 @@ Your objective is to automate the maintenance and feature development of the `st
 
 -   **Standards Compliance**: You MUST read, understand, and adhere to 100% of the rules defined in the `CONVENTIONS.md` file. This is a blocking requirement. All code will be rejected if it violates these standards.
 -   **Workflow Enforcement**: All Jira and Git operations MUST be performed via the `stud-cli` binary. Direct use of `git` or other VCS commands is forbidden. Refer to the `README.md` for a full command reference.
+-   **Invoking stud**: Always run the CLI as `stud` (no path). The agent must NOT use `./stud` or any path prefix; the binary is assumed to be installed (e.g. `~/.local/bin/stud` or globally) and on `PATH`.
 -   **API Immutability**: You MUST NOT modify, alter, or update any Jira or GitHub API endpoints, authentication logic, or credentials. This is a critical system constraint.
 -   **Non-Interactive Usage**: When using `stud-cli` for Jira/Git operations, the agent MUST use non-interactive flags where available. For commands that support `--quiet` or `-q`, the agent MUST pass that option unless the ticket explicitly requires interactive behavior.
 -   **Idempotency**: Use `--quiet` (and other non-interactive flags) so that default values are applied without prompts (e.g. commit uses Jira-derived message; submit uses default base branch and provider). Do not rely on "prefer defaults when prompted"—use quiet so defaults apply without prompting.

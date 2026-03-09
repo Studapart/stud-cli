@@ -957,8 +957,12 @@ function config_init(): void
 }
 
 #[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
-function config_show(): void
-{
+function config_show(
+    #[AsOption(name: 'key', shortcut: 'k', description: 'Show only this config key (whitelisted non-secret keys only)')]
+    ?string $key = null,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'With --key: output only the raw value (no section/labels)')]
+    bool $quiet = false,
+): void {
     _load_constants();
     $gitRepository = null;
 
@@ -968,14 +972,15 @@ function config_show(): void
         // Not in a git repository
     }
     $handler = new ConfigShowHandler(_get_file_system(), _get_config_path(), $gitRepository);
-    $response = $handler->handle();
+    $response = $handler->handle($key);
     if (! $response->isSuccess()) {
         $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
-        $responder->respond(io(), $response);
+        $responder->respond(io(), $response, false);
         exit(1);
     }
+    $quietEffective = $key !== null && $quiet;
     $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
-    $responder->respond(io(), $response);
+    $responder->respond(io(), $response, $quietEffective);
 }
 
 #[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]

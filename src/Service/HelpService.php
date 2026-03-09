@@ -11,6 +11,8 @@ class HelpService
     // Map of command names to their README section patterns
     private const COMMAND_PATTERNS = [
         'config:init' => 'stud config:init',
+        'config:show' => 'stud config:show',
+        'config:validate' => 'stud config:validate',
         'completion' => 'stud completion',
         'projects:list' => 'stud projects:list',
         'items:list' => 'stud items:list',
@@ -19,6 +21,7 @@ class HelpService
         'items:create' => 'stud items:create',
         'items:start' => 'stud items:start',
         'items:transition' => 'stud items:transition',
+        'filters:list' => 'stud filters:list',
         'filters:show' => 'stud filters:show',
         'branch:rename' => 'stud branch:rename',
         'commit' => 'stud commit',
@@ -189,6 +192,24 @@ class HelpService
                 'options' => [],
                 'arguments' => [],
             ],
+            'config:show' => [
+                'alias' => null,
+                'description_key' => 'help.command_config_show',
+                'options' => [
+                    ['name' => '--key', 'shortcut' => '-k', 'description_key' => 'help.option_config_show_key', 'argument' => '<key>'],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_config_show_quiet', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
+            'config:validate' => [
+                'alias' => null,
+                'description_key' => 'help.command_config_validate',
+                'options' => [
+                    ['name' => '--skip-jira', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_jira', 'argument' => null],
+                    ['name' => '--skip-git', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_git', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
             'completion' => [
                 'alias' => null,
                 'description_key' => 'help.command_completion',
@@ -243,6 +264,9 @@ class HelpService
                     ['name' => '--type', 'shortcut' => '-t', 'description_key' => 'help.option_items_create_type', 'argument' => '<type>'],
                     ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_create_summary', 'argument' => '<text>'],
                     ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_create_description', 'argument' => '<text>'],
+                    ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_create_description_format', 'argument' => '<plain|markdown>'],
+                    ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_items_create_parent', 'argument' => '<key>'],
+                    ['name' => '--assignee', 'shortcut' => null, 'description_key' => 'help.option_items_create_assignee', 'argument' => '<id>'],
                 ],
                 'arguments' => [],
             ],
@@ -473,7 +497,7 @@ class HelpService
                 // @codeCoverageIgnoreEnd
             }
         }
-        $argsString = ! empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : '';
+        $argsString = ! empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : ''; // @phpstan-ignore-line implode parameter type (exampleArgs are strings from argument patterns)
 
         // Basic usage with command name
         $lines[] = "    stud {$commandName}{$argsString}";
