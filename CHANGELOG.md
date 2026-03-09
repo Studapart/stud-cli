@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-03-09
+
 ### Added
 - Add `stud items:create` (alias `ic`) to create Jira issues from the CLI [SCI-60]
   - Options: `-p`/`--project`, `-t`/`--type` (default Story), `-m`/`--summary`, `-d`/`--description`; missing values prompted in interactive mode
