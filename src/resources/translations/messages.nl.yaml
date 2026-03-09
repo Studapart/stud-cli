@@ -162,6 +162,23 @@ item:
     label_description: Beschrijving
     label_link: Link
     label_none: Geen
+  create:
+    section: "Creating Jira issue"
+    prompt_project: "Project key"
+    prompt_project_not_found: "Project \"%key%\" not found. Enter project key"
+    prompt_type: "Issue type (default: Story)"
+    prompt_summary: "Summary"
+    prompt_description: "Description (optional)"
+    prompt_description_required: "Description (required)"
+    prompt_custom_field: "Value for \"%name%\" (required)"
+    prompt_issue_type_choice: "Issue type"
+    error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_project_not_found: "Project \"%key%\" not found."
+    error_no_summary: "Summary is required. Set --summary/-m or run interactively."
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
+    error_create: "Could not create issue: %error%"
+    success: "Created issue %key% – %url%"
   transition:
     section: Jira werkitem overgang
     detected_key: Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?
@@ -546,6 +563,7 @@ help:
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config.
   command_items_search: Zoek issues met JQL.
   command_items_transition: Zet een Jira werkitem over naar een andere status. Als sleutel niet wordt opgegeven, wordt geprobeerd te detecteren vanuit huidige branch.
   command_filters_list: Lijst alle beschikbare Jira-filters.
@@ -587,5 +605,9 @@ help:
   command_branches_list: Lijst lokale/remote branches met status (samengevoegd, verouderd, actieve PR)
   command_branches_clean: Interactieve opruiming van samengevoegde/verouderde branches
   option_quiet: "Niet-interactief: standaardwaarden gebruiken, geen prompts"
+  option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_branches_clean_quiet: Verwijder alle overeenkomende branches zonder te vragen
   option_deploy_clean: Ruim samengevoegde branches op na deployment

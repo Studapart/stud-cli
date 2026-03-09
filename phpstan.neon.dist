@@ -25,4 +25,8 @@ parameters:
         -
             message: '#Strict comparison using === between \*NEVER\* and.*will always evaluate to false\.#'
             path: src/Service/HelpService.php
+        # adf-tools nodes (Document, Blockquote, etc.) use builder traits; PHPStan does not see trait methods on union types
+        -
+            message: '#Call to an undefined method#'
+            path: src/Service/MarkdownToAdfConverter.php
 

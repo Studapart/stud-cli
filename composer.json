@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "3.6.0",
+    "version": "3.7.0",
     "authors": [
         {
             "name": "Pierre-Emmanuel Manteau",
@@ -36,7 +36,9 @@
         "stevebauman/hypertext": "^1.1",
         "league/html-to-markdown": "^5.0",
         "league/flysystem": "^3.0",
-        "league/flysystem-local": "^3.0"
+        "league/flysystem-local": "^3.0",
+        "damienharper/adf-tools": "^1.2",
+        "league/commonmark": "^2.8"
     },
     "autoload": {
         "psr-4": {

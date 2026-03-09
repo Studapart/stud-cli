@@ -162,6 +162,23 @@ item:
     label_description: Beskrywing
     label_link: Skakel
     label_none: Geen
+  create:
+    section: Creating Jira issue
+    prompt_project: Project key
+    prompt_project_not_found: "Project \"%key%\" not found. Enter project key"
+    prompt_type: Issue type (default Story)
+    prompt_summary: Summary
+    prompt_description: Description (optional)
+    prompt_description_required: Description (required)
+    prompt_custom_field: Value for "%name%" (required)
+    prompt_issue_type_choice: Issue type
+    error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_project_not_found: "Project \"%key%\" not found."
+    error_no_summary: Summary is required. Set --summary/-m or run interactively.
+    error_createmeta: "Could not fetch create metadata: %error%"
+    error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
+    error_create: "Could not create issue: %error%"
+    success: Created issue %key% - %url%
   transition:
     section: Jira werkitem oorgang
     detected_key: Gedetecteerde Jira sleutel '%key%' vanaf huidige tak. Hierdie sleutel gebruik?
@@ -503,6 +520,7 @@ help:
   command_completion: Genereer shell outo-voltooiing scripts vir bash of zsh.
   command_projects_list: Lys alle sigbare Jira projekte.
   command_items_list: Lys aktiewe werkitems (jou dashboard).
+  command_items_create: Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config.
   command_items_show: Toon gedetailleerde inligting vir een werkitem.
   command_items_search: Soek issues met JQL.
   command_items_transition: Gaan 'n Jira werkitem oor na 'n ander status. As sleutel nie verskaf word nie, probeer om vanaf huidige tak te detecteer.
@@ -544,6 +562,10 @@ help:
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
   command_branches_list: Lys plaaslike/afstand takke met status (saamgevoeg, verouderd, aktiewe PR)
   command_branches_clean: Interaktiewe skoonmaak van saamgevoegde/verouderde takke
+  option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
+  option_items_create_type: Issue type (default Story)
+  option_items_create_summary: Issue summary/title
+  option_items_create_description: Issue description (STDIN takes precedence when piping)
   option_quiet: "Nie-interaktief: gebruik verstekwaardes, geen prompts"
   option_branches_clean_quiet: Verwyder alle ooreenstemmende takke sonder om te vra
   option_deploy_clean: Maak saamgevoegde takke skoon na ontplooiing
