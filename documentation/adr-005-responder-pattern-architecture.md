@@ -209,6 +209,12 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 - **StatusHandler:** Does not use Response/Responder/ViewConfig. It is a small dashboard combining Jira status, Git branch, and local changes in a unique format. Refactoring to the full pattern would add complexity without clear benefit. No other handlers should follow this exception without explicit decision and ADR update.
 
+### 7.6 Output and Logger
+
+- **All commands MUST use the Logger service** (obtained via `_get_logger()` in `castor.php`) for console output. Responders and any code that writes to the console must use Logger methods (e.g. `text`, `error`, `success`, `rawValue`) so that verbosity and `--quiet` are handled in one place.
+- **Direct use of `io()` (or the injected `SymfonyStyle` instance) for output is forbidden** in the output path: do not call `$io->writeln()`, `$io->text()`, `$io->error()`, etc. directly. Use the Logger instead. This ensures that `-q` / `--quiet` correctly suppresses non-essential output while still allowing primary-result output (e.g. script-friendly raw values via `Logger::rawValue()`) when required.
+- **Cross-reference:** See CONVENTIONS.md "Command Output Conventions" for the standard output methods and their usage.
+
 ---
 
 ### Pro-Tip for Symfony 7.4 ADRs

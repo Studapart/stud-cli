@@ -6,6 +6,7 @@ namespace App\Responder;
 
 use App\Response\ConfigShowResponse;
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -13,6 +14,7 @@ class ConfigShowResponder
 {
     public function __construct(
         private readonly TranslationService $translator,
+        private readonly Logger $logger,
         private readonly ?ColorHelper $colorHelper = null
     ) {
     }
@@ -46,7 +48,7 @@ class ConfigShowResponder
     protected function respondSingleKey(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet): void
     {
         if ($quiet) {
-            $io->writeln($this->formatValue($response->singleKeyValue));
+            $this->logger->rawValue($this->formatValue($response->singleKeyValue));
 
             return;
         }

@@ -475,6 +475,8 @@ $this->assertStringContainsString('Update complete! You are now on v1.0.1', $out
 
 ## Command Output Conventions
 
+All command output must go through the **Logger** service (from `_get_logger()` in tasks), not directly through `$io`; see [ADR-005 §7.6 Output and Logger](documentation/adr-005-responder-pattern-architecture.md#76-output-and-logger).
+
 The following table defines the standard output methods and their usage in `stud-cli`:
 
 | Type | Method | Icon | Usage |

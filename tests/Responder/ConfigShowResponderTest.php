@@ -7,6 +7,7 @@ namespace App\Tests\Responder;
 use App\Responder\ConfigShowResponder;
 use App\Response\ConfigShowResponse;
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -14,11 +15,14 @@ class ConfigShowResponderTest extends CommandTestCase
 {
     private ConfigShowResponder $responder;
 
+    private Logger $logger;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->responder = new ConfigShowResponder($this->translationService, null);
+        $this->logger = $this->createMock(Logger::class);
+        $this->responder = new ConfigShowResponder($this->translationService, $this->logger, null);
     }
 
     public function testRespondOutputsErrorWhenResponseIsNotSuccess(): void
@@ -84,7 +88,7 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ConfigShowResponder($this->translationService, $colorHelper);
+        $responder = new ConfigShowResponder($this->translationService, $this->logger, $colorHelper);
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -160,13 +164,14 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
         $io = $this->createMock(SymfonyStyle::class);
 
+        $this->logger->expects($this->once())
+            ->method('rawValue')
+            ->with('en');
+
         $io->expects($this->never())
             ->method('section');
         $io->expects($this->never())
             ->method('definitionList');
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with('en');
 
         $this->responder->respond($io, $response, true);
     }
@@ -205,7 +210,7 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondSingleKeyNotQuietWithColorHelperFormatsSectionAndRow(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ConfigShowResponder($this->translationService, $colorHelper);
+        $responder = new ConfigShowResponder($this->translationService, $this->logger, $colorHelper);
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
         $io = $this->createMock(SymfonyStyle::class);
 

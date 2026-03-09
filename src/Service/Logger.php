@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -110,6 +111,19 @@ class Logger
     {
         if ($this->shouldDisplay($verbosity)) {
             $this->io->text($message);
+        }
+    }
+
+    /**
+     * Outputs a single raw value line (e.g. script-friendly config value).
+     * Always visible even when output is quiet (--quiet), so primary-result output can be used in scripts.
+     *
+     * @param string $message The raw value to output (one line, no formatting)
+     */
+    public function rawValue(string $message): void
+    {
+        if ($this->io->isQuiet() || $this->shouldDisplay(self::VERBOSITY_NORMAL)) {
+            $this->io->writeln($message, OutputInterface::VERBOSITY_QUIET | OutputInterface::OUTPUT_RAW);
         }
     }
 

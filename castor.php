@@ -974,12 +974,12 @@ function config_show(
     $handler = new ConfigShowHandler(_get_file_system(), _get_config_path(), $gitRepository);
     $response = $handler->handle($key);
     if (! $response->isSuccess()) {
-        $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+        $responder = new ConfigShowResponder(_get_translation_service(), _get_logger(), _get_color_helper());
         $responder->respond(io(), $response, false);
         exit(1);
     }
     $quietEffective = $key !== null && $quiet;
-    $responder = new ConfigShowResponder(_get_translation_service(), _get_color_helper());
+    $responder = new ConfigShowResponder(_get_translation_service(), _get_logger(), _get_color_helper());
     $responder->respond(io(), $response, $quietEffective);
 }
 

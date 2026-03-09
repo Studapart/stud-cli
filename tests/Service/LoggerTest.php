@@ -113,6 +113,35 @@ class LoggerTest extends CommandTestCase
         $logger->text(Logger::VERBOSITY_NORMAL, 'Test text');
     }
 
+    public function testRawValueShownWhenQuiet(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(true);
+
+        $io->expects($this->once())
+            ->method('writeln')
+            ->with('SCI');
+
+        $logger = new Logger($io, []);
+        $logger->rawValue('SCI');
+    }
+
+    public function testRawValueShownWhenNotQuiet(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+
+        $io->expects($this->once())
+            ->method('writeln')
+            ->with('raw');
+
+        $logger = new Logger($io, []);
+        $logger->rawValue('raw');
+    }
+
     public function testWritelnRespectsVerbosity(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
