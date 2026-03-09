@@ -1254,4 +1254,190 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
     }
+
+    public function testParseOriginalEstimateToSeconds_1d_returns86400(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->assertSame(86400, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['1d']));
+        $this->assertSame(86400, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['1 day']));
+        $this->assertSame(86400, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['1 days']));
+    }
+
+    public function testParseOriginalEstimateToSeconds_0_5d_returns43200(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->assertSame(43200, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['0.5d']));
+    }
+
+    public function testParseOriginalEstimateToSeconds_2h_returns7200(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->assertSame(7200, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['2h']));
+        $this->assertSame(7200, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['2 hour']));
+    }
+
+    public function testParseOriginalEstimateToSeconds_30m_returns1800(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->assertSame(1800, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['30m']));
+        $this->assertSame(1800, $this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['30 minutes']));
+    }
+
+    public function testParseOriginalEstimateToSeconds_invalid_returnsNull(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->assertNull($this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['invalid']));
+        $this->assertNull($this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['1x']));
+        $this->assertNull($this->callPrivateMethod($handler, 'parseOriginalEstimateToSeconds', ['']));
+    }
+
+    public function testHandle_labelsWhenCreatemetaHasLabels_addsToPayload(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'labels' => ['required' => false, 'name' => 'Labels'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return isset($fields['labels']) && $fields['labels'] === ['a', 'b'];
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null, 'a, b', null);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertSame([], $response->skippedOptionalFields ?? []);
+    }
+
+    public function testHandle_labelsWhenCreatemetaDoesNotHaveLabels_skippedAndCreateSucceeds(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return ! isset($fields['labels']);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null, 'a, b', null);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertNotNull($response->skippedOptionalFields);
+        $this->assertContains('item.create.skipped_field_labels', $response->skippedOptionalFields);
+    }
+
+    public function testHandle_originalEstimateWhenCreatemetaHasIt_addsToPayload(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return isset($fields['timeoriginalestimate']) && $fields['timeoriginalestimate'] === 86400;
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null, null, '1d');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertSame([], $response->skippedOptionalFields ?? []);
+    }
+
+    public function testHandle_originalEstimateWhenCreatemetaDoesNotHaveIt_skippedAndCreateSucceeds(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return ! isset($fields['timeoriginalestimate']);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null, null, '1d');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertNotNull($response->skippedOptionalFields);
+        $this->assertContains('item.create.skipped_field_original_estimate', $response->skippedOptionalFields);
+    }
+
+    public function testHandle_invalidOriginalEstimate_skippedAndCreateSucceeds(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return ! isset($fields['timeoriginalestimate']);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null, null, 'invalid');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertNotNull($response->skippedOptionalFields);
+        $this->assertContains('item.create.skipped_field_original_estimate', $response->skippedOptionalFields);
+    }
 }

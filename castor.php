@@ -1190,12 +1190,16 @@ function items_create(
     ?string $parent = null,
     #[AsOption(name: 'assignee', description: 'Assignee account ID (default: current user when field is present)')]
     ?string $assignee = null,
+    #[AsOption(name: 'labels', description: 'Comma-separated labels (only set when project/issue type supports labels)')]
+    ?string $labels = null,
+    #[AsOption(name: 'original-estimate', description: 'Original time estimate (e.g. 1d, 0.5d, 1 day, 2h, 30m; converted to seconds)')]
+    ?string $originalEstimate = null,
 ): void {
     _load_constants();
     $interactive = function_exists('posix_isatty') && @posix_isatty(STDIN);
     $summary = _items_create_normalize_summary($summary);
     $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
-    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee);
+    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee, $labels, $originalEstimate);
     if (! $response->isSuccess()) {
         _get_error_responder()->respond(io(), $response);
         exit(1);

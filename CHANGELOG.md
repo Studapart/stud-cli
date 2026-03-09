@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **items:create:** Optional `--labels` (comma-separated) and `--original-estimate` (human-friendly: 1d, 0.5d, 1 day, 2h, 30m; converted to seconds) [SCI-65]
+  - Labels and time original estimate are only sent when the project/issue type supports them (createmeta). If the user supplies them but they are not supported, the issue is still created and a note lists the skipped fields.
+
 ## [3.8.1] - 2026-03-09
 
 ### Fixed

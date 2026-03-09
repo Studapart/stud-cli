@@ -181,6 +181,9 @@ item:
     error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires : %fields%. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
     error_create: "Impossible de créer le ticket : %error%"
     success: "Ticket %key% créé – %url%"
+    note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
+    skipped_field_labels: "labels"
+    skipped_field_original_estimate: "estimation de temps initiale"
   transition:
     section: Transition d'un ticket Jira
     detected_key: Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?
@@ -572,6 +575,8 @@ help:
   option_items_create_description_format: "Format de la description : plain (défaut) ou markdown (converti en ADF Jira)"
   option_items_create_parent: "Clé du ticket parent pour créer une sous-tâche"
   option_items_create_assignee: "ID du compte assigné (défaut : utilisateur actuel si le champ est requis)"
+  option_items_create_labels: "Labels séparés par des virgules (définis uniquement si le projet/type de ticket les prend en charge)"
+  option_items_create_original_estimate: "Estimation de temps initiale : 1d, 0.5d, 1 day, 2h, 30m (convertie en secondes pour Jira)"
   option_config_show_key: "Afficher uniquement cette clé de config (clés non secrètes autorisées uniquement)"
   option_config_show_quiet: "Avec --key : n'afficher que la valeur brute ; ignoré sans --key"
   option_config_validate_skip_jira: "Ignorer la vérification de connexion Jira"

@@ -31,5 +31,9 @@ class ItemCreateResponder
             'url' => $url,
         ]);
         $io->success($message);
+        $skipped = $response->skippedOptionalFields ?? [];
+        if ($skipped !== []) {
+            $io->note($this->translator->trans('item.create.note_skipped_optional_fields', ['%fields%' => implode(', ', $skipped)]));
+        }
     }
 }

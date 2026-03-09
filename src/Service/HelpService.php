@@ -267,6 +267,8 @@ class HelpService
                     ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_create_description_format', 'argument' => '<plain|markdown>'],
                     ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_items_create_parent', 'argument' => '<key>'],
                     ['name' => '--assignee', 'shortcut' => null, 'description_key' => 'help.option_items_create_assignee', 'argument' => '<id>'],
+                    ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_items_create_labels', 'argument' => '<list>'],
+                    ['name' => '--original-estimate', 'shortcut' => null, 'description_key' => 'help.option_items_create_original_estimate', 'argument' => '<value>'],
                 ],
                 'arguments' => [],
             ],
