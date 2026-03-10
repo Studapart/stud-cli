@@ -246,29 +246,55 @@ class InitHandler
      */
     protected function resolveGitTokenForInit(?string $userInput, string $newKey, array $existingConfig): ?string
     {
-        if ($userInput !== null && trim($userInput) !== '') {
-            return trim($userInput);
+        $fromInput = $this->resolveTokenFromUserInput($userInput);
+        if ($fromInput !== null) {
+            return $fromInput;
+        }
+        $fromNewKey = $this->resolveTokenFromExistingKey($existingConfig, $newKey);
+        if ($fromNewKey !== null) {
+            return $fromNewKey;
         }
 
+        return $this->resolveTokenFromLegacy($existingConfig, $newKey);
+    }
+
+    protected function resolveTokenFromUserInput(?string $userInput): ?string
+    {
+        if ($userInput === null || trim($userInput) === '') {
+            return null;
+        }
+
+        return trim($userInput);
+    }
+
+    /**
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function resolveTokenFromExistingKey(array $existingConfig, string $newKey): ?string
+    {
         $existingNew = $existingConfig[$newKey] ?? null;
-        if ($existingNew !== null && is_string($existingNew) && trim($existingNew) !== '') {
-            return trim($existingNew);
+        if ($existingNew === null || ! is_string($existingNew) || trim($existingNew) === '') {
+            return null;
         }
 
+        return trim($existingNew);
+    }
+
+    /**
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function resolveTokenFromLegacy(array $existingConfig, string $newKey): ?string
+    {
         $legacyToken = $existingConfig['GIT_TOKEN'] ?? null;
         if ($legacyToken === null || ! is_string($legacyToken) || trim($legacyToken) === '') {
             return null;
         }
-
         $provider = isset($existingConfig['GIT_PROVIDER']) && is_string($existingConfig['GIT_PROVIDER'])
             ? strtolower($existingConfig['GIT_PROVIDER'])
             : null;
+        $opposite = $newKey === 'GITHUB_TOKEN' ? 'gitlab' : 'github';
 
-        if ($newKey === 'GITHUB_TOKEN') {
-            return ($provider === 'gitlab') ? null : trim($legacyToken);
-        }
-
-        return ($provider === 'github') ? null : trim($legacyToken);
+        return ($provider === $opposite) ? null : trim($legacyToken);
     }
 
     /**

@@ -118,24 +118,59 @@ class PrCommentsResponder
         $io->section($headerLine);
 
         $segments = $this->bodyParser->parse($comment->body);
-
         foreach ($segments as $segment) {
-            if ($segment['type'] === 'text' && isset($segment['content']) && $segment['content'] !== '') {
-                $text = $this->stripBackticks($segment['content']);
-                if ($this->colorHelper !== null) {
-                    $text = $this->colorHelper->format('text_content', $text);
-                }
-                $io->text($text);
-            } elseif ($segment['type'] === 'list' && isset($segment['items']) && $segment['items'] !== []) {
-                $items = array_map(fn (string $item) => $this->stripBackticks($item), $segment['items']);
-                if ($this->colorHelper !== null) {
-                    $items = array_map(fn (string $item) => $this->colorHelper->format('listing_item', $item), $items);
-                }
-                $io->listing($items);
-            } elseif ($segment['type'] === 'table' && isset($segment['headers'], $segment['rows'])) {
-                $this->renderTableSegment($io, $segment['headers'], $segment['rows']);
-            }
+            $this->renderCommentSegment($io, $segment);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $segment
+     */
+    protected function renderCommentSegment(SymfonyStyle $io, array $segment): void
+    {
+        if ($segment['type'] === 'text') {
+            $this->renderTextSegment($io, $segment);
+
+            return;
+        }
+        if ($segment['type'] === 'list') {
+            $this->renderListSegment($io, $segment);
+
+            return;
+        }
+        if ($segment['type'] === 'table' && isset($segment['headers'], $segment['rows'])) {
+            $this->renderTableSegment($io, $segment['headers'], $segment['rows']);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $segment
+     */
+    protected function renderTextSegment(SymfonyStyle $io, array $segment): void
+    {
+        if (! isset($segment['content']) || $segment['content'] === '') {
+            return;
+        }
+        $text = $this->stripBackticks($segment['content']);
+        if ($this->colorHelper !== null) {
+            $text = $this->colorHelper->format('text_content', $text);
+        }
+        $io->text($text);
+    }
+
+    /**
+     * @param array<string, mixed> $segment
+     */
+    protected function renderListSegment(SymfonyStyle $io, array $segment): void
+    {
+        if (! isset($segment['items']) || $segment['items'] === []) {
+            return;
+        }
+        $items = array_map(fn (string $item) => $this->stripBackticks($item), $segment['items']);
+        if ($this->colorHelper !== null) {
+            $items = array_map(fn (string $item) => $this->colorHelper->format('listing_item', $item), $items);
+        }
+        $io->listing($items);
     }
 
     /**

@@ -75,24 +75,17 @@ class MarkdownToAdfConverter
     private function convertBlock(Node $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
     {
         if ($node instanceof Paragraph) {
-            $p = $adfParent->paragraph();
-            $this->appendInlines($node, $p);
-            $p->end();
+            $this->convertParagraphBlock($node, $adfParent);
 
             return;
         }
         if ($node instanceof Heading) {
-            $h = $adfParent->heading($node->getLevel());
-            $this->appendInlines($node, $h);
-            $h->end();
+            $this->convertHeadingBlock($node, $adfParent);
 
             return;
         }
         if ($node instanceof FencedCode) {
-            $literal = $node->getLiteral();
-            $info = $node->getInfoWords();
-            $lang = $info !== [] ? $info[0] : null;
-            $adfParent->codeblock($lang)->text($literal)->end();
+            $this->convertFencedCodeBlock($node, $adfParent);
 
             return;
         }
@@ -102,36 +95,64 @@ class MarkdownToAdfConverter
             return;
         }
         if ($node instanceof CMBlockQuote) {
-            $bq = $adfParent->blockquote();
-            foreach ($node->children() as $child) {
-                $this->convertBlock($child, $bq);
-            }
-            $bq->end();
+            $this->convertBlockquoteBlock($node, $adfParent);
 
             return;
         }
         if ($node instanceof ListBlock) {
-            $isOrdered = $node->getListData()->type === ListBlock::TYPE_ORDERED;
-            $list = $isOrdered ? $adfParent->orderedlist() : $adfParent->bulletlist();
-            foreach ($node->children() as $item) {
-                if ($item instanceof ListItem) {
-                    $li = $list->item();
-                    foreach ($item->children() as $itemChild) {
-                        $this->convertBlock($itemChild, $li);
-                    }
-                    $li->end();
-                }
-            }
-            $list->end();
+            $this->convertListBlock($node, $adfParent);
 
             return;
         }
-        // Indented code (4-space) rarely used; default parser may not produce this node
-        // @codeCoverageIgnoreStart
         if ($node instanceof \League\CommonMark\Extension\CommonMark\Node\Block\IndentedCode) {
             $adfParent->codeblock(null)->text($node->getLiteral())->end();
         }
-        // @codeCoverageIgnoreEnd
+    }
+
+    private function convertParagraphBlock(Paragraph $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
+    {
+        $p = $adfParent->paragraph();
+        $this->appendInlines($node, $p);
+        $p->end();
+    }
+
+    private function convertHeadingBlock(Heading $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
+    {
+        $h = $adfParent->heading($node->getLevel());
+        $this->appendInlines($node, $h);
+        $h->end();
+    }
+
+    private function convertFencedCodeBlock(FencedCode $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
+    {
+        $info = $node->getInfoWords();
+        $lang = $info !== [] ? $info[0] : null;
+        $adfParent->codeblock($lang)->text($node->getLiteral())->end();
+    }
+
+    private function convertBlockquoteBlock(CMBlockQuote $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
+    {
+        $bq = $adfParent->blockquote();
+        foreach ($node->children() as $child) {
+            $this->convertBlock($child, $bq);
+        }
+        $bq->end();
+    }
+
+    private function convertListBlock(ListBlock $node, Document|Blockquote|BulletList|OrderedList|AdfListItem $adfParent): void
+    {
+        $isOrdered = $node->getListData()->type === ListBlock::TYPE_ORDERED;
+        $list = $isOrdered ? $adfParent->orderedlist() : $adfParent->bulletlist();
+        foreach ($node->children() as $item) {
+            if ($item instanceof ListItem) {
+                $li = $list->item();
+                foreach ($item->children() as $itemChild) {
+                    $this->convertBlock($itemChild, $li);
+                }
+                $li->end();
+            }
+        }
+        $list->end();
     }
 
     /**

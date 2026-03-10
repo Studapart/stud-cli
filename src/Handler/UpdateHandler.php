@@ -44,24 +44,11 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
-        $releaseResult = $this->fetchLatestRelease($githubProvider);
-
-        if ($releaseResult['is404']) {
-            // 404 means no releases found - this is a success case (already warned)
-            return 0;
+        $releaseOrExitCode = $this->getReleaseOrExitCode($githubProvider);
+        if (is_int($releaseOrExitCode)) {
+            return $releaseOrExitCode;
         }
-
-        if ($releaseResult['release'] === null) {
-            return 1;
-        }
-
-        $release = $releaseResult['release'];
-
-        if ($this->isAlreadyLatestVersion($release)) {
-            return 0;
-        }
-
-        // Display changelog before downloading
+        $release = $releaseOrExitCode;
         $this->displayChangelog($githubProvider, $release);
 
         // If --info flag is set, exit after displaying changelog without downloading
@@ -176,6 +163,27 @@ class UpdateHandler
         }
     }
     // @codeCoverageIgnoreEnd
+
+    /**
+     * Returns the release array to use, or an exit code (0 or 1) if the command should exit.
+     *
+     * @return int|array<string, mixed>
+     */
+    protected function getReleaseOrExitCode(GithubProvider $githubProvider): int|array
+    {
+        $releaseResult = $this->fetchLatestRelease($githubProvider);
+        if ($releaseResult['is404']) {
+            return 0;
+        }
+        if ($releaseResult['release'] === null) {
+            return 1;
+        }
+        if ($this->isAlreadyLatestVersion($releaseResult['release'])) {
+            return 0;
+        }
+
+        return $releaseResult['release'];
+    }
 
     /**
      * @param array<string, mixed> $release
@@ -557,76 +565,69 @@ class UpdateHandler
      */
     protected function isTestEnvironment(): bool
     {
-        // Method 1: Check for explicit test mode constant (most reliable - set by PHPUnit config)
-        // This is the most reliable method as it's explicitly set in phpunit.xml.dist
-        if (defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true) {
+        if ($this->isTestEnvironmentByConstant()) {
+            return true;
+        }
+        if ($this->isTestEnvironmentByBacktrace()) {
+            return true;
+        }
+        if ($this->isTestEnvironmentByClassOrEnv()) {
             return true;
         }
 
-        // Method 2: Check for PHPUnit in the backtrace (reliable for runtime detection)
-        // This catches cases where we're actively being called from a test
-        // @codeCoverageIgnoreStart
+        return false;
+    }
+
+    protected function isTestEnvironmentByConstant(): bool
+    {
+        return defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true;
+    }
+
+    /**
+     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
+     */
+    protected function isTestEnvironmentByBacktrace(): bool
+    {
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30);
         foreach ($backtrace as $frame) {
-            // Check class name for PHPUnit
+            if (isset($frame['class']) && str_contains($frame['class'], 'PHPUnit')) {
+                return true;
+            }
             if (isset($frame['class'])) {
-                if (str_contains($frame['class'], 'PHPUnit')) {
-                    return true;
-                }
-
-                // Check if class extends TestCase (even if PHPUnit namespace isn't in the name)
                 try {
                     $reflection = new \ReflectionClass($frame['class']);
                     if ($reflection->isSubclassOf(\PHPUnit\Framework\TestCase::class)) {
                         return true;
                     }
-                } catch (\ReflectionException $e) {
-                    // Ignore reflection errors - class might not exist
+                } catch (\ReflectionException) {
                 }
             }
-            // Check function name (PHPUnit test methods typically start with 'test')
-            // @phpstan-ignore-next-line - debug_backtrace() structure can vary, function key may not exist
-            if (array_key_exists('function', $frame) && str_starts_with($frame['function'], 'test')) {
-                // If we're in a test method, we're definitely in a test environment
-                if (isset($frame['class']) && str_contains($frame['class'], 'Test')) {
-                    return true;
-                }
+            if (array_key_exists('function', $frame) && str_starts_with((string) $frame['function'], 'test')
+                && isset($frame['class']) && str_contains($frame['class'], 'Test')) {
+                return true;
             }
         }
-        // @codeCoverageIgnoreEnd
 
-        // Method 3: Check if PHPUnit's test runner class exists (reliable if class is loaded)
-        // Use autoloading (true) to ensure class is found if available
-        // @codeCoverageIgnoreStart
-        // These detection methods are difficult to test because when called from a test,
-        // the backtrace detection (Method 2) above will return true first, preventing
-        // these methods from being reached. They are fallback detection methods for
-        // edge cases where backtrace detection might not work.
+        return false;
+    }
+
+    /**
+     * @codeCoverageIgnore Fallback detection when backtrace does not hit
+     */
+    protected function isTestEnvironmentByClassOrEnv(): bool
+    {
         if (class_exists(\PHPUnit\Framework\TestCase::class, true)) {
             return true;
         }
-
-        // Method 4: Check for PHPUnit constant (defined in some test setups)
         if (defined('PHPUNIT')) {
             return true;
         }
-
-        // Method 5: Check for PHPUnit environment variable (set by some test runners)
-        $phpunitEnv = getenv('PHPUNIT');
-        if ($phpunitEnv !== false) {
+        if (getenv('PHPUNIT') !== false) {
             return true;
         }
-
-        // Method 6: Check for APP_ENV=test (common in test setups)
-        // Check both getenv() and $_ENV/$_SERVER as PHPUnit sets these differently
         $appEnv = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? null);
-        if ($appEnv !== null && strtolower($appEnv) === 'test') {
-            return true;
-        }
-        // @codeCoverageIgnoreEnd
 
-
-        return false; // @codeCoverageIgnore
+        return $appEnv !== null && strtolower($appEnv) === 'test';
     }
 
     /**

@@ -446,35 +446,52 @@ class GitLabProvider implements GitProviderInterface
         }
 
         $discussions = $response->toArray();
+        $comments = $this->buildReviewCommentsFromDiscussions($discussions);
+
+        return array_reverse($comments);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $discussions
+     * @return PullRequestComment[]
+     */
+    protected function buildReviewCommentsFromDiscussions(array $discussions): array
+    {
         $comments = [];
         $count = 0;
+        $cap = self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES;
         foreach ($discussions as $discussion) {
-            // Pagination cap for discussions
-            // @codeCoverageIgnoreStart
-            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
+            if ($count >= $cap) {
                 break;
             }
-            // @codeCoverageIgnoreEnd
             $position = $discussion['position'] ?? null;
             if (! is_array($position)) {
                 continue;
             }
-            $path = isset($position['new_path']) ? (string) $position['new_path'] : (isset($position['old_path']) ? (string) $position['old_path'] : null);
-            $line = isset($position['new_line']) ? (int) $position['new_line'] : (isset($position['old_line']) ? (int) $position['old_line'] : null);
+            [$path, $line] = $this->extractPathAndLineFromPosition($position);
             $notes = $discussion['notes'] ?? [];
             foreach ($notes as $note) {
-                if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
-                    // Inner pagination cap
-                    // @codeCoverageIgnoreStart
+                if ($count >= $cap) {
                     break;
-                    // @codeCoverageIgnoreEnd
                 }
                 $comments[] = $this->mapNoteToDto($note, $path, $line);
                 ++$count;
             }
         }
 
-        return array_reverse($comments);
+        return $comments;
+    }
+
+    /**
+     * @param array<string, mixed> $position
+     * @return array{0: ?string, 1: ?int}
+     */
+    protected function extractPathAndLineFromPosition(array $position): array
+    {
+        $path = isset($position['new_path']) ? (string) $position['new_path'] : (isset($position['old_path']) ? (string) $position['old_path'] : null);
+        $line = isset($position['new_line']) ? (int) $position['new_line'] : (isset($position['old_line']) ? (int) $position['old_line'] : null);
+
+        return [$path, $line];
     }
 
     /**

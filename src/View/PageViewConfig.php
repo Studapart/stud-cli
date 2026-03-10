@@ -61,11 +61,32 @@ class PageViewConfig implements ViewConfigInterface
             $io->section($sectionTitle);
         }
 
+        $partitioned = $this->partitionSectionItems($section->items);
+
+        $dto = $dtos[0] ?? null;
+        if ($dto !== null) {
+            if ($partitioned['definitionItems'] !== []) {
+                $this->renderDefinitionList($partitioned['definitionItems'], $dto, $io, $context);
+            }
+            foreach ($partitioned['contentItems'] as $content) {
+                $this->renderContent($content, $dto, $io, $context);
+            }
+        }
+        foreach ($partitioned['tableBlocks'] as $tableBlock) {
+            $this->renderTableBlock($tableBlock, $dtos, $io, $context);
+        }
+    }
+
+    /**
+     * @param array<int, DefinitionItem|Content|TableBlock> $items
+     * @return array{definitionItems: array<int, DefinitionItem>, contentItems: array<int, Content>, tableBlocks: array<int, TableBlock>}
+     */
+    protected function partitionSectionItems(array $items): array
+    {
         $definitionItems = [];
         $contentItems = [];
         $tableBlocks = [];
-
-        foreach ($section->items as $item) {
+        foreach ($items as $item) {
             if ($item instanceof DefinitionItem) {
                 $definitionItems[] = $item;
             } elseif ($item instanceof Content) {
@@ -75,22 +96,11 @@ class PageViewConfig implements ViewConfigInterface
             }
         }
 
-        // For definition lists and content, use first DTO (single item display)
-        $dto = $dtos[0] ?? null;
-        if ($dto !== null) {
-            if (! empty($definitionItems)) {
-                $this->renderDefinitionList($definitionItems, $dto, $io, $context);
-            }
-
-            foreach ($contentItems as $content) {
-                $this->renderContent($content, $dto, $io, $context);
-            }
-        }
-
-        // For table blocks, use all DTOs (list display)
-        foreach ($tableBlocks as $tableBlock) {
-            $this->renderTableBlock($tableBlock, $dtos, $io, $context);
-        }
+        return [
+            'definitionItems' => $definitionItems,
+            'contentItems' => $contentItems,
+            'tableBlocks' => $tableBlocks,
+        ];
     }
 
     /**
