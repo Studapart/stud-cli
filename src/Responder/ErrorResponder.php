@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\ResponseInterface;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -27,9 +29,16 @@ class ErrorResponder
     /**
      * Responds to an error Response by displaying the error message.
      */
-    public function respond(SymfonyStyle $io, ResponseInterface $response): void
+    public function respond(SymfonyStyle $io, ResponseInterface $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
         $error = $response->getError() ?? 'Unknown error';
+
+        if ($format === OutputFormat::Json) {
+            return new AgentJsonResponse(false, error: $error);
+        }
+
         $io->error($error);
+
+        return null;
     }
 }

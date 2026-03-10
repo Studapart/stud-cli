@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\ProjectListResponse;
-use App\Service\ColorHelper;
-use App\Service\TranslationService;
+use App\Service\DtoSerializer;
+use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
 use App\View\Section;
@@ -15,34 +17,32 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectListResponder
 {
+    private readonly DtoSerializer $serializer;
+
     public function __construct(
-        private readonly TranslationService $translator,
-        private readonly ?ColorHelper $colorHelper = null
+        private readonly ResponderHelper $helper,
+        ?DtoSerializer $serializer = null,
     ) {
+        $this->serializer = $serializer ?? new DtoSerializer();
     }
 
-    public function respond(SymfonyStyle $io, ProjectListResponse $response): void
+    public function respond(SymfonyStyle $io, ProjectListResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
-        // Register color styles before rendering
-        if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+        if ($format === OutputFormat::Json) {
+            return $this->respondJson($response);
         }
 
-        $sectionTitle = $this->translator->trans('project.list.section');
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
+        $this->helper->initSection($io, 'project.list.section');
 
         if (empty($response->projects)) {
-            $io->note($this->translator->trans('project.list.no_projects'));
+            $io->note($this->helper->translator->trans('project.list.no_projects'));
 
-            return;
+            return null;
         }
 
         $viewConfig = new PageViewConfig([
             new Section(
-                '', // Section already created by responder
+                '',
                 [
                     new TableBlock([
                         new Column('key', 'table.key', fn ($item) => $item->key),
@@ -50,8 +50,21 @@ class ProjectListResponder
                     ]),
                 ]
             ),
-        ], $this->translator, $this->colorHelper);
+        ], $this->helper->translator, $this->helper->colorHelper);
 
         $viewConfig->render($response->projects, $io);
+
+        return null;
+    }
+
+    protected function respondJson(ProjectListResponse $response): AgentJsonResponse
+    {
+        if (! $response->isSuccess()) {
+            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+        }
+
+        return new AgentJsonResponse(true, data: [
+            'projects' => $this->serializer->serializeList($response->projects),
+        ]);
     }
 }

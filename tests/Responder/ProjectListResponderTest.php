@@ -3,9 +3,11 @@
 namespace App\Tests\Responder;
 
 use App\DTO\Project;
+use App\Enum\OutputFormat;
 use App\Responder\ProjectListResponder;
 use App\Response\ProjectListResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -17,7 +19,8 @@ class ProjectListResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->responder = new ProjectListResponder($this->translationService, null);
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ProjectListResponder($helper);
     }
 
     public function testRespondReturnsZeroOnEmptyProjects(): void
@@ -54,7 +57,8 @@ class ProjectListResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ProjectListResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ProjectListResponder($helper);
         $response = ProjectListResponse::success([]);
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -67,5 +71,42 @@ class ProjectListResponderTest extends CommandTestCase
             ->method('note');
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsSerializedProjects(): void
+    {
+        $project = new Project('PROJ', 'My Project');
+        $response = ProjectListResponse::success([$project]);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertCount(1, $result->data['projects']);
+        $this->assertSame('PROJ', $result->data['projects'][0]['key']);
+        $this->assertSame('My Project', $result->data['projects'][0]['name']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = ProjectListResponse::error('API error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('API error', $result->error);
+    }
+
+    public function testRespondCliReturnsNull(): void
+    {
+        $response = ProjectListResponse::success([]);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Cli);
+
+        $this->assertNull($result);
     }
 }

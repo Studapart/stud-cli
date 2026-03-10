@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\Enum\OutputFormat;
 use App\Responder\ConfigValidateResponder;
 use App\Response\ConfigValidateResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -18,7 +20,8 @@ class ConfigValidateResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->responder = new ConfigValidateResponder($this->translationService, null);
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ConfigValidateResponder($helper);
     }
 
     public function testRespondOutputsSectionAndDefinitionListWhenAllOk(): void
@@ -116,7 +119,8 @@ class ConfigValidateResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ConfigValidateResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ConfigValidateResponder($helper);
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -157,5 +161,38 @@ class ConfigValidateResponderTest extends CommandTestCase
             ->with($this->isType('array'), $this->isType('array'));
 
         $this->responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsValidationData(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('ok', $result->data['jiraStatus']);
+        $this->assertSame('ok', $result->data['gitStatus']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            'Connection refused',
+            ConfigValidateResponse::STATUS_OK,
+            null
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
     }
 }

@@ -4,38 +4,45 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\ConfigShowResponse;
-use App\Service\ColorHelper;
 use App\Service\Logger;
-use App\Service\TranslationService;
+use App\Service\ResponderHelper;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ConfigShowResponder
 {
     public function __construct(
-        private readonly TranslationService $translator,
+        private readonly ResponderHelper $helper,
         private readonly Logger $logger,
-        private readonly ?ColorHelper $colorHelper = null
     ) {
     }
 
-    public function respond(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet = false): void
+    public function respond(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet = false, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
-        if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+        if ($format === OutputFormat::Json) {
+            if (! $response->isSuccess()) {
+                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            }
+            $data = $response->isSingleKey()
+                ? ['singleKey' => $response->singleKey, 'singleKeyValue' => $response->singleKeyValue, 'singleKeySection' => $response->singleKeySection]
+                : ['globalConfig' => $response->globalConfig, 'projectConfig' => $response->projectConfig];
+
+            return new AgentJsonResponse(true, data: $data);
         }
 
         if (! $response->isSuccess()) {
-            $message = $this->translator->trans($response->getError() ?? '', $response->getErrorParameters());
+            $message = $this->helper->translator->trans($response->getError() ?? '', $response->getErrorParameters());
             $io->error($message);
 
-            return;
+            return null;
         }
 
         if ($response->isSingleKey()) {
             $this->respondSingleKey($io, $response, $quiet);
 
-            return;
+            return null;
         }
 
         $this->renderSection($io, 'config.show.section_global', $response->globalConfig);
@@ -43,6 +50,8 @@ class ConfigShowResponder
         if ($response->projectConfig !== null && $response->projectConfig !== []) {
             $this->renderSection($io, 'config.show.section_project', $response->projectConfig);
         }
+
+        return null;
     }
 
     protected function respondSingleKey(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet): void
@@ -54,17 +63,13 @@ class ConfigShowResponder
         }
 
         $sectionKey = $response->singleKeySection === 'project' ? 'config.show.section_project' : 'config.show.section_global';
-        $sectionTitle = $this->translator->trans($sectionKey);
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
+        $this->helper->initSection($io, $sectionKey);
 
         $valueStr = $this->formatValue($response->singleKeyValue);
         $label = $response->singleKey ?? '';
-        if ($this->colorHelper !== null) {
-            $label = $this->colorHelper->format('definition_key', $label);
-            $valueStr = $this->colorHelper->format('definition_value', $valueStr);
+        if ($this->helper->colorHelper !== null) {
+            $label = $this->helper->colorHelper->format('definition_key', $label);
+            $valueStr = $this->helper->colorHelper->format('definition_value', $valueStr);
         }
         $io->definitionList([$label => $valueStr]);
     }
@@ -74,11 +79,7 @@ class ConfigShowResponder
      */
     protected function renderSection(SymfonyStyle $io, string $sectionTitleKey, array $config): void
     {
-        $sectionTitle = $this->translator->trans($sectionTitleKey);
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
+        $this->helper->initSection($io, $sectionTitleKey);
 
         $rows = $this->buildDefinitionRows($config);
         if ($rows !== []) {
@@ -100,9 +101,9 @@ class ConfigShowResponder
             $value = $config[$key];
             $valueStr = $this->formatValue($value);
             $label = $key;
-            if ($this->colorHelper !== null) {
-                $label = $this->colorHelper->format('definition_key', $label);
-                $valueStr = $this->colorHelper->format('definition_value', $valueStr);
+            if ($this->helper->colorHelper !== null) {
+                $label = $this->helper->colorHelper->format('definition_key', $label);
+                $valueStr = $this->helper->colorHelper->format('definition_value', $valueStr);
             }
             $rows[] = [$label => $valueStr];
         }
