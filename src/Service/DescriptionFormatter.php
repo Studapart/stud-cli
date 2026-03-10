@@ -223,10 +223,13 @@ class DescriptionFormatter
 
             return;
         }
+        // Unreachable: currentList only non-empty after flush, same iteration sets currentListItem
+        // @codeCoverageIgnoreStart
         if ($currentList !== []) {
             $lists[] = $currentList;
             $currentList = [];
         }
+        // @codeCoverageIgnoreEnd
         if ($trimmed !== '') {
             $currentText[] = $trimmed;
         } elseif ($currentText !== []) {

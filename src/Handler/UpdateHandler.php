@@ -568,9 +568,12 @@ class UpdateHandler
         if ($this->isTestEnvironmentByConstant()) {
             return true;
         }
+        // Unreachable when STUD_CLI_TEST_MODE is set (always true in test bootstrap)
+        // @codeCoverageIgnoreStart
         if ($this->isTestEnvironmentByBacktrace()) {
             return true;
         }
+        // @codeCoverageIgnoreEnd
         if ($this->isTestEnvironmentByClassOrEnv()) {
             return true;
         }

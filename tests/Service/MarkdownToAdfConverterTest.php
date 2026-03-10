@@ -105,6 +105,23 @@ class MarkdownToAdfConverterTest extends TestCase
         $this->assertStringContainsString('echo', $adf['content'][0]['content'][0]['text']);
     }
 
+    public function testConvertIndentedCodeBlock(): void
+    {
+        $adf = $this->converter->convert("Paragraph\n\n    indented code line\n");
+
+        $this->assertSame('doc', $adf['type']);
+        $codeBlock = null;
+        foreach ($adf['content'] as $node) {
+            if (isset($node['type']) && $node['type'] === 'codeBlock') {
+                $codeBlock = $node;
+
+                break;
+            }
+        }
+        $this->assertNotNull($codeBlock);
+        $this->assertStringContainsString('indented code', $codeBlock['content'][0]['text'] ?? '');
+    }
+
     public function testConvertThematicBreak(): void
     {
         $adf = $this->converter->convert("Above\n\n---\n\nBelow");

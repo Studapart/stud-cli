@@ -4125,12 +4125,71 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsFalseWhenNotInTest(): void
     {
-        // Test line 585: return false when none of the conditions match
-        // This is difficult to test directly since we're always in a test environment
-        // But we can verify the method completes without error
-        $result = $this->callPrivateMethod($this->handler, 'isTestEnvironment');
-        // In actual test environment, should return true
-        // The false path would require running outside PHPUnit, which isn't feasible
-        $this->assertIsBool($result);
+        // Test line 578: return false when none of the conditions match.
+        // Use a subclass that forces all three detectors to return false.
+        $handler = new class (
+            'owner',
+            'repo',
+            '1.0.0',
+            '/bin/stud',
+            $this->translationService,
+            $this->createMock(ChangelogParser::class),
+            $this->createMock(\App\Service\UpdateFileService::class),
+            $this->createMock(\App\Service\Logger::class),
+            $this->createMock(\App\Service\FileSystem::class)
+        ) extends UpdateHandler {
+            protected function isTestEnvironmentByConstant(): bool
+            {
+                return false;
+            }
+
+            protected function isTestEnvironmentByBacktrace(): bool
+            {
+                return false;
+            }
+
+            protected function isTestEnvironmentByClassOrEnv(): bool
+            {
+                return false;
+            }
+        };
+
+        $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
+
+        $this->assertFalse($result);
+    }
+
+    public function testIsTestEnvironmentReturnsTrueWhenOnlyClassOrEnvDetectorReturnsTrue(): void
+    {
+        $handler = new class (
+            'owner',
+            'repo',
+            '1.0.0',
+            '/bin/stud',
+            $this->translationService,
+            $this->createMock(ChangelogParser::class),
+            $this->createMock(\App\Service\UpdateFileService::class),
+            $this->createMock(\App\Service\Logger::class),
+            $this->createMock(\App\Service\FileSystem::class)
+        ) extends UpdateHandler {
+            protected function isTestEnvironmentByConstant(): bool
+            {
+                return false;
+            }
+
+            protected function isTestEnvironmentByBacktrace(): bool
+            {
+                return false;
+            }
+
+            protected function isTestEnvironmentByClassOrEnv(): bool
+            {
+                return true;
+            }
+        };
+
+        $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
+
+        $this->assertTrue($result);
     }
 }
