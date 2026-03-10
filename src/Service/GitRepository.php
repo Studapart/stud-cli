@@ -946,7 +946,6 @@ SCRIPT;
         \App\Service\TranslationService $translator,
         bool $quiet = false
     ): string {
-        // Check if we're in a git repository
         try {
             $this->getProjectConfigPath();
         } catch (\RuntimeException $e) {
@@ -956,62 +955,67 @@ SCRIPT;
         $config = $this->readProjectConfig();
         $baseBranch = $config['baseBranch'] ?? null;
 
-        // If configured, validate it exists on remote
-        if ($baseBranch !== null && is_string($baseBranch) && ! empty($baseBranch)) {
-            // Remove origin/ prefix if present for validation
-            $branchName = str_replace('origin/', '', $baseBranch);
-            if ($this->remoteBranchExists('origin', $branchName)) {
-                // Return with origin/ prefix for consistency
-                if (! str_starts_with($baseBranch, 'origin/')) {
-                    return 'origin/' . $baseBranch;
-                }
-
-                return $baseBranch;
-            }
-
-            // Configured branch doesn't exist on remote
-            if ($quiet) {
-                throw new \RuntimeException(
-                    $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
-                );
-            }
-
-            $logger->warning(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
-            );
+        $validConfigured = $this->validateConfiguredBaseBranch($baseBranch, $quiet, $logger, $translator);
+        if ($validConfigured !== null) {
+            return $validConfigured;
         }
 
-        // Not configured: in quiet mode use DEFAULT_BASE_BRANCH if it exists on remote
         if ($quiet) {
-            $defaultBranch = defined('DEFAULT_BASE_BRANCH') ? DEFAULT_BASE_BRANCH : 'origin/develop';
-            $branchName = str_replace('origin/', '', $defaultBranch);
-            if ($this->remoteBranchExists('origin', $branchName)) {
-                return str_starts_with($defaultBranch, 'origin/') ? $defaultBranch : 'origin/' . $defaultBranch;
-            }
-
-            throw new \RuntimeException(
-                'Base branch is not configured and default branch "' . $branchName . '" does not exist on remote. Run without --quiet to configure, or run "stud config:init".'
-            );
+            return $this->resolveDefaultBaseBranchQuiet($translator);
         }
 
-        // Try auto-detection
+        return $this->promptAndSaveBaseBranch($config, $logger, $translator);
+    }
+
+    protected function validateConfiguredBaseBranch(
+        mixed $baseBranch,
+        bool $quiet,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): ?string {
+        if ($baseBranch === null || ! is_string($baseBranch) || $baseBranch === '') {
+            return null;
+        }
+        $branchName = str_replace('origin/', '', $baseBranch);
+        if (! $this->remoteBranchExists('origin', $branchName)) {
+            if ($quiet) {
+                throw new \RuntimeException($translator->trans('config.base_branch_invalid', ['branch' => $branchName]));
+            }
+            $logger->warning(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.base_branch_invalid', ['branch' => $branchName]));
+
+            return null;
+        }
+
+        return str_starts_with($baseBranch, 'origin/') ? $baseBranch : 'origin/' . $baseBranch;
+    }
+
+    protected function resolveDefaultBaseBranchQuiet(\App\Service\TranslationService $translator): string
+    {
+        $defaultBranch = defined('DEFAULT_BASE_BRANCH') ? DEFAULT_BASE_BRANCH : 'origin/develop';
+        $branchName = str_replace('origin/', '', $defaultBranch);
+        if ($this->remoteBranchExists('origin', $branchName)) {
+            return str_starts_with($defaultBranch, 'origin/') ? $defaultBranch : 'origin/' . $defaultBranch;
+        }
+
+        throw new \RuntimeException(
+            'Base branch is not configured and default branch "' . $branchName . '" does not exist on remote. Run without --quiet to configure, or run "stud config:init".'
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    protected function promptAndSaveBaseBranch(
+        array $config,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): string {
         $detected = $this->detectBaseBranch();
         $defaultSuggestion = $detected ?? 'develop';
-
         if ($detected !== null) {
-            $logger->note(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.base_branch_detected', ['branch' => $detected])
-            );
+            $logger->note(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.base_branch_detected', ['branch' => $detected]));
         }
-
-        // Prompt user for base branch
-        $logger->note(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_not_configured')
-        );
-
+        $logger->note(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.base_branch_not_configured'));
         $enteredBranch = $logger->ask(
             $translator->trans('config.base_branch_prompt'),
             $defaultSuggestion,
@@ -1023,33 +1027,17 @@ SCRIPT;
                 return trim($value);
             }
         );
-
-        if ($enteredBranch === null || empty(trim($enteredBranch))) {
+        if ($enteredBranch === null || trim($enteredBranch) === '') {
             throw new \RuntimeException($translator->trans('config.base_branch_required'));
         }
-
         $enteredBranch = trim($enteredBranch);
-
-        // Validate branch exists on remote
         if (! $this->remoteBranchExists('origin', $enteredBranch)) {
-            throw new \RuntimeException(
-                $translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch])
-            );
+            throw new \RuntimeException($translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch]));
         }
-
-        // Save to config
-        $logger->text(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_saving')
-        );
-
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.base_branch_saving'));
         $config['baseBranch'] = $enteredBranch;
         $this->writeProjectConfig($config);
-
-        $logger->success(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_saved', ['branch' => $enteredBranch])
-        );
+        $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.base_branch_saved', ['branch' => $enteredBranch]));
 
         return 'origin/' . $enteredBranch;
     }
@@ -1187,7 +1175,6 @@ SCRIPT;
         array $globalConfig,
         bool $quiet = false
     ): ?string {
-        // Check if we're in a git repository
         try {
             $this->getProjectConfigPath();
         } catch (\RuntimeException $e) {
@@ -1195,84 +1182,109 @@ SCRIPT;
         }
 
         $projectConfig = $this->readProjectConfig();
+        $keys = $this->getGitTokenKeysForProvider($providerType);
 
-        // Determine token key based on provider
-        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
-        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
-        $oppositeTokenKey = $providerType === 'github' ? 'GITLAB_TOKEN' : 'GITHUB_TOKEN';
-        $oppositeLocalKey = $providerType === 'github' ? 'gitlabToken' : 'githubToken';
-        $oppositeProvider = $providerType === 'github' ? 'GitLab' : 'GitHub';
-
-        // Check if token already exists in project config
-        $token = $projectConfig[$tokenKey] ?? null;
-        if ($token !== null && is_string($token) && trim($token) !== '') {
-            return trim($token);
+        $token = $this->resolveGitTokenFromConfig($projectConfig, $globalConfig, $keys);
+        if ($token !== null) {
+            return $token;
         }
 
-        // Check if token exists in global config
-        $globalToken = $globalConfig[$globalTokenKey] ?? null;
-        if ($globalToken !== null && is_string($globalToken) && trim($globalToken) !== '') {
-            return trim($globalToken);
-        }
+        $this->warnGitTokenTypeMismatchIfOppositePresent($projectConfig, $globalConfig, $keys, $logger, $translator, $providerType);
 
-        // Check for token type mismatch (opposite token exists)
-        $oppositeToken = $projectConfig[$oppositeLocalKey] ?? $globalConfig[$oppositeTokenKey] ?? null;
-        if ($oppositeToken !== null && is_string($oppositeToken) && trim($oppositeToken) !== '') {
-            $logger->warning(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.git_token_type_mismatch', [
-                    'provider' => ucfirst($providerType),
-                    'opposite' => $oppositeProvider,
-                ])
-            );
-        }
-
-        // No token found - in quiet mode return null so caller can fail with clear error
         if ($quiet) {
             return null;
         }
 
-        // Prompt user
-        $logger->note(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_not_configured')
-        );
+        return $this->promptAndSaveGitToken($providerType, $projectConfig, $globalConfig, $keys, $logger, $translator);
+    }
 
-        // Check if any tokens exist globally
-        $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
-            || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
+    /**
+     * @return array{tokenKey: string, globalTokenKey: string, oppositeTokenKey: string, oppositeLocalKey: string, oppositeProvider: string}
+     */
+    protected function getGitTokenKeysForProvider(string $providerType): array
+    {
+        $isGitHub = $providerType === 'github';
 
-        if (! $hasAnyGlobalToken) {
-            $logger->note(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.git_token_global_suggestion')
-            );
+        return [
+            'tokenKey' => $isGitHub ? 'githubToken' : 'gitlabToken',
+            'globalTokenKey' => $isGitHub ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN',
+            'oppositeTokenKey' => $isGitHub ? 'GITLAB_TOKEN' : 'GITHUB_TOKEN',
+            'oppositeLocalKey' => $isGitHub ? 'gitlabToken' : 'githubToken',
+            'oppositeProvider' => $isGitHub ? 'GitLab' : 'GitHub',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     * @param array<string, mixed> $globalConfig
+     * @param array{tokenKey: string, globalTokenKey: string} $keys
+     */
+    protected function resolveGitTokenFromConfig(array $projectConfig, array $globalConfig, array $keys): ?string
+    {
+        $token = $projectConfig[$keys['tokenKey']] ?? null;
+        if ($token !== null && is_string($token) && trim($token) !== '') {
+            return trim($token);
+        }
+        $globalToken = $globalConfig[$keys['globalTokenKey']] ?? null;
+        if ($globalToken !== null && is_string($globalToken) && trim($globalToken) !== '') {
+            return trim($globalToken);
         }
 
-        $enteredToken = $logger->askHidden(
-            $translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)])
-        );
+        return null;
+    }
 
-        if ($enteredToken === null || empty(trim($enteredToken))) {
-            // User skipped - return null
+    /**
+     * @param array<string, mixed> $projectConfig
+     * @param array<string, mixed> $globalConfig
+     * @param array{oppositeTokenKey: string, oppositeLocalKey: string, oppositeProvider: string} $keys
+     */
+    protected function warnGitTokenTypeMismatchIfOppositePresent(
+        array $projectConfig,
+        array $globalConfig,
+        array $keys,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator,
+        string $providerType
+    ): void {
+        $oppositeToken = $projectConfig[$keys['oppositeLocalKey']] ?? $globalConfig[$keys['oppositeTokenKey']] ?? null;
+        if ($oppositeToken === null || ! is_string($oppositeToken) || trim($oppositeToken) === '') {
+            return;
+        }
+        $logger->warning(
+            \App\Service\Logger::VERBOSITY_NORMAL,
+            $translator->trans('config.git_token_type_mismatch', [
+                'provider' => ucfirst($providerType),
+                'opposite' => $keys['oppositeProvider'],
+            ])
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     * @param array<string, mixed> $globalConfig
+     * @param array{tokenKey: string} $keys
+     */
+    protected function promptAndSaveGitToken(
+        string $providerType,
+        array $projectConfig,
+        array $globalConfig,
+        array $keys,
+        \App\Service\Logger $logger,
+        \App\Service\TranslationService $translator
+    ): ?string {
+        $logger->note(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.git_token_not_configured'));
+        if (($globalConfig['GITHUB_TOKEN'] ?? null) === null && ($globalConfig['GITLAB_TOKEN'] ?? null) === null) {
+            $logger->note(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.git_token_global_suggestion'));
+        }
+        $enteredToken = $logger->askHidden($translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)]));
+        if ($enteredToken === null || trim($enteredToken) === '') {
             return null;
         }
-
         $enteredToken = trim($enteredToken);
-
-        // Save to project config
-        $logger->text(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_saving')
-        );
-
-        $projectConfig[$tokenKey] = $enteredToken;
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.git_token_saving'));
+        $projectConfig[$keys['tokenKey']] = $enteredToken;
         $this->writeProjectConfig($projectConfig);
-
-        $logger->success(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)])
-        );
+        $logger->success(\App\Service\Logger::VERBOSITY_NORMAL, $translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)]));
 
         return $enteredToken;
     }

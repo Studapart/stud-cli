@@ -29,85 +29,90 @@ class ItemTransitionHandler
         if ($resolvedKey === null) {
             return 1;
         }
-
-        // Verify issue exists
-        try {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.transition.fetching', ['key' => $resolvedKey])}");
-            $this->jiraService->getIssue($resolvedKey);
-        } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('item.transition.error_not_found', ['key' => $resolvedKey]),
-                $e->getTechnicalDetails()
-            );
-
+        if (! $this->verifyIssueExists($resolvedKey)) {
             return 1;
-        } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $resolvedKey]));
-
+        }
+        $transitions = $this->fetchTransitionsOrFail($resolvedKey);
+        if ($transitions === null) {
+            return 1;
+        }
+        $transitionId = $this->selectTransitionIdFromUser($transitions);
+        if ($transitionId === null) {
             return 1;
         }
 
-        // Fetch transitions
-        try {
-            $transitions = $this->jiraService->getTransitions($resolvedKey);
-        } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]),
-                $e->getTechnicalDetails()
-            );
+        return $this->executeTransitionAndReturn($resolvedKey, $transitionId);
+    }
 
-            return 1;
+    protected function verifyIssueExists(string $key): bool
+    {
+        try {
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.transition.fetching', ['key' => $key])}");
+            $this->jiraService->getIssue($key);
+
+            return true;
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $key]), $e->getTechnicalDetails());
+
+            return false;
+        } catch (\Exception $e) {
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $key]));
+
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function fetchTransitionsOrFail(string $key): ?array
+    {
+        try {
+            $transitions = $this->jiraService->getTransitions($key);
+            if ($transitions === []) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.no_transitions', ['key' => $key]));
+
+                return null;
+            }
+
+            return $transitions;
+        } catch (ApiException $e) {
+            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
+
+            return null;
         } catch (\Exception $e) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]));
 
-            return 1;
+            return null;
         }
+    }
 
-        if (empty($transitions)) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.no_transitions', ['key' => $resolvedKey]));
-
-            return 1;
-        }
-
-        // Display transitions and prompt user
-        $transitionOptions = [];
-        foreach ($transitions as $transition) {
-            $transitionOptions[] = "{$transition['name']} (ID: {$transition['id']})";
-        }
-
-        $selectedDisplay = $this->logger->choice(
-            $this->translator->trans('item.transition.select_transition'),
-            $transitionOptions
-        );
-
-        // Extract transition ID from selection
-        preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
-        // SymfonyStyle::choice() validates input and only returns one of the provided options,
-        // which all match our regex pattern, so this error case cannot occur in practice
-        // @codeCoverageIgnoreStart
+    /**
+     * @param array<int, array<string, mixed>> $transitions
+     */
+    protected function selectTransitionIdFromUser(array $transitions): ?int
+    {
+        $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+        $selected = $this->logger->choice($this->translator->trans('item.transition.select_transition'), $options);
+        preg_match('/ID: (\d+)\)$/', $selected, $matches);
         if (! isset($matches[1])) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => 'Unable to extract transition ID from selection']));
 
-            return 1;
+            return null;
         }
-        // @codeCoverageIgnoreEnd
 
-        $transitionId = (int) $matches[1];
+        return (int) $matches[1];
+    }
 
-        // Execute transition
+    protected function executeTransitionAndReturn(string $key, int $transitionId): int
+    {
         try {
-            $this->jiraService->transitionIssue($resolvedKey, $transitionId);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.success', ['key' => $resolvedKey]));
+            $this->jiraService->transitionIssue($key, $transitionId);
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.success', ['key' => $key]));
 
             return 0;
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]),
-                $e->getTechnicalDetails()
-            );
+            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
 
             return 1;
         } catch (\Exception $e) {

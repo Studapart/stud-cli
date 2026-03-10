@@ -256,6 +256,59 @@ class CommitHandlerTest extends CommandTestCase
         // Test intent: error() was called, verified by return value
     }
 
+    public function testHandleWithNewBranchSkipsLogicalShaLookup(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->never())
+            ->method('findLatestLogicalSha');
+
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn('TPW-35');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'New feature',
+            status: 'In Progress',
+            assignee: 'Jane',
+            description: 'Desc',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('feat(api): New feature [TPW-35]');
+
+        $this->logger->method('section');
+        $this->logger->method('note');
+        $this->logger->method('text');
+        $this->logger->method('success');
+        $this->logger->method('jiraWriteln');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, true, null, false, true);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleWithInteractivePrompter(): void
     {
         $this->gitRepository->expects($this->once())

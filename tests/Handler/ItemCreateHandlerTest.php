@@ -1440,4 +1440,111 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertNotNull($response->skippedOptionalFields);
         $this->assertContains('item.create.skipped_field_original_estimate', $response->skippedOptionalFields);
     }
+
+    public function testPromptIssueTypeValueReturnsNullWhenChooseIssueTypeReturnsNull(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'promptIssueTypeValue', [
+            $io,
+            'PROJ',
+            '10001',
+            false,
+            ['issuetype' => ['name' => 'Issue Type']],
+        ]);
+
+        $this->assertNull($result);
+    }
+
+    public function testChooseIssueTypeInteractivelyReturnsNullWhenNoIssueTypes(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+
+        $this->assertNull($result);
+    }
+
+    public function testChooseIssueTypeInteractivelyReturnsNullWhenChoiceDoesNotMatchAnyName(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn('Other');
+
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+
+        $this->assertNull($result);
+    }
+
+    public function testPromptDescriptionValueReturnsNullWhenAskReturnsEmpty(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('ask')
+            ->willReturn('   ');
+
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+
+        $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [$io, null]);
+
+        $this->assertNull($result);
+    }
+
+    public function testApplyStandardFieldValueSetsParentKey(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $fields = ['project' => ['key' => 'PROJ'], 'summary' => 'Summary', 'issuetype' => ['id' => '10001']];
+
+        $this->callPrivateMethod($handler, 'applyStandardFieldValue', [
+            'parent',
+            &$fields,
+            'PROJ',
+            '10001',
+            'Summary',
+            null,
+            null,
+            'PROJ-100',
+        ]);
+
+        $this->assertSame(['key' => 'PROJ-100'], $fields['parent']);
+    }
+
+    public function testApplyStandardFieldValueWithUnknownFieldNameHitsDefault(): void
+    {
+        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $fields = ['project' => ['key' => 'PROJ'], 'summary' => 'Summary'];
+
+        $this->callPrivateMethod($handler, 'applyStandardFieldValue', [
+            'customfield_12345',
+            &$fields,
+            'PROJ',
+            '10001',
+            'Summary',
+            null,
+            null,
+            null,
+        ]);
+
+        $this->assertSame(['project' => ['key' => 'PROJ'], 'summary' => 'Summary'], $fields);
+    }
 }

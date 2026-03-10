@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Code quality:** Reduce complexity violations to meet CONVENTIONS (CC ≤ 10, CRAP ≤ 10) [SCI-68]
+  - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
+
 ### Added
 - **items:create:** Optional `--labels` (comma-separated) and `--original-estimate` (human-friendly: 1d, 0.5d, 1 day, 2h, 30m; converted to seconds) [SCI-65]
   - Labels and time original estimate are only sent when the project/issue type supports them (createmeta). If the user supplies them but they are not supported, the issue is still created and a note lists the skipped fields.

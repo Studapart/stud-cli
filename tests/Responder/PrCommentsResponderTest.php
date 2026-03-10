@@ -189,4 +189,20 @@ class PrCommentsResponderTest extends CommandTestCase
 
         $this->responder->respond($io, $response);
     }
+
+    public function testRenderTextSegmentWithEmptyContentDoesNotCallText(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->never())->method('text');
+
+        $this->callPrivateMethod($this->responder, 'renderTextSegment', [$io, ['content' => '']]);
+    }
+
+    public function testRenderListSegmentWithEmptyItemsDoesNotCallListing(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->never())->method('listing');
+
+        $this->callPrivateMethod($this->responder, 'renderListSegment', [$io, ['items' => []]]);
+    }
 }

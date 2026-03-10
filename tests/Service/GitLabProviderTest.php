@@ -868,6 +868,105 @@ class GitLabProviderTest extends TestCase
         $this->assertSame(5, $result[0]->line);
     }
 
+    public function testGetPullRequestReviewCommentsSkipsDiscussionWhenPositionIsNotArray(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [
+            [
+                'id' => 'disc-1',
+                'notes' => [['author' => ['username' => 'alice'], 'body' => 'Note', 'created_at' => '2025-01-15T10:00:00Z']],
+                'position' => 'invalid',
+            ],
+            [
+                'id' => 'disc-2',
+                'notes' => [['author' => ['username' => 'bob'], 'body' => 'OK', 'created_at' => '2025-01-15T11:00:00Z']],
+                'position' => ['new_path' => 'src/File.php', 'new_line' => 1],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('bob', $result[0]->author);
+    }
+
+    public function testGetPullRequestReviewCommentsStopsAtCapWhenDiscussionHasManyNotes(): void
+    {
+        $pullNumber = 123;
+        $notes = [];
+        for ($i = 0; $i < 51; $i++) {
+            $notes[] = [
+                'author' => ['username' => 'user'],
+                'body' => "Note {$i}",
+                'created_at' => '2025-01-15T10:00:00Z',
+            ];
+        }
+        $apiResponse = [
+            [
+                'id' => 'disc-1',
+                'notes' => $notes,
+                'position' => ['new_path' => 'src/File.php', 'new_line' => 10],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(50, $result);
+    }
+
+    public function testGetPullRequestReviewCommentsStopsAtCapBeforeNextDiscussion(): void
+    {
+        $pullNumber = 123;
+        $notes = [];
+        for ($i = 0; $i < 50; $i++) {
+            $notes[] = [
+                'author' => ['username' => 'user'],
+                'body' => "Note {$i}",
+                'created_at' => '2025-01-15T10:00:00Z',
+            ];
+        }
+        $apiResponse = [
+            [
+                'id' => 'disc-1',
+                'notes' => $notes,
+                'position' => ['new_path' => 'src/File.php', 'new_line' => 10],
+            ],
+            [
+                'id' => 'disc-2',
+                'notes' => [['author' => ['username' => 'other'], 'body' => 'Extra', 'created_at' => '2025-01-15T12:00:00Z']],
+                'position' => ['new_path' => 'src/Other.php', 'new_line' => 5],
+            ],
+        ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestReviewComments($pullNumber);
+
+        $this->assertCount(50, $result);
+    }
+
     public function testGetLabelsFailure(): void
     {
         $errorMessage = 'Not Found';

@@ -60,6 +60,16 @@ class DescriptionFormatterTest extends CommandTestCase
         $this->assertCount(3, $result);
     }
 
+    public function testParseSectionsWithOnlyDividersUsesFullLinesAsOneSection(): void
+    {
+        $description = "---\n---\n---";
+        $result = $this->formatter->parseSections($description);
+
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertSame(['---', '---'], $result[0]['contentLines'] ?? []);
+    }
+
     public function testParseSectionsWithEmptyDescription(): void
     {
         $result = $this->formatter->parseSections('');
@@ -105,6 +115,24 @@ class DescriptionFormatterTest extends CommandTestCase
         $this->assertCount(1, $result);
         $this->assertNotEmpty($result[0]['contentLines']);
         $this->assertContains('', $result[0]['contentLines']);
+    }
+
+    public function testProcessOneSectionToTitleAndContentWithEmptyLineAfterTitleAddsEmptyToContentLines(): void
+    {
+        $sectionLines = ['Heading', '', 'Body line'];
+        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines]);
+
+        $this->assertSame('Heading', $result['title']);
+        $this->assertSame(['', 'Body line'], $result['contentLines']);
+    }
+
+    public function testProcessOneSectionToTitleAndContentWithAllEmptyLinesUsesTranslatedLabel(): void
+    {
+        $sectionLines = ['', '   ', ''];
+        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines]);
+
+        $this->assertSame('item.show.label_description', $result['title']);
+        $this->assertSame(['item.show.label_description'], $result['contentLines']);
     }
 
     public function testParseSectionsWithDescriptionContainingDividers(): void
