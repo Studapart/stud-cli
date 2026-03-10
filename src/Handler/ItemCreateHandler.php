@@ -30,7 +30,9 @@ class ItemCreateHandler
         ?string $descriptionOption,
         ?string $descriptionFormat = null,
         ?string $parentKey = null,
-        ?string $assigneeOption = null
+        ?string $assigneeOption = null,
+        ?string $labelsOption = null,
+        ?string $originalEstimateOption = null
     ): ItemCreateResponse {
         $projectKey = $this->resolveProjectKey($io, $interactive, $project);
         if ($projectKey === null) {
@@ -124,10 +126,17 @@ class ItemCreateHandler
             }
         }
 
+        $skippedOptionalFields = $this->applyOptionalFieldsFromCreatemeta(
+            $allFieldsMeta,
+            $fields,
+            $labelsOption,
+            $originalEstimateOption
+        );
+
         try {
             $result = $this->jiraService->createIssue($fields);
 
-            return ItemCreateResponse::success($result['key'], $result['self']);
+            return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
@@ -520,6 +529,99 @@ class ItemCreateHandler
         }
 
         return $fieldId;
+    }
+
+    /**
+     * Applies optional fields (labels, time original estimate) when present in createmeta and user supplied values.
+     * Returns list of human-readable field names that were requested but skipped (not in createmeta or invalid format).
+     *
+     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
+     * @param array<string, mixed> $fields Create payload; modified in place
+     * @return list<string>
+     */
+    protected function applyOptionalFieldsFromCreatemeta(
+        array $allFieldsMeta,
+        array &$fields,
+        ?string $labelsOption,
+        ?string $originalEstimateOption
+    ): array {
+        $skipped = [];
+        $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'labels', 'labels');
+        $estimatePayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'timeoriginalestimate', 'time original estimate');
+
+        if ($labelsOption !== null && trim($labelsOption) !== '') {
+            if ($labelsPayloadKey !== null) {
+                $labels = array_values(array_filter(array_map('trim', explode(',', $labelsOption))));
+                if ($labels !== []) {
+                    $fields['labels'] = $labels;
+                }
+            } else {
+                $skipped[] = $this->translator->trans('item.create.skipped_field_labels');
+            }
+        }
+
+        if ($originalEstimateOption !== null && trim($originalEstimateOption) !== '') {
+            $seconds = $this->parseOriginalEstimateToSeconds(trim($originalEstimateOption));
+            if ($seconds === null) {
+                $skipped[] = $this->translator->trans('item.create.skipped_field_original_estimate');
+            } elseif ($estimatePayloadKey !== null) {
+                $fields['timeoriginalestimate'] = $seconds;
+            } else {
+                $skipped[] = $this->translator->trans('item.create.skipped_field_original_estimate');
+            }
+        }
+
+        return $skipped;
+    }
+
+    /**
+     * Finds createmeta field key by exact id or normalized name (for API payload key).
+     *
+     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
+     */
+    protected function findOptionalFieldKey(array $allFieldsMeta, string $fieldId, string $fieldNameNormalized): ?string
+    {
+        $nameLower = strtolower($fieldNameNormalized);
+        foreach ($allFieldsMeta as $key => $meta) {
+            $keyLower = strtolower((string) $key);
+            $metaNameLower = strtolower($meta['name']);
+            if ($keyLower === strtolower($fieldId) || $metaNameLower === $nameLower) {
+                return $this->getCreatePayloadFieldKey((string) $key);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parses human-friendly duration (e.g. 1d, 0.5d, 1 day, 2h, 30m) to seconds.
+     * Supports: d/day/days, h/hour/hours, m/min/minute/minutes. Accepts decimals (e.g. 0.5d).
+     *
+     * @return int|null Seconds, or null if input is invalid
+     */
+    protected function parseOriginalEstimateToSeconds(string $value): ?int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        if (preg_match('/^(\d+(?:\.\d+)?)\s*(d|day|days|h|hour|hours|m|min|minute|minutes)\s*$/i', $value, $m)) {
+            $num = (float) $m[1];
+            $unit = strtolower($m[2]);
+            $seconds = match (true) {
+                $unit === 'd' || $unit === 'day' || $unit === 'days' => (int) round($num * 86400),
+                $unit === 'h' || $unit === 'hour' || $unit === 'hours' => (int) round($num * 3600),
+                $unit === 'm' || $unit === 'min' || $unit === 'minute' || $unit === 'minutes' => (int) round($num * 60),
+                // Regex above only allows d/day/days, h/hour/hours, m/min/minute/minutes; default unreachable
+                // @codeCoverageIgnoreStart
+                default => null,
+                // @codeCoverageIgnoreEnd
+            };
+
+            return $seconds !== null && $seconds >= 0 ? $seconds : null;
+        }
+
+        return null;
     }
 
     /**

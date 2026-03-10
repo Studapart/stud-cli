@@ -564,8 +564,8 @@ These commands help you browse, view, and create Jira work items.
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)
-    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `--assignee <accountId>` to set the assignee (when omitted and the field is required, the current user is used). When reporter is required, it is set to the current user. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively.
-    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `--assignee` (assignee account ID). All optional from CLI; missing values trigger prompts in interactive mode.
+    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `--assignee <accountId>` to set the assignee (when omitted and the field is required, the current user is used). Use `--labels` for comma-separated labels and `--original-estimate` for time estimate (e.g. `1d`, `0.5d`, `1 day`, `2h`, `30m`; converted to seconds). When reporter is required, it is set to the current user. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively. **Optional fields (labels, original estimate):** If the project/issue type does not support them (per Jira createmeta), the issue is still created and a note lists the skipped fields; the command does not fail.
+    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `--assignee` (assignee account ID), `--labels` (comma-separated labels), `--original-estimate` (e.g. 1d, 0.5d, 1 day, 2h, 30m). All optional from CLI; missing values trigger prompts in interactive mode.
     -   **Usage:**
         ```bash
         stud items:create -p PROJ -m "My summary"
@@ -573,9 +573,10 @@ These commands help you browse, view, and create Jira work items.
         echo "Description from pipe" | stud ic -p PROJ -m "Summary"
         stud ic -p PROJ --parent PROJ-100 -m "Sub-task title"
         stud ic -p PROJ -m "Title" -d "# Heading\n**Bold**" --description-format markdown
+        stud ic -p PROJ -m "Title" --labels "bug, backend" --original-estimate 2h
         stud help items:create
         ```
-    -   **Note:** No `--quiet` option. For detailed help and all options run `stud help items:create`.
+    -   **Note:** No `--quiet` option. Unsupported optional fields (e.g. labels or original estimate not available for the project/issue type) are skipped with a note; the create still succeeds. For detailed help and all options run `stud help items:create`.
 
 -   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
     -   **Description:** Search for issues using JQL (Jira Query Language).

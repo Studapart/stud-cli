@@ -12,6 +12,22 @@ Your objective is to automate the maintenance and feature development of the `st
 -   **API Immutability**: You MUST NOT modify, alter, or update any Jira or GitHub API endpoints, authentication logic, or credentials. This is a critical system constraint.
 -   **Non-Interactive Usage**: When using `stud-cli` for Jira/Git operations, the agent MUST use non-interactive flags where available. For commands that support `--quiet` or `-q`, the agent MUST pass that option unless the ticket explicitly requires interactive behavior.
 -   **Idempotency**: Use `--quiet` (and other non-interactive flags) so that default values are applied without prompts (e.g. commit uses Jira-derived message; submit uses default base branch and provider). Do not rely on "prefer defaults when prompted"—use quiet so defaults apply without prompting.
+-   **Reports and temporary files**: If you create reports or temporary files (e.g. implementation reports, draft PR comments), write them under `./cursor/reports` or `./cursor` so they stay out of the project root and can be ignored or cleaned easily.
+
+### CONVENTIONS Summary — Mandatory Enforcement
+
+You MUST adhere to the following (see `CONVENTIONS.md` for full detail). These are often overlooked; treat them as blocking checks in Phase 1 (planning) and Phase 3 (integrity).
+
+-   **Code Architecture**: Follow PSR-12 and SOLID. Use `protected` for testable helper methods; do **not** use `final` on injectable services (Handlers, Providers, Repositories). Use the Action–Domain–Responder pattern: Handler returns a Response DTO, Responder renders it (no I/O in the Handler).
+-   **Code Quality — Project Quality Metric Blueprint**: All new and modified code must stay within:
+    - **Complexity**: Cyclomatic Complexity (CC) ≤ 10 per method; CRAP Index ≤ 10 per class/method; NPath ≤ 200; Nesting Depth ≤ 3.
+    - **Cohesion**: LCOM4 ≤ 2.
+    - **Size**: Class ≤ 400 lines; Method ≤ 40 lines.
+    - **Signatures**: Class properties ≤ 10; Method arguments ≤ 4 (use parameter objects if you need more).
+-   **Verification**: Run `php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-clover phpunit-results.xml` and inspect the Clover XML for per-method `complexity` and `crap` attributes on `<line type="method">`. Any method with CC > 10 or CRAP > 10 must be refactored before commit (or a refactoring task added to the plan if in legacy code).
+-   **Type Safety**: Every PHP file must have `declare(strict_types=1);`. All method parameters and return types and all class properties must have explicit type hints. DocBlocks are required for public/protected methods and for complex logic.
+-   **Testing**: Aim for 100% coverage. Test the **intent** (behavior, return values, exceptions), not the exact output text. All service dependencies in unit tests (Handlers, Providers, Repositories) must be **mocked**; real instances are forbidden.
+-   **Output**: Use the standardized output approach: Handlers must not write to the console directly; use the Logger and the Responder pattern (PageViewConfig, etc.). Do not call `$io->success()` / `$io->error()` / etc. from Handlers—only from Responders or tasks that render the response. See ADR-005 for the Logger and Responder rules.
 
 ## 3. Four-Phase Development Protocol
 
@@ -33,9 +49,10 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - Identify all files that will be modified or created.
     - Check for any existing tests related to the functionality.
 
-4.  **Complexity Assessment**: For each file that will be modified or created, assess the complexity:
-    - Check if any methods exceed Cyclomatic Complexity (CC) of 10.
-    - Check if any classes exceed CRAP Index of 10.
+4.  **Quality Metric Assessment**: For each file that will be modified or created, assess adherence to the Project Quality Metric Blueprint (see CONVENTIONS Summary in §2):
+    - **Complexity**: Run the test suite with Clover coverage (`--coverage-clover phpunit-results.xml`) and check the generated XML for every `<line type="method">`: ensure no method has `complexity` > 10 or `crap` > 10. Also consider NPath ≤ 200 and Nesting Depth ≤ 3.
+    - **Size**: Class ≤ 400 lines; Method ≤ 40 lines.
+    - **Signatures**: Method arguments ≤ 4 (use a parameter object if needed); class properties ≤ 10.
     - **If violations are found**: You MUST add a refactoring task to your plan to fix the legacy code BEFORE implementing the new feature. This is a blocking requirement.
 
 5.  **Plan Creation**: Create a formal, structured plan that:
@@ -61,8 +78,8 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 1.  **Implementation**: 
     - Implement the required feature according to the plan created in Phase 1.
-    - Follow all conventions defined in `CONVENTIONS.md`.
-    - Ensure all new code adheres to complexity thresholds (CC ≤ 10, CRAP Index ≤ 10).
+    - Follow all conventions defined in `CONVENTIONS.md` and the CONVENTIONS Summary (§2): code architecture (protected helpers, no final on injectable services, Handler→Response→Responder), quality blueprint (CC/CRAP/size/signatures), type safety (`declare(strict_types=1);`, type hints, DocBlocks), and output (no direct `$io` in Handlers; use Logger and Responders).
+    - Ensure all new code adheres to complexity thresholds (CC ≤ 10, CRAP Index ≤ 10) and the rest of the Project Quality Metric Blueprint.
     - If refactoring was required in Phase 1, complete it first before implementing new features.
 
 2.  **Test Development**: 
@@ -91,18 +108,17 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - **MANDATORY RE-VERIFICATION**: After ANY code changes (including fixes for PHP-CS-Fixer, PHPStan, or any other corrections), you MUST re-run coverage verification to ensure 100% coverage is maintained. This is a blocking requirement that cannot be skipped.
     - This is a blocking requirement; the commit cannot proceed until 100% coverage is restored.
 
-2.  **Complexity Verification**: 
-    - Verify that all modified and new code adheres to complexity thresholds:
-        - All methods have Cyclomatic Complexity ≤ 10.
-        - All classes have CRAP Index ≤ 10.
-    - If violations are found, refactor the code to meet the thresholds.
+2.  **Complexity and Quality Verification**: 
+    - Run the test suite with Clover: `php -dpcov.enabled=1 -dpcov.directory=. -dpcov.exclude="~vendor~" ./vendor/bin/phpunit --coverage-clover phpunit-results.xml`. Inspect the Clover XML: every `<line type="method" ... complexity="N" crap="M">` must have N ≤ 10 and M ≤ 10 for modified or new code.
+    - Verify size and signatures: class ≤ 400 lines, method ≤ 40 lines, method arguments ≤ 4, class properties ≤ 10.
+    - If any violation is found, refactor to meet the thresholds before committing.
 
 3.  **Standards Compliance Check**: 
-    - Review all changes against `CONVENTIONS.md` to ensure compliance:
-        - Visibility modifiers are correct (protected for testable methods).
-        - No `final` keyword on injectable services.
-        - Tests follow "Test the Intent, Not the Text" principle.
-        - All service dependencies in tests are mocked.
+    - Review all changes against `CONVENTIONS.md` and the CONVENTIONS Summary (§2):
+        - **Architecture**: PSR-12 and SOLID; `protected` for testable helper methods; no `final` on injectable services; Handler returns Response, Responder does output (no `$io` in Handlers).
+        - **Type safety**: `declare(strict_types=1);` in every file; type hints on all parameters, return types, and properties; DocBlocks for public/protected and complex logic.
+        - **Testing**: Tests assert intent (behavior, return values, exceptions), not exact strings; all Handlers/Providers/Repositories mocked in unit tests.
+        - **Output**: Console output via Logger and Responders (PageViewConfig, etc.), not direct `$io` calls from Handlers.
 
 4.  **Review**: Review your changes and compare them with the ticket's description to ensure your changes cover all requirements and acceptance criteria.
 
@@ -135,7 +151,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 2.  **Submit Pull Request**: Use `stud submit -q --labels "AI-Generated,RFR"` (or `stud su -q --labels "AI-Generated,RFR"`) to create the pull request. With `-q`, default base branch and provider are used and prompts for labels/config are avoided. This step MUST only be performed after all previous phases, including testing, documentation, and integrity checks, are complete.
 
-3.  **PR Comment**: After submitting the PR (Step 2), pipe your report directly to the PR as a comment using `stud pr:comment` (or `stud pc`). For example: `echo "Your report content here" | stud pr:comment`
+3.  **PR Comment**: After submitting the PR (Step 2), pipe your report directly to the PR as a comment using `stud pr:comment` (or `stud pc`). If you write the report to a file first, place it under `./cursor/reports` or `./cursor` (see Core Directives). Example: `stud pc < .cursor/reports/SCI-65-report.md` or `echo "Your report content here" | stud pr:comment`
 
 4.  **Iterate**: Ask the user if they want more work to be done on the ticket OR if you should work on another task.
 

@@ -181,6 +181,9 @@ item:
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
     success: "Created issue %key% – %url%"
+    note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
+    skipped_field_labels: "labels"
+    skipped_field_original_estimate: "time original estimate"
   transition:
     section: Jira werkitem overgang
     detected_key: Gedetecteerde Jira sleutel '%key%' van huidige branch. Deze sleutel gebruiken?
@@ -614,6 +617,8 @@ help:
   option_items_create_description_format: "Description format: plain (default) or markdown (converts to Jira ADF)"
   option_items_create_parent: Parent issue key for creating a sub-task
   option_items_create_assignee: "Assignee account ID (default: current user when field is required)"
+  option_items_create_labels: "Comma-separated labels (only set when project/issue type supports labels)"
+  option_items_create_original_estimate: "Original time estimate: 1d, 0.5d, 1 day, 2h, 30m (converted to seconds for Jira)"
   option_config_show_key: "Show only this config key (whitelisted non-secret keys only)"
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
