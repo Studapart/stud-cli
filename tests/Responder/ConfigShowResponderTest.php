@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\Enum\OutputFormat;
 use App\Responder\ConfigShowResponder;
 use App\Response\ConfigShowResponse;
 use App\Service\ColorHelper;
 use App\Service\Logger;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -22,7 +24,8 @@ class ConfigShowResponderTest extends CommandTestCase
         parent::setUp();
 
         $this->logger = $this->createMock(Logger::class);
-        $this->responder = new ConfigShowResponder($this->translationService, $this->logger, null);
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new ConfigShowResponder($helper, $this->logger);
     }
 
     public function testRespondOutputsErrorWhenResponseIsNotSuccess(): void
@@ -88,7 +91,8 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStylesAndFormatsOutput(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ConfigShowResponder($this->translationService, $this->logger, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ConfigShowResponder($helper, $this->logger);
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -210,7 +214,8 @@ class ConfigShowResponderTest extends CommandTestCase
     public function testRespondSingleKeyNotQuietWithColorHelperFormatsSectionAndRow(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ConfigShowResponder($this->translationService, $this->logger, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ConfigShowResponder($helper, $this->logger);
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -229,5 +234,40 @@ class ConfigShowResponderTest extends CommandTestCase
             ->with($this->anything());
 
         $responder->respond($io, $response, false);
+    }
+
+    public function testRespondJsonReturnsGlobalConfig(): void
+    {
+        $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame(['LANGUAGE' => 'en'], $result->data['globalConfig']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = ConfigShowResponse::error('config.show.no_config_found');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+    }
+
+    public function testRespondJsonReturnsSingleKey(): void
+    {
+        $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, false, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('LANGUAGE', $result->data['singleKey']);
     }
 }

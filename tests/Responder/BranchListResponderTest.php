@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\BranchListRow;
+use App\Enum\OutputFormat;
 use App\Responder\BranchListResponder;
 use App\Response\BranchListResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -18,7 +20,8 @@ class BranchListResponderTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->responder = new BranchListResponder($this->translationService, null);
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new BranchListResponder($helper);
     }
 
     public function testRespondShowsMessageWhenNoBranches(): void
@@ -82,7 +85,8 @@ class BranchListResponderTest extends CommandTestCase
     public function testRespondWithColorHelperAppliesFormatting(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new BranchListResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new BranchListResponder($helper);
         $row = new BranchListRow('main', 'Active', '✓', '✗');
         $response = BranchListResponse::success([$row]);
         $io = $this->createMock(SymfonyStyle::class);
@@ -111,5 +115,29 @@ class BranchListResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything());
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsSerializedRows(): void
+    {
+        $row = new BranchListRow('feat/test', 'active', 'origin/feat/test', '');
+        $response = BranchListResponse::success([$row]);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertCount(1, $result->data['rows']);
+        $this->assertSame('feat/test', $result->data['rows'][0]['branch']);
+    }
+
+    public function testRespondCliReturnsNull(): void
+    {
+        $response = BranchListResponse::success([]);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Cli);
+
+        $this->assertNull($result);
     }
 }

@@ -10,6 +10,9 @@
 // Load Composer autoloader first
 require __DIR__ . '/../vendor/autoload.php';
 
+// Load castor.php so task functions are available for reflection-based tests
+require_once __DIR__ . '/../castor.php';
+
 // Define test mode constant for reliable detection in UpdateHandler::isTestEnvironment()
 if (! defined('STUD_CLI_TEST_MODE')) {
     define('STUD_CLI_TEST_MODE', true);

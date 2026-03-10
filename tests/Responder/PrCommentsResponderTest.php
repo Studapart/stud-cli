@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\PullRequestComment;
+use App\Enum\OutputFormat;
 use App\Responder\PrCommentsResponder;
 use App\Response\PrCommentsResponse;
 use App\Service\ColorHelper;
 use App\Service\CommentBodyParser;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -20,7 +22,8 @@ class PrCommentsResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->responder = new PrCommentsResponder($this->translationService, new CommentBodyParser(), null);
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new PrCommentsResponder($helper, new CommentBodyParser());
     }
 
     public function testRespondShowsNoteWhenNoIssueCommentsAndNoReviewComments(): void
@@ -77,7 +80,8 @@ class PrCommentsResponderTest extends CommandTestCase
     public function testRespondWithColorHelperFormatsSectionTitles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new PrCommentsResponder($this->translationService, new CommentBodyParser(), $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new PrCommentsResponder($helper, new CommentBodyParser());
         $issueComment = new PullRequestComment('alice', new \DateTimeImmutable(), 'Body', null, null);
         $reviewComment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review', 'file.php', 5);
         $response = PrCommentsResponse::success([$issueComment], [$reviewComment], [], 42);
@@ -99,7 +103,8 @@ class PrCommentsResponderTest extends CommandTestCase
     public function testRespondWithColorHelperFormatsListingItems(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new PrCommentsResponder($this->translationService, new CommentBodyParser(), $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new PrCommentsResponder($helper, new CommentBodyParser());
         $body = "Checklist:\n\n- one\n- two";
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
@@ -204,5 +209,31 @@ class PrCommentsResponderTest extends CommandTestCase
         $io->expects($this->never())->method('listing');
 
         $this->callPrivateMethod($this->responder, 'renderListSegment', [$io, ['items' => []]]);
+    }
+
+    public function testRespondJsonReturnsSerializedComments(): void
+    {
+        $comment = new PullRequestComment('author', new \DateTimeImmutable(), 'body text');
+        $response = PrCommentsResponse::success([$comment], [], [], 42);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame(42, $result->data['pullNumber']);
+        $this->assertCount(1, $result->data['issueComments']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = PrCommentsResponse::error('API error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('API error', $result->error);
     }
 }

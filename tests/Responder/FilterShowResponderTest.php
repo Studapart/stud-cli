@@ -3,9 +3,11 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
+use App\Enum\OutputFormat;
 use App\Responder\FilterShowResponder;
 use App\Response\FilterShowResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -17,9 +19,10 @@ class FilterShowResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->responder = new FilterShowResponder($this->translationService, [
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new FilterShowResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ], null);
+        ]);
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
@@ -108,9 +111,10 @@ class FilterShowResponderTest extends CommandTestCase
     public function testRespondShowsVerboseOutputWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new FilterShowResponder($this->translationService, [
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new FilterShowResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ], $colorHelper);
+        ]);
 
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');
@@ -145,9 +149,10 @@ class FilterShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new FilterShowResponder($this->translationService, [
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new FilterShowResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ], $colorHelper);
+        ]);
         $response = FilterShowResponse::success([], 'My Filter');
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -163,5 +168,31 @@ class FilterShowResponderTest extends CommandTestCase
             ->method('note');
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsSerializedIssues(): void
+    {
+        $issue = new WorkItem('1', 'PROJ-1', 'Test Issue', 'Open', 'user', '', [], 'Story');
+        $response = FilterShowResponse::success([$issue], 'My Filter');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('My Filter', $result->data['filterName']);
+        $this->assertCount(1, $result->data['issues']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = FilterShowResponse::error('API error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('API error', $result->error);
     }
 }

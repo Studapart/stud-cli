@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\Filter;
+use App\Enum\OutputFormat;
 use App\Responder\FilterListResponder;
 use App\Response\FilterListResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -18,7 +20,8 @@ class FilterListResponderTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->responder = new FilterListResponder($this->translationService, null);
+        $helper = new ResponderHelper($this->translationService);
+        $this->responder = new FilterListResponder($helper);
     }
 
     public function testRespondShowsNoteWhenNoFilters(): void
@@ -57,7 +60,8 @@ class FilterListResponderTest extends CommandTestCase
     public function testRespondWithColorHelperAppliesFormatting(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new FilterListResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new FilterListResponder($helper);
         $filter = new Filter('My Filter', 'Description');
         $response = FilterListResponse::success([$filter]);
         $io = $this->createMock(SymfonyStyle::class);
@@ -77,5 +81,31 @@ class FilterListResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything());
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsSerializedFilters(): void
+    {
+        $filter = new Filter('My Filter', 'Description');
+        $response = FilterListResponse::success([$filter]);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertCount(1, $result->data['filters']);
+        $this->assertSame('My Filter', $result->data['filters'][0]['name']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = FilterListResponse::error('API error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('API error', $result->error);
     }
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\SearchResponse;
-use App\Service\ColorHelper;
-use App\Service\TranslationService;
+use App\Service\DtoSerializer;
+use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
 use App\View\Section;
@@ -15,47 +17,37 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SearchResponder
 {
+    private readonly DtoSerializer $serializer;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
     public function __construct(
-        private readonly TranslationService $translator,
+        private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
-        private readonly ?ColorHelper $colorHelper = null
+        ?DtoSerializer $serializer = null,
     ) {
+        $this->serializer = $serializer ?? new DtoSerializer();
     }
 
-    public function respond(SymfonyStyle $io, SearchResponse $response): void
+    public function respond(SymfonyStyle $io, SearchResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
-        // Register color styles before rendering
-        if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+        if ($format === OutputFormat::Json) {
+            return $this->respondJson($response);
         }
 
-        $sectionTitle = $this->translator->trans('search.section');
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
-        if ($io->isVerbose()) {
-            $jqlMessage = $this->translator->trans('search.jql_query', ['jql' => $response->jql]);
-            if ($this->colorHelper !== null) {
-                $jqlMessage = $this->colorHelper->format('comment', $jqlMessage);
-            } else {
-                $jqlMessage = "<fg=gray>{$jqlMessage}</>";
-            }
-            $io->writeln("  {$jqlMessage}");
-        }
+        $this->helper->initSection($io, 'search.section');
+        $this->helper->verboseComment($io, 'search.jql_query', ['jql' => $response->jql]);
 
         if (empty($response->issues)) {
-            $io->note($this->translator->trans('search.no_results'));
+            $io->note($this->helper->translator->trans('search.no_results'));
 
-            return;
+            return null;
         }
 
         $viewConfig = new PageViewConfig([
             new Section(
-                '', // Section already created by responder
+                '',
                 [
                     new TableBlock([
                         new Column('key', 'table.key', fn ($item) => $item->key),
@@ -66,8 +58,22 @@ class SearchResponder
                     ]),
                 ]
             ),
-        ], $this->translator, $this->colorHelper);
+        ], $this->helper->translator, $this->helper->colorHelper);
 
         $viewConfig->render($response->issues, $io, ['jiraConfig' => $this->jiraConfig]);
+
+        return null;
+    }
+
+    protected function respondJson(SearchResponse $response): AgentJsonResponse
+    {
+        if (! $response->isSuccess()) {
+            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+        }
+
+        return new AgentJsonResponse(true, data: [
+            'issues' => $this->serializer->serializeList($response->issues),
+            'jql' => $response->jql,
+        ]);
     }
 }
