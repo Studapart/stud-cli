@@ -235,6 +235,27 @@ class GitBranchServiceTest extends TestCase
         $this->assertSame([], $result['remote']);
     }
 
+    public function testFindBranchesByIssueKeyReturnsEmptyRemotesOnProcessFailure(): void
+    {
+        $this->gitRepository->expects($this->exactly(6))
+            ->method('runQuietly')
+            ->willReturnCallback(function (string $command) {
+                if (str_contains($command, 'git branch --list')) {
+                    return $this->createSuccessProcess('');
+                }
+                if (str_contains($command, 'git ls-remote')) {
+                    return $this->createFailedProcess();
+                }
+
+                throw new \RuntimeException("Unexpected command: {$command}");
+            });
+
+        $result = $this->gitBranchService->findBranchesByIssueKey('PROJ-123');
+
+        $this->assertSame([], $result['local']);
+        $this->assertSame([], $result['remote']);
+    }
+
     public function testFindBranchesByIssueKeyReturnsRemoteBranches(): void
     {
         $this->gitRepository->expects($this->exactly(6))

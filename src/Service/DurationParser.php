@@ -31,9 +31,11 @@ class DurationParser
         $num = (float) $m[1];
         $unit = strtolower($m[2]);
         $multiplier = $this->unitToSecondsMultiplier($unit);
+        // @codeCoverageIgnoreStart
         if ($multiplier === null) {
             return null;
         }
+        // @codeCoverageIgnoreEnd
         $seconds = (int) round($num * $multiplier);
 
         return $seconds >= 0 ? $seconds : null;

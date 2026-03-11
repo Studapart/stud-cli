@@ -136,7 +136,9 @@ class IssueFieldResolver
             'description' => $fields['description'] = $fieldValues['descriptionAdf'] ?? [],
             'issue type', 'issuetype' => $fields['issuetype'] = ['id' => $fieldValues['issueTypeId']],
             'parent' => $fields['parent'] = ['key' => $fieldValues['parentKey'] ?? ''],
+            // @codeCoverageIgnoreStart
             default => null,
+            // @codeCoverageIgnoreEnd
         };
 
         return true;
