@@ -99,11 +99,7 @@ class SubmitHandler
         }
 
         $firstLogicalMessage = $this->gitRepository->getCommitMessage($firstCommitSha);
-        $jiraKey = $this->gitRepository->getJiraKeyFromBranchName();
-        if ($jiraKey === null || $jiraKey === '') {
-            preg_match('/(?i)\[([a-z]+-\d+)]/', $firstLogicalMessage, $matches);
-            $jiraKey = $matches[1] ?? null;
-        }
+        $jiraKey = $this->resolveJiraKey($firstLogicalMessage);
         if ($jiraKey === null) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_no_jira_key'));
 
@@ -116,6 +112,17 @@ class SubmitHandler
             'jiraKey' => $jiraKey,
             'prTitle' => $firstLogicalMessage,
         ];
+    }
+
+    private function resolveJiraKey(string $commitMessage): ?string
+    {
+        $jiraKey = $this->gitRepository->getJiraKeyFromBranchName();
+        if ($jiraKey === null || $jiraKey === '') {
+            preg_match('/(?i)\[([a-z]+-\d+)]/', $commitMessage, $matches);
+            $jiraKey = $matches[1] ?? null;
+        }
+
+        return $jiraKey;
     }
 
     /**
@@ -265,29 +272,37 @@ class SubmitHandler
 
         try {
             $existingPr = $this->githubProvider->findPullRequestByBranch($headBranch);
-            if ($existingPr !== null) {
-                $prNumber = $existingPr['number'];
-                if (! empty($finalLabels)) {
-                    $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.adding_labels'));
-
-                    try {
-                        $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
-                    } catch (\Exception $labelError) {
-                        $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
-                    }
-                }
-                if ($draft && ! $existingPr['draft']) {
-                    $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.updating_to_draft'));
-
-                    try {
-                        $this->githubProvider->updatePullRequest($prNumber, true);
-                    } catch (\Exception $draftError) {
-                        $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
-                    }
-                }
-            }
         } catch (\Exception $findError) {
             $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.success_pushed'));
+
+            return;
+        }
+
+        if ($existingPr === null) {
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.success_pushed'));
+
+            return;
+        }
+
+        $prNumber = $existingPr['number'];
+        if (! empty($finalLabels)) {
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.adding_labels'));
+
+            try {
+                $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
+            } catch (\Exception $labelError) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_add_labels', ['error' => $labelError->getMessage()])));
+            }
+        }
+        if ($draft && ! $existingPr['draft']) {
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.updating_to_draft'));
+
+            try {
+                $this->githubProvider->updatePullRequest($prNumber, true);
+            } catch (\Exception $draftError) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_update_draft', ['error' => $draftError->getMessage()])));
+            }
         }
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.success_pushed'));
     }

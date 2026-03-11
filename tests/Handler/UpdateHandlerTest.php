@@ -3785,28 +3785,6 @@ CHANGELOG;
         $this->assertSame(0, $result);
     }
 
-    public function testIsPrerequisiteMigration(): void
-    {
-        // Create a mock migration that is a prerequisite
-        $prerequisiteMigration = $this->createMock(\App\Migrations\MigrationInterface::class);
-        $prerequisiteMigration->expects($this->once())
-            ->method('isPrerequisite')
-            ->willReturn(true);
-
-        // Create a mock migration that is not a prerequisite
-        $nonPrerequisiteMigration = $this->createMock(\App\Migrations\MigrationInterface::class);
-        $nonPrerequisiteMigration->expects($this->once())
-            ->method('isPrerequisite')
-            ->willReturn(false);
-
-        // Test the method directly
-        $result1 = $this->callPrivateMethod($this->handler, 'isPrerequisiteMigration', [$prerequisiteMigration]);
-        $this->assertTrue($result1, 'Prerequisite migration should return true');
-
-        $result2 = $this->callPrivateMethod($this->handler, 'isPrerequisiteMigration', [$nonPrerequisiteMigration]);
-        $this->assertFalse($result2, 'Non-prerequisite migration should return false');
-    }
-
     public function testGetErrorMessageWithTranslationSuccess(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();

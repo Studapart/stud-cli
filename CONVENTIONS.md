@@ -271,6 +271,8 @@ public function processData($data) {
 
 **Rule**: Maximum **4 arguments** per method.
 
+**Exemption**: DTO, Response, and Value Object constructors using promoted `readonly` properties are exempt from the 4-argument limit. These serve as pure data containers with no behavioral complexity; splitting them into sub-objects would add ceremony without reducing cognitive load.
+
 **Enforcement**:
 - Code review and static analysis tools can identify methods with too many arguments.
 - Methods with many arguments should be refactored using:

@@ -10,7 +10,7 @@ use App\Response\AgentJsonResponse;
  * Generic responder for int/void handlers that lack a dedicated Responder.
  * Converts an exit code (or void success) into an AgentJsonResponse.
  */
-final class AgentCommandResponder
+class AgentCommandResponder
 {
     public function respondFromExitCode(int $exitCode, string $successMessage, string $errorMessage): AgentJsonResponse
     {

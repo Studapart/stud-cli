@@ -1360,6 +1360,31 @@ class GithubProviderTest extends TestCase
         $this->assertCount(0, $result);
     }
 
+    public function testGetPullRequestReviewsStopsAtCap(): void
+    {
+        $pullNumber = 123;
+        $apiResponse = [];
+        for ($i = 0; $i < 51; $i++) {
+            $apiResponse[] = [
+                'id' => $i,
+                'user' => ['login' => "reviewer{$i}"],
+                'body' => "Review body {$i}",
+                'state' => 'COMMENT',
+                'submitted_at' => '2025-01-15T12:00:00Z',
+            ];
+        }
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+
+        $this->httpClientMock->expects($this->once())->method('request')->willReturn($responseMock);
+
+        $result = $this->githubProvider->getPullRequestReviews($pullNumber);
+
+        $this->assertCount(50, $result);
+    }
+
     public function testGetPullRequestCommentsFailure(): void
     {
         $issueNumber = 123;

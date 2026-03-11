@@ -36,15 +36,15 @@ class BranchCleanHandlerTest extends CommandTestCase
         // Note: confirm() expectations should be set per-test as needed
         // Quiet mode tests don't call confirm(), so no default expectation needed
 
-        $this->handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
+        $this->handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
     }
 
     public function testHandleWithNoBranchesToClean(): void
     {
-        $this->gitRepository->method('getAllLocalBranches')->willReturn(['develop', 'main']);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn(['develop', 'main']);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -57,10 +57,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithBranchesToCleanLocalOnlyInQuietMode(): void
     {
         $branches = ['develop', 'feat/PROJ-123', 'main'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
+        $this->gitBranchService->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
             return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
@@ -79,10 +79,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithBranchesToCleanWithRemote(): void
     {
         $branches = ['develop', 'feat/PROJ-123', 'main'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main', 'feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['develop', 'main', 'feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
+        $this->gitBranchService->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
             return $branch === 'feat/PROJ-123' && $base === 'origin/develop';
         });
         $this->githubProvider->method('getAllPullRequests')->willReturn([
@@ -116,10 +116,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleSkipsProtectedBranches(): void
     {
         $branches = ['develop', 'main', 'master', 'feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main', 'master']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['develop', 'main', 'master']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
+        $this->gitBranchService->method('isBranchMergedInto')->willReturnCallback(function ($branch, $base) {
             // All branches are merged
             return true;
         });
@@ -136,10 +136,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleSkipsCurrentBranch(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/PROJ-123');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->gitRepository->expects($this->never())
             ->method('deleteBranch');
 
@@ -154,10 +154,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleSkipsBranchesWithOpenPr(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([
             [
                 'number' => 123,
@@ -184,10 +184,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithDeletionError(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
         $this->gitRepository->method('deleteBranch')->willThrowException(new \RuntimeException('Cannot delete branch'));
 
@@ -201,13 +201,13 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHandleWithGithubProviderNull(): void
     {
-        $handler = new BranchCleanHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, null, 'origin/develop', $this->translationService, $this->logger);
 
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->gitRepository->expects($this->once())
             ->method('deleteBranch')
             ->with('feat/PROJ-123');
@@ -223,10 +223,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithGithubProviderException(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willThrowException(new \Exception('API error'));
         // Should continue with merge-based logic when PR check fails
@@ -245,10 +245,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithRemoteDeletionConfirmed(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([
             [
                 'number' => 123,
@@ -281,10 +281,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithRemoteDeletionError(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')
             ->willReturnOnConsecutiveCalls(true, true); // Confirm deletion and remote deletion
@@ -307,10 +307,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithCancellation(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
 
         // Override the default confirm behavior for this test
@@ -331,10 +331,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithMergeCheckException(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')
+        $this->gitBranchService->method('isBranchMergedInto')
             ->willThrowException(new \RuntimeException('Merge check failed'));
         $this->gitRepository->expects($this->never())
             ->method('deleteBranch');
@@ -350,10 +350,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithCurrentBranchSkipped(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/PROJ-123');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->gitRepository->expects($this->never())
             ->method('deleteBranch');
@@ -371,10 +371,10 @@ class BranchCleanHandlerTest extends CommandTestCase
         // Test scenario where current branch is skipped but there are other branches to clean
         // This ensures notifyCurrentBranchSkipped() is called
         $branches = ['feat/PROJ-123', 'feat/PROJ-456'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/PROJ-123'); // Current branch
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')->willReturn(true);
         $this->gitRepository->expects($this->once())
@@ -392,10 +392,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithBothLocalAndRemoteBranches(): void
     {
         $branches = ['feat/PROJ-123', 'feat/PROJ-456'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
         $this->logger->method('confirm')
             ->willReturnOnConsecutiveCalls(true, false); // Confirm deletion, but don't delete remote
@@ -416,10 +416,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithRemoteBranchInQuietMode(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
 
         $this->logger->expects($this->any())->method('success');
@@ -441,10 +441,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithNonMergedBranch(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false); // Not merged
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false); // Not merged
         $this->gitRepository->expects($this->never())
             ->method('deleteBranch');
 
@@ -494,10 +494,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         // Test exception handling in deleteBranches for branches with remote
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')
             ->willReturnOnConsecutiveCalls(true, false); // Confirm deletion, but don't delete remote
@@ -525,10 +525,10 @@ class BranchCleanHandlerTest extends CommandTestCase
         // Set up all other mocks FIRST (using method() without expects)
         // This ensures they don't interfere with the expects() setup
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]); // Remote branch was deleted
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]); // Remote branch was deleted
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')->willReturn(true);
 
@@ -559,7 +559,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willReturn($successfulProcess);
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly to avoid the full handle() flow
         $reflection = new \ReflectionClass($handler);
@@ -582,10 +582,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         // Test scenario where force delete also fails
         $branches = ['feat/PROJ-456'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')->willReturn(true);
 
@@ -620,10 +620,10 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         // Set up mocks
         $branches = ['feat/PROJ-789'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-789']); // Branch exists on remote initially
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-789']); // Branch exists on remote initially
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')->willReturn(true); // Confirm deletion
 
@@ -650,7 +650,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willReturn($successfulProcess);
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly
         $reflection = new \ReflectionClass($handler);
@@ -673,10 +673,10 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         // Set up mocks
         $branches = ['feat/PROJ-999'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-999']); // Branch exists on remote initially
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-999']); // Branch exists on remote initially
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(['state' => 'closed']);
         $this->logger->method('confirm')->willReturn(true); // Confirm deletion
 
@@ -699,7 +699,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Force delete failed'));
 
         // Create handler AFTER all mocks are set up
-        $handler = new BranchCleanHandler($this->gitRepository, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, $this->githubProvider, 'origin/develop', $this->translationService, $this->logger);
 
         // Use reflection to call deleteBranches directly
         $reflection = new \ReflectionClass($handler);
@@ -716,10 +716,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithPrMapOptimization(): void
     {
         $branches = ['feat/PROJ-123', 'feat/PROJ-456'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
 
         // Mock getAllPullRequests to return PRs
         $allPrs = [
@@ -763,10 +763,10 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleWithPrMapFallbackOnError(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
 
         // getAllPullRequests fails, should fall back to per-branch calls
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
@@ -948,7 +948,7 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testHasOpenPullRequestWithNullGithubProvider(): void
     {
-        $handler = new BranchCleanHandler($this->gitRepository, null, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new BranchCleanHandler($this->gitRepository, $this->gitBranchService, null, 'origin/develop', $this->translationService, $this->logger);
 
         $reflection = new \ReflectionClass($handler);
         $method = $reflection->getMethod('hasOpenPullRequest');

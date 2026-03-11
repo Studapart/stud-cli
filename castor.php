@@ -18,6 +18,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 
 
 use App\Attribute\AgentOutput;
+use App\DTO\ItemCreateInput;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
@@ -66,8 +67,10 @@ use App\Service\AgentModeHelper;
 use App\Service\ChangelogParser;
 use App\Service\ConfigValidator;
 use App\Service\FileSystem;
+use App\Service\GitBranchService;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
+use App\Service\GitSetupService;
 use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
@@ -260,6 +263,25 @@ function _get_git_repository(): GitRepository
     return new GitRepository(_get_process_factory(), _get_file_system());
 }
 
+function _get_git_branch_service(): GitBranchService
+{
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "gitBranchService") && \App\Tests\TestKernel::$gitBranchService) {
+        return \App\Tests\TestKernel::$gitBranchService;
+    }
+
+    return new GitBranchService(_get_git_repository());
+}
+
+function _get_git_setup_service(): GitSetupService
+{
+    return new GitSetupService(
+        _get_git_repository(),
+        _get_git_branch_service(),
+        _get_logger(),
+        _get_translation_service()
+    );
+}
+
 /**
  * Gets the appropriate Git provider based on configuration.
  * Reads provider from project config, tokens from project config (with global fallback).
@@ -272,17 +294,15 @@ function _get_git_provider(bool $quiet = false): ?\App\Service\GitProviderInterf
 {
     try {
         $gitRepository = _get_git_repository();
+        $gitSetupService = _get_git_setup_service();
         $logger = _get_logger();
         $translator = _get_translation_service();
 
         // Get provider from project config (with auto-detection)
         $providerType = $gitRepository->getGitProvider();
         if ($providerType === null) {
-            // Try to ensure it's configured (will prompt if needed, unless quiet)
-            $providerType = $gitRepository->ensureGitProviderConfigured(
+            $providerType = $gitSetupService->ensureGitProviderConfigured(
                 io(),
-                $logger,
-                $translator,
                 $quiet
             );
         }
@@ -311,11 +331,9 @@ function _get_git_provider(bool $quiet = false): ?\App\Service\GitProviderInterf
 
         // If token is missing, try to ensure it's configured (will prompt if needed, unless quiet)
         if ($token === null || (is_string($token) && trim($token) === '')) {
-            $token = $gitRepository->ensureGitTokenConfigured(
+            $token = $gitSetupService->ensureGitTokenConfigured(
                 $providerType,
                 io(),
-                $logger,
-                $translator,
                 $globalConfig,
                 $quiet
             );
@@ -409,6 +427,16 @@ function _get_translation_service(): TranslationService
     return new TranslationService($locale, $translationsPath);
 }
 
+function _get_duration_parser(): \App\Service\DurationParser
+{
+    return new \App\Service\DurationParser();
+}
+
+function _get_issue_field_resolver(): \App\Service\IssueFieldResolver
+{
+    return new \App\Service\IssueFieldResolver(_get_jira_service(), _get_duration_parser());
+}
+
 /**
  * Gets the color configuration with theme detection.
  *
@@ -444,10 +472,8 @@ function _get_base_branch(bool $quiet = false): string
 {
     static $baseBranchByQuiet = [];
     if (! isset($baseBranchByQuiet[$quiet])) {
-        $gitRepository = _get_git_repository();
-        $logger = _get_logger();
-        $translator = _get_translation_service();
-        $baseBranchByQuiet[$quiet] = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator, $quiet);
+        $gitSetupService = _get_git_setup_service();
+        $baseBranchByQuiet[$quiet] = $gitSetupService->ensureBaseBranchConfigured(io(), $quiet);
     }
 
     return $baseBranchByQuiet[$quiet];
@@ -866,7 +892,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         }
 
         // Step 3: Validate command requirements
-        $validator = new ConfigValidator($logger, $translator, _get_git_repository());
+        $validator = new ConfigValidator($logger, $translator, _get_git_branch_service());
         $projectConfig = null;
 
         try {
@@ -1433,8 +1459,9 @@ function items_create(
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
-    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
-    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee, $labels, $originalEstimate);
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver());
+    $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $assignee, $labels, $originalEstimate);
+    $response = $handler->handle(io(), $interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
@@ -1498,7 +1525,7 @@ function items_start(
         io()->error('The "key" argument is required.');
         exit(1);
     }
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
     $exitCode = $handler->handle(io(), $key);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -1531,8 +1558,9 @@ function items_takeover(
         exit(1);
     }
     $baseBranch = _get_base_branch();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $gitBranchService = _get_git_branch_service();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
     $exitCode = $handler->handle(io(), $key, $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -1570,7 +1598,7 @@ function branch_rename(
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-    $handler = new BranchRenameHandler($gitRepository, _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_logger(), _get_html_converter());
+    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_logger(), _get_html_converter());
     $exitCode = $handler->handle(io(), $branch, $key, $explicitName, $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -1594,7 +1622,7 @@ function branches_list(
 
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service());
+    $handler = new BranchListHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service());
     $response = $handler->handle();
     $responder = new BranchListResponder(_get_responder_helper());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -1624,7 +1652,7 @@ function branches_clean(
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
     $baseBranch = _get_base_branch();
-    $handler = new BranchCleanHandler($gitRepository, $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $handler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -1761,7 +1789,7 @@ function sync(
     ?string $inputFile = null,
 ): void {
     _load_constants();
-    $handler = new SyncHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -2316,7 +2344,7 @@ function deploy(
     if ($clean) {
         $gitRepository = _get_git_repository();
         $githubProvider = _get_github_provider();
-        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+        $cleanHandler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
         $cleanHandler->handle(io(), true);
     }
     if ($agent) {

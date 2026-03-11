@@ -7,7 +7,7 @@ namespace App\Service;
 /**
  * Serializes DTOs (plain objects with public properties) to arrays suitable for JSON encoding.
  */
-final class DtoSerializer
+class DtoSerializer
 {
     /**
      * @return array<string, mixed>

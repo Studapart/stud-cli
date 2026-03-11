@@ -65,3 +65,4 @@ coverage*
 tmp/stud-*
 
 .cursor/reports/*
+.cursor/tmp/*

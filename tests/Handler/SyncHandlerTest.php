@@ -39,7 +39,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->method('resolveLatestBaseBranch')
+        $this->gitBranchService->method('resolveLatestBaseBranch')
             ->with($this->baseBranch)
             ->willReturn('origin/develop');
 
@@ -55,7 +55,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('rebaseAbort');
 
-        $handler = new SyncHandler($this->gitRepository, $this->baseBranch, $this->translationService, $this->logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(0, $result);
@@ -69,7 +69,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->gitRepository->method('resolveLatestBaseBranch')
+        $this->gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('origin/develop');
 
         $this->gitRepository->method('isAncestor')
@@ -85,7 +85,7 @@ class SyncHandlerTest extends CommandTestCase
         $logger->expects($this->once())
             ->method('note');
 
-        $handler = new SyncHandler($this->gitRepository, $this->baseBranch, $this->translationService, $logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(0, $result);
@@ -99,7 +99,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->gitRepository->method('resolveLatestBaseBranch')
+        $this->gitBranchService->method('resolveLatestBaseBranch')
             ->willReturn('origin/develop');
 
         $this->gitRepository->method('isAncestor')
@@ -119,7 +119,7 @@ class SyncHandlerTest extends CommandTestCase
         $logger->expects($this->once())
             ->method('error');
 
-        $handler = new SyncHandler($this->gitRepository, $this->baseBranch, $this->translationService, $logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(1, $result);
@@ -138,7 +138,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $handler = new SyncHandler($this->gitRepository, $this->baseBranch, $this->translationService, $this->logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(1, $result);
@@ -156,7 +156,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('tryRebase');
 
-        $handler = new SyncHandler($this->gitRepository, $this->baseBranch, $this->translationService, $this->logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(1, $result);
@@ -170,7 +170,7 @@ class SyncHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('fetch');
 
-        $handler = new SyncHandler($this->gitRepository, 'main', $this->translationService, $this->logger);
+        $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, 'main', $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
         $this->assertSame(1, $result);

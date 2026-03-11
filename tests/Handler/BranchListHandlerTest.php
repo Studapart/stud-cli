@@ -22,6 +22,7 @@ class BranchListHandlerTest extends CommandTestCase
         $logger = $this->createMock(Logger::class);
         $this->handler = new BranchListHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->githubProvider,
             'origin/develop',
             $this->translationService
@@ -30,7 +31,7 @@ class BranchListHandlerTest extends CommandTestCase
 
     public function testHandleWithNoBranchesReturnsEmptyRows(): void
     {
-        $this->gitRepository->method('getAllLocalBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn([]);
 
         $response = $this->handler->handle();
 
@@ -41,10 +42,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithBranchesReturnsRows(): void
     {
         $branches = ['develop', 'feat/PROJ-123', 'main'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['develop', 'main']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
-        $this->gitRepository->method('isBranchMergedInto')->willReturnCallback(
+        $this->gitBranchService->method('isBranchMergedInto')->willReturnCallback(
             fn ($branch, $base) => $branch === 'feat/PROJ-123' && $base === 'origin/develop'
         );
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
@@ -58,10 +59,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithBranchHavingPr(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
         $this->githubProvider->method('getAllPullRequests')->willReturn([
             [
                 'number' => 123,
@@ -83,13 +84,13 @@ class BranchListHandlerTest extends CommandTestCase
 
     public function testHandleWithGithubProviderNull(): void
     {
-        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService);
+        $handler = new BranchListHandler($this->gitRepository, $this->gitBranchService, null, 'origin/develop', $this->translationService);
 
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
 
         $response = $handler->handle();
 
@@ -101,10 +102,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithGithubProviderException(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willThrowException(new \Exception('API error'));
 
@@ -117,10 +118,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithMergedBranchOnRemote(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
         $response = $this->handler->handle();
@@ -133,10 +134,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithStaleBranch(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(true);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
         $response = $this->handler->handle();
@@ -149,10 +150,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithPrMapOptimization(): void
     {
         $branches = ['feat/PROJ-123', 'feat/PROJ-456'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123', 'feat/PROJ-456']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123', 'feat/PROJ-456']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
 
         $allPrs = [
             [
@@ -189,10 +190,10 @@ class BranchListHandlerTest extends CommandTestCase
     public function testHandleWithPrMapFallbackOnError(): void
     {
         $branches = ['feat/PROJ-123'];
-        $this->gitRepository->method('getAllLocalBranches')->willReturn($branches);
-        $this->gitRepository->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn($branches);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/PROJ-123']);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('isBranchMergedInto')->willReturn(false);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
         $this->githubProvider->method('getAllPullRequests')->willThrowException(new \Exception('API error'));
         $this->githubProvider->method('findPullRequestByBranchName')->willReturn(null);
 
@@ -311,7 +312,7 @@ class BranchListHandlerTest extends CommandTestCase
 
     public function testHasPullRequestWithNullGithubProvider(): void
     {
-        $handler = new BranchListHandler($this->gitRepository, null, 'origin/develop', $this->translationService);
+        $handler = new BranchListHandler($this->gitRepository, $this->gitBranchService, null, 'origin/develop', $this->translationService);
 
         $result = $this->callPrivateMethod($handler, 'hasPullRequest', ['feat/PROJ-123', null]);
 

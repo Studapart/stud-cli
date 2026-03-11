@@ -6,7 +6,7 @@ namespace App\Tests\Service;
 
 use App\DTO\ValidationResult;
 use App\Service\ConfigValidator;
-use App\Service\GitRepository;
+use App\Service\GitBranchService;
 use App\Service\Logger;
 use App\Service\TranslationService;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -17,7 +17,7 @@ class ConfigValidatorTest extends TestCase
     private ConfigValidator $validator;
     private Logger&MockObject $logger;
     private TranslationService&MockObject $translator;
-    private GitRepository&MockObject $gitRepository;
+    private GitBranchService&MockObject $gitBranchService;
 
     protected function setUp(): void
     {
@@ -25,8 +25,8 @@ class ConfigValidatorTest extends TestCase
 
         $this->logger = $this->createMock(Logger::class);
         $this->translator = $this->createMock(TranslationService::class);
-        $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->validator = new ConfigValidator($this->logger, $this->translator, $this->gitRepository);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
+        $this->validator = new ConfigValidator($this->logger, $this->translator, $this->gitBranchService);
     }
 
     public function testValidateCommandRequirementsWithAllKeysPresent(): void
@@ -112,7 +112,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testAutoDetectBaseBranch(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop', 'main', 'feature/test']);
 
@@ -123,7 +123,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testAutoDetectBaseBranchReturnsNullWhenNotFound(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['feature/test', 'bugfix/fix']);
 
@@ -150,7 +150,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testPromptForMissingKeysWithAutoDetection(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['develop']);
 
@@ -174,7 +174,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testPromptForMissingKeysWithoutAutoDetection(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn([]);
 
@@ -207,7 +207,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testAutoDetectBaseBranchHandlesException(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willThrowException(new \RuntimeException('Git error'));
 
@@ -311,7 +311,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testAutoDetectBaseBranchWithMain(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['main', 'develop']);
 
@@ -323,7 +323,7 @@ class ConfigValidatorTest extends TestCase
 
     public function testAutoDetectBaseBranchWithMaster(): void
     {
-        $this->gitRepository->method('getAllRemoteBranches')
+        $this->gitBranchService->method('getAllRemoteBranches')
             ->with('origin')
             ->willReturn(['master', 'feature/test']);
 

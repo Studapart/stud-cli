@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Exception\ApiException;
+use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -19,6 +20,7 @@ class ItemStartHandler
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
@@ -69,7 +71,7 @@ class ItemStartHandler
         $this->gitRepository->fetch();
 
         // Check for existing branches before creating
-        $existingBranches = $this->gitRepository->findBranchesByIssueKey($key);
+        $existingBranches = $this->gitBranchService->findBranchesByIssueKey($key);
         $branchAction = $this->determineBranchAction($branchName, $existingBranches);
 
         $this->executeBranchAction($branchAction, $branchName);
@@ -181,7 +183,7 @@ class ItemStartHandler
     {
         if ($branchAction['action'] === BranchAction::SWITCH_LOCAL) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_branch', ['branch' => $branchAction['branch']]));
-            $this->gitRepository->switchBranch($branchAction['branch']);
+            $this->gitBranchService->switchBranch($branchAction['branch']);
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
@@ -189,14 +191,14 @@ class ItemStartHandler
 
         if ($branchAction['action'] === BranchAction::SWITCH_REMOTE) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]));
-            $this->gitRepository->switchToRemoteBranch($branchAction['branch']);
+            $this->gitBranchService->switchToRemoteBranch($branchAction['branch']);
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
         }
 
         // Default: create new branch from the most advanced base ref
-        $resolvedBase = $this->gitRepository->resolveLatestBaseBranch($this->baseBranch);
+        $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
         if ($resolvedBase !== $this->baseBranch) {
             $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_advanced_base', ['configured' => $this->baseBranch, 'resolved' => $resolvedBase])}");
         }

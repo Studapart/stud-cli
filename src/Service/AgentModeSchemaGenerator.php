@@ -16,7 +16,7 @@ use Castor\Attribute\AsTask;
  * Works identically in development (castor.php sourced directly)
  * and inside the PHAR (functions already loaded).
  */
-final class AgentModeSchemaGenerator
+class AgentModeSchemaGenerator
 {
     private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
 

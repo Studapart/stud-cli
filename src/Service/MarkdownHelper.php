@@ -8,7 +8,7 @@ namespace App\Service;
  * Helper for markdown content that will be displayed on GitHub/GitLab.
  * Unescapes backslash-bracket sequences so task list checkboxes render correctly.
  */
-final class MarkdownHelper
+class MarkdownHelper
 {
     /**
      * Unescapes backslash-bracket sequences so GitHub/GitLab task list checkboxes render correctly.
