@@ -810,6 +810,15 @@ These commands integrate directly with your local Git repository to streamline y
         ```
     -   **Note:** This command rewrites commit history. After running `stud flatten`, you will need to use `stud please` to force-push your changes.
 
+-   **`stud sync`** (Alias: `stud sy`)
+    -   **Description:** Fetch the latest base branch and rebase the current feature branch onto it. If the rebase succeeds cleanly, a success message is shown. If the rebase encounters conflicts, it is automatically aborted and the branch is left unchanged. The command requires a clean working directory and must be run from a feature branch (not the base branch).
+    -   **Usage:**
+        ```bash
+        stud sync
+        stud sy
+        ```
+    -   **Note:** After rebasing, you may need to use `stud please` to force-push your changes. If conflicts are detected, the rebase is aborted automatically and you are shown the manual rebase command.
+
 -   **`stud status`** (Alias: `stud ss`)
     -   **Description:** A quick "where am I?" dashboard, showing your current Jira and Git status.
     -   **Usage:**

@@ -28,6 +28,7 @@ class HelpService
         'commit:undo' => 'stud commit:undo',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
+        'sync' => 'stud sync',
         'cache:clear' => 'stud cache:clear',
         'status' => 'stud status',
         'submit' => 'stud submit',
@@ -362,6 +363,12 @@ class HelpService
             'flatten' => [
                 'alias' => 'ft',
                 'description_key' => 'help.command_flatten',
+                'options' => [],
+                'arguments' => [],
+            ],
+            'sync' => [
+                'alias' => 'sy',
+                'description_key' => 'sync.help_description',
                 'options' => [],
                 'arguments' => [],
             ],

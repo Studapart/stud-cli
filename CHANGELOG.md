@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
 
 ### Added
+- **sync:** New `stud sync` (alias `sy`) command that fetches the latest base branch and rebases the current feature branch onto it. Automatically aborts on conflicts, leaving the branch unchanged [SCI-70]
 - **items:start:** Branch creation now uses the most advanced ref between local and remote base branch, avoiding stale-code starts and unnecessary merge conflicts [SCI-69]
 - **items:create:** Optional `--labels` (comma-separated) and `--original-estimate` (human-friendly: 1d, 0.5d, 1 day, 2h, 30m; converted to seconds) [SCI-65]
   - Labels and time original estimate are only sent when the project/issue type supports them (createmeta). If the user supplies them but they are not supported, the issue is still created and a note lists the skipped fields.

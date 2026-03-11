@@ -249,6 +249,18 @@ flatten:
   success: ✅ Όλα τα fixup! commits έχουν συγχωνευθεί στα commits στόχους τους.
   error_rebase: 'Αποτυχία rebase: %error%'
   no_fixups: Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση.
+
+# Sync Handler
+sync:
+  section: "Syncing branch with base"
+  error_on_base_branch: "You are on the base branch. Sync is for feature branches only."
+  error_dirty_working: "You have uncommitted changes. Please commit or stash them before syncing."
+  fetching: "Fetching latest changes from origin..."
+  rebasing: "Rebasing %branch% onto %base%..."
+  already_up_to_date: "Already up to date. The base branch has no new commits."
+  success: "✅ Branch %branch% has been rebased onto %base%."
+  error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:
     section: Εκκαθάριση cache ελέγχου ενημέρωσης

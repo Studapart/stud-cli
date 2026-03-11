@@ -4546,4 +4546,82 @@ class GitRepositoryTest extends CommandTestCase
         // Should not throw exception - cleanup errors are caught and ignored
         $gitRepository->rebaseAutosquash($baseSha);
     }
+
+    public function testTryRebaseReturnsTrue(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rebase origin/develop')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->method('isSuccessful')
+            ->willReturn(true);
+
+        $this->assertTrue($this->gitRepository->tryRebase('origin/develop'));
+    }
+
+    public function testTryRebaseReturnsFalseOnConflict(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rebase origin/develop')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->method('isSuccessful')
+            ->willReturn(false);
+
+        $this->assertFalse($this->gitRepository->tryRebase('origin/develop'));
+    }
+
+    public function testRebaseAbort(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rebase --abort')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun');
+
+        $this->gitRepository->rebaseAbort();
+    }
+
+    public function testIsAncestorReturnsTrue(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git merge-base --is-ancestor origin/develop HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->method('isSuccessful')
+            ->willReturn(true);
+
+        $this->assertTrue($this->gitRepository->isAncestor('origin/develop', 'HEAD'));
+    }
+
+    public function testIsAncestorReturnsFalse(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git merge-base --is-ancestor origin/develop HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->method('isSuccessful')
+            ->willReturn(false);
+
+        $this->assertFalse($this->gitRepository->isAncestor('origin/develop', 'HEAD'));
+    }
 }

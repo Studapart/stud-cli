@@ -136,6 +136,32 @@ class GitRepository
         $this->run("git rebase {$branch}");
     }
 
+    /**
+     * Attempts a rebase without throwing on failure.
+     *
+     * @return bool True if rebase succeeded, false if conflicts occurred
+     */
+    public function tryRebase(string $branch): bool
+    {
+        return $this->runQuietly("git rebase {$branch}")->isSuccessful();
+    }
+
+    /**
+     * Aborts an in-progress rebase, restoring the branch to its pre-rebase state.
+     */
+    public function rebaseAbort(): void
+    {
+        $this->run('git rebase --abort');
+    }
+
+    /**
+     * Checks whether a given ref is an ancestor of another ref.
+     */
+    public function isAncestor(string $possibleAncestor, string $descendant): bool
+    {
+        return $this->runQuietly("git merge-base --is-ancestor {$possibleAncestor} {$descendant}")->isSuccessful();
+    }
+
     public function hasFixupCommits(string $baseSha): bool
     {
         $process = $this->runQuietly(
