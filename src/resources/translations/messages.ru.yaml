@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Задача %key% переведена в 'В работе'
     transition_error: 'Ошибка получения переходов: %error%'
     transition_exec_error: 'Ошибка выполнения перехода: %error%. Продолжение создания ветки.'
+    using_advanced_base: 'Настроенная база ''%configured%'' отстаёт от ''%resolved%''; используется ''%resolved%'' в качестве базы.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

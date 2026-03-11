@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Ticket %key% transitado a 'En progreso'
     transition_error: 'Error al obtener transiciones: %error%'
     transition_exec_error: 'Error al ejecutar transición: %error%. Continuando con la creación de rama.'
+    using_advanced_base: 'La base configurada ''%configured%'' está detrás de ''%resolved%''; usando ''%resolved%'' como base.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

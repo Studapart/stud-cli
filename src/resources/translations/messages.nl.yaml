@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Ticket %key% overgezet naar 'In Uitvoering'
     transition_error: 'Ophalen van transities mislukt: %error%'
     transition_exec_error: 'Uitvoeren van transitie mislukt: %error%. Doorgaan met aanmaken van branch.'
+    using_advanced_base: 'Geconfigureerde basis ''%configured%'' loopt achter op ''%resolved%''; ''%resolved%'' wordt als basis gebruikt.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

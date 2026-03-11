@@ -116,6 +116,7 @@ item:
     transition_success: "✅ Issue %key% transitioned to 'In Progress'"
     transition_error: "Failed to fetch transitions: %error%"
     transition_exec_error: "Failed to execute transition: %error%. Continuing with branch creation."
+    using_advanced_base: "Configured base '%configured%' is behind '%resolved%'; using '%resolved%' as base."
   takeover:
     section: "Taking over issue %key%"
     error_dirty_working: "Your working directory is not clean. Please commit your changes before taking over an issue."

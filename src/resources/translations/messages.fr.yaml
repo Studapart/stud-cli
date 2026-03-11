@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Ticket %key% transitionné vers 'En cours'
     transition_error: 'Échec de la récupération des transitions : %error%'
     transition_exec_error: 'Échec de l''exécution de la transition : %error%. Poursuite de la création de branche.'
+    using_advanced_base: 'La base configurée ''%configured%'' est en retard sur ''%resolved%'' ; utilisation de ''%resolved%'' comme base.'
     switching_branch: 'Basculement vers la branche existante : %branch%'
     switching_remote_branch: 'Basculement vers la branche distante : %branch%'
     success_switched: Basculement vers la branche '%branch%'.

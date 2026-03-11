@@ -25,6 +25,7 @@ class ItemStartHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
+        $this->gitRepository->method('resolveLatestBaseBranch')->willReturn('origin/develop');
         $logger = $this->createMock(Logger::class);
         // Default config with transition disabled for existing tests
         $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
@@ -1891,6 +1892,117 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleCreatesBranchFromResolvedLocalWhenLocalIsAhead(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
+        $gitRepository->method('resolveLatestBaseBranch')
+            ->with('origin/develop')
+            ->willReturn('develop');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'develop');
+
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->atLeastOnce())
+            ->method('gitWriteln');
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleNoVerboseLogWhenResolvedMatchesConfigured(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
+        $gitRepository->method('resolveLatestBaseBranch')
+            ->with('origin/develop')
+            ->willReturn('origin/develop');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $gitRepository->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('text');
+        $logger->method('success');
+        $logger->expects($this->once())
+            ->method('gitWriteln')
+            ->with(
+                Logger::VERBOSITY_VERBOSE,
+                $this->stringContains('item.start.generated_branch')
+            );
+
+        $handler = new ItemStartHandler($gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(0, $result);
     }

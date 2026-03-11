@@ -195,10 +195,14 @@ class ItemStartHandler
             return;
         }
 
-        // Default: create new branch
+        // Default: create new branch from the most advanced base ref
+        $resolvedBase = $this->gitRepository->resolveLatestBaseBranch($this->baseBranch);
+        if ($resolvedBase !== $this->baseBranch) {
+            $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_advanced_base', ['configured' => $this->baseBranch, 'resolved' => $resolvedBase])}");
+        }
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.creating_branch', ['branch' => $defaultBranchName]));
-        $this->gitRepository->createBranch($defaultBranchName, $this->baseBranch);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $this->baseBranch]));
+        $this->gitRepository->createBranch($defaultBranchName, $resolvedBase);
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $resolvedBase]));
     }
 
     /**
