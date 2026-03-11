@@ -457,7 +457,8 @@ class FileSystem
      */
     private function resolveLocalFilePath(string $path): ?string
     {
-        // @codeCoverageIgnoreStart — only caller (chmod) already guards isLocalFilesystem
+        // Only caller (chmod) already guards isLocalFilesystem
+        // @codeCoverageIgnoreStart
         if (! $this->filesystem instanceof FlysystemFilesystem) {
             return null;
         }
