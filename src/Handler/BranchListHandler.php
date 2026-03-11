@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\BranchListRow;
 use App\Response\BranchListResponse;
+use App\Service\GitBranchService;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\TranslationService;
@@ -14,6 +15,7 @@ class BranchListHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly ?GitProviderInterface $githubProvider,
         private readonly string $baseBranch,
         private readonly TranslationService $translator
@@ -22,13 +24,13 @@ class BranchListHandler
 
     public function handle(): BranchListResponse
     {
-        $branches = $this->gitRepository->getAllLocalBranches();
+        $branches = $this->gitBranchService->getAllLocalBranches();
 
         if (empty($branches)) {
             return BranchListResponse::success([]);
         }
 
-        $remoteBranches = $this->gitRepository->getAllRemoteBranches('origin');
+        $remoteBranches = $this->gitBranchService->getAllRemoteBranches('origin');
         $remoteBranchesSet = array_flip($remoteBranches);
         $prMap = $this->buildPrMap();
         $currentBranch = $this->gitRepository->getCurrentBranchName();
@@ -64,7 +66,7 @@ class BranchListHandler
      */
     protected function determineBranchStatus(string $branch, bool $remoteExists, ?array $prMap = null): string
     {
-        $isMerged = $this->gitRepository->isBranchMergedInto($branch, $this->baseBranch);
+        $isMerged = $this->gitBranchService->isBranchMergedInto($branch, $this->baseBranch);
         $hasPr = $this->hasPullRequest($branch, $prMap);
 
         if ($hasPr) {

@@ -9,9 +9,13 @@ use App\DTO\PullRequestData;
 use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class GitLabProvider implements GitProviderInterface
 {
+    private const COMMENTS_PAGE_SIZE = 50;
+    private const COMMENTS_MAX_PAGES = 1;
+
     private readonly string $baseUrl;
     private readonly string $projectPath;
 
@@ -22,9 +26,7 @@ class GitLabProvider implements GitProviderInterface
         private readonly ?string $instanceUrl = null,
         private ?HttpClientInterface $client = null,
     ) {
-        // Use custom instance URL or default to gitlab.com
         $this->baseUrl = $this->instanceUrl ?? 'https://gitlab.com';
-        // GitLab uses URL-encoded project path: owner%2Frepo
         // For nested groups, owner may contain slashes (e.g., "group/subgroup")
         $this->projectPath = urlencode("{$this->owner}/{$this->repo}");
     }
@@ -47,6 +49,26 @@ class GitLabProvider implements GitProviderInterface
     }
 
     /**
+     * Sends an API request and throws on non-2xx response.
+     *
+     * @param array<string, mixed> $options
+     * @throws ApiException When the response status is not 2xx
+     */
+    protected function apiRequest(string $method, string $apiUrl, string $errorMessage, array $options = []): ResponseInterface
+    {
+        $response = $this->getClient()->request($method, $apiUrl, $options);
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+            throw new ApiException(
+                $errorMessage,
+                $this->extractTechnicalDetails($response, $method, $apiUrl),
+                $response->getStatusCode()
+            );
+        }
+
+        return $response;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function createPullRequest(PullRequestData $prData): array
@@ -60,19 +82,9 @@ class GitLabProvider implements GitProviderInterface
             'work_in_progress' => $prData->draft,
         ];
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                'Failed to create merge request.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $this->normalizeMergeRequestData($response->toArray());
+        return $this->normalizeMergeRequestData(
+            $this->apiRequest('POST', $apiUrl, 'Failed to create merge request.', ['json' => $payload])->toArray()
+        );
     }
 
     /**
@@ -84,25 +96,15 @@ class GitLabProvider implements GitProviderInterface
      */
     public function findPullRequestByBranch(string $head, string $state = 'open'): ?array
     {
-        // If state is 'all', we need to check both 'opened' and 'closed'
         if ($state === 'all') {
-            $openMr = $this->findMergeRequestByBranchInternal($head, 'opened');
-            if ($openMr !== null) {
-                return $openMr;
-            }
-
-            return $this->findMergeRequestByBranchInternal($head, 'closed');
+            return $this->findMergeRequestByBranchInternal($head, 'opened')
+                ?? $this->findMergeRequestByBranchInternal($head, 'closed');
         }
 
-        // Map GitHub states to GitLab states
-        $gitlabState = $this->mapStateToGitLab($state);
-
-        return $this->findMergeRequestByBranchInternal($head, $gitlabState);
+        return $this->findMergeRequestByBranchInternal($head, $this->mapStateToGitLab($state));
     }
 
     /**
-     * Internal method to find MR by branch (avoids recursion).
-     *
      * @param string $head The branch head
      * @param string $state The MR state: 'opened', 'closed', or 'merged'
      * @return array<string, mixed>|null The MR data or null if not found
@@ -110,30 +112,16 @@ class GitLabProvider implements GitProviderInterface
     protected function findMergeRequestByBranchInternal(string $head, string $state): ?array
     {
         $branchName = $this->extractBranchName($head);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests";
-        $queryParams = http_build_query(['source_branch' => $branchName, 'state' => $state]);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests?"
+            . http_build_query(['source_branch' => $branchName, 'state' => $state]);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
+        $mrs = $this->apiRequest('GET', $apiUrl, 'Failed to find merge request by branch.')->toArray();
 
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to find merge request by branch.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $mrs = $response->toArray();
-
-        // Return the first MR if any exist, normalized to match GitHub format
         return ! empty($mrs) ? $this->normalizeMergeRequestData($mrs[0]) : null;
     }
 
     /**
-     * Finds a merge request by branch name (constructs owner:branch format automatically).
+     * Finds a merge request by branch name.
      *
      * @param string $branchName The branch name (without remote prefix)
      * @param string $state The MR state: 'open', 'closed', or 'all' (default: 'all')
@@ -141,7 +129,6 @@ class GitLabProvider implements GitProviderInterface
      */
     public function findPullRequestByBranchName(string $branchName, string $state = 'all'): ?array
     {
-        // GitLab doesn't need owner prefix, just use branch name directly
         return $this->findPullRequestByBranch($branchName, $state);
     }
 
@@ -150,25 +137,10 @@ class GitLabProvider implements GitProviderInterface
      */
     public function addLabelsToPullRequest(int $issueNumber, array $labels): void
     {
-        // GitLab uses iid (internal ID) instead of sequential number
-        $iid = $this->getIidFromNumber($issueNumber);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/labels";
-        // GitLab accepts labels as comma-separated string in the labels parameter
-        $payload = [
-            'labels' => implode(',', $labels),
-        ];
-
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to add labels to merge request #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$issueNumber}/labels";
+        $this->apiRequest('POST', $apiUrl, "Failed to add labels to merge request #{$issueNumber}.", [
+            'json' => ['labels' => implode(',', $labels)],
+        ]);
     }
 
     /**
@@ -176,26 +148,11 @@ class GitLabProvider implements GitProviderInterface
      */
     public function createComment(int $issueNumber, string $body): array
     {
-        // GitLab uses iid (internal ID) instead of sequential number
-        $iid = $this->getIidFromNumber($issueNumber);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/notes";
-        $payload = [
-            'body' => $body,
-        ];
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$issueNumber}/notes";
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to create comment on merge request #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('POST', $apiUrl, "Failed to create comment on merge request #{$issueNumber}.", [
+            'json' => ['body' => $body],
+        ])->toArray();
     }
 
     /**
@@ -203,26 +160,13 @@ class GitLabProvider implements GitProviderInterface
      */
     public function updatePullRequest(int $pullNumber, bool $draft): array
     {
-        // GitLab uses iid (internal ID) instead of sequential number
-        $iid = $this->getIidFromNumber($pullNumber);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}";
-        $payload = [
-            'work_in_progress' => $draft,
-        ];
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}";
 
-        $response = $this->getClient()->request('PUT', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'PUT', $apiUrl);
-
-            throw new ApiException(
-                "Failed to update merge request #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $this->normalizeMergeRequestData($response->toArray());
+        return $this->normalizeMergeRequestData(
+            $this->apiRequest('PUT', $apiUrl, "Failed to update merge request #{$pullNumber}.", [
+                'json' => ['work_in_progress' => $draft],
+            ])->toArray()
+        );
     }
 
     /**
@@ -232,19 +176,7 @@ class GitLabProvider implements GitProviderInterface
     {
         $apiUrl = "/projects/{$this->projectPath}/labels";
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to get labels.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('GET', $apiUrl, 'Failed to get labels.')->toArray();
     }
 
     /**
@@ -253,28 +185,12 @@ class GitLabProvider implements GitProviderInterface
     public function createLabel(string $name, string $color, ?string $description = null): array
     {
         $apiUrl = "/projects/{$this->projectPath}/labels";
-        $payload = [
-            'name' => $name,
-            'color' => $this->normalizeColor($color),
-        ];
-
+        $payload = ['name' => $name, 'color' => $this->normalizeColor($color)];
         if ($description !== null) {
             $payload['description'] = $description;
         }
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to create label '{$name}'.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('POST', $apiUrl, "Failed to create label '{$name}'.", ['json' => $payload])->toArray();
     }
 
     /**
@@ -286,16 +202,14 @@ class GitLabProvider implements GitProviderInterface
     public function getAllPullRequests(string $state = 'all'): array
     {
         if ($state === 'all') {
-            $openedMrs = $this->getAllMergeRequestsByState('opened');
-            $closedMrs = $this->getAllMergeRequestsByState('closed');
-            $mergedMrs = $this->getAllMergeRequestsByState('merged');
-
-            return array_merge($openedMrs, $closedMrs, $mergedMrs);
+            return array_merge(
+                $this->getAllMergeRequestsByState('opened'),
+                $this->getAllMergeRequestsByState('closed'),
+                $this->getAllMergeRequestsByState('merged')
+            );
         }
 
-        $gitlabState = $this->mapStateToGitLab($state);
-
-        return $this->getAllMergeRequestsByState($gitlabState);
+        return $this->getAllMergeRequestsByState($this->mapStateToGitLab($state));
     }
 
     /**
@@ -306,43 +220,22 @@ class GitLabProvider implements GitProviderInterface
      */
     protected function getAllMergeRequestsByState(string $state): array
     {
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests";
-        $queryParams = http_build_query(['state' => $state, 'per_page' => 100]);
-        $apiUrl .= '?' . $queryParams;
-
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests?"
+            . http_build_query(['state' => $state, 'per_page' => 100]);
         $allMrs = [];
         $page = 1;
 
         while (true) {
             $pageUrl = $apiUrl . '&page=' . $page;
-            $response = $this->getClient()->request('GET', $pageUrl);
-
-            if ($response->getStatusCode() !== 200) {
-                $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
-
-                throw new ApiException(
-                    'Failed to get all merge requests.',
-                    $technicalDetails,
-                    $response->getStatusCode()
-                );
-            }
-
+            $response = $this->apiRequest('GET', $pageUrl, 'Failed to get all merge requests.');
             $mrs = $response->toArray();
-            // Normalize each MR to match GitHub format
             $normalizedMrs = array_map(fn (array $mr) => $this->normalizeMergeRequestData($mr), $mrs);
             $allMrs = array_merge($allMrs, $normalizedMrs);
 
-            // Stop if no results
-            if (empty($mrs)) {
+            if (empty($mrs) || ! $this->hasNextPage($response, $page)) {
                 break;
             }
 
-            // Check for pagination - GitLab uses X-Total-Pages header
-            if (! $this->hasNextPage($response, $page)) {
-                break;
-            }
-
-            // There's a next page, increment for next iteration
             ++$page;
         }
 
@@ -351,16 +244,11 @@ class GitLabProvider implements GitProviderInterface
 
     /**
      * Checks if there is a next page based on GitLab pagination headers.
-     *
-     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response The HTTP response
-     * @param int $currentPage The current page number
-     * @return bool True if there is a next page, false otherwise
      */
-    protected function hasNextPage(\Symfony\Contracts\HttpClient\ResponseInterface $response, int $currentPage): bool
+    protected function hasNextPage(ResponseInterface $response, int $currentPage): bool
     {
         $headers = $response->getHeaders();
 
-        // GitLab provides X-Total-Pages header
         if (isset($headers['x-total-pages'])) {
             /** @var string|string[] $totalPagesValue */
             $totalPagesValue = $headers['x-total-pages'];
@@ -369,7 +257,6 @@ class GitLabProvider implements GitProviderInterface
             return $currentPage < $totalPages;
         }
 
-        // Fallback: check X-Next-Page header if available
         if (isset($headers['x-next-page'])) {
             /** @var string|string[] $nextPageValue */
             $nextPageValue = $headers['x-next-page'];
@@ -381,32 +268,15 @@ class GitLabProvider implements GitProviderInterface
         return false;
     }
 
-    private const COMMENTS_PAGE_SIZE = 50;
-    private const COMMENTS_MAX_PAGES = 1;
-
     /**
      * @return PullRequestComment[]
      */
     public function getPullRequestComments(int $issueNumber): array
     {
-        $iid = $this->getIidFromNumber($issueNumber);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/notes";
-        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'order_by' => 'created_at', 'sort' => 'desc']);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$issueNumber}/notes?"
+            . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'order_by' => 'created_at', 'sort' => 'desc']);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                "Failed to get comments for merge request #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
+        $data = $this->apiRequest('GET', $apiUrl, "Failed to get comments for merge request #{$issueNumber}.")->toArray();
         $comments = [];
         $count = 0;
         foreach ($data as $row) {
@@ -428,27 +298,12 @@ class GitLabProvider implements GitProviderInterface
      */
     public function getPullRequestReviewComments(int $pullNumber): array
     {
-        $iid = $this->getIidFromNumber($pullNumber);
-        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$iid}/discussions";
-        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}/discussions?"
+            . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
+        $discussions = $this->apiRequest('GET', $apiUrl, "Failed to get review comments for merge request #{$pullNumber}.")->toArray();
 
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                "Failed to get review comments for merge request #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $discussions = $response->toArray();
-        $comments = $this->buildReviewCommentsFromDiscussions($discussions);
-
-        return array_reverse($comments);
+        return array_reverse($this->buildReviewCommentsFromDiscussions($discussions));
     }
 
     /**
@@ -495,8 +350,6 @@ class GitLabProvider implements GitProviderInterface
     }
 
     /**
-     * GitLab has no direct equivalent to GitHub's pull request reviews (review body). Returns empty array.
-     *
      * @return PullRequestComment[]
      */
     public function getPullRequestReviews(int $pullNumber): array
@@ -519,39 +372,29 @@ class GitLabProvider implements GitProviderInterface
 
     /**
      * Normalizes GitLab merge request data to match GitHub pull request format.
-     * This ensures handlers can work with both providers without changes.
      *
      * @param array<string, mixed> $mrData GitLab MR data
      * @return array<string, mixed> Normalized PR data
      */
     protected function normalizeMergeRequestData(array $mrData): array
     {
-        // Map GitLab fields to GitHub format
         return [
-            'number' => $mrData['iid'] ?? $mrData['id'] ?? 0, // Use iid as number for compatibility
-            'iid' => $mrData['iid'] ?? null, // Keep original iid
-            'id' => $mrData['id'] ?? null, // Keep original id
+            'number' => $mrData['iid'] ?? $mrData['id'] ?? 0,
+            'iid' => $mrData['iid'] ?? null,
+            'id' => $mrData['id'] ?? null,
             'title' => $mrData['title'] ?? '',
-            'head' => [
-                'ref' => $mrData['source_branch'] ?? '',
-            ],
-            'base' => [
-                'ref' => $mrData['target_branch'] ?? '',
-            ],
+            'head' => ['ref' => $mrData['source_branch'] ?? ''],
+            'base' => ['ref' => $mrData['target_branch'] ?? ''],
             'draft' => $mrData['work_in_progress'] ?? false,
             'state' => $this->mapStateFromGitLab($mrData['state'] ?? 'opened'),
             'body' => $mrData['description'] ?? '',
             'html_url' => $mrData['web_url'] ?? '',
-            // Include original GitLab data for reference
             '_gitlab_data' => $mrData,
         ];
     }
 
     /**
      * Maps GitHub state to GitLab state.
-     *
-     * @param string $githubState GitHub state: 'open', 'closed', or 'all'
-     * @return string GitLab state: 'opened', 'closed', 'merged', or 'all'
      */
     protected function mapStateToGitLab(string $githubState): string
     {
@@ -564,9 +407,6 @@ class GitLabProvider implements GitProviderInterface
 
     /**
      * Maps GitLab state to GitHub state.
-     *
-     * @param string $gitlabState GitLab state: 'opened', 'closed', or 'merged'
-     * @return string GitHub state: 'open' or 'closed'
      */
     protected function mapStateFromGitLab(string $gitlabState): string
     {
@@ -579,40 +419,18 @@ class GitLabProvider implements GitProviderInterface
 
     /**
      * Extracts branch name from "owner:branch" format or returns branch name as-is.
-     *
-     * @param string $head Branch head in format "owner:branch" or just "branch"
-     * @return string The branch name
      */
     protected function extractBranchName(string $head): string
     {
-        // If head contains ':', extract the branch part
         if (str_contains($head, ':')) {
-            $parts = explode(':', $head, 2);
-
-            return $parts[1];
+            return explode(':', $head, 2)[1];
         }
 
         return $head;
     }
 
     /**
-     * Gets the GitLab iid (internal ID) from a PR number.
-     * For GitLab, the number passed by handlers is actually the iid.
-     *
-     * @param int $number The PR number (which is the iid in GitLab)
-     * @return int The iid
-     */
-    protected function getIidFromNumber(int $number): int
-    {
-        // In GitLab, handlers will use iid as the "number"
-        return $number;
-    }
-
-    /**
      * Normalizes color format (removes # if present, GitLab expects format without #).
-     *
-     * @param string $color Color in hex format (with or without #)
-     * @return string Normalized color
      */
     protected function normalizeColor(string $color): string
     {
@@ -622,13 +440,8 @@ class GitLabProvider implements GitProviderInterface
     /**
      * Extracts technical details from an HTTP response for error reporting.
      * Truncates response body to 500 characters to avoid overwhelming output.
-     *
-     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response
-     * @param string $method HTTP method (GET, POST, etc.)
-     * @param string $apiUrl API endpoint URL
-     * @return string Technical details including method, URL, status code and response body
      */
-    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, string $method, string $apiUrl): string
+    protected function extractTechnicalDetails(ResponseInterface $response, string $method, string $apiUrl): string
     {
         $statusCode = $response->getStatusCode();
         $fullUrl = "{$this->baseUrl}/api/v4{$apiUrl}";

@@ -44,14 +44,12 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
-        $releaseOrExitCode = $this->getReleaseOrExitCode($githubProvider);
-        if (is_int($releaseOrExitCode)) {
-            return $releaseOrExitCode;
+        $release = $this->getReleaseOrExitCode($githubProvider);
+        if (is_int($release)) {
+            return $release;
         }
-        $release = $releaseOrExitCode;
         $this->displayChangelog($githubProvider, $release);
 
-        // If --info flag is set, exit after displaying changelog without downloading
         if ($info) {
             return 0;
         }
@@ -66,33 +64,15 @@ class UpdateHandler
             return 1;
         }
 
-        // Verify the downloaded file's hash before proceeding
         $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
-            try {
-                $this->fileSystem->delete($tempFile);
-            } catch (\RuntimeException $e) {
-                // Ignore cleanup errors - file may already be deleted
-            }
-
-            return 1;
+            return $this->cleanupAndReturn($tempFile, 1);
         }
 
-        // Run prerequisite global migrations before binary replacement
         $migrationResult = $this->runPrerequisiteMigrations($io);
         // @codeCoverageIgnoreStart
-        // Testing this cleanup path requires a real prerequisite migration failure scenario
-        // which is difficult to test with in-memory filesystem due to MigrationRegistry's hardcoded paths.
-        // This path handles cleanup when migrations fail, ensuring temporary files are deleted.
-        // Consider adding an integration test if this becomes critical.
         if ($migrationResult !== 0) {
-            try {
-                $this->fileSystem->delete($tempFile);
-            } catch (\RuntimeException $e) {
-                // Ignore cleanup errors - file may already be deleted
-            }
-
-            return $migrationResult;
+            return $this->cleanupAndReturn($tempFile, $migrationResult);
         }
         // @codeCoverageIgnoreEnd
 
@@ -434,7 +414,7 @@ class UpdateHandler
         // Filter to only prerequisite migrations
         // In test environment, if filtering fails, skip migrations gracefully
         try {
-            $prerequisiteMigrations = array_filter($globalMigrations, [$this, 'isPrerequisiteMigration']);
+            $prerequisiteMigrations = array_filter($globalMigrations, fn (\App\Migrations\MigrationInterface $m) => $m->isPrerequisite());
 
             return $registry->getPendingMigrations($prerequisiteMigrations, $currentVersion);
             // @codeCoverageIgnoreStart
@@ -593,20 +573,17 @@ class UpdateHandler
     {
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30);
         foreach ($backtrace as $frame) {
-            if (isset($frame['class']) && str_contains($frame['class'], 'PHPUnit')) {
+            if (! isset($frame['class'])) {
+                continue;
+            }
+            if (str_contains($frame['class'], 'PHPUnit')) {
                 return true;
             }
-            if (isset($frame['class'])) {
-                try {
-                    $reflection = new \ReflectionClass($frame['class']);
-                    if ($reflection->isSubclassOf(\PHPUnit\Framework\TestCase::class)) {
-                        return true;
-                    }
-                } catch (\ReflectionException) {
-                }
+            if ($this->isTestCaseSubclass($frame['class'])) {
+                return true;
             }
             if (array_key_exists('function', $frame) && str_starts_with((string) $frame['function'], 'test')
-                && isset($frame['class']) && str_contains($frame['class'], 'Test')) {
+                && str_contains($frame['class'], 'Test')) {
                 return true;
             }
         }
@@ -692,17 +669,26 @@ class UpdateHandler
     }
     // @codeCoverageIgnoreEnd
 
-    /**
-     * Checks if a migration is a prerequisite migration.
-     *
-     * This method is used as a callback for array_filter to filter migrations
-     * to only include prerequisite ones.
-     *
-     * @param \App\Migrations\MigrationInterface $migration The migration to check
-     * @return bool True if the migration is a prerequisite, false otherwise
-     */
-    private function isPrerequisiteMigration(\App\Migrations\MigrationInterface $migration): bool
+    private function cleanupAndReturn(string $tempFile, int $exitCode): int
     {
-        return $migration->isPrerequisite();
+        try {
+            $this->fileSystem->delete($tempFile);
+        } catch (\RuntimeException) {
+        }
+
+        return $exitCode;
+    }
+
+    /**
+     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
+     */
+    private function isTestCaseSubclass(string $className): bool
+    {
+        try {
+            /** @var class-string $className */
+            return (new \ReflectionClass($className))->isSubclassOf(\PHPUnit\Framework\TestCase::class);
+        } catch (\ReflectionException) {
+            return false;
+        }
     }
 }

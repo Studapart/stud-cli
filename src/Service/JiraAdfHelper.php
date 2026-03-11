@@ -18,20 +18,10 @@ class JiraAdfHelper
     {
         $text = trim($text);
         if ($text === '') {
-            return [
-                'type' => 'doc',
-                'version' => 1,
-                'content' => [
-                    [
-                        'type' => 'paragraph',
-                        'content' => [],
-                    ],
-                ],
-            ];
+            return self::buildDocNode([self::buildParagraphNode()]);
         }
 
         $paragraphs = preg_split('/\n\s*\n/', $text);
-        $content = [];
         // preg_split with this pattern returns array; false only on error
         // @codeCoverageIgnoreStart
         if ($paragraphs === false) {
@@ -39,6 +29,7 @@ class JiraAdfHelper
         }
         // @codeCoverageIgnoreEnd
 
+        $content = [];
         foreach ($paragraphs as $para) {
             $para = trim($para);
             // preg_split(\n\s*\n) never yields a segment that trims to empty; branch is defensive
@@ -47,37 +38,46 @@ class JiraAdfHelper
                 continue;
             }
             // @codeCoverageIgnoreEnd
-            $content[] = [
-                'type' => 'paragraph',
-                'content' => [
-                    [
-                        'type' => 'text',
-                        'text' => $para,
-                    ],
-                ],
-            ];
+            $content[] = self::buildParagraphNode($para);
         }
 
-        // Fallback when every split segment trimmed to empty (e.g. trim($text) is only newlines - edge case)
         // Unreachable with default trim; trim of all-whitespace is ''
         // @codeCoverageIgnoreStart
         if ($content === []) {
-            $content[] = [
-                'type' => 'paragraph',
-                'content' => [
-                    [
-                        'type' => 'text',
-                        'text' => $text,
-                    ],
-                ],
-            ];
+            $content[] = self::buildParagraphNode($text);
         }
         // @codeCoverageIgnoreEnd
 
+        return self::buildDocNode($content);
+    }
+
+    /**
+     * @param array<int, array{type: string, content: array<int, array{type: string, text: string}>}> $content
+     * @return array{type: string, version: int, content: array<int, array{type: string, content: array<int, array{type: string, text: string}>}>}
+     */
+    private static function buildDocNode(array $content): array
+    {
         return [
             'type' => 'doc',
             'version' => 1,
             'content' => $content,
+        ];
+    }
+
+    /**
+     * @return array{type: string, content: array<int, array{type: string, text: string}>}
+     */
+    private static function buildParagraphNode(string $text = ''): array
+    {
+        if ($text === '') {
+            return ['type' => 'paragraph', 'content' => []];
+        }
+
+        return [
+            'type' => 'paragraph',
+            'content' => [
+                ['type' => 'text', 'text' => $text],
+            ],
         ];
     }
 }

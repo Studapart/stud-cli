@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Exception\ApiException;
+use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -18,6 +19,7 @@ class ItemTakeoverHandler
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly JiraService $jiraService,
         private readonly ItemStartHandler $itemStartHandler,
         private readonly string $baseBranch,
@@ -65,7 +67,7 @@ class ItemTakeoverHandler
 
         // Step 5: Search for branches
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.searching_branches'));
-        $branches = $this->gitRepository->findBranchesByIssueKey($key);
+        $branches = $this->gitBranchService->findBranchesByIssueKey($key);
 
         // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
@@ -138,10 +140,10 @@ class ItemTakeoverHandler
 
         // Get branch status
         $remoteBranch = $this->getRemoteBranchName($selectedBranch, $branches);
-        $status = $this->gitRepository->getBranchStatus($selectedBranch, $this->baseBranch, $remoteBranch);
+        $status = $this->gitBranchService->getBranchStatus($selectedBranch, $this->baseBranch, $remoteBranch);
 
         // Check if branch is based on correct base
-        $isBasedOnCorrectBase = $this->gitRepository->isBranchBasedOn($selectedBranch, $this->baseBranch);
+        $isBasedOnCorrectBase = $this->gitBranchService->isBranchBasedOn($selectedBranch, $this->baseBranch);
         if (! $isBasedOnCorrectBase) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.warning_wrong_base', ['base' => $this->baseBranch]));
         }
@@ -274,9 +276,9 @@ class ItemTakeoverHandler
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.switching', ['branch' => $branchName]));
 
         if (in_array($branchName, $branches['local'], true)) {
-            $this->gitRepository->switchBranch($branchName);
+            $this->gitBranchService->switchBranch($branchName);
         } elseif (in_array($branchName, $branches['remote'], true)) {
-            $this->gitRepository->switchToRemoteBranch($branchName);
+            $this->gitBranchService->switchToRemoteBranch($branchName);
         }
     }
 

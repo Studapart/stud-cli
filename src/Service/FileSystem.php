@@ -428,53 +428,59 @@ class FileSystem
     {
         $this->validatePath($path);
 
-        // Use native chmod for temp files or paths outside root
-        // This is critical for temp files like /tmp/stud-rebase-* that need executable permissions
         if ($this->shouldUseNativeOperations($path)) {
             // @codeCoverageIgnoreStart
-            // chmod on temp files is tested via integration tests
-            // This path handles temp files that are outside the Flysystem root
             return @chmod($path, $mode);
             // @codeCoverageIgnoreEnd
         }
 
-        // chmod only works with LocalFilesystemAdapter
         if (! $this->isLocalFilesystem()) {
             return false;
         }
 
-        try {
-            // Flysystem doesn't have native chmod support, but we can use the adapter directly
-            // if it's a LocalFilesystemAdapter
-            if ($this->filesystem instanceof FlysystemFilesystem) {
-                $reflection = new \ReflectionClass($this->filesystem);
-                $adapterProperty = $reflection->getProperty('adapter');
-                $adapterProperty->setAccessible(true);
-                $adapter = $adapterProperty->getValue($this->filesystem);
+        $realPath = $this->resolveLocalFilePath($path);
+        if ($realPath === null || ! $this->filesystem->fileExists($path)) {
+            return false;
+        }
 
-                if ($adapter instanceof LocalFilesystemAdapter) {
-                    $adapterReflection = new \ReflectionClass($adapter);
-                    $rootLocationProperty = $adapterReflection->getProperty('rootLocation');
-                    $rootLocationProperty->setAccessible(true);
-                    $rootLocation = $rootLocationProperty->getValue($adapter);
-                    $realPath = $rootLocation . '/' . ltrim($path, '/');
-                    if ($realPath !== null && $this->filesystem->fileExists($path)) {
-                        // Use native chmod for local filesystem only
-                        // chmod on local filesystem is tested via integration
-                        // @codeCoverageIgnoreStart
-                        // This path is difficult to test as it requires reflection to access
-                        // the adapter's rootLocation property, which is an edge case
-                        return @chmod($realPath, $mode);
-                        // @codeCoverageIgnoreEnd
-                    }
-                }
+        // @codeCoverageIgnoreStart
+        return @chmod($realPath, $mode);
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * Resolves a relative Flysystem path to an absolute local filesystem path
+     * using reflection to access the adapter's root location.
+     *
+     * @param string $path The relative Flysystem path
+     * @return string|null The absolute local path, or null if resolution fails
+     */
+    private function resolveLocalFilePath(string $path): ?string
+    {
+        if (! $this->filesystem instanceof FlysystemFilesystem) {
+            return null;
+        }
+
+        // @codeCoverageIgnoreStart
+        try {
+            $reflection = new \ReflectionClass($this->filesystem);
+            $adapterProperty = $reflection->getProperty('adapter');
+            $adapterProperty->setAccessible(true);
+            $adapter = $adapterProperty->getValue($this->filesystem);
+
+            if (! $adapter instanceof LocalFilesystemAdapter) {
+                return null;
             }
 
-            return false; // @codeCoverageIgnore
-        } catch (\ReflectionException $e) { // @codeCoverageIgnore
-            // ReflectionException is extremely rare and difficult to simulate in tests
-            // It would only occur if the Flysystem adapter structure changes unexpectedly
-            return false; // @codeCoverageIgnore
+            $adapterReflection = new \ReflectionClass($adapter);
+            $rootLocationProperty = $adapterReflection->getProperty('rootLocation');
+            $rootLocationProperty->setAccessible(true);
+            $rootLocation = $rootLocationProperty->getValue($adapter);
+
+            return $rootLocation . '/' . ltrim($path, '/');
+        } catch (\ReflectionException $e) {
+            return null;
         }
+        // @codeCoverageIgnoreEnd
     }
 }

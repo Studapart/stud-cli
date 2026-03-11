@@ -9,9 +9,13 @@ use App\DTO\PullRequestData;
 use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class GithubProvider implements GitProviderInterface
 {
+    private const COMMENTS_PAGE_SIZE = 50;
+    private const COMMENTS_MAX_PAGES = 1;
+
     public function __construct(
         private readonly string $token,
         private readonly string $owner,
@@ -39,6 +43,26 @@ class GithubProvider implements GitProviderInterface
     }
 
     /**
+     * Sends an API request and throws on non-2xx response.
+     *
+     * @param array<string, mixed> $options
+     * @throws ApiException When the response status is not 2xx
+     */
+    protected function apiRequest(string $method, string $apiUrl, string $errorMessage, array $options = []): ResponseInterface
+    {
+        $response = $this->getClient()->request($method, $apiUrl, $options);
+        if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+            throw new ApiException(
+                $errorMessage,
+                $this->extractTechnicalDetails($response, $method, $apiUrl),
+                $response->getStatusCode()
+            );
+        }
+
+        return $response;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function createPullRequest(PullRequestData $prData): array
@@ -52,19 +76,7 @@ class GithubProvider implements GitProviderInterface
             'draft' => $prData->draft,
         ];
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                'Failed to create pull request.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
     }
 
     /**
@@ -74,40 +86,13 @@ class GithubProvider implements GitProviderInterface
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/releases/latest";
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to get latest release.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('GET', $apiUrl, 'Failed to get latest release.')->toArray();
     }
 
     public function getChangelogContent(string $tag): string
     {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/contents/CHANGELOG.md";
-        $queryParams = http_build_query(['ref' => $tag]);
-        $apiUrl .= '?' . $queryParams;
-
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to get changelog content.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $content = $response->toArray();
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/contents/CHANGELOG.md?" . http_build_query(['ref' => $tag]);
+        $content = $this->apiRequest('GET', $apiUrl, 'Failed to get changelog content.')->toArray();
 
         // GitHub API returns base64 encoded content
         if (isset($content['content']) && isset($content['encoding']) && $content['encoding'] === 'base64') {
@@ -129,19 +114,7 @@ class GithubProvider implements GitProviderInterface
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to get labels.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('GET', $apiUrl, 'Failed to get labels.')->toArray();
     }
 
     /**
@@ -150,28 +123,12 @@ class GithubProvider implements GitProviderInterface
     public function createLabel(string $name, string $color, ?string $description = null): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/labels";
-        $payload = [
-            'name' => $name,
-            'color' => $color,
-        ];
-
+        $payload = ['name' => $name, 'color' => $color];
         if ($description !== null) {
             $payload['description'] = $description;
         }
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to create label '{$name}'.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('POST', $apiUrl, "Failed to create label '{$name}'.", ['json' => $payload])->toArray();
     }
 
     /**
@@ -180,19 +137,7 @@ class GithubProvider implements GitProviderInterface
     public function addLabelsToPullRequest(int $issueNumber, array $labels): void
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/labels";
-        $payload = $labels;
-
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to add labels to pull request #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
+        $this->apiRequest('POST', $apiUrl, "Failed to add labels to pull request #{$issueNumber}.", ['json' => $labels]);
     }
 
     /**
@@ -204,48 +149,24 @@ class GithubProvider implements GitProviderInterface
      */
     public function findPullRequestByBranch(string $head, string $state = 'open'): ?array
     {
-        // If state is 'all', we need to check both 'open' and 'closed'
         if ($state === 'all') {
-            $openPr = $this->findPullRequestByBranchInternal($head, 'open');
-            if ($openPr !== null) {
-                return $openPr;
-            }
-
-            return $this->findPullRequestByBranchInternal($head, 'closed');
+            return $this->findPullRequestByBranchInternal($head, 'open')
+                ?? $this->findPullRequestByBranchInternal($head, 'closed');
         }
 
         return $this->findPullRequestByBranchInternal($head, $state);
     }
 
     /**
-     * Internal method to find PR by branch (avoids recursion).
-     *
      * @param string $head The branch head
      * @param string $state The PR state: 'open' or 'closed'
      * @return array<string, mixed>|null The PR data or null if not found
      */
     protected function findPullRequestByBranchInternal(string $head, string $state): ?array
     {
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls?" . http_build_query(['head' => $head, 'state' => $state]);
+        $pulls = $this->apiRequest('GET', $apiUrl, 'Failed to find pull request by branch.')->toArray();
 
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
-        $queryParams = http_build_query(['head' => $head, 'state' => $state]);
-        $apiUrl .= '?' . $queryParams;
-
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                'Failed to find pull request by branch.',
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $pulls = $response->toArray();
-
-        // Return the first PR if any exist
         return ! empty($pulls) ? $pulls[0] : null;
     }
 
@@ -258,10 +179,7 @@ class GithubProvider implements GitProviderInterface
      */
     public function findPullRequestByBranchName(string $branchName, string $state = 'all'): ?array
     {
-        $owner = $this->owner;
-        $head = "{$owner}:{$branchName}";
-
-        return $this->findPullRequestByBranch($head, $state);
+        return $this->findPullRequestByBranch("{$this->owner}:{$branchName}", $state);
     }
 
     /**
@@ -273,10 +191,10 @@ class GithubProvider implements GitProviderInterface
     public function getAllPullRequests(string $state = 'all'): array
     {
         if ($state === 'all') {
-            $openPrs = $this->getAllPullRequestsByState('open');
-            $closedPrs = $this->getAllPullRequestsByState('closed');
-
-            return array_merge($openPrs, $closedPrs);
+            return array_merge(
+                $this->getAllPullRequestsByState('open'),
+                $this->getAllPullRequestsByState('closed')
+            );
         }
 
         return $this->getAllPullRequestsByState($state);
@@ -290,41 +208,20 @@ class GithubProvider implements GitProviderInterface
      */
     protected function getAllPullRequestsByState(string $state): array
     {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls";
-        $queryParams = http_build_query(['state' => $state, 'per_page' => 100]);
-        $apiUrl .= '?' . $queryParams;
-
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls?" . http_build_query(['state' => $state, 'per_page' => 100]);
         $allPrs = [];
         $page = 1;
 
         while (true) {
             $pageUrl = $apiUrl . '&page=' . $page;
-            $response = $this->getClient()->request('GET', $pageUrl);
-
-            if ($response->getStatusCode() !== 200) {
-                $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $pageUrl);
-
-                throw new ApiException(
-                    'Failed to get all pull requests.',
-                    $technicalDetails,
-                    $response->getStatusCode()
-                );
-            }
-
+            $response = $this->apiRequest('GET', $pageUrl, 'Failed to get all pull requests.');
             $prs = $response->toArray();
             $allPrs = array_merge($allPrs, $prs);
 
-            // Stop if no results
-            if (empty($prs)) {
+            if (empty($prs) || ! $this->hasNextPage($response)) {
                 break;
             }
 
-            // Check for pagination - if no next page, stop before incrementing
-            if (! $this->hasNextPage($response)) {
-                break;
-            }
-
-            // There's a next page, increment for next iteration
             ++$page;
         }
 
@@ -333,26 +230,14 @@ class GithubProvider implements GitProviderInterface
 
     /**
      * Checks if there is a next page based on the Link header.
-     *
-     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response The HTTP response
-     * @return bool True if there is a next page, false otherwise
      */
-    protected function hasNextPage(\Symfony\Contracts\HttpClient\ResponseInterface $response): bool
+    protected function hasNextPage(ResponseInterface $response): bool
     {
         $headers = $response->getHeaders();
-
-        // If no 'link' header exists, there's no next page
-        if (! isset($headers['link'])) {
+        if (! isset($headers['link']) || empty($headers['link'])) {
             return false;
         }
 
-        // If 'link' header is empty, there's no next page
-        if (empty($headers['link'])) {
-            return false;
-        }
-
-        // getHeaders() returns array<string, string|string[]>
-        // link header can be string or string[]
         /** @var string|string[] $linkHeaderValue */
         $linkHeaderValue = $headers['link'];
         $linkHeader = is_array($linkHeaderValue) ? $linkHeaderValue[0] : $linkHeaderValue;
@@ -366,23 +251,10 @@ class GithubProvider implements GitProviderInterface
     public function updatePullRequest(int $pullNumber, bool $draft): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
-        $payload = [
-            'draft' => $draft,
-        ];
 
-        $response = $this->getClient()->request('PATCH', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
-
-            throw new ApiException(
-                "Failed to update pull request #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('PATCH', $apiUrl, "Failed to update pull request #{$pullNumber}.", [
+            'json' => ['draft' => $draft],
+        ])->toArray();
     }
 
     /**
@@ -391,29 +263,14 @@ class GithubProvider implements GitProviderInterface
     public function createComment(int $issueNumber, string $body): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
-        $payload = [
-            'body' => $body,
-        ];
 
-        $response = $this->getClient()->request('POST', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 201) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'POST', $apiUrl);
-
-            throw new ApiException(
-                "Failed to create comment on issue #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('POST', $apiUrl, "Failed to create comment on issue #{$issueNumber}.", [
+            'json' => ['body' => $body],
+        ])->toArray();
     }
 
     /**
      * Attempts to update the head branch of a pull request.
-     * Note: GitHub API may not support changing PR head branch after creation.
-     * This method will throw an exception if the API doesn't support this operation.
      *
      * @param int $pullNumber The pull request number
      * @param string $newHead The new head branch (format: owner:branch-name or just branch-name)
@@ -423,61 +280,24 @@ class GithubProvider implements GitProviderInterface
     public function updatePullRequestHead(int $pullNumber, string $newHead): array
     {
         $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}";
-        $payload = [
-            'head' => $newHead,
-        ];
 
-        $response = $this->getClient()->request('PATCH', $apiUrl, ['json' => $payload]);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'PATCH', $apiUrl);
-
-            throw new ApiException(
-                "Failed to update pull request head for PR #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        return $response->toArray();
+        return $this->apiRequest('PATCH', $apiUrl, "Failed to update pull request head for PR #{$pullNumber}.", [
+            'json' => ['head' => $newHead],
+        ])->toArray();
     }
-
-    private const COMMENTS_PAGE_SIZE = 50;
-    private const COMMENTS_MAX_PAGES = 1;
 
     /**
      * @return PullRequestComment[]
      */
     public function getPullRequestComments(int $issueNumber): array
     {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments";
-        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'sort' => 'created', 'direction' => 'desc']);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$issueNumber}/comments?"
+            . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE, 'sort' => 'created', 'direction' => 'desc']);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                "Failed to get comments for issue #{$issueNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
+        $data = $this->apiRequest('GET', $apiUrl, "Failed to get comments for issue #{$issueNumber}.")->toArray();
         $comments = [];
-        $count = 0;
-        foreach ($data as $row) {
-            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
-                // Pagination cap; hit when API returns more than COMMENTS_PAGE_SIZE items
-                // @codeCoverageIgnoreStart
-                break;
-                // @codeCoverageIgnoreEnd
-            }
-            $comments[] = $this->mapIssueCommentToDto($row);
-            ++$count;
+        foreach (array_slice($data, 0, self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) as $row) {
+            $comments[] = $this->mapCommentToDto($row);
         }
 
         return array_reverse($comments);
@@ -488,34 +308,13 @@ class GithubProvider implements GitProviderInterface
      */
     public function getPullRequestReviewComments(int $pullNumber): array
     {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/comments";
-        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/comments?"
+            . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                "Failed to get review comments for pull request #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
+        $data = $this->apiRequest('GET', $apiUrl, "Failed to get review comments for pull request #{$pullNumber}.")->toArray();
         $comments = [];
-        $count = 0;
-        foreach ($data as $row) {
-            // Pagination cap for review comments
-            // @codeCoverageIgnoreStart
-            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
-                break;
-            }
-            // @codeCoverageIgnoreEnd
-            $comments[] = $this->mapReviewCommentToDto($row);
-            ++$count;
+        foreach (array_slice($data, 0, self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) as $row) {
+            $comments[] = $this->mapCommentToDto($row);
         }
 
         return array_reverse($comments);
@@ -526,36 +325,19 @@ class GithubProvider implements GitProviderInterface
      */
     public function getPullRequestReviews(int $pullNumber): array
     {
-        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/reviews";
-        $queryParams = http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
-        $apiUrl .= '?' . $queryParams;
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/pulls/{$pullNumber}/reviews?"
+            . http_build_query(['per_page' => self::COMMENTS_PAGE_SIZE]);
 
-        $response = $this->getClient()->request('GET', $apiUrl);
-
-        if ($response->getStatusCode() !== 200) {
-            $technicalDetails = $this->extractTechnicalDetails($response, 'GET', $apiUrl);
-
-            throw new ApiException(
-                "Failed to get reviews for pull request #{$pullNumber}.",
-                $technicalDetails,
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
+        $data = $this->apiRequest('GET', $apiUrl, "Failed to get reviews for pull request #{$pullNumber}.")->toArray();
         $reviews = [];
-        $count = 0;
+        $cap = self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES;
         foreach ($data as $row) {
-            // Pagination cap for reviews
-            // @codeCoverageIgnoreStart
-            if ($count >= self::COMMENTS_PAGE_SIZE * self::COMMENTS_MAX_PAGES) {
-                break;
-            }
-            // @codeCoverageIgnoreEnd
             $dto = $this->mapReviewToDto($row);
             if ($dto !== null) {
                 $reviews[] = $dto;
-                ++$count;
+                if (count($reviews) >= $cap) {
+                    break;
+                }
             }
         }
 
@@ -573,8 +355,7 @@ class GithubProvider implements GitProviderInterface
         }
         $user = $row['user'] ?? [];
         $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
-        $submittedAt = isset($row['submitted_at']) ? (string) $row['submitted_at'] : ($row['created_at'] ?? null);
-        $date = $submittedAt !== null ? new \DateTimeImmutable($submittedAt) : new \DateTimeImmutable();
+        $date = new \DateTimeImmutable((string) ($row['submitted_at'] ?? $row['created_at'] ?? 'now'));
 
         return new PullRequestComment($author, $date, $body, null, null);
     }
@@ -582,20 +363,7 @@ class GithubProvider implements GitProviderInterface
     /**
      * @param array<string, mixed> $row
      */
-    protected function mapIssueCommentToDto(array $row): PullRequestComment
-    {
-        $user = $row['user'] ?? [];
-        $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
-        $createdAt = isset($row['created_at']) ? new \DateTimeImmutable((string) $row['created_at']) : new \DateTimeImmutable();
-        $body = isset($row['body']) ? (string) $row['body'] : '';
-
-        return new PullRequestComment($author, $createdAt, $body, null, null);
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    protected function mapReviewCommentToDto(array $row): PullRequestComment
+    protected function mapCommentToDto(array $row): PullRequestComment
     {
         $user = $row['user'] ?? [];
         $author = is_array($user) && isset($user['login']) ? (string) $user['login'] : 'unknown';
@@ -610,13 +378,8 @@ class GithubProvider implements GitProviderInterface
     /**
      * Extracts technical details from an HTTP response for error reporting.
      * Truncates response body to 500 characters to avoid overwhelming output.
-     *
-     * @param \Symfony\Contracts\HttpClient\ResponseInterface $response
-     * @param string $method HTTP method (GET, POST, etc.)
-     * @param string $apiUrl API endpoint URL
-     * @return string Technical details including method, URL, status code and response body
      */
-    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, string $method, string $apiUrl): string
+    protected function extractTechnicalDetails(ResponseInterface $response, string $method, string $apiUrl): string
     {
         $statusCode = $response->getStatusCode();
         $fullUrl = "https://api.github.com{$apiUrl}";

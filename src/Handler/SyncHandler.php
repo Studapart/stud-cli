@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Service\TranslationService;
@@ -13,6 +14,7 @@ class SyncHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
@@ -45,7 +47,7 @@ class SyncHandler
         $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('sync.fetching'));
         $this->gitRepository->fetch();
 
-        $resolvedBase = $this->gitRepository->resolveLatestBaseBranch($this->baseBranch);
+        $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
 
         if ($this->gitRepository->isAncestor($resolvedBase, 'HEAD')) {
             $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.already_up_to_date'));

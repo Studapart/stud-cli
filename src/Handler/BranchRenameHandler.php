@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Service\CanConvertToMarkdownInterface;
+use App\Service\GitBranchService;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
@@ -20,6 +21,7 @@ class BranchRenameHandler
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly JiraService $jiraService,
         private readonly ?GitProviderInterface $githubProvider,
         private readonly TranslationService $translator,
@@ -167,9 +169,9 @@ class BranchRenameHandler
      */
     protected function checkBranchSync(string $localBranch, string $remoteBranch): array
     {
-        $behind = $this->gitRepository->getBranchCommitsBehind($localBranch, $remoteBranch);
-        $ahead = $this->gitRepository->getBranchCommitsAhead($localBranch, $remoteBranch);
-        $canRebase = $this->gitRepository->canRebaseBranch($localBranch, $remoteBranch);
+        $behind = $this->gitBranchService->getBranchCommitsBehind($localBranch, $remoteBranch);
+        $ahead = $this->gitBranchService->getBranchCommitsAhead($localBranch, $remoteBranch);
+        $canRebase = $this->gitBranchService->canRebaseBranch($localBranch, $remoteBranch);
 
         return [
             'behind' => $behind,
@@ -373,14 +375,14 @@ class BranchRenameHandler
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.renaming_local'));
-            $this->gitRepository->renameLocalBranch($targetBranch, $newBranchName);
+            $this->gitBranchService->renameLocalBranch($targetBranch, $newBranchName);
         }
 
         if ($hasRemote) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.renaming_remote'));
 
             try {
-                $this->gitRepository->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
+                $this->gitBranchService->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
             } catch (\Exception $e) {
                 $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.remote_not_found'));
             }

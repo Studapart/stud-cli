@@ -25,6 +25,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
         $this->handler = new ItemTakeoverHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             $this->itemStartHandler,
             'origin/develop',
@@ -43,6 +44,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         return new ItemTakeoverHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             $this->itemStartHandler,
             'origin/develop',
@@ -125,6 +127,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $handler = new \App\Handler\ItemTakeoverHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             $this->itemStartHandler,
             'origin/develop',
@@ -171,7 +174,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -225,7 +228,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -297,6 +300,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $handler = new \App\Handler\ItemTakeoverHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             $this->itemStartHandler,
             'origin/develop',
@@ -308,7 +312,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -362,7 +366,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -371,11 +375,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -385,7 +389,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -435,7 +439,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
@@ -444,11 +448,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
@@ -458,7 +462,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -508,7 +512,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
@@ -517,10 +521,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->never())
+        $this->gitBranchService->expects($this->never())
             ->method('switchBranch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
@@ -530,7 +534,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -580,7 +584,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
@@ -589,11 +593,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
@@ -603,7 +607,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(false);
@@ -654,7 +658,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -663,11 +667,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -677,7 +681,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -731,7 +735,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -740,11 +744,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -754,7 +758,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -808,7 +812,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -861,7 +865,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn([
@@ -873,11 +877,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-branch2');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-branch2', 'origin/develop', 'origin/feat/PROJ-123-branch2')
             ->willReturn([
@@ -887,7 +891,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-branch2', 'origin/develop')
             ->willReturn(true);
@@ -949,7 +953,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn([
@@ -961,11 +965,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-branch2');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-branch2', 'origin/develop', 'origin/feat/PROJ-123-branch2')
             ->willReturn([
@@ -975,7 +979,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-branch2', 'origin/develop')
             ->willReturn(true);
@@ -1024,7 +1028,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn([
@@ -1083,7 +1087,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -1133,7 +1137,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -1142,11 +1146,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -1156,7 +1160,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -1209,7 +1213,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -1218,11 +1222,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -1232,7 +1236,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 0,
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
@@ -1282,7 +1286,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
@@ -1291,11 +1295,11 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchStatus')
             ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
@@ -1305,7 +1309,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 0, // Branch is in sync with base
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('isBranchBasedOn')
             ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
