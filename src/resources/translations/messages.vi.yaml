@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Issue %key% đã chuyển sang 'Đang thực hiện'
     transition_error: 'Lỗi lấy chuyển đổi: %error%'
     transition_exec_error: 'Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh.'
+    using_advanced_base: 'Nhánh cơ sở đã cấu hình ''%configured%'' đang đứng sau ''%resolved%''; sử dụng ''%resolved%'' làm cơ sở.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

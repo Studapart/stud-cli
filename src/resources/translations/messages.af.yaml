@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Item %key% oorgegaan na 'In Proses'
     transition_error: 'Kry oorgange misluk: %error%'
     transition_exec_error: 'Uitvoer oorgang misluk: %error%. Gaan voort met tak skepping.'
+    using_advanced_base: 'Gekonfigureerde basis ''%configured%'' is agter ''%resolved%''; gebruik ''%resolved%'' as basis.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

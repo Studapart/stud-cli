@@ -627,7 +627,7 @@ These commands help you browse, view, and create Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. After fetching, the command compares the local and remote counterparts of the configured base branch and uses whichever is more advanced, so your new branch always starts from the latest code. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash

@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Το θέμα %key% μεταφέρθηκε σε 'Σε Εξέλιξη'
     transition_error: 'Αποτυχία λήψης μεταβάσεων: %error%'
     transition_exec_error: 'Αποτυχία εκτέλεσης μετάβασης: %error%. Συνέχιση με δημιουργία κλάδου.'
+    using_advanced_base: 'Η ρυθμισμένη βάση ''%configured%'' υστερεί σε σχέση με ''%resolved%''; χρήση ''%resolved%'' ως βάση.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
     success_switched: Switched to branch '%branch%'.

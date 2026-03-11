@@ -2360,6 +2360,320 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertFalse($result);
     }
 
+    public function testResolveLatestBaseBranchRemoteAheadOfLocal(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(true);
+
+                    return $ancestorLocalOfRemote;
+                }
+                // remote is NOT ancestor of local => remote is strictly ahead
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(false);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchLocalAheadOfRemote(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(false);
+
+                    return $ancestorLocalOfRemote;
+                }
+                // remote is ancestor of local => local is ahead
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(true);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchSameCommitReturnsOriginal(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(true);
+
+                    return $ancestorLocalOfRemote;
+                }
+                // Both are ancestors of each other => same commit
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(true);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchOnlyRemoteExists(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(false);
+
+                    return $revParseLocal;
+                }
+                $revParseRemote->method('run');
+                $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                return $revParseRemote;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchOnlyLocalExists(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                $revParseRemote->method('run');
+                $revParseRemote->method('isSuccessful')->willReturn(false);
+
+                return $revParseRemote;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchNeitherExistsReturnsOriginal(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(2))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(false);
+
+                    return $revParseLocal;
+                }
+                $revParseRemote->method('run');
+                $revParseRemote->method('isSuccessful')->willReturn(false);
+
+                return $revParseRemote;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchDivergedPrefersRemote(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(false);
+
+                    return $ancestorLocalOfRemote;
+                }
+                // Neither is ancestor => diverged => prefer remote
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(false);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('origin/develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchWithoutOriginPrefix(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(true);
+
+                    return $ancestorLocalOfRemote;
+                }
+                // remote is NOT ancestor of local => remote is strictly ahead
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(false);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('develop');
+
+        $this->assertSame('origin/develop', $result);
+    }
+
+    public function testResolveLatestBaseBranchWithoutOriginPrefixLocalAhead(): void
+    {
+        $revParseLocal = $this->createMock(Process::class);
+        $revParseRemote = $this->createMock(Process::class);
+        $ancestorLocalOfRemote = $this->createMock(Process::class);
+        $ancestorRemoteOfLocal = $this->createMock(Process::class);
+
+        $this->processFactory->expects($this->exactly(4))
+            ->method('create')
+            ->willReturnCallback(function (string $cmd) use ($revParseLocal, $revParseRemote, $ancestorLocalOfRemote, $ancestorRemoteOfLocal) {
+                if ($cmd === 'git rev-parse --verify --quiet develop') {
+                    $revParseLocal->method('run');
+                    $revParseLocal->method('isSuccessful')->willReturn(true);
+
+                    return $revParseLocal;
+                }
+                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                    $revParseRemote->method('run');
+                    $revParseRemote->method('isSuccessful')->willReturn(true);
+
+                    return $revParseRemote;
+                }
+                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                    $ancestorLocalOfRemote->method('run');
+                    $ancestorLocalOfRemote->method('isSuccessful')->willReturn(false);
+
+                    return $ancestorLocalOfRemote;
+                }
+                $ancestorRemoteOfLocal->method('run');
+                $ancestorRemoteOfLocal->method('isSuccessful')->willReturn(true);
+
+                return $ancestorRemoteOfLocal;
+            });
+
+        $result = $this->gitRepository->resolveLatestBaseBranch('develop');
+
+        $this->assertSame('develop', $result);
+    }
+
     public function testSwitchBranch(): void
     {
         $process = $this->createMock(Process::class);
