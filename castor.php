@@ -46,6 +46,7 @@ use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
+use App\Handler\SyncHandler;
 use App\Handler\UpdateHandler;
 use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
@@ -1745,6 +1746,26 @@ function flatten(
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Flatten completed', 'Flatten failed'));
+
+        return;
+    }
+    exit($exitCode);
+}
+
+#[AsTask(name: 'sync', aliases: ['sy'], description: 'Fetch the latest base branch and rebase the current feature branch onto it')]
+#[AgentOutput(properties: ['message' => 'string', 'rebased' => 'bool'], description: 'Sync result')]
+function sync(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $handler = new SyncHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Sync completed', 'Sync failed'));
 
         return;
     }
