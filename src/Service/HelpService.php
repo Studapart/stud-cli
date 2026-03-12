@@ -19,6 +19,7 @@ class HelpService
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',
         'items:create' => 'stud items:create',
+        'items:update' => 'stud items:update',
         'items:start' => 'stud items:start',
         'items:transition' => 'stud items:transition',
         'filters:list' => 'stud filters:list',

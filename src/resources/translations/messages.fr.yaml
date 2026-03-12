@@ -185,6 +185,13 @@ item:
     note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
     skipped_field_labels: "labels"
     skipped_field_original_estimate: "estimation de temps initiale"
+  update:
+    error_no_key: "Issue key is required. Provide it as the first argument (e.g. stud iu SCI-71)."
+    error_no_fields: "Nothing to update. Provide --summary, --description, or --fields."
+    error_editmeta: "Could not fetch edit metadata: %error%"
+    error_update: "Could not update issue: %error%"
+    success: "Issue %key% updated successfully."
+    note_skipped_optional_fields: "The following fields could not be matched and were skipped: %fields%."
   transition:
     section: Transition d'un ticket Jira
     detected_key: Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?
@@ -539,7 +546,8 @@ help:
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
-  command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
+  command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sous-tâche), -F/--fields pour champs arbitraires. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
+  command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_search: Rechercher des issues avec JQL.
   command_items_transition: Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle.
   command_filters_list: Liste tous les filtres Jira disponibles.
@@ -587,9 +595,10 @@ help:
   option_items_create_description: "Description du ticket (STDIN prioritaire en pipeline)"
   option_items_create_description_format: "Format de la description : plain (défaut) ou markdown (converti en ADF Jira)"
   option_items_create_parent: "Clé du ticket parent pour créer une sous-tâche"
-  option_items_create_assignee: "ID du compte assigné (défaut : utilisateur actuel si le champ est requis)"
-  option_items_create_labels: "Labels séparés par des virgules (définis uniquement si le projet/type de ticket les prend en charge)"
-  option_items_create_original_estimate: "Estimation de temps initiale : 1d, 0.5d, 1 day, 2h, 30m (convertie en secondes pour Jira)"
+  option_fields: "Extra fields as key=value pairs separated by semicolons (e.g. \"labels=Bug,DX;priority=High\")"
+  option_items_update_summary: "Update the issue summary/title"
+  option_items_update_description: "Update the issue description (STDIN takes precedence when piping)"
+  option_items_update_description_format: "Description format: plain (default) or markdown"
   option_config_show_key: "Afficher uniquement cette clé de config (clés non secrètes autorisées uniquement)"
   option_config_show_quiet: "Avec --key : n'afficher que la valeur brute ; ignoré sans --key"
   option_config_validate_skip_jira: "Ignorer la vérification de connexion Jira"
