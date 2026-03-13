@@ -1,3 +1,16 @@
+confluence:
+  push:
+    success_created: "Page '%title%' published: %url%"
+    success_updated: "Page '%title%' updated: %url%"
+    error_no_content: "No content provided. Use --file, pipe markdown from STDIN, or provide 'content' in agent mode."
+    error_no_title: "Page title is required for create. Use --title/-t or provide 'title' in agent mode."
+    error_space_required: "Space is required for create. Use --space/-s, set CONFLUENCE_DEFAULT_SPACE in .git/stud.config, or provide 'space' in agent mode."
+    error_space_not_found: "Confluence space \"%key%\" not found."
+    error_page_not_found: "Confluence page \"%id%\" not found."
+    error_parent_not_found: "Confluence parent page or folder \"%id%\" not found."
+    error_api: "Confluence API error: %message%"
+    error_file_not_readable: "Cannot read file: %path%"
+
 config:
   init:
     wizard:
@@ -537,6 +550,7 @@ help:
   global_option_verbose: 'Tăng mức chi tiết của thông báo: 1 cho đầu ra bình thường, 2 cho đầu ra chi tiết hơn và 3 cho debug.'
   category_configuration: Cấu hình
   category_jira_information: Thông tin Jira
+  category_confluence: "Confluence"
   category_git_workflow: Quy trình Git
   category_release_commands: Lệnh Phát hành
   example_prefix: 'Ví dụ: %example%'
@@ -603,6 +617,18 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
+  option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
+  option_confluence_push_title: "Page title (required for create; optional for update)"
+  option_confluence_push_file: "Path to markdown file; if omitted, read from STDIN"
+  option_confluence_push_page: "Existing page ID to update (omit to create)"
+  option_confluence_push_parent: "Parent page ID for nesting (create only)"
+  option_confluence_push_url: "Override Confluence base URL"
+  option_confluence_push_status: "Page status: current (default) or draft"
+  option_confluence_push_contact_email: "Add a 'Contact: @User' block at the bottom (user resolved by email via Jira)"
+  command_confluence_page_labels: "Add labels to a Confluence page. Use -p/--page and -l/--labels (comma-separated)."
+  option_confluence_page_labels_page: "Confluence page ID"
+  option_confluence_page_labels_labels: "Comma-separated label names (e.g. research,DX)"
   option_quiet: "Không tương tác: dùng mặc định, không nhắc"
   option_branches_clean_quiet: Xóa tất cả các nhánh khớp mà không hỏi
   option_deploy_clean: Dọn dẹp các nhánh đã hợp nhất sau khi triển khai

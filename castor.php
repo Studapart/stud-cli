@@ -18,6 +18,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 
 
 use App\Attribute\AgentOutput;
+use App\DTO\ConfluencePushInput;
 use App\DTO\ItemCreateInput;
 use App\DTO\ItemUpdateInput;
 use App\Enum\OutputFormat;
@@ -29,6 +30,7 @@ use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\ConfigShowHandler;
 use App\Handler\ConfigValidateHandler;
+use App\Handler\ConfluencePushHandler;
 use App\Handler\DeployHandler;
 use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
@@ -55,6 +57,7 @@ use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
+use App\Responder\ConfluencePushResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
@@ -69,6 +72,7 @@ use App\Response\AgentJsonResponse;
 use App\Service\AgentModeHelper;
 use App\Service\ChangelogParser;
 use App\Service\ConfigValidator;
+use App\Service\ConfluenceService;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
 use App\Service\GithubProvider;
@@ -243,6 +247,48 @@ function _get_jira_service(): JiraService
     ]);
 
     return new JiraService($client, _get_html_converter());
+}
+
+/**
+ * Returns the Confluence base URL (e.g. https://domain.atlassian.net/wiki).
+ * Priority: $urlOverride > CONFLUENCE_URL config > derived from JIRA_URL.
+ */
+function _get_confluence_base_url(?string $urlOverride = null): string
+{
+    if ($urlOverride !== null && trim($urlOverride) !== '') {
+        return rtrim(trim($urlOverride), '/');
+    }
+    $config = _get_jira_config();
+    $explicit = $config['CONFLUENCE_URL'] ?? null;
+    if ($explicit !== null && trim((string) $explicit) !== '') {
+        return rtrim(trim((string) $explicit), '/');
+    }
+    $jiraUrl = (string) ($config['JIRA_URL'] ?? '');
+    $parsed = parse_url($jiraUrl);
+    $scheme = $parsed['scheme'] ?? 'https';
+    $host = $parsed['host'] ?? '';
+
+    return $scheme . '://' . $host . '/wiki';
+}
+
+function _get_confluence_service(?string $urlOverride = null): ConfluenceService
+{
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "confluenceService") && \App\Tests\TestKernel::$confluenceService !== null) {
+        return \App\Tests\TestKernel::$confluenceService;
+    }
+    $baseUrl = rtrim(_get_confluence_base_url($urlOverride), '/') . '/';
+    $config = _get_jira_config();
+    $auth = base64_encode($config['JIRA_EMAIL'] . ':' . $config['JIRA_API_TOKEN']);
+    $client = HttpClient::createForBaseUri($baseUrl, [
+        'headers' => [
+            'User-Agent' => 'stud-cli',
+            'Authorization' => 'Basic ' . $auth,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ],
+    ]);
+
+    return new ConfluenceService($client);
 }
 
 /**
@@ -2011,6 +2057,145 @@ function pr_comments(
     }
 }
 
+#[AsTask(name: 'confluence:push', aliases: ['cpu'], description: 'Create or update a Confluence page from markdown content')]
+#[AgentOutput(properties: ['pageId' => 'string', 'title' => 'string', 'url' => 'string', 'action' => 'string'], description: 'Created or updated page ID, title, URL, and action (created|updated)')]
+function confluence_push(
+    #[AsOption(name: 'space', shortcut: 's', description: 'Confluence space key (e.g. DEV)')]
+    ?string $space = null,
+    #[AsOption(name: 'title', shortcut: 't', description: 'Page title')]
+    ?string $title = null,
+    #[AsOption(name: 'file', shortcut: 'f', description: 'Path to markdown file (reads from STDIN if not provided)')]
+    ?string $file = null,
+    #[AsOption(name: 'page', shortcut: 'p', description: 'Existing page ID to update (omit to create new page)')]
+    ?string $page = null,
+    #[AsOption(name: 'parent', description: 'Parent page ID for nesting (create only)')]
+    ?string $parent = null,
+    #[AsOption(name: 'url', description: 'Override Confluence base URL')]
+    ?string $url = null,
+    #[AsOption(name: 'status', description: 'Page status: current (default) or draft')]
+    ?string $status = null,
+    #[AsOption(name: 'contact-email', description: 'Append "Contact: @User" at bottom (resolve user by email via Jira)')]
+    ?string $contactEmail = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $confluenceUrl = $url;
+    $content = '';
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $content = (string) ($input['content'] ?? '');
+        $space = isset($input['space']) ? (string) $input['space'] : $space;
+        $title = isset($input['title']) ? (string) $input['title'] : $title;
+        $page = isset($input['page']) ? (string) $input['page'] : (isset($input['pageId']) ? (string) $input['pageId'] : $page);
+        $parent = isset($input['parent']) ? (string) $input['parent'] : (isset($input['parentId']) ? (string) $input['parentId'] : $parent);
+        $status = isset($input['status']) ? (string) $input['status'] : ($status ?? 'current');
+        $contactEmail = isset($input['contactEmail']) && (string) $input['contactEmail'] !== '' ? (string) $input['contactEmail'] : $contactEmail;
+        if (isset($input['url']) && $input['url'] !== '') {
+            $confluenceUrl = (string) $input['url'];
+        }
+    } else {
+        if ($file !== null && $file !== '') {
+            if (! is_readable($file)) {
+                $translator = _get_translation_service();
+                io()->error($translator->trans('confluence.push.error_file_not_readable', ['%path%' => $file]));
+                exit(1);
+            }
+            $content = (string) file_get_contents($file);
+        } else {
+            $content = (string) file_get_contents('php://stdin');
+        }
+        $status = $status ?? 'current';
+        if ($space === null || $space === '') {
+            $gitRepo = _get_git_repository();
+            $projectConfig = $gitRepo->readProjectConfig();
+            /** @var array<string, mixed> $projectConfig */
+            $space = isset($projectConfig['CONFLUENCE_DEFAULT_SPACE']) && is_string($projectConfig['CONFLUENCE_DEFAULT_SPACE'])
+                ? $projectConfig['CONFLUENCE_DEFAULT_SPACE']
+                : null;
+        }
+    }
+    $contactAccountId = null;
+    $contactDisplayName = null;
+    if ($contactEmail !== null && trim($contactEmail) !== '') {
+        try {
+            $jiraService = _get_jira_service();
+            $user = $jiraService->findUserByEmail(trim($contactEmail));
+            if ($user !== null) {
+                $contactAccountId = $user['accountId'];
+                $contactDisplayName = $user['displayName'];
+                if (io()->isVerbose()) {
+                    io()->writeln('<info>Contact resolved: @' . $contactDisplayName . ' (accountId: ' . $contactAccountId . ')</info>');
+                }
+            } else {
+                io()->warning("Contact email \"{$contactEmail}\" could not be resolved to a user (Jira user search returned no match). Contact block was not added.");
+            }
+        } catch (\Throwable $e) {
+            io()->warning("Could not resolve contact email \"{$contactEmail}\": " . $e->getMessage() . '. Contact block was not added.');
+        }
+    }
+    $baseUrl = _get_confluence_base_url($confluenceUrl);
+    $confluenceService = _get_confluence_service($confluenceUrl);
+    $converter = new \App\Service\MarkdownToAdfConverter();
+    $handler = new ConfluencePushHandler($confluenceService, $converter, _get_translation_service());
+    $inputDto = new ConfluencePushInput($content, $space, $title, $page !== null && $page !== '' ? $page : null, $parent !== null && $parent !== '' ? $parent : null, $status, $contactAccountId, $contactDisplayName);
+    $response = $handler->handle($inputDto, $baseUrl);
+    $responder = new ConfluencePushResponder(_get_translation_service());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'confluence:page-labels', description: 'Add labels to a Confluence page')]
+#[AgentOutput(properties: ['labels' => 'array'], description: 'Labels added to the page')]
+function confluence_page_labels(
+    #[AsOption(name: 'page', shortcut: 'p', description: 'Page ID')]
+    string $page = '',
+    #[AsOption(name: 'labels', shortcut: 'l', description: 'Comma-separated label names (e.g. R&D,DX)')]
+    string $labels = '',
+    #[AsOption(name: 'url', description: 'Override Confluence base URL')]
+    ?string $url = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $pageId = trim($page);
+    if ($pageId === '') {
+        io()->error('Page ID is required. Use --page/-p.');
+        exit(1);
+    }
+    $labelList = array_values(array_filter(array_map('trim', explode(',', $labels))));
+    if ($labelList === []) {
+        io()->error('At least one label is required. Use --labels/-l (e.g. --labels "R&D,DX").');
+        exit(1);
+    }
+
+    try {
+        $confluenceService = _get_confluence_service($url);
+        if (io()->isVerbose()) {
+            io()->writeln('<info>POST rest/api/content/' . $pageId . '/label with: ' . implode(', ', $labelList) . '</info>');
+        }
+        $confluenceService->addPageLabels($pageId, $labelList);
+        io()->success('Labels added: ' . implode(', ', $labelList));
+    } catch (\App\Exception\ApiException $e) {
+        io()->error($e->getMessage() . ($e->getTechnicalDetails() !== '' ? ' ' . $e->getTechnicalDetails() : ''));
+        exit(1);
+    }
+}
+
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 #[AgentOutput(properties: ['commands' => 'array'], description: 'Agent mode schema with all commands')]
 function help(
@@ -2074,6 +2259,7 @@ function help(
             'su' => 'submit',
             'pc' => 'pr:comment',
             'pcs' => 'pr:comments',
+            'cpu' => 'confluence:push',
             'ss' => 'status',
             'rl' => 'release',
             'mep' => 'deploy',
@@ -2197,6 +2383,20 @@ function help(
                 'args' => '<filterName>',
                 'description' => $translator->trans('help.command_filters_show'),
                 'example' => 'stud fs "My Filter"',
+            ],
+        ],
+        $translator->trans('help.category_confluence') => [
+            [
+                'name' => 'confluence:push',
+                'alias' => 'cpu',
+                'args' => '[inputFile]',
+                'description' => $translator->trans('help.command_confluence_push'),
+            ],
+            [
+                'name' => 'confluence:page-labels',
+                'alias' => null,
+                'args' => '',
+                'description' => $translator->trans('help.command_confluence_page_labels'),
             ],
         ],
         $translator->trans('help.category_git_workflow') => [

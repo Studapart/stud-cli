@@ -1270,6 +1270,209 @@ echo 'hello';
         $this->assertSame([], $result);
     }
 
+    public function testFindUserByEmailReturnsNullForEmptyQuery(): void
+    {
+        $this->httpClientMock->expects($this->never())->method('request');
+
+        $result = $this->jiraService->findUserByEmail('   ');
+
+        $this->assertNull($result);
+    }
+
+    public function testFindUserByEmailReturnsNullOnNon200(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(500);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', $this->callback(function (array $options): bool {
+                return isset($options['query']['query']) && $options['query']['query'] === 'jane@example.com'
+                    && isset($options['query']['maxResults']) && $options['query']['maxResults'] === 10;
+            }))
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('jane@example.com');
+
+        $this->assertNull($result);
+    }
+
+    public function testFindUserByEmailReturnsExactMatch(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            [
+                'accountId' => 'abc-123',
+                'displayName' => 'Jane Doe',
+                'emailAddress' => 'jane@example.com',
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', self::anything())
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('jane@example.com');
+
+        $this->assertIsArray($result);
+        $this->assertSame('abc-123', $result['accountId']);
+        $this->assertSame('Jane Doe', $result['displayName']);
+    }
+
+    public function testFindUserByEmailReturnsSingleCandidateWhenQueryContainsAt(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            [
+                'accountId' => 'single-user',
+                'displayName' => 'Single User',
+                'emailAddress' => null,
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', self::anything())
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('single@company.com');
+
+        $this->assertIsArray($result);
+        $this->assertSame('single-user', $result['accountId']);
+        $this->assertSame('Single User', $result['displayName']);
+    }
+
+    public function testFindUserByEmailReturnsNullWhenNotFound(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', self::anything())
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('nobody@example.com');
+
+        $this->assertNull($result);
+    }
+
+    public function testFindUserByEmailExactMatchUsesEmailWhenDisplayNameNotString(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            [
+                'accountId' => 'uid-1',
+                'displayName' => 123,
+                'emailAddress' => 'jane@example.com',
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', self::anything())
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('jane@example.com');
+
+        $this->assertIsArray($result);
+        $this->assertSame('uid-1', $result['accountId']);
+        $this->assertSame('jane@example.com', $result['displayName']);
+    }
+
+    public function testFindUserByEmailSingleCandidateWithNonStringDisplayNameUsesEmptyString(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            [
+                'accountId' => 'single',
+                'displayName' => 123,
+                'emailAddress' => null,
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/user/search', self::anything())
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->findUserByEmail('single@company.com');
+
+        $this->assertIsArray($result);
+        $this->assertSame('single', $result['accountId']);
+        $this->assertSame('', $result['displayName']);
+    }
+
+    public function testFindExactEmailMatchInUsersSkipsUserWithInvalidAccountId(): void
+    {
+        $users = [
+            [
+                'accountId' => 123,
+                'emailAddress' => 'skip@example.com',
+            ],
+            [
+                'accountId' => 'acc-2',
+                'emailAddress' => 'match@example.com',
+                'displayName' => 'Match',
+            ],
+        ];
+        $result = $this->callPrivateMethod($this->jiraService, 'findExactEmailMatchInUsers', [$users, 'match@example.com']);
+
+        $this->assertIsArray($result);
+        $this->assertSame('acc-2', $result['accountId']);
+        $this->assertSame('Match', $result['displayName']);
+    }
+
+    public function testFindExactEmailMatchInUsersUsesMatchEmailWhenDisplayNameNotString(): void
+    {
+        $users = [
+            [
+                'accountId' => 'acc-1',
+                'emailAddress' => 'exact@example.com',
+                'displayName' => 12345,
+            ],
+        ];
+        $result = $this->callPrivateMethod($this->jiraService, 'findExactEmailMatchInUsers', [$users, 'exact@example.com']);
+
+        $this->assertIsArray($result);
+        $this->assertSame('acc-1', $result['accountId']);
+        $this->assertSame('exact@example.com', $result['displayName']);
+    }
+
+    public function testCollectUserCandidatesWithAtSkipsUserWithInvalidAccountId(): void
+    {
+        $users = [
+            [
+                'accountId' => null,
+                'displayName' => 'Skip',
+            ],
+            [
+                'accountId' => 'valid',
+                'displayName' => 'Valid',
+            ],
+        ];
+        $result = $this->callPrivateMethod($this->jiraService, 'collectUserCandidatesWithAt', [$users]);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('valid', $result[0]['accountId']);
+        $this->assertSame('Valid', $result[0]['displayName']);
+    }
+
+    public function testCollectUserCandidatesWithAtUsesEmptyStringWhenDisplayNameNotString(): void
+    {
+        $users = [
+            [
+                'accountId' => 'acc-1',
+                'displayName' => new \stdClass(),
+            ],
+        ];
+        $result = $this->callPrivateMethod($this->jiraService, 'collectUserCandidatesWithAt', [$users]);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('acc-1', $result[0]['accountId']);
+        $this->assertSame('', $result[0]['displayName']);
+    }
+
     // Helper to call private methods for testing
     private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {
