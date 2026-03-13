@@ -108,6 +108,39 @@ class FileSystemTest extends TestCase
         $fileSystem->mkdir('test_dir');
     }
 
+    public function testMkdirWithAbsolutePathUsesNativeAndCreatesDirectory(): void
+    {
+        // When using createLocal(), absolute paths (e.g. ~/.config/stud) must use native mkdir
+        // so config is not written inside a PHAR. Covers the native mkdir success path in mkdir().
+        $dir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        $this->assertDirectoryDoesNotExist($dir);
+
+        $fileSystem = FileSystem::createLocal();
+        $fileSystem->mkdir($dir);
+
+        $this->assertDirectoryExists($dir);
+        rmdir($dir);
+    }
+
+    public function testMkdirWithAbsolutePathThrowsWhenNativeFails(): void
+    {
+        // When native mkdir fails (e.g. parent is a file), RuntimeException is thrown
+        $filePath = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        $this->assertFileDoesNotExist($filePath);
+        file_put_contents($filePath, '');
+        $subDir = $filePath . '/cannot-create';
+
+        $fileSystem = FileSystem::createLocal();
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage("Failed to create directory: {$subDir}");
+            $fileSystem->mkdir($subDir);
+        } finally {
+            @unlink($filePath);
+        }
+    }
+
     public function testRead(): void
     {
         $testFile = 'read.txt';
