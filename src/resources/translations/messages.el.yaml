@@ -501,6 +501,7 @@ release:
   updated_lock: Το composer.lock ενημερώθηκε
   dumped_config: Η ρύθμιση αποθηκεύτηκε στο config/app.php
   updated_changelog: Το CHANGELOG.md ενημερώθηκε με έκδοση %version%
+  updated_readme: Ενημερώθηκαν οι αναφορές έκδοσης στο README.md σε %version%
   staged: Οι αλλαγές προετοιμάστηκαν.
   committed: Η αύξηση έκδοσης commit.
   published: Ο κλάδος release δημοσιεύτηκε στο remote.

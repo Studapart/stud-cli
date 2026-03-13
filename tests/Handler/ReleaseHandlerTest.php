@@ -55,6 +55,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $version)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $version)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
@@ -69,6 +70,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
+        $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
@@ -97,6 +99,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $version)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $version)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
@@ -112,6 +115,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
+        $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, true, null);
@@ -140,6 +144,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $version)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $version)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
@@ -155,6 +160,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
+        $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
@@ -183,6 +189,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $version)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $version)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
@@ -197,6 +204,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
+        $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         $handler->handle($io->reveal(), $version, false, null);
@@ -222,6 +230,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($changelogPath, $initialContent);
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
+        $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $logger->section(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting release process for version ' . $version)->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
@@ -234,6 +243,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $version)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $version)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
@@ -313,6 +323,79 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->callPrivateMethod($handler, 'updateChangelog', [$version]);
     }
 
+    public function testUpdateReadmeReplacesPharFilename(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/README.md';
+        $content = "Download stud-3.4.1.phar and stud-3.4.1.phar again.\n";
+        $this->flysystem->write($readmePath, $content);
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $this->callPrivateMethod($handler, 'updateReadme', ['3.5.0']);
+
+        $updated = $this->flysystem->read($readmePath);
+        $this->assertSame("Download stud-3.5.0.phar and stud-3.5.0.phar again.\n", $updated);
+    }
+
+    public function testUpdateReadmeReplacesDownloadUrl(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/README.md';
+        $content = "https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar\n";
+        $this->flysystem->write($readmePath, $content);
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
+
+        $updated = $this->flysystem->read($readmePath);
+        $this->assertSame("https://github.com/Studapart/stud-cli/releases/download/v3.0.0/stud-3.0.0.phar\n", $updated);
+    }
+
+    public function testUpdateReadmeLeavesNonMatchingContentUnchanged(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/README.md';
+        $content = "Some text without version patterns. stud-1.2.phar invalid.\n";
+        $this->flysystem->write($readmePath, $content);
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $this->callPrivateMethod($handler, 'updateReadme', ['2.0.0']);
+
+        $updated = $this->flysystem->read($readmePath);
+        $this->assertSame("Some text without version patterns. stud-1.2.phar invalid.\n", $updated);
+    }
+
+    public function testUpdateReadmeHandlesReadmeWithoutVersionReferences(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/README.md';
+        $content = "# Title\n\nNo version here.\n";
+        $this->flysystem->write($readmePath, $content);
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $this->callPrivateMethod($handler, 'updateReadme', ['1.0.0']);
+
+        $this->assertSame($content, $this->flysystem->read($readmePath));
+    }
+
+    public function testUpdateReadmeWithFileReadError(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/nonexistent/README.md';
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to read README.md');
+
+        $this->callPrivateMethod($handler, 'updateReadme', ['1.0.0']);
+    }
+
     public function testCalculateNextVersionPatch(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
@@ -383,6 +466,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+        $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
         $logger->section(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting release process for version ' . $targetVersion)->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
@@ -395,6 +479,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $targetVersion)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
@@ -425,6 +510,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+        $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
         $logger->section(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting release process for version ' . $targetVersion)->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
@@ -437,6 +523,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $targetVersion)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
@@ -467,6 +554,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+        $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
         $logger->section(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting release process for version ' . $targetVersion)->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
@@ -479,6 +567,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $targetVersion)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
@@ -509,6 +598,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
+        $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
         $logger->section(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting release process for version ' . $targetVersion)->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
@@ -521,6 +611,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $gitRepository->run('composer dump-config')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Dumped config to config/app.php')->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated CHANGELOG.md with version ' . $targetVersion)->shouldBeCalled();
+        $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Updated README.md version references to ' . $targetVersion)->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $logger->text(\App\Service\Logger::VERBOSITY_NORMAL, 'Staged changes.')->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();

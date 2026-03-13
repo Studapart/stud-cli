@@ -501,6 +501,7 @@ release:
   updated_lock: composer.lock обновлен
   dumped_config: Конфиг сохранен в config/app.php
   updated_changelog: CHANGELOG.md обновлен с версией %version%
+  updated_readme: Ссылки на версию в README.md обновлены до %version%
   staged: Изменения подготовлены.
   committed: Увеличение версии закоммичено.
   published: Ветка релиза опубликована в remote.
