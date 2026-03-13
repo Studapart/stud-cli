@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Exception\ApiException;
+use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Logger;
@@ -19,6 +20,7 @@ class ItemStartHandler
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
@@ -69,7 +71,7 @@ class ItemStartHandler
         $this->gitRepository->fetch();
 
         // Check for existing branches before creating
-        $existingBranches = $this->gitRepository->findBranchesByIssueKey($key);
+        $existingBranches = $this->gitBranchService->findBranchesByIssueKey($key);
         $branchAction = $this->determineBranchAction($branchName, $existingBranches);
 
         $this->executeBranchAction($branchAction, $branchName);
@@ -79,105 +81,87 @@ class ItemStartHandler
 
     protected function handleTransition(string $key, \App\DTO\WorkItem $issue): int
     {
-        // Step 1: Assign issue to current user
+        $this->tryAssignIssueToCurrentUser($key);
+        $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
+        $transitionId = $this->resolveTransitionId($key, $projectKey);
+        if ($transitionId !== null) {
+            $this->executeTransitionWithLogging($key, $transitionId);
+        }
+
+        return 0;
+    }
+
+    protected function tryAssignIssueToCurrentUser(string $key): void
+    {
         try {
             $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.assigning', ['key' => $key])}");
             $this->jiraService->assignIssue($key);
         } catch (ApiException $e) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
             $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-            // Continue even if assignment fails
         } catch (\Exception $e) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.assign_error', ['error' => $e->getMessage()]));
-            // Continue even if assignment fails
         }
+    }
 
-        // Step 2: Check cache for transition ID
-        $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
+    protected function resolveTransitionId(string $key, string $projectKey): ?int
+    {
         $projectConfig = $this->gitRepository->readProjectConfig();
-        $cachedTransitionId = null;
-
         if (isset($projectConfig['projectKey']) && $projectConfig['projectKey'] === $projectKey && isset($projectConfig['transitionId'])) {
-            $cachedTransitionId = (int) $projectConfig['transitionId'];
+            $id = (int) $projectConfig['transitionId'];
+            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_cached_transition', ['id' => $id])}");
+
+            return $id;
         }
 
-        $transitionId = $cachedTransitionId;
+        return $this->promptForTransitionId($key, $projectKey);
+    }
 
-        // Step 3: If not cached, interactive lookup
-        if ($transitionId === null) {
-            try {
-                $transitions = $this->jiraService->getTransitions($key);
+    protected function promptForTransitionId(string $key, string $projectKey): ?int
+    {
+        try {
+            $transitions = $this->jiraService->getTransitions($key);
+            if ($transitions === []) {
+                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.no_transitions', ['key' => $key]));
 
-                if (empty($transitions)) {
-                    $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.no_transitions', ['key' => $key]));
-
-                    return 0; // Skip transition, continue with branch creation
-                }
-
-                // Display transitions and prompt user
-                $transitionOptions = [];
-                foreach ($transitions as $transition) {
-                    $transitionOptions[] = "{$transition['name']} (ID: {$transition['id']})";
-                }
-
-                $selectedDisplay = $this->logger->choice(
-                    $this->translator->trans('item.start.select_transition'),
-                    $transitionOptions
-                );
-
-                // Extract transition ID from selection
-                // SymfonyStyle::choice() validates input and only returns one of the provided options,
-                // which all match our regex pattern, so this will always succeed
-                preg_match('/ID: (\d+)\)$/', $selectedDisplay, $matches);
-                if (! isset($matches[1])) {
-                    throw new \RuntimeException('Unable to extract transition ID from selection');
-                }
-
-                $transitionId = (int) $matches[1];
-
-                // Ask if user wants to save the choice
-                $saveChoice = $this->logger->confirm(
-                    $this->translator->trans('item.start.save_transition', ['project' => $projectKey]),
-                    true
-                );
-
-                if ($saveChoice) {
-                    $this->gitRepository->writeProjectConfig([
-                        'projectKey' => $projectKey,
-                        'transitionId' => $transitionId,
-                    ]);
-                    $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}");
-                }
-            } catch (ApiException $e) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
-                $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-
-                return 0; // Skip transition, continue with branch creation
-            } catch (\Exception $e) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
-
-                return 0; // Skip transition, continue with branch creation
+                return null;
             }
-        } else {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_cached_transition', ['id' => $transitionId])}");
-        }
-
-        // Step 4: Execute transition
-        if ($transitionId !== null) {
-            try {
-                $this->jiraService->transitionIssue($key, $transitionId);
-                $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_success', ['key' => $key]));
-            } catch (ApiException $e) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
-                $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-                // Continue with branch creation even if transition fails
-            } catch (\Exception $e) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
-                // Continue with branch creation even if transition fails
+            $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+            $selected = $this->logger->choice($this->translator->trans('item.start.select_transition'), $options);
+            preg_match('/ID: (\d+)\)$/', $selected, $matches);
+            if (! isset($matches[1])) {
+                throw new \RuntimeException('Unable to extract transition ID from selection');
             }
-        }
+            $transitionId = (int) $matches[1];
+            if ($this->logger->confirm($this->translator->trans('item.start.save_transition', ['project' => $projectKey]), true)) {
+                $this->gitRepository->writeProjectConfig(['projectKey' => $projectKey, 'transitionId' => $transitionId]);
+                $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.transition_saved', ['project' => $projectKey])}");
+            }
 
-        return 0;
+            return $transitionId;
+        } catch (ApiException $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+
+            return null;
+        } catch (\Exception $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_error', ['error' => $e->getMessage()]));
+
+            return null;
+        }
+    }
+
+    protected function executeTransitionWithLogging(string $key, int $transitionId): void
+    {
+        try {
+            $this->jiraService->transitionIssue($key, $transitionId);
+            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_success', ['key' => $key]));
+        } catch (ApiException $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+        } catch (\Exception $e) {
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+        }
     }
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
@@ -199,7 +183,7 @@ class ItemStartHandler
     {
         if ($branchAction['action'] === BranchAction::SWITCH_LOCAL) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_branch', ['branch' => $branchAction['branch']]));
-            $this->gitRepository->switchBranch($branchAction['branch']);
+            $this->gitBranchService->switchBranch($branchAction['branch']);
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
@@ -207,16 +191,20 @@ class ItemStartHandler
 
         if ($branchAction['action'] === BranchAction::SWITCH_REMOTE) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.switching_remote_branch', ['branch' => $branchAction['branch']]));
-            $this->gitRepository->switchToRemoteBranch($branchAction['branch']);
+            $this->gitBranchService->switchToRemoteBranch($branchAction['branch']);
             $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success_switched', ['branch' => $branchAction['branch']]));
 
             return;
         }
 
-        // Default: create new branch
+        // Default: create new branch from the most advanced base ref
+        $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
+        if ($resolvedBase !== $this->baseBranch) {
+            $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.start.using_advanced_base', ['configured' => $this->baseBranch, 'resolved' => $resolvedBase])}");
+        }
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.creating_branch', ['branch' => $defaultBranchName]));
-        $this->gitRepository->createBranch($defaultBranchName, $this->baseBranch);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $this->baseBranch]));
+        $this->gitRepository->createBranch($defaultBranchName, $resolvedBase);
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.start.success', ['branch' => $defaultBranchName, 'base' => $resolvedBase]));
     }
 
     /**

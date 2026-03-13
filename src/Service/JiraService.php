@@ -389,7 +389,7 @@ class JiraService
     /**
      * Creates a Jira issue. Description must be ADF when provided.
      *
-     * @param array{project: array{key: string}, issuetype: array{id?: string, name?: string}, summary: string, description?: array<string, mixed>} $fields
+     * @param array<string, mixed> $fields
      * @return array{key: string, self: string}
      */
     public function createIssue(array $fields): array
@@ -439,6 +439,68 @@ class JiraService
         }
 
         return \App\Service\JiraAdfHelper::plainTextToAdf($text);
+    }
+
+    /**
+     * Returns edit field metadata for an issue (editmeta).
+     * Same normalized format as getCreateMetaFields(): fieldId => ['required' => bool, 'name' => string].
+     *
+     * @return array<string, array{required: bool, name: string}>
+     */
+    public function getEditMetaFields(string $issueIdOrKey): array
+    {
+        $url = "/rest/api/3/issue/{$issueIdOrKey}/editmeta";
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not fetch edit metadata for issue \"{$issueIdOrKey}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $fields = $data['fields'] ?? [];
+
+        $result = [];
+        foreach ($fields as $fieldId => $meta) {
+            if (! is_array($meta)) {
+                continue;
+            }
+            $result[$fieldId] = [
+                'required' => (bool) ($meta['required'] ?? false),
+                'name' => (string) ($meta['name'] ?? $fieldId),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Updates a Jira issue's fields.
+     *
+     * @param array<string, mixed> $fields
+     * @throws ApiException
+     */
+    public function updateIssue(string $issueIdOrKey, array $fields): void
+    {
+        $url = "/rest/api/3/issue/{$issueIdOrKey}";
+        $response = $this->client->request('PUT', $url, [
+            'json' => ['fields' => $fields],
+        ]);
+
+        if ($response->getStatusCode() !== 204) {
+            $technicalDetails = $this->extractTechnicalDetails($response);
+
+            throw new ApiException(
+                "Could not update issue \"{$issueIdOrKey}\".",
+                $technicalDetails,
+                $response->getStatusCode()
+            );
+        }
     }
 
     /**

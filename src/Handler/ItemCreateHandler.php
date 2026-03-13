@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\IssueCreationState;
+use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
 use App\Response\ItemCreateResponse;
+use App\Service\FieldsParser;
 use App\Service\GitRepository;
+use App\Service\IssueFieldResolver;
 use App\Service\JiraService;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -17,48 +21,67 @@ class ItemCreateHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly IssueFieldResolver $fieldResolver,
+        private readonly FieldsParser $fieldsParser
     ) {
     }
 
-    public function handle(
-        SymfonyStyle $io,
-        bool $interactive,
-        ?string $project,
-        ?string $type,
-        ?string $summary,
-        ?string $descriptionOption,
-        ?string $descriptionFormat = null,
-        ?string $parentKey = null,
-        ?string $assigneeOption = null
-    ): ItemCreateResponse {
-        $projectKey = $this->resolveProjectKey($io, $interactive, $project);
-        if ($projectKey === null) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_no_project'));
+    public function handle(SymfonyStyle $io, bool $interactive, ItemCreateInput $input): ItemCreateResponse
+    {
+        $projectKeyOrError = $this->resolveProjectKeyOrError($io, $interactive, $input->project);
+        if ($projectKeyOrError instanceof ItemCreateResponse) {
+            return $projectKeyOrError;
         }
+        $projectKey = $projectKeyOrError;
+        $type = $this->fieldResolver->resolveIssueTypeName($input->type, $input->parentKey);
 
-        $projectDto = $this->ensureProjectExists($io, $interactive, $projectKey);
-        if ($projectDto === null) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_project_not_found', ['key' => $projectKey]));
-        }
-        $projectKey = $projectDto->key;
-
-        $typeExplicitlyProvided = $type !== null && trim((string) $type) !== '';
-        if ($parentKey !== null && trim($parentKey) !== '') {
-            $type = 'Sub-task';
-            $typeExplicitlyProvided = true;
-        } else {
-            $type = $typeExplicitlyProvided ? trim((string) $type) : 'Story';
-        }
-
-        $summary = $this->resolveSummary($io, $interactive, $summary);
+        $summary = $this->resolveSummary($io, $interactive, $input->summary);
         if ($summary === null || $summary === '') {
             return ItemCreateResponse::error($this->translator->trans('item.create.error_no_summary'));
         }
 
-        $description = $this->getDescription($descriptionOption);
+        $stateOrError = $this->resolveTypeMetadata($projectKey, $type, $summary, $input);
+        if ($stateOrError instanceof ItemCreateResponse) {
+            return $stateOrError;
+        }
 
-        $issueTypeId = $this->resolveIssueTypeId($projectKey, $type);
+        $extraError = $this->resolveExtrasAndMergeIntoFields($io, $interactive, $stateOrError, $input);
+        if ($extraError !== null) {
+            return $extraError;
+        }
+
+        $skippedOptionalFields = $this->applyFieldsOption($stateOrError, $input);
+
+        return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields);
+    }
+
+    /**
+     * Parse and apply --fields option via FieldsParser, returning skipped field names.
+     *
+     * @return list<string>
+     */
+    protected function applyFieldsOption(IssueCreationState $state, ItemCreateInput $input): array
+    {
+        $parsedFields = $input->fieldsMap ?? ($input->fieldsOption !== null ? $this->fieldsParser->parse($input->fieldsOption) : []);
+        if ($parsedFields === []) {
+            return [];
+        }
+        $result = $this->fieldsParser->matchAndTransform($parsedFields, $state->allFieldsMeta);
+        foreach ($result['matched'] as $key => $value) {
+            $state->fields[$key] = $value;
+        }
+
+        return $result['unmatched'];
+    }
+
+    protected function resolveTypeMetadata(
+        string $projectKey,
+        string $type,
+        string $summary,
+        ItemCreateInput $input
+    ): IssueCreationState|ItemCreateResponse {
+        $issueTypeId = $this->fieldResolver->resolveIssueTypeId($projectKey, $type);
         if ($issueTypeId === null) {
             return ItemCreateResponse::error($this->translator->trans('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
         }
@@ -69,74 +92,136 @@ class ItemCreateHandler
             return ItemCreateResponse::error($this->translator->trans('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
 
-        $requiredFieldIds = $this->getRequiredFieldIdsFromMeta($allFieldsMeta);
+        $description = $this->getDescription($input->descriptionOption);
+        $requiredFieldIds = $this->fieldResolver->getRequiredFieldIdsFromMeta($allFieldsMeta);
+        $fields = $this->fieldResolver->buildBaseFields($projectKey, $issueTypeId, $summary, $description, $input->descriptionFormat, $input->parentKey);
 
-        $fields = [
-            'project' => ['key' => $projectKey],
-            'issuetype' => ['id' => $issueTypeId],
-            'summary' => $summary,
+        return new IssueCreationState($projectKey, $issueTypeId, $allFieldsMeta, $requiredFieldIds, $fields);
+    }
+
+    /**
+     * Resolve extra required fields, merge prompted values into state. Returns error response or null.
+     */
+    protected function resolveExtrasAndMergeIntoFields(
+        SymfonyStyle $io,
+        bool $interactive,
+        IssueCreationState $state,
+        ItemCreateInput $input
+    ): ?ItemCreateResponse {
+        $typeExplicitlyProvided = ($input->parentKey !== null && trim($input->parentKey) !== '')
+            || ($input->type !== null && trim((string) $input->type) !== '');
+        $parentKeyTrimmed = ($input->parentKey !== null && trim($input->parentKey) !== '') ? trim($input->parentKey) : null;
+        $descriptionAdf = $state->fields['description'] ?? null;
+
+        $fieldValues = [
+            'projectKey' => $state->projectKey,
+            'issueTypeId' => $state->issueTypeId,
+            'summary' => (string) $state->fields['summary'],
+            'descriptionAdf' => $descriptionAdf,
+            'assigneeOption' => null,
+            'parentKey' => $parentKeyTrimmed,
         ];
-        if ($description !== null && $description !== '') {
-            $format = ($descriptionFormat !== null && trim($descriptionFormat) !== '') ? trim($descriptionFormat) : 'plain';
-            $fields['description'] = $this->jiraService->descriptionToAdf($description, $format);
-        }
-        if ($parentKey !== null && trim($parentKey) !== '') {
-            $fields['parent'] = ['key' => trim($parentKey)];
-        }
-
-        $descriptionAdf = $fields['description'] ?? null;
-        $parentKeyTrimmed = ($parentKey !== null && trim($parentKey) !== '') ? trim($parentKey) : null;
-        $assigneeTrimmed = ($assigneeOption !== null && trim($assigneeOption) !== '') ? trim($assigneeOption) : null;
-        $extraRequired = $this->resolveStandardFieldsAndExtraRequired(
-            $requiredFieldIds,
-            $allFieldsMeta,
-            $fields,
-            $projectKey,
-            $issueTypeId,
-            $summary,
-            $descriptionAdf,
-            $typeExplicitlyProvided,
-            $interactive,
-            $parentKeyTrimmed,
-            $assigneeTrimmed
+        $fillIssueType = $typeExplicitlyProvided || ! $interactive;
+        $extraRequired = $this->fieldResolver->resolveStandardFieldsAndExtraRequired(
+            $state->requiredFieldIds,
+            $state->allFieldsMeta,
+            $state->fields,
+            $fieldValues,
+            $fillIssueType
         );
-        $this->defaultAssigneeWhenFieldPresent($allFieldsMeta, $fields, $assigneeTrimmed);
+        $this->fieldResolver->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, null);
 
-        if ($extraRequired !== []) {
-            $prompted = $this->promptForExtraRequiredFields(
-                $io,
-                $interactive,
-                $projectKey,
-                $issueTypeId,
-                $typeExplicitlyProvided,
-                $summary,
-                $fields['description'] ?? null,
+        if ($extraRequired === []) {
+            return null;
+        }
+
+        return $this->promptAndMergeExtraFields(
+            $io,
+            $interactive,
+            $state,
+            $typeExplicitlyProvided,
+            $descriptionAdf,
+            $extraRequired
+        );
+    }
+
+    /**
+     * Prompt for extra required fields and merge values into state. Returns error response or null.
+     *
+     * @param list<string> $extraRequired
+     * @param array<string, mixed>|null $descriptionAdf
+     */
+    protected function promptAndMergeExtraFields(
+        SymfonyStyle $io,
+        bool $interactive,
+        IssueCreationState $state,
+        bool $typeExplicitlyProvided,
+        ?array $descriptionAdf,
+        array $extraRequired
+    ): ?ItemCreateResponse {
+        $prompted = $this->promptForExtraRequiredFields(
+            $io,
+            $interactive,
+            $state->projectKey,
+            $state->issueTypeId,
+            $typeExplicitlyProvided,
+            (string) $state->fields['summary'],
+            $descriptionAdf,
+            $extraRequired
+        );
+        if ($prompted === null) {
+            $fieldsList = $this->fieldResolver->getExtraRequiredFieldsList(
+                $state->projectKey,
+                $state->issueTypeId,
                 $extraRequired
             );
-            if ($prompted === null) {
-                $fieldsList = $this->getExtraRequiredFieldsList($projectKey, $issueTypeId, $extraRequired);
 
-                return ItemCreateResponse::error($this->translator->trans('item.create.error_extra_required', ['fields' => $fieldsList]));
-            }
-            foreach ($prompted as $fieldId => $value) {
-                $payloadKey = $this->getCreatePayloadFieldKey((string) $fieldId);
-                $fields[$payloadKey] = $value;
-            }
+            return ItemCreateResponse::error($this->translator->trans('item.create.error_extra_required', ['fields' => $fieldsList]));
+        }
+        foreach ($prompted as $fieldId => $value) {
+            $state->fields[$this->fieldResolver->getCreatePayloadFieldKey((string) $fieldId)] = $value;
         }
 
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @param list<string> $skippedOptionalFields
+     */
+    protected function createIssueAndReturnResponse(array $fields, array $skippedOptionalFields): ItemCreateResponse
+    {
         try {
             $result = $this->jiraService->createIssue($fields);
 
-            return ItemCreateResponse::success($result['key'], $result['self']);
+            return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
 
             return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $error]));
         } catch (\Throwable $e) {
-            // Non-API throwables (e.g. network, JSON) mapped to same user-facing error
             return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $e->getMessage()]));
         }
+    }
+
+    /**
+     * Resolves project key or returns an error response. Does not validate against Jira.
+     *
+     * @return ItemCreateResponse|string Project key string, or error response to return
+     */
+    protected function resolveProjectKeyOrError(SymfonyStyle $io, bool $interactive, ?string $project): ItemCreateResponse|string
+    {
+        $projectKey = $this->resolveProjectKey($io, $interactive, $project);
+        if ($projectKey === null) {
+            return ItemCreateResponse::error($this->translator->trans('item.create.error_no_project'));
+        }
+        $projectDto = $this->ensureProjectExists($io, $interactive, $projectKey);
+        if ($projectDto === null) {
+            return ItemCreateResponse::error($this->translator->trans('item.create.error_project_not_found', ['key' => $projectKey]));
+        }
+
+        return $projectDto->key;
     }
 
     /**
@@ -210,11 +295,8 @@ class ItemCreateHandler
             return $stdinContent;
             // @codeCoverageIgnoreEnd
         }
-        if ($descriptionOption !== null && trim($descriptionOption) !== '') {
-            return trim($descriptionOption);
-        }
 
-        return null;
+        return ($descriptionOption !== null && trim($descriptionOption) !== '') ? trim($descriptionOption) : null;
     }
 
     /**
@@ -252,48 +334,11 @@ class ItemCreateHandler
     }
 
     /**
-     * @return string|null Issue type id or null if not found / API error
-     */
-    protected function resolveIssueTypeId(string $projectKey, string $typeName): ?string
-    {
-        try {
-            $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
-        } catch (\Throwable) {
-            return null;
-        }
-        $typeNameLower = strtolower($typeName);
-        foreach ($issueTypes as $it) {
-            if (strtolower($it['name']) === $typeNameLower) {
-                return $it['id'];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
-     * @return list<string>
-     */
-    protected function getRequiredFieldIdsFromMeta(array $allFieldsMeta): array
-    {
-        $required = [];
-        foreach ($allFieldsMeta as $fieldId => $meta) {
-            if ($meta['required']) {
-                $required[] = $fieldId;
-            }
-        }
-
-        return $required;
-    }
-
-    /**
      * When there are required fields not filled from CLI, prompt for them (interactive only).
      * Returns null if not interactive so caller can show error_extra_required.
-     * Project, issuetype, summary and description are taken from already-resolved values when present.
      *
-     * @param list<string> $extraRequiredFieldIds Required field IDs that still need values (not yet filled)
-     * @param array<string, mixed>|null $descriptionAdf Description as ADF if already provided
+     * @param list<string> $extraRequiredFieldIds
+     * @param array<string, mixed>|null $descriptionAdf
      * @return array<string, mixed>|null Map of fieldId => value, or null when not interactive
      */
     protected function promptForExtraRequiredFields(
@@ -319,229 +364,150 @@ class ItemCreateHandler
         foreach ($extraRequiredFieldIds as $fieldId) {
             $fieldId = (string) $fieldId;
             $name = (string) ($allFields[$fieldId]['name'] ?? $fieldId);
-            $nameLower = strtolower($name);
-            $fieldIdLower = strtolower($fieldId);
-
-            if ($fieldIdLower === 'project' || $nameLower === 'project') {
-                $result[$fieldId] = ['key' => $projectKey];
-
-                continue;
+            $value = $this->getPromptedValueForExtraField(
+                $io,
+                $fieldId,
+                $name,
+                $projectKey,
+                $issueTypeId,
+                $typeExplicitlyProvided,
+                $summary,
+                $descriptionAdf,
+                $allFields
+            );
+            if ($value !== null) {
+                $result += $value;
             }
-            if ($fieldIdLower === 'reporter' || $nameLower === 'reporter') {
-                $result[$fieldId] = ['accountId' => $this->jiraService->getCurrentUserAccountId()];
-
-                continue;
-            }
-            if ($fieldIdLower === 'assignee' || $nameLower === 'assignee') {
-                $result[$fieldId] = ['accountId' => $this->jiraService->getCurrentUserAccountId()];
-
-                continue;
-            }
-            if ($fieldIdLower === 'issuetype' || $nameLower === 'issue type') {
-                $chosenId = null;
-                if ($typeExplicitlyProvided) {
-                    $chosenId = $issueTypeId;
-                } else {
-                    $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
-                    if ($issueTypes !== []) {
-                        $choices = array_column($issueTypes, 'name');
-                        $question = $this->translator->trans('item.create.prompt_issue_type_choice');
-                        $selectedName = $io->choice($question, $choices);
-                        foreach ($issueTypes as $it) {
-                            if ($it['name'] === $selectedName) {
-                                $chosenId = $it['id'];
-
-                                break;
-                            }
-                        }
-                    }
-                }
-                if ($chosenId !== null) {
-                    $value = ['id' => $chosenId];
-                    foreach ($allFields as $fid => $meta) {
-                        $n = strtolower((string) $meta['name']);
-                        if ($n === 'issue type' || $n === 'issuetype') {
-                            $result[(string) $fid] = $value;
-                        }
-                    }
-                }
-
-                continue;
-            }
-            if ($fieldIdLower === 'summary' || $nameLower === 'summary') {
-                $result[$fieldId] = $summary;
-
-                continue;
-            }
-            if ($fieldIdLower === 'description' || $nameLower === 'description') {
-                if ($descriptionAdf !== null) {
-                    $result[$fieldId] = $descriptionAdf;
-                } else {
-                    $answer = $io->ask($this->translator->trans('item.create.prompt_description_required'));
-                    if ($answer !== null && trim($answer) !== '') {
-                        $result[$fieldId] = $this->jiraService->plainTextToDescriptionAdf(trim($answer));
-                    }
-                }
-
-                continue;
-            }
-
-            $value = $io->ask($this->translator->trans('item.create.prompt_custom_field', ['name' => $name]));
-            if ($value === null || $value === '') {
-                continue;
-            }
-            $result[$fieldId] = trim($value);
         }
 
         return $result;
     }
 
     /**
-     * Fills standard fields (Project, Reporter, Assignee, Summary, Description, Issue Type, Parent) from metadata by name,
-     * and returns the list of required field IDs that are not standard (i.e. need to be prompted or error).
+     * Resolve value for one extra-required field (standard or custom). Returns map fieldId => value, or null to skip.
      *
-     * @param list<string> $requiredFieldIds
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
-     * @param array<string, mixed> $fields
-     * @param array<string, mixed>|null $descriptionAdf Description as ADF
-     * @return list<string>
+     * @param array<string, mixed> $allFields
+     * @param array<string, mixed>|null $descriptionAdf
+     * @return array<string, mixed>|null
      */
-    protected function resolveStandardFieldsAndExtraRequired(
-        array $requiredFieldIds,
-        array $allFieldsMeta,
-        array &$fields,
+    protected function getPromptedValueForExtraField(
+        SymfonyStyle $io,
+        string $fieldId,
+        string $name,
         string $projectKey,
         string $issueTypeId,
+        bool $typeExplicitlyProvided,
         string $summary,
         ?array $descriptionAdf,
+        array $allFields
+    ): ?array {
+        $standardKind = $this->fieldResolver->extraFieldStandardKind(strtolower($fieldId), strtolower($name));
+        if ($standardKind !== null) {
+            return $this->getValueForStandardExtraField(
+                $standardKind,
+                $io,
+                $fieldId,
+                $projectKey,
+                $issueTypeId,
+                $typeExplicitlyProvided,
+                $summary,
+                $descriptionAdf,
+                $allFields
+            );
+        }
+        $value = $io->ask($this->translator->trans('item.create.prompt_custom_field', ['name' => $name]));
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return [$fieldId => trim($value)];
+    }
+
+    /**
+     * @param array<string, mixed> $allFields
+     * @param array<string, mixed>|null $descriptionAdf
+     * @return array<string, mixed>|null
+     */
+    protected function getValueForStandardExtraField(
+        string $kind,
+        SymfonyStyle $io,
+        string $fieldId,
+        string $projectKey,
+        string $issueTypeId,
         bool $typeExplicitlyProvided,
-        bool $interactive,
-        ?string $parentKey = null,
-        ?string $assigneeOption = null
-    ): array {
-        $extraRequired = [];
-        $fillIssueType = $typeExplicitlyProvided || ! $interactive;
-        $issueTypeAddedToExtra = false;
-
-        foreach ($requiredFieldIds as $fieldId) {
-            $fieldId = (string) $fieldId;
-            $name = (string) ($allFieldsMeta[$fieldId]['name'] ?? $fieldId);
-            $nameLower = strtolower($name);
-
-            // Use Jira REST API standard field names only. Do not send customfield_XX for system fields
-            // (e.g. createmeta may return 15, 19, 20, 21 for Issue Type, Project, Reporter, Summary);
-            // the create-issue API expects "issuetype", "project", "reporter", "summary".
-            if ($nameLower === 'project') {
-                $fields['project'] = ['key' => $projectKey];
-
-                continue;
-            }
-            if ($nameLower === 'reporter') {
-                $fields['reporter'] = ['accountId' => $this->jiraService->getCurrentUserAccountId()];
-
-                continue;
-            }
-            if ($nameLower === 'assignee') {
-                $accountId = $assigneeOption !== null
-                    ? $assigneeOption
-                    : $this->jiraService->getCurrentUserAccountId();
-                $fields['assignee'] = ['accountId' => $accountId];
-
-                continue;
-            }
-            if ($nameLower === 'summary') {
-                $fields['summary'] = $summary;
-
-                continue;
-            }
-            if ($nameLower === 'description' && $descriptionAdf !== null) {
-                $fields['description'] = $descriptionAdf;
-
-                continue;
-            }
-            if ($nameLower === 'issue type' || $nameLower === 'issuetype') {
-                if ($fillIssueType) {
-                    $fields['issuetype'] = ['id' => $issueTypeId];
-                } elseif (! $issueTypeAddedToExtra) {
-                    $extraRequired[] = $fieldId;
-                    $issueTypeAddedToExtra = true;
-                }
-
-                continue;
-            }
-            if ($nameLower === 'parent' && $parentKey !== null) {
-                $fields['parent'] = ['key' => $parentKey];
-
-                continue;
-            }
-
-            // Truly custom field (not a standard system field): must be prompted or error
-            $extraRequired[] = $fieldId;
-        }
-
-        return $extraRequired;
+        string $summary,
+        ?array $descriptionAdf,
+        array $allFields
+    ): ?array {
+        return match ($kind) {
+            'project' => [$fieldId => ['key' => $projectKey]],
+            'reporter' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
+            'assignee' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
+            'issuetype' => $this->promptIssueTypeValue($io, $projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
+            'summary' => [$fieldId => $summary],
+            'description' => ($v = $this->promptDescriptionValue($io, $descriptionAdf)) !== null ? [$fieldId => $v] : null,
+            default => null,
+        };
     }
 
     /**
-     * When the create screen has an Assignee field and we have no value yet, set assignee to --assignee or current user.
-     *
-     * @param array<string, array{required: bool, name: string}> $allFieldsMeta
-     * @param array<string, mixed> $fields
+     * @param array<string, mixed> $allFields
+     * @return array<string, mixed>|null Map of fieldId => ['id' => $chosenId] for all issuetype fields, or null
      */
-    protected function defaultAssigneeWhenFieldPresent(array $allFieldsMeta, array &$fields, ?string $assigneeOption): void
-    {
-        if (isset($fields['assignee'])) {
-            return;
+    protected function promptIssueTypeValue(
+        SymfonyStyle $io,
+        string $projectKey,
+        string $issueTypeId,
+        bool $typeExplicitlyProvided,
+        array $allFields
+    ): ?array {
+        $chosenId = $typeExplicitlyProvided ? $issueTypeId : $this->chooseIssueTypeInteractively($io, $projectKey);
+        if ($chosenId === null) {
+            return null;
         }
-        foreach ($allFieldsMeta as $meta) {
-            $name = (string) $meta['name'];
-            if (strtolower($name) === 'assignee') {
-                $accountId = $assigneeOption !== null
-                    ? $assigneeOption
-                    : $this->jiraService->getCurrentUserAccountId();
-                $fields['assignee'] = ['accountId' => $accountId];
-
-                break;
+        $value = ['id' => $chosenId];
+        $result = [];
+        foreach ($allFields as $fid => $meta) {
+            $n = strtolower((string) ($meta['name'] ?? ''));
+            if ($n === 'issue type' || $n === 'issuetype') {
+                $result[(string) $fid] = $value;
             }
         }
+
+        return $result;
+    }
+
+    protected function chooseIssueTypeInteractively(SymfonyStyle $io, string $projectKey): ?string
+    {
+        $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+        if ($issueTypes === []) {
+            return null;
+        }
+        $choices = array_column($issueTypes, 'name');
+        $selectedName = $io->choice($this->translator->trans('item.create.prompt_issue_type_choice'), $choices);
+        foreach ($issueTypes as $it) {
+            if ($it['name'] === $selectedName) {
+                return $it['id'];
+            }
+        }
+
+        return null;
     }
 
     /**
-     * Returns the field key to use in the create-issue payload.
-     * Jira expects custom fields as "customfield_XXXXX"; createmeta may return numeric IDs.
+     * @param array<string, mixed>|null $descriptionAdf
+     * @return array<string, mixed>|string|null
      */
-    protected function getCreatePayloadFieldKey(string $fieldId): string
+    protected function promptDescriptionValue(SymfonyStyle $io, ?array $descriptionAdf): array|string|null
     {
-        if (str_starts_with($fieldId, 'customfield_')) {
-            return $fieldId;
+        if ($descriptionAdf !== null) {
+            return $descriptionAdf;
         }
-        if (preg_match('/^\d+$/', $fieldId)) {
-            return 'customfield_' . $fieldId;
-        }
-
-        return $fieldId;
-    }
-
-    /**
-     * Builds a human-readable list of extra required field names (and IDs) for error messages.
-     *
-     * @param list<string> $extraRequiredFieldIds
-     */
-    protected function getExtraRequiredFieldsList(string $projectKey, string $issueTypeId, array $extraRequiredFieldIds): string
-    {
-        try {
-            $allFields = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
-        } catch (\Throwable) {
-            return implode(', ', $extraRequiredFieldIds);
-        }
-        $parts = [];
-        foreach ($extraRequiredFieldIds as $fieldId) {
-            $fieldId = (string) $fieldId;
-            $name = (string) ($allFields[$fieldId]['name'] ?? $fieldId);
-            $payloadKey = $this->getCreatePayloadFieldKey($fieldId);
-            $parts[] = $name . ' (' . $payloadKey . ')';
+        $answer = $io->ask($this->translator->trans('item.create.prompt_description_required'));
+        if ($answer === null || trim($answer) === '') {
+            return null;
         }
 
-        return implode(', ', $parts);
+        return $this->jiraService->plainTextToDescriptionAdf(trim($answer));
     }
 }

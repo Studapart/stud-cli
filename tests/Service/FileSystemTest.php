@@ -286,6 +286,23 @@ class FileSystemTest extends TestCase
         }
     }
 
+    public function testChmodReturnsFalseWhenFileDoesNotExistOnLocalFilesystem(): void
+    {
+        $tempDir = sys_get_temp_dir() . '/stud-test-' . uniqid();
+        mkdir($tempDir, 0755, true);
+
+        try {
+            $localAdapter = new LocalFilesystemAdapter($tempDir);
+            $localFilesystem = new FlysystemFilesystem($localAdapter);
+            $localFileSystem = new FileSystem($localFilesystem);
+
+            $result = $localFileSystem->chmod('nonexistent.txt', 0644);
+            $this->assertFalse($result);
+        } finally {
+            @rmdir($tempDir);
+        }
+    }
+
     public function testChmodWithTempFileUsesNativeOperations(): void
     {
         // Test that chmod() uses native operations for temp files (e.g., /tmp/stud-rebase-*)

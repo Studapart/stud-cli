@@ -3,9 +3,11 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
+use App\Enum\OutputFormat;
 use App\Responder\ItemListResponder;
 use App\Response\ItemListResponse;
 use App\Service\ColorHelper;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -17,7 +19,8 @@ class ItemListResponderTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->responder = new ItemListResponder($this->translationService, null);
+        $helper = new ResponderHelper($this->translationService, null);
+        $this->responder = new ItemListResponder($helper);
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
@@ -104,7 +107,8 @@ class ItemListResponderTest extends CommandTestCase
     public function testRespondShowsVerboseOutputWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ItemListResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ItemListResponder($helper);
 
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
@@ -161,7 +165,8 @@ class ItemListResponderTest extends CommandTestCase
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $responder = new ItemListResponder($this->translationService, $colorHelper);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $responder = new ItemListResponder($helper);
         $response = ItemListResponse::success([], false, null);
         $io = $this->createMock(SymfonyStyle::class);
 
@@ -177,5 +182,31 @@ class ItemListResponderTest extends CommandTestCase
             ->method('note');
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsSerializedIssues(): void
+    {
+        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
+        $response = ItemListResponse::success([$issue], false, null);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertCount(1, $result->data['issues']);
+        $this->assertFalse($result->data['all']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = ItemListResponse::error('API error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('API error', $result->error);
     }
 }

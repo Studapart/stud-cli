@@ -83,20 +83,15 @@ class MigrationRegistry
     protected function discoverMigrations(string $directoryPath, MigrationScope $expectedScope): array
     {
         // @codeCoverageIgnoreStart
-        $migrations = [];
-
-        // Resolve absolute paths to relative paths if they're within the current working directory
         $resolvedPath = $this->resolvePath($directoryPath);
 
         if (! $this->fileSystem->isDir($resolvedPath)) {
-            // Directory doesn't exist yet (e.g., ProjectMigrations might not exist)
             return [];
         }
 
         try {
             $files = $this->fileSystem->listDirectory($resolvedPath);
         } catch (\RuntimeException $e) {
-            // If directory listing fails, return empty array (no migrations found)
             return [];
         }
 
@@ -104,47 +99,47 @@ class MigrationRegistry
             return [];
         }
 
+        $migrations = [];
         foreach ($files as $filePath) {
-            // Extract just the filename from the full path
-            $file = basename($filePath);
-
-            if (! str_ends_with($file, '.php')) {
-                continue;
-            }
-
-            $className = $this->getClassNameFromFile($resolvedPath, $file);
-            if ($className === null) {
-                continue;
-            }
-
-            try {
-                if (! class_exists($className)) {
-                    continue;
-                }
-
-                $reflection = new \ReflectionClass($className);
-                if (! $reflection->implementsInterface(MigrationInterface::class)) {
-                    continue;
-                }
-
-                // Instantiate migration with required dependencies
-                /** @var MigrationInterface $migration */
-                $migration = new $className($this->logger, $this->translator);
-
-                // Verify scope matches expected scope
-                if ($migration->getScope() !== $expectedScope) {
-                    continue;
-                }
-
+            $migration = $this->loadMigrationFromFile($filePath, $resolvedPath, $expectedScope);
+            if ($migration !== null) {
                 $migrations[] = $migration;
-            } catch (\Throwable $e) {
-                // Skip migrations that can't be instantiated
-                continue;
             }
         }
 
         return $this->sortMigrations($migrations);
         // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * Tested indirectly through discoverMigrations()
+     */
+    private function loadMigrationFromFile(string $filePath, string $resolvedPath, MigrationScope $expectedScope): ?MigrationInterface
+    {
+        $file = basename($filePath);
+        if (! str_ends_with($file, '.php')) {
+            return null;
+        }
+
+        $className = $this->getClassNameFromFile($resolvedPath, $file);
+        if ($className === null || ! class_exists($className)) {
+            return null;
+        }
+
+        try {
+            $reflection = new \ReflectionClass($className);
+            if (! $reflection->implementsInterface(MigrationInterface::class)) {
+                return null;
+            }
+
+            /** @var MigrationInterface $migration */
+            $migration = new $className($this->logger, $this->translator);
+
+            return $migration->getScope() === $expectedScope ? $migration : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**

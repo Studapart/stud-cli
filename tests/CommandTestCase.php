@@ -2,6 +2,7 @@
 
 namespace App\Tests;
 
+use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\TranslationService;
@@ -11,6 +12,7 @@ use Symfony\Component\Process\Process;
 abstract class CommandTestCase extends TestCase
 {
     protected GitRepository $gitRepository;
+    protected GitBranchService $gitBranchService;
     protected JiraService $jiraService;
     protected TranslationService $translationService;
 
@@ -19,6 +21,7 @@ abstract class CommandTestCase extends TestCase
         parent::setUp();
 
         $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->gitBranchService = $this->createMock(GitBranchService::class);
         $this->jiraService = $this->createMock(JiraService::class);
 
         // Mock TranslationService to avoid file system dependencies in unit tests

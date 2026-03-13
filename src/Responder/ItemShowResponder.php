@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\ItemShowResponse;
-use App\Service\ColorHelper;
 use App\Service\DescriptionFormatter;
-use App\Service\TranslationService;
+use App\Service\DtoSerializer;
+use App\Service\ResponderHelper;
 use App\View\Content;
 use App\View\DefinitionItem;
 use App\View\PageViewConfig;
@@ -16,70 +18,82 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemShowResponder
 {
+    private readonly DtoSerializer $serializer;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
     public function __construct(
-        private readonly TranslationService $translator,
+        private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
         private readonly ?DescriptionFormatter $descriptionFormatter = null,
-        private readonly ?ColorHelper $colorHelper = null
     ) {
+        $this->serializer = new DtoSerializer();
     }
 
-    public function respond(SymfonyStyle $io, ItemShowResponse $response, string $key): void
+    public function respond(SymfonyStyle $io, ItemShowResponse $response, string $key, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
-        if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+        if ($format === OutputFormat::Json) {
+            return $this->respondJson($response);
         }
 
         $key = strtoupper($key);
-        $sectionTitle = $this->translator->trans('item.show.section', ['key' => $key]);
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
+        $this->helper->initSection($io, 'item.show.section', ['key' => $key]);
 
         if (! $response->isSuccess()) {
-            $io->error($this->translator->trans('item.show.error_not_found', ['key' => $key]));
+            $io->error($this->helper->translator->trans('item.show.error_not_found', ['key' => $key]));
 
-            return;
+            return null;
         }
 
-        if ($io->isVerbose()) {
-            $fetchingMessage = $this->translator->trans('item.show.fetching', ['key' => $key]);
-            if ($this->colorHelper !== null) {
-                $fetchingMessage = $this->colorHelper->format('comment', $fetchingMessage);
-            } else {
-                $fetchingMessage = "<fg=gray>{$fetchingMessage}</>";
-            }
-            $io->writeln("  {$fetchingMessage}");
-        }
+        $this->helper->verboseComment($io, 'item.show.fetching', ['key' => $key]);
 
         $issue = $response->issue;
         if ($issue === null) {
-            return;
+            return null;
         }
 
         $context = [
             'jiraConfig' => $this->jiraConfig,
-            'translator' => $this->translator,
+            'translator' => $this->helper->translator,
         ];
 
         $sections = $this->buildSections($issue->description, $context);
-        $viewConfig = new PageViewConfig($sections, $this->translator, $this->colorHelper);
+        $viewConfig = new PageViewConfig($sections, $this->helper->translator, $this->helper->colorHelper);
         $viewConfig->render([$issue], $io, $context);
+
+        return null;
+    }
+
+    protected function respondJson(ItemShowResponse $response): AgentJsonResponse
+    {
+        if (! $response->isSuccess() || $response->issue === null) {
+            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+        }
+
+        return new AgentJsonResponse(true, data: [
+            'issue' => $this->serializer->serialize($response->issue),
+        ]);
     }
 
     /**
-     * Builds PageViewConfig sections: main definition list plus description sections.
-     *
      * @param array<string, mixed> $context
      * @return Section[]
      */
     protected function buildSections(string $description, array $context): array
     {
-        $mainSection = new Section(
+        $sections = [$this->buildMainDefinitionSection()];
+
+        if (trim($description) !== '') {
+            $sections = array_merge($sections, $this->buildDescriptionSections($description));
+        }
+
+        return $sections;
+    }
+
+    protected function buildMainDefinitionSection(): Section
+    {
+        return new Section(
             '',
             [
                 new DefinitionItem('item.show.label_key', fn ($dto) => $dto->key),
@@ -99,35 +113,38 @@ class ItemShowResponder
                 ),
             ]
         );
+    }
 
-        $sections = [$mainSection];
+    /**
+     * @return Section[]
+     */
+    protected function buildDescriptionSections(string $description): array
+    {
+        $formatter = $this->descriptionFormatter ?? new DescriptionFormatter($this->helper->translator);
+        $parsedSections = $formatter->parseSections($description);
+        $sections = [];
 
-        if (trim($description) !== '') {
-            $formatter = $this->descriptionFormatter ?? new DescriptionFormatter($this->translator);
-            $parsedSections = $formatter->parseSections($description);
+        foreach ($parsedSections as $parsed) {
+            $contentLines = $parsed['contentLines'];
+            $title = $parsed['title'];
 
-            foreach ($parsedSections as $parsed) {
-                $contentLines = $parsed['contentLines'];
-                $title = $parsed['title'];
+            if (empty($contentLines)) {
+                $sections[] = new Section($title, []);
 
-                if (empty($contentLines)) {
-                    $sections[] = new Section($title, []);
-
-                    continue;
-                }
-
-                $formatted = $formatter->formatContentForDisplay($contentLines);
-                $contentItems = [];
-
-                foreach ($formatted['lists'] as $list) {
-                    $contentItems[] = new Content(fn (mixed $dto, array $ctx) => $list, 'listing');
-                }
-                foreach ($formatted['text'] as $text) {
-                    $contentItems[] = new Content(fn (mixed $dto, array $ctx) => $text, 'text');
-                }
-
-                $sections[] = new Section($title, $contentItems);
+                continue;
             }
+
+            $formatted = $formatter->formatContentForDisplay($contentLines);
+            $contentItems = [];
+
+            foreach ($formatted['lists'] as $list) {
+                $contentItems[] = new Content(fn (mixed $dto, array $ctx) => $list, 'listing');
+            }
+            foreach ($formatted['text'] as $text) {
+                $contentItems[] = new Content(fn (mixed $dto, array $ctx) => $text, 'text');
+            }
+
+            $sections[] = new Section($title, $contentItems);
         }
 
         return $sections;

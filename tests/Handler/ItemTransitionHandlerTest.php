@@ -393,6 +393,43 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
+    public function testHandleWhenTransitionChoiceDoesNotParseReturnsOne(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'Feature',
+            status: 'To Do',
+            assignee: 'Jane',
+            description: 'Desc',
+            labels: [],
+            issueType: 'story',
+            components: [],
+        );
+
+        $transitions = [
+            ['id' => 11, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress', 'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress']]],
+        ];
+
+        $this->jiraService->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
+        $this->jiraService->expects($this->once())->method('getTransitions')->with('TPW-35')->willReturn($transitions);
+        $this->jiraService->expects($this->never())->method('transitionIssue');
+
+        $this->logger->method('section');
+        $this->logger->method('jiraWriteln');
+        $this->logger->expects($this->once())
+            ->method('choice')
+            ->willReturn('Invalid selection without ID');
+        $this->logger->expects($this->once())->method('error');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(1, $result);
+    }
+
     public function testHandleWithNoTransitions(): void
     {
         $workItem = new WorkItem(

@@ -27,4 +27,13 @@ class ItemCreateResponseTest extends TestCase
         $this->assertNull($response->key);
         $this->assertNull($response->self);
     }
+
+    public function testSuccessWithSkippedOptionalFields(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/1', ['labels', 'time original estimate']);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertSame(['labels', 'time original estimate'], $response->skippedOptionalFields);
+    }
 }

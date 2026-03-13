@@ -116,6 +116,7 @@ item:
     transition_success: ✅ Ticket %key% transitionné vers 'En cours'
     transition_error: 'Échec de la récupération des transitions : %error%'
     transition_exec_error: 'Échec de l''exécution de la transition : %error%. Poursuite de la création de branche.'
+    using_advanced_base: 'La base configurée ''%configured%'' est en retard sur ''%resolved%'' ; utilisation de ''%resolved%'' comme base.'
     switching_branch: 'Basculement vers la branche existante : %branch%'
     switching_remote_branch: 'Basculement vers la branche distante : %branch%'
     success_switched: Basculement vers la branche '%branch%'.
@@ -181,6 +182,16 @@ item:
     error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires : %fields%. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
     error_create: "Impossible de créer le ticket : %error%"
     success: "Ticket %key% créé – %url%"
+    note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
+    skipped_field_labels: "labels"
+    skipped_field_original_estimate: "estimation de temps initiale"
+  update:
+    error_no_key: "Issue key is required. Provide it as the first argument (e.g. stud iu SCI-71)."
+    error_no_fields: "Nothing to update. Provide --summary, --description, or --fields."
+    error_editmeta: "Could not fetch edit metadata: %error%"
+    error_update: "Could not update issue: %error%"
+    success: "Issue %key% updated successfully."
+    note_skipped_optional_fields: "The following fields could not be matched and were skipped: %fields%."
   transition:
     section: Transition d'un ticket Jira
     detected_key: Clé Jira détectée '%key%' depuis la branche actuelle. Utiliser cette clé ?
@@ -245,6 +256,18 @@ flatten:
   success: ✅ Tous les commits fixup! ont été fusionnés dans leurs commits cibles.
   error_rebase: 'Échec du rebase : %error%'
   no_fixups: Aucun commit fixup! ou squash! trouvé. Rien à aplatir.
+
+# Sync Handler
+sync:
+  section: "Syncing branch with base"
+  error_on_base_branch: "You are on the base branch. Sync is for feature branches only."
+  error_dirty_working: "You have uncommitted changes. Please commit or stash them before syncing."
+  fetching: "Fetching latest changes from origin..."
+  rebasing: "Rebasing %branch% onto %base%..."
+  already_up_to_date: "Already up to date. The base branch has no new commits."
+  success: "✅ Branch %branch% has been rebased onto %base%."
+  error_conflicts: "Rebase encountered conflicts. The rebase has been aborted and your branch is unchanged. Please rebase manually to resolve conflicts: git rebase %base%"
+  help_description: "Fetch the latest base branch and rebase the current feature branch onto it"
 cache:
   clear:
     section: Nettoyage du cache de vérification de mise à jour
@@ -478,6 +501,7 @@ release:
   updated_lock: composer.lock mis à jour
   dumped_config: Config vidée dans config/app.php
   updated_changelog: CHANGELOG.md mis à jour avec la version %version%
+  updated_readme: Références de version dans README.md mises à jour vers %version%
   staged: Modifications mises en staging.
   committed: Incrément de version commité.
   published: Branche de release publiée sur le remote.
@@ -523,7 +547,8 @@ help:
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
-  command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
+  command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sous-tâche), -F/--fields pour champs arbitraires. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
+  command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_search: Rechercher des issues avec JQL.
   command_items_transition: Fait passer un ticket Jira à un autre statut. Si la clé n'est pas fournie, tente de la détecter depuis la branche actuelle.
   command_filters_list: Liste tous les filtres Jira disponibles.
@@ -571,7 +596,10 @@ help:
   option_items_create_description: "Description du ticket (STDIN prioritaire en pipeline)"
   option_items_create_description_format: "Format de la description : plain (défaut) ou markdown (converti en ADF Jira)"
   option_items_create_parent: "Clé du ticket parent pour créer une sous-tâche"
-  option_items_create_assignee: "ID du compte assigné (défaut : utilisateur actuel si le champ est requis)"
+  option_fields: "Extra fields as key=value pairs separated by semicolons (e.g. \"labels=Bug,DX;priority=High\")"
+  option_items_update_summary: "Update the issue summary/title"
+  option_items_update_description: "Update the issue description (STDIN takes precedence when piping)"
+  option_items_update_description_format: "Description format: plain (default) or markdown"
   option_config_show_key: "Afficher uniquement cette clé de config (clés non secrètes autorisées uniquement)"
   option_config_show_quiet: "Avec --key : n'afficher que la valeur brute ; ignoré sans --key"
   option_config_validate_skip_jira: "Ignorer la vérification de connexion Jira"

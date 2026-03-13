@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\Enum\OutputFormat;
+use App\Response\AgentJsonResponse;
 use App\Response\ItemListResponse;
-use App\Service\ColorHelper;
-use App\Service\TranslationService;
+use App\Service\DtoSerializer;
+use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
 use App\View\Section;
@@ -15,54 +17,37 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListResponder
 {
+    private readonly DtoSerializer $serializer;
+
     public function __construct(
-        private readonly TranslationService $translator,
-        private readonly ?ColorHelper $colorHelper = null
+        private readonly ResponderHelper $helper,
+        ?DtoSerializer $serializer = null,
     ) {
+        $this->serializer = $serializer ?? new DtoSerializer();
     }
 
-    public function respond(SymfonyStyle $io, ItemListResponse $response): void
+    public function respond(SymfonyStyle $io, ItemListResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
     {
-        // Register color styles before rendering
-        if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+        if ($format === OutputFormat::Json) {
+            return $this->respondJson($response);
         }
 
-        $sectionTitle = $this->translator->trans('item.list.section');
-        if ($this->colorHelper !== null) {
-            $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
-        }
-        $io->section($sectionTitle);
+        $this->helper->initSection($io, 'item.list.section');
 
-        $jqlParts = [];
-        if (! $response->all) {
-            $jqlParts[] = 'assignee = currentUser()';
-        }
-        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
-        if ($response->project) {
-            $jqlParts[] = 'project = ' . strtoupper($response->project);
-        }
-        $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
-
+        $jql = $this->buildJql($response);
         if ($io->isVerbose()) {
-            $jqlMessage = "JQL Query: {$jql}";
-            if ($this->colorHelper !== null) {
-                $jqlMessage = $this->colorHelper->format('comment', $jqlMessage);
-            } else {
-                $jqlMessage = "<fg=gray>{$jqlMessage}</>";
-            }
-            $io->writeln("  {$jqlMessage}");
+            $io->writeln('  ' . $this->helper->formatComment("JQL Query: {$jql}"));
         }
 
         if (empty($response->issues)) {
-            $io->note($this->translator->trans('item.list.no_items'));
+            $io->note($this->helper->translator->trans('item.list.no_items'));
 
-            return;
+            return null;
         }
 
         $viewConfig = new PageViewConfig([
             new Section(
-                '', // Section already created by responder
+                '',
                 [
                     new TableBlock([
                         new Column('key', 'table.key', fn ($item) => $item->key),
@@ -71,8 +56,37 @@ class ItemListResponder
                     ]),
                 ]
             ),
-        ], $this->translator, $this->colorHelper);
+        ], $this->helper->translator, $this->helper->colorHelper);
 
         $viewConfig->render($response->issues, $io);
+
+        return null;
+    }
+
+    protected function buildJql(ItemListResponse $response): string
+    {
+        $jqlParts = [];
+        if (! $response->all) {
+            $jqlParts[] = 'assignee = currentUser()';
+        }
+        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
+        if ($response->project) {
+            $jqlParts[] = 'project = ' . strtoupper($response->project);
+        }
+
+        return implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
+    }
+
+    protected function respondJson(ItemListResponse $response): AgentJsonResponse
+    {
+        if (! $response->isSuccess()) {
+            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+        }
+
+        return new AgentJsonResponse(true, data: [
+            'issues' => $this->serializer->serializeList($response->issues),
+            'all' => $response->all,
+            'project' => $response->project,
+        ]);
     }
 }

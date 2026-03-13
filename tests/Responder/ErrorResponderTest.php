@@ -2,6 +2,7 @@
 
 namespace App\Tests\Responder;
 
+use App\Enum\OutputFormat;
 use App\Responder\ErrorResponder;
 use App\Response\FilterShowResponse;
 use App\Tests\CommandTestCase;
@@ -33,5 +34,31 @@ class ErrorResponderTest extends CommandTestCase
 
         $responder = new ErrorResponder($this->translationService, []);
         $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsAgentJsonResponse(): void
+    {
+        $response = FilterShowResponse::error('Test error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->never())->method('error');
+
+        $responder = new ErrorResponder($this->translationService, []);
+        $result = $responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertSame('Test error', $result->error);
+    }
+
+    public function testRespondCliReturnsNull(): void
+    {
+        $response = FilterShowResponse::error('Test error');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $responder = new ErrorResponder($this->translationService, []);
+        $result = $responder->respond($io, $response, OutputFormat::Cli);
+
+        $this->assertNull($result);
     }
 }

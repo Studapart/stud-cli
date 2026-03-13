@@ -2,20 +2,40 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
 use App\Handler\ItemCreateHandler;
 use App\Response\ItemCreateResponse;
+use App\Service\DurationParser;
+use App\Service\FieldsParser;
 use App\Service\GitRepository;
+use App\Service\IssueFieldResolver;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemCreateHandlerTest extends CommandTestCase
 {
+    private IssueFieldResolver $fieldResolver;
+    private FieldsParser $fieldsParser;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->fieldResolver = new IssueFieldResolver($this->jiraService, new DurationParser());
+        $this->fieldsParser = new FieldsParser(new DurationParser());
+    }
+
+    private function createHandler(): ItemCreateHandler
+    {
+        return new ItemCreateHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            $this->translationService,
+            $this->fieldResolver,
+            $this->fieldsParser
+        );
     }
 
     public function testHandleSuccessWithAllOptions(): void
@@ -48,9 +68,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertInstanceOf(ItemCreateResponse::class, $response);
         $this->assertTrue($response->isSuccess());
@@ -84,9 +104,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'CONF-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, null, null, 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput(null, null, 'Summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('CONF-1', $response->key);
@@ -100,9 +120,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, null, null, 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput(null, null, 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_no_project', $response->getError() ?? '');
@@ -120,9 +140,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, null, null, null, null);
+        $response = $handler->handle($io, false, new ItemCreateInput(null, null, null, null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_no_summary', $response->getError() ?? '');
@@ -151,9 +171,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
@@ -174,9 +194,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -196,9 +216,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -221,9 +241,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -252,9 +272,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Network error'));
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
@@ -283,9 +303,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willThrowException(new ApiException('API error', 'details', 400));
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
@@ -323,9 +343,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', 'Body text');
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
 
         $this->assertTrue($response->isSuccess());
     }
@@ -360,9 +380,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-101', 'self' => 'https://jira/issue/101']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle(io: $io, interactive: false, project: 'PROJ', type: null, summary: 'Sub-task summary', descriptionOption: null, descriptionFormat: null, parentKey: 'PROJ-100');
+        $response = $handler->handle($io, false, new ItemCreateInput(project: 'PROJ', type: null, summary: 'Sub-task summary', descriptionOption: null, parentKey: 'PROJ-100'));
 
         $this->assertTrue($response->isSuccess());
     }
@@ -402,8 +422,8 @@ class ItemCreateHandlerTest extends CommandTestCase
                 return $callCount === 1 ? 'PROJ' : 'My summary';
             });
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, null, 'Story', null, null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput(null, 'Story', null, null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -446,8 +466,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->anything())
             ->willReturn('Alpha');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -480,8 +500,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
@@ -524,8 +544,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->anything())
             ->willReturn('Alpha');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Task', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Task', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -574,8 +594,8 @@ class ItemCreateHandlerTest extends CommandTestCase
                 return $callCount === 1 ? '' : 'Sprint1';
             });
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -611,8 +631,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $io->expects($this->never())->method('ask');
         $io->expects($this->never())->method('choice');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -653,8 +673,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $io->expects($this->never())->method('ask');
         $io->expects($this->never())->method('choice');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -691,14 +711,14 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
     }
 
-    public function testHandleRequiredAssigneeUsesOptionWhenProvided(): void
+    public function testHandleRequiredAssigneeUsesFieldsOptionWhenProvided(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getProject')
@@ -717,19 +737,20 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => true, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->never())
-            ->method('getCurrentUserAccountId');
+        $this->jiraService->expects($this->once())
+            ->method('getCurrentUserAccountId')
+            ->willReturn('current-user-account-id');
         $this->jiraService->expects($this->once())
             ->method('createIssue')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
-                    && $fields['assignee'] === ['accountId' => 'custom-assignee-account-id'];
+                    && $fields['assignee'] === ['id' => 'custom-assignee-account-id'];
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, 'custom-assignee-account-id');
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=custom-assignee-account-id'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -766,14 +787,14 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
     }
 
-    public function testHandleOptionalAssigneeUsesOptionWhenProvided(): void
+    public function testHandleOptionalAssigneeUsesFieldsOptionWhenProvided(): void
     {
         $this->jiraService->expects($this->once())
             ->method('getProject')
@@ -792,19 +813,20 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => false, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->never())
-            ->method('getCurrentUserAccountId');
+        $this->jiraService->expects($this->once())
+            ->method('getCurrentUserAccountId')
+            ->willReturn('current-user-account-id');
         $this->jiraService->expects($this->once())
             ->method('createIssue')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
-                    && $fields['assignee'] === ['accountId' => 'optional-assignee-id'];
+                    && $fields['assignee'] === ['id' => 'optional-assignee-id'];
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'My summary', null, null, null, 'optional-assignee-id');
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=optional-assignee-id'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -843,8 +865,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $io->expects($this->never())->method('ask');
         $io->expects($this->never())->method('choice');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -885,8 +907,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->anything(), ['Story', 'Task'], $this->anything())
             ->willReturn('Task');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', null, 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', null, 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -902,9 +924,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, 'INVALID', 'Story', 'Summary', null);
+        $response = $handler->handle($io, false, new ItemCreateInput('INVALID', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -943,8 +965,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->stringContains('item.create.prompt_project_not_found'))
             ->willReturn('PROJ');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'BAD', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -965,8 +987,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->stringContains('item.create.prompt_project_not_found'))
             ->willReturn('');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'BAD', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -992,8 +1014,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->stringContains('item.create.prompt_project_not_found'))
             ->willReturn('ALSO_BAD');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'BAD', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -1030,8 +1052,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
@@ -1074,8 +1096,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->stringContains('item.create.prompt_description_required'))
             ->willReturn('Typed description');
 
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, true, 'PROJ', 'Story', 'My summary', null);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1088,7 +1110,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['project' => ['required' => true, 'name' => 'Project']]);
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'Summary', null, ['project'],
         ]);
@@ -1106,7 +1128,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'Summary', null, ['reporter'],
         ]);
@@ -1124,7 +1146,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'Summary', null, ['assignee'],
         ]);
@@ -1142,7 +1164,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
             ]);
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
         ]);
@@ -1159,7 +1181,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $io = $this->createMock(SymfonyStyle::class);
         $io->expects($this->never())->method('ask');
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
         ]);
@@ -1176,7 +1198,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
         $io = $this->createMock(SymfonyStyle::class);
         $io->expects($this->never())->method('ask');
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
         ]);
@@ -1201,7 +1223,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('ask')
             ->with($this->stringContains('item.create.prompt_description_required'))
             ->willReturn('User typed description');
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io,
             true,
@@ -1248,10 +1270,229 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $handler = new ItemCreateHandler($this->gitRepository, $this->jiraService, $this->translationService);
-        $response = $handler->handle($io, false, 'PROJ', 'Story', 'Summary', 'Body text');
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
+    }
+
+    public function testHandle_labelsWhenCreatemetaHasLabels_addsToPayload(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'labels' => ['required' => false, 'name' => 'Labels'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return isset($fields['labels']) && $fields['labels'] === ['a', 'b'];
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertSame([], $response->skippedOptionalFields ?? []);
+    }
+
+    public function testHandle_labelsWhenCreatemetaDoesNotHaveLabels_skippedAndCreateSucceeds(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return ! isset($fields['labels']);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertNotNull($response->skippedOptionalFields);
+        $this->assertContains('labels', $response->skippedOptionalFields);
+    }
+
+    public function testHandle_originalEstimateWhenCreatemetaHasIt_addsToPayload(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return isset($fields['timeoriginalestimate']) && $fields['timeoriginalestimate'] === 86400;
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertSame([], $response->skippedOptionalFields ?? []);
+    }
+
+    public function testHandle_originalEstimateWhenCreatemetaDoesNotHaveIt_skippedAndCreateSucceeds(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return ! isset($fields['timeoriginalestimate']);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('PROJ-1', $response->key);
+        $this->assertNotNull($response->skippedOptionalFields);
+        $this->assertContains('timeoriginalestimate', $response->skippedOptionalFields);
+    }
+
+    public function testHandle_invalidOriginalEstimate_passedThroughAsRawValue(): void
+    {
+        $this->gitRepository->expects($this->never())->method('readProjectConfig');
+        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
+            ]);
+        $this->jiraService->expects($this->once())
+            ->method('createIssue')
+            ->with($this->callback(function (array $fields) {
+                return isset($fields['timeoriginalestimate'])
+                    && $fields['timeoriginalestimate'] === 'invalid';
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=invalid'));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame([], $response->skippedOptionalFields ?? []);
+    }
+
+    public function testPromptIssueTypeValueReturnsNullWhenChooseIssueTypeReturnsNull(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+
+        $result = $this->callPrivateMethod($handler, 'promptIssueTypeValue', [
+            $io,
+            'PROJ',
+            '10001',
+            false,
+            ['issuetype' => ['name' => 'Issue Type']],
+        ]);
+
+        $this->assertNull($result);
+    }
+
+    public function testChooseIssueTypeInteractivelyReturnsNullWhenNoIssueTypes(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $handler = $this->createHandler();
+
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+
+        $this->assertNull($result);
+    }
+
+    public function testChooseIssueTypeInteractivelyReturnsNullWhenChoiceDoesNotMatchAnyName(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);
+
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('choice')
+            ->willReturn('Other');
+
+        $handler = $this->createHandler();
+
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+
+        $this->assertNull($result);
+    }
+
+    public function testPromptDescriptionValueReturnsNullWhenAskReturnsEmpty(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $io->expects($this->once())
+            ->method('ask')
+            ->willReturn('   ');
+
+        $handler = $this->createHandler();
+
+        $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [$io, null]);
+
+        $this->assertNull($result);
     }
 }

@@ -27,6 +27,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new BranchRenameHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             $this->githubProvider,
             $this->translationService,
@@ -117,7 +118,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->githubProvider->expects($this->once())
@@ -168,7 +169,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'feat/TPW-35-my-awesome-feature');
         $this->githubProvider->expects($this->once())
@@ -220,7 +221,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('current-branch', 'feat/SCI-34-test-feature');
         $this->githubProvider->expects($this->once())
@@ -276,7 +277,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('feat/TPW-35-old-name', 'feat/TPW-35-my-awesome-feature');
         $this->githubProvider->expects($this->once())
@@ -391,7 +392,7 @@ class BranchRenameHandlerTest extends CommandTestCase
                 // Second call: check if old branch exists remotely (should be true)
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
         $this->githubProvider->expects($this->once())
@@ -428,19 +429,19 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsBehind')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
         $this->githubProvider->expects($this->once())
@@ -485,7 +486,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler calls
@@ -629,22 +630,22 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsBehind')
             ->willReturn(2);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('canRebaseBranch')
             ->willReturn(true);
         $this->gitRepository->expects($this->once())
             ->method('rebase')
             ->with('origin/old-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
         $this->githubProvider->expects($this->once())
@@ -680,13 +681,13 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsBehind')
             ->willReturn(2);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('canRebaseBranch')
             ->willReturn(true);
         $this->gitRepository->expects($this->once())
@@ -752,19 +753,19 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsBehind')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->willThrowException(new \RuntimeException('Remote rename failed'));
         $this->githubProvider->expects($this->once())
@@ -802,7 +803,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->githubProvider->expects($this->once())
@@ -842,7 +843,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
@@ -918,7 +919,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->githubProvider->expects($this->once())
@@ -958,7 +959,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
@@ -1036,7 +1037,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler will fail because findFirstLogicalSha returns null
@@ -1141,6 +1142,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             null, // No GitHub provider
             $this->translationService,
@@ -1164,7 +1166,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
 
@@ -1187,6 +1189,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $handler = new BranchRenameHandler(
             $this->gitRepository,
+            $this->gitBranchService,
             $this->jiraService,
             null, // No GitHub provider
             $this->translationService,

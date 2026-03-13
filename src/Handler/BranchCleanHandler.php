@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Service\GitBranchService;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\Logger;
@@ -17,6 +18,7 @@ class BranchCleanHandler
 
     public function __construct(
         private readonly GitRepository $gitRepository,
+        private readonly GitBranchService $gitBranchService,
         private readonly ?GitProviderInterface $githubProvider,
         private readonly string $baseBranch,
         private readonly TranslationService $translator,
@@ -230,7 +232,7 @@ class BranchCleanHandler
     protected function fetchAllBranches(): array
     {
         $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.fetching_local')}</>");
-        $allBranches = $this->gitRepository->getAllLocalBranches();
+        $allBranches = $this->gitBranchService->getAllLocalBranches();
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($allBranches) . " local branches</>");
 
         return $allBranches;
@@ -244,7 +246,7 @@ class BranchCleanHandler
     protected function fetchRemoteBranchesSet(): array
     {
         $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.fetching_remote')}</>");
-        $remoteBranches = $this->gitRepository->getAllRemoteBranches('origin');
+        $remoteBranches = $this->gitBranchService->getAllRemoteBranches('origin');
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($remoteBranches) . " remote branches on origin</>");
 
         return array_flip($remoteBranches);
@@ -287,7 +289,7 @@ class BranchCleanHandler
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking if merged into {$this->baseBranch}...</>");
 
         try {
-            $isMerged = $this->gitRepository->isBranchMergedInto($branch, $this->baseBranch);
+            $isMerged = $this->gitBranchService->isBranchMergedInto($branch, $this->baseBranch);
             $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Merged into {$this->baseBranch}: " . ($isMerged ? 'yes' : 'no') . "</>");
 
             return $isMerged;

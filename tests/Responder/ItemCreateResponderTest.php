@@ -2,6 +2,7 @@
 
 namespace App\Tests\Responder;
 
+use App\Enum\OutputFormat;
 use App\Responder\ItemCreateResponder;
 use App\Response\ItemCreateResponse;
 use App\Tests\CommandTestCase;
@@ -51,5 +52,48 @@ class ItemCreateResponderTest extends CommandTestCase
             }));
 
         $responder->respond($io, $response);
+    }
+
+    public function testRespondShowsNoteWhenSkippedOptionalFields(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/1', ['labels', 'time original estimate']);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->once())->method('success');
+        $io->expects($this->once())
+            ->method('note')
+            ->with($this->callback(function (string $message) {
+                return str_contains($message, 'item.create.note_skipped_optional_fields')
+                    && str_contains($message, 'labels')
+                    && str_contains($message, 'time original estimate');
+            }));
+
+        $responder->respond($io, $response);
+    }
+
+    public function testRespondJsonReturnsCreatedIssueData(): void
+    {
+        $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', []);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('PROJ-1', $result->data['key']);
+    }
+
+    public function testRespondJsonReturnsErrorOnFailure(): void
+    {
+        $response = ItemCreateResponse::error('Failed to create');
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
     }
 }

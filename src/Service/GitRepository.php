@@ -10,6 +10,20 @@ use Symfony\Component\Process\Process;
 
 class GitRepository
 {
+    private const REBASE_AUTOSQUASH_SCRIPT = <<<'SCRIPT'
+#!/bin/sh
+# Process the rebase plan file passed as $1
+# Change 'pick' to 'fixup' for fixup! commits and 'squash' for squash! commits
+sed -i.bak -E '
+    /^pick [a-f0-9]+ fixup!/ {
+        s/^pick/fixup/
+    }
+    /^pick [a-f0-9]+ squash!/ {
+        s/^pick/squash/
+    }
+' "$1"
+SCRIPT;
+
     public function __construct(
         private readonly ProcessFactory $processFactory,
         private readonly FileSystem $fileSystem
@@ -136,6 +150,32 @@ class GitRepository
         $this->run("git rebase {$branch}");
     }
 
+    /**
+     * Attempts a rebase without throwing on failure.
+     *
+     * @return bool True if rebase succeeded, false if conflicts occurred
+     */
+    public function tryRebase(string $branch): bool
+    {
+        return $this->runQuietly("git rebase {$branch}")->isSuccessful();
+    }
+
+    /**
+     * Aborts an in-progress rebase, restoring the branch to its pre-rebase state.
+     */
+    public function rebaseAbort(): void
+    {
+        $this->run('git rebase --abort');
+    }
+
+    /**
+     * Checks whether a given ref is an ancestor of another ref.
+     */
+    public function isAncestor(string $possibleAncestor, string $descendant): bool
+    {
+        return $this->runQuietly("git merge-base --is-ancestor {$possibleAncestor} {$descendant}")->isSuccessful();
+    }
+
     public function hasFixupCommits(string $baseSha): bool
     {
         $process = $this->runQuietly(
@@ -153,22 +193,7 @@ class GitRepository
 
     public function rebaseAutosquash(string $baseSha): void
     {
-        // Create a temporary script that processes the rebase plan
-        // Since --autosquash already reorders commits, we just need to change
-        // 'pick' to 'fixup' or 'squash' for commits with those prefixes
-        $scriptContent = <<<'SCRIPT'
-#!/bin/sh
-# Process the rebase plan file passed as $1
-# Change 'pick' to 'fixup' for fixup! commits and 'squash' for squash! commits
-sed -i.bak -E '
-    /^pick [a-f0-9]+ fixup!/ {
-        s/^pick/fixup/
-    }
-    /^pick [a-f0-9]+ squash!/ {
-        s/^pick/squash/
-    }
-' "$1"
-SCRIPT;
+        $scriptContent = self::REBASE_AUTOSQUASH_SCRIPT;
 
         $tempScript = tempnam(sys_get_temp_dir(), 'stud-rebase-');
         // @codeCoverageIgnoreStart
@@ -365,7 +390,7 @@ SCRIPT;
      * @param string $remote The remote name (default: 'origin')
      * @return array{owner?: string, name?: string, provider?: string} Array with 'owner', 'name', and 'provider' keys, or empty array if parsing fails
      */
-    protected function parseGitUrl(string $remote = 'origin'): array
+    public function parseGitUrl(string $remote = 'origin'): array
     {
         $remoteUrl = $this->getRemoteUrl($remote);
 
@@ -537,524 +562,6 @@ SCRIPT;
     }
 
     /**
-     * Renames a local branch.
-     *
-     * @param string $oldName The current branch name
-     * @param string $newName The new branch name
-     */
-    public function renameLocalBranch(string $oldName, string $newName): void
-    {
-        $currentBranch = $this->getCurrentBranchName();
-        if ($oldName === $currentBranch) {
-            // Renaming current branch
-            $this->run("git branch -m {$newName}");
-        } else {
-            // Renaming a different branch
-            $this->run("git branch -m {$oldName} {$newName}");
-        }
-    }
-
-    /**
-     * Renames a remote branch by pushing the local branch as the new name on remote,
-     * setting upstream, and deleting the old remote branch.
-     *
-     * @param string $oldName The current remote branch name
-     * @param string $newName The new remote branch name
-     * @param string $remote The remote name (default: 'origin')
-     */
-    public function renameRemoteBranch(string $oldName, string $newName, string $remote = 'origin'): void
-    {
-        // Determine which local branch to push from
-        // If local branch was already renamed, it's now $newName, otherwise it's still $oldName
-        $localBranch = $this->localBranchExists($oldName) ? $oldName : $newName;
-
-        // Push local branch to remote with new name and set upstream
-        // Format: git push origin localBranch:newName
-        // This pushes the local branch to the remote as 'newName'
-        $this->run("git push {$remote} {$localBranch}:{$newName}");
-        $this->run("git push {$remote} -u {$localBranch}:{$newName}");
-        // Delete old remote branch
-        $this->run("git push {$remote} --delete {$oldName}");
-        // Update local tracking branch
-        $this->run("git branch --set-upstream-to={$remote}/{$newName} {$localBranch}");
-    }
-
-    /**
-     * Returns the count of commits in $branch that are not in $compareBranch.
-     *
-     * @param string $branch The branch to check
-     * @param string $compareBranch The branch to compare against
-     * @return int Number of commits ahead, or 0 if branch is not ahead
-     */
-    public function getBranchCommitsAhead(string $branch, string $compareBranch): int
-    {
-        $process = $this->runQuietly("git rev-list --count {$compareBranch}..{$branch}");
-
-        if (! $process->isSuccessful()) {
-            return 0;
-        }
-
-        $output = trim($process->getOutput());
-
-        return empty($output) ? 0 : (int) $output;
-    }
-
-    /**
-     * Returns the count of commits in $compareBranch that are not in $branch.
-     *
-     * @param string $branch The branch to check
-     * @param string $compareBranch The branch to compare against
-     * @return int Number of commits behind, or 0 if branch is not behind
-     */
-    public function getBranchCommitsBehind(string $branch, string $compareBranch): int
-    {
-        $process = $this->runQuietly("git rev-list --count {$branch}..{$compareBranch}");
-
-        if (! $process->isSuccessful()) {
-            return 0;
-        }
-
-        $output = trim($process->getOutput());
-
-        return empty($output) ? 0 : (int) $output;
-    }
-
-    /**
-     * Checks if a branch can be rebased onto another branch without conflicts.
-     *
-     * @param string $branch The branch to rebase
-     * @param string $ontoBranch The branch to rebase onto
-     * @return bool True if rebase would succeed, false otherwise
-     */
-    public function canRebaseBranch(string $branch, string $ontoBranch): bool
-    {
-        // Use merge-base to check if ontoBranch is an ancestor of branch
-        // If it is, rebase should be safe
-        $process = $this->runQuietly("git merge-base --is-ancestor {$ontoBranch} {$branch}");
-
-        if ($process->isSuccessful()) {
-            return true;
-        }
-
-        // If merge-base check fails, try a dry-run rebase
-        $dryRunProcess = $this->runQuietly("git rebase --dry-run {$ontoBranch} {$branch}");
-
-        return $dryRunProcess->isSuccessful();
-    }
-
-    /**
-     * Switches to an existing local branch.
-     *
-     * @param string $branchName The branch name to switch to
-     * @throws \RuntimeException If branch doesn't exist locally
-     */
-    public function switchBranch(string $branchName): void
-    {
-        $this->run("git switch {$branchName}");
-    }
-
-    /**
-     * Creates a local tracking branch from a remote branch.
-     *
-     * @param string $branchName The branch name (without remote prefix)
-     * @param string $remote The remote name (default: 'origin')
-     * @throws \RuntimeException If remote branch doesn't exist
-     */
-    public function switchToRemoteBranch(string $branchName, string $remote = 'origin'): void
-    {
-        $this->run("git switch -c {$branchName} {$remote}/{$branchName}");
-    }
-
-    /**
-     * Finds branches matching the issue key pattern (feat/{KEY}-*, fix/{KEY}-*, chore/{KEY}-*).
-     *
-     * @param string $key The Jira issue key (e.g., 'PROJ-123')
-     * @return array{local: array<string>, remote: array<string>} Array with 'local' and 'remote' branch arrays
-     */
-    public function findBranchesByIssueKey(string $key): array
-    {
-        $localBranches = $this->findLocalBranchesByIssueKey($key);
-        $remoteBranches = $this->findRemoteBranchesByIssueKey($key);
-
-        return [
-            'local' => $localBranches,
-            'remote' => $remoteBranches,
-        ];
-    }
-
-    /**
-     * Gets branch status compared to remote and base branch.
-     *
-     * @param string $branch The branch to check
-     * @param string $baseBranch The base branch to compare against
-     * @param string|null $remoteBranch The remote branch name (e.g., 'origin/feat/PROJ-123-title') or null
-     * @return array{behind_remote: int, ahead_remote: int, behind_base: int, ahead_base: int}
-     */
-    public function getBranchStatus(string $branch, string $baseBranch, ?string $remoteBranch = null): array
-    {
-        $behindRemote = 0;
-        $aheadRemote = 0;
-
-        if ($remoteBranch !== null) {
-            $behindRemote = $this->getBranchCommitsBehind($branch, $remoteBranch);
-            $aheadRemote = $this->getBranchCommitsAhead($branch, $remoteBranch);
-        }
-
-        $behindBase = $this->getBranchCommitsBehind($branch, $baseBranch);
-        $aheadBase = $this->getBranchCommitsAhead($branch, $baseBranch);
-
-        return [
-            'behind_remote' => $behindRemote,
-            'ahead_remote' => $aheadRemote,
-            'behind_base' => $behindBase,
-            'ahead_base' => $aheadBase,
-        ];
-    }
-
-    /**
-     * Checks if a branch is directly based on the specified base branch.
-     *
-     * @param string $branch The branch to check
-     * @param string $baseBranch The base branch to check against
-     * @return bool True if branch is directly based on baseBranch, false otherwise
-     */
-    public function isBranchBasedOn(string $branch, string $baseBranch): bool
-    {
-        try {
-            $mergeBase = $this->getMergeBase($baseBranch, $branch);
-            $baseHead = trim($this->run("git rev-parse {$baseBranch}")->getOutput());
-
-            return $mergeBase === $baseHead;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Finds local branches matching the issue key pattern.
-     *
-     * @param string $key The Jira issue key
-     * @return array<string> Array of local branch names
-     */
-    protected function findLocalBranchesByIssueKey(string $key): array
-    {
-        $prefixes = ['feat', 'fix', 'chore'];
-        $branches = [];
-
-        foreach ($prefixes as $prefix) {
-            $process = $this->runQuietly("git branch --list '{$prefix}/{$key}-*'");
-            if ($process->isSuccessful()) {
-                $output = trim($process->getOutput());
-                if (! empty($output)) {
-                    $foundBranches = array_filter(
-                        array_map('trim', explode("\n", $output)),
-                        fn (string $branch) => ! empty($branch)
-                    );
-                    $branches = array_merge($branches, $foundBranches);
-                }
-            }
-        }
-
-        return $branches;
-    }
-
-    /**
-     * Finds remote branches matching the issue key pattern.
-     *
-     * @param string $key The Jira issue key
-     * @param string $remote The remote name (default: 'origin')
-     * @return array<string> Array of remote branch names (without remote prefix)
-     */
-    protected function findRemoteBranchesByIssueKey(string $key, string $remote = 'origin'): array
-    {
-        $prefixes = ['feat', 'fix', 'chore'];
-        $branches = [];
-
-        foreach ($prefixes as $prefix) {
-            $process = $this->runQuietly("git ls-remote --heads {$remote} 'refs/heads/{$prefix}/{$key}-*'");
-            if ($process->isSuccessful()) {
-                $output = trim($process->getOutput());
-                if (! empty($output)) {
-                    $lines = explode("\n", $output);
-                    foreach ($lines as $line) {
-                        if (preg_match('#refs/heads/(.+)$#', $line, $matches)) {
-                            $branches[] = $matches[1];
-                        }
-                    }
-                }
-            }
-        }
-
-        return $branches;
-    }
-
-    /**
-     * Gets all local branch names.
-     *
-     * @return array<string> Array of local branch names (excluding current branch marker *)
-     */
-    public function getAllLocalBranches(): array
-    {
-        $process = $this->runQuietly("git branch --format='%(refname:short)'");
-        if (! $process->isSuccessful()) {
-            return [];
-        }
-
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return [];
-        }
-
-        $branches = array_filter(
-            array_map('trim', explode("\n", $output)),
-            fn (string $branch) => ! empty($branch)
-        );
-
-        return array_values($branches);
-    }
-
-    /**
-     * Checks if a branch is merged into the specified base branch.
-     *
-     * @param string $branch The branch to check
-     * @param string $baseBranch The base branch to check against
-     * @return bool True if branch is merged into baseBranch, false otherwise
-     */
-    public function isBranchMergedInto(string $branch, string $baseBranch): bool
-    {
-        $process = $this->runQuietly("git branch --merged {$baseBranch}");
-        if (! $process->isSuccessful()) {
-            return false;
-        }
-
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return false;
-        }
-
-        $mergedBranches = array_filter(
-            array_map('trim', explode("\n", $output)),
-            fn (string $line) => ! empty($line)
-        );
-
-        foreach ($mergedBranches as $mergedBranch) {
-            // Remove leading * marker if present
-            $cleanBranch = ltrim($mergedBranch, '* ');
-            if ($cleanBranch === $branch) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Gets all remote branch names.
-     *
-     * @param string $remote The remote name (default: 'origin')
-     * @return array<string> Array of remote branch names (without remote prefix)
-     */
-    public function getAllRemoteBranches(string $remote = 'origin'): array
-    {
-        $process = $this->runQuietly("git ls-remote --heads {$remote}");
-        if (! $process->isSuccessful()) {
-            return [];
-        }
-
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return [];
-        }
-
-        $branches = [];
-        $lines = explode("\n", $output);
-        foreach ($lines as $line) {
-            if (preg_match('#refs/heads/(.+)$#', $line, $matches)) {
-                $branches[] = $matches[1];
-            }
-        }
-
-        return $branches;
-    }
-
-    /**
-     * Auto-detects the most likely base branch from remote branches.
-     * Checks branches in priority order: develop, main, master, dev, trunk.
-     *
-     * @return string|null The detected base branch name (without origin/ prefix), or null if none found
-     */
-    protected function detectBaseBranch(): ?string
-    {
-        $candidates = ['develop', 'main', 'master', 'dev', 'trunk'];
-        $remoteBranches = $this->getAllRemoteBranches('origin');
-        $remoteBranchesSet = array_flip($remoteBranches);
-
-        foreach ($candidates as $candidate) {
-            if (isset($remoteBranchesSet[$candidate])) {
-                return $candidate;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Gets the configured base branch from project config.
-     * Returns the branch name with 'origin/' prefix for consistency with git commands.
-     *
-     * @return string The base branch name with 'origin/' prefix
-     * @throws \RuntimeException If base branch is not configured and cannot be auto-detected
-     */
-    protected function getBaseBranch(): string
-    {
-        $config = $this->readProjectConfig();
-        $baseBranchValue = $config['baseBranch'] ?? null;
-        if ($baseBranchValue !== null && is_string($baseBranchValue) && trim($baseBranchValue) !== '') {
-            $baseBranch = $baseBranchValue;
-            // Ensure origin/ prefix for consistency
-            if (! str_starts_with($baseBranch, 'origin/')) {
-                return 'origin/' . $baseBranch;
-            }
-
-            return $baseBranch;
-        }
-
-        // Try auto-detection
-        $detected = $this->detectBaseBranch();
-        if ($detected !== null) {
-            return 'origin/' . $detected;
-        }
-
-        throw new \RuntimeException('Base branch not configured and could not be auto-detected.');
-    }
-
-    /**
-     * Ensures the base branch is configured in project config.
-     * If not configured, attempts auto-detection and prompts user if needed.
-     * Validates that the configured branch exists on remote before saving.
-     *
-     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
-     * @param \App\Service\Logger $logger The logger instance
-     * @param \App\Service\TranslationService $translator The translation service
-     * @param bool $quiet When true, use DEFAULT_BASE_BRANCH if not configured (no prompt); fail if invalid
-     * @return string The base branch name with 'origin/' prefix
-     * @throws \RuntimeException If not in a git repository or if base branch validation fails
-     */
-    public function ensureBaseBranchConfigured(
-        \Symfony\Component\Console\Style\SymfonyStyle $io,
-        \App\Service\Logger $logger,
-        \App\Service\TranslationService $translator,
-        bool $quiet = false
-    ): string {
-        // Check if we're in a git repository
-        try {
-            $this->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException($translator->trans('config.base_branch_required'));
-        }
-
-        $config = $this->readProjectConfig();
-        $baseBranch = $config['baseBranch'] ?? null;
-
-        // If configured, validate it exists on remote
-        if ($baseBranch !== null && is_string($baseBranch) && ! empty($baseBranch)) {
-            // Remove origin/ prefix if present for validation
-            $branchName = str_replace('origin/', '', $baseBranch);
-            if ($this->remoteBranchExists('origin', $branchName)) {
-                // Return with origin/ prefix for consistency
-                if (! str_starts_with($baseBranch, 'origin/')) {
-                    return 'origin/' . $baseBranch;
-                }
-
-                return $baseBranch;
-            }
-
-            // Configured branch doesn't exist on remote
-            if ($quiet) {
-                throw new \RuntimeException(
-                    $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
-                );
-            }
-
-            $logger->warning(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.base_branch_invalid', ['branch' => $branchName])
-            );
-        }
-
-        // Not configured: in quiet mode use DEFAULT_BASE_BRANCH if it exists on remote
-        if ($quiet) {
-            $defaultBranch = defined('DEFAULT_BASE_BRANCH') ? DEFAULT_BASE_BRANCH : 'origin/develop';
-            $branchName = str_replace('origin/', '', $defaultBranch);
-            if ($this->remoteBranchExists('origin', $branchName)) {
-                return str_starts_with($defaultBranch, 'origin/') ? $defaultBranch : 'origin/' . $defaultBranch;
-            }
-
-            throw new \RuntimeException(
-                'Base branch is not configured and default branch "' . $branchName . '" does not exist on remote. Run without --quiet to configure, or run "stud config:init".'
-            );
-        }
-
-        // Try auto-detection
-        $detected = $this->detectBaseBranch();
-        $defaultSuggestion = $detected ?? 'develop';
-
-        if ($detected !== null) {
-            $logger->note(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.base_branch_detected', ['branch' => $detected])
-            );
-        }
-
-        // Prompt user for base branch
-        $logger->note(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_not_configured')
-        );
-
-        $enteredBranch = $logger->ask(
-            $translator->trans('config.base_branch_prompt'),
-            $defaultSuggestion,
-            function (?string $value): string {
-                if (empty(trim($value ?? ''))) {
-                    throw new \RuntimeException('Base branch name cannot be empty.');
-                }
-
-                return trim($value);
-            }
-        );
-
-        if ($enteredBranch === null || empty(trim($enteredBranch))) {
-            throw new \RuntimeException($translator->trans('config.base_branch_required'));
-        }
-
-        $enteredBranch = trim($enteredBranch);
-
-        // Validate branch exists on remote
-        if (! $this->remoteBranchExists('origin', $enteredBranch)) {
-            throw new \RuntimeException(
-                $translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch])
-            );
-        }
-
-        // Save to config
-        $logger->text(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_saving')
-        );
-
-        $config['baseBranch'] = $enteredBranch;
-        $this->writeProjectConfig($config);
-
-        $logger->success(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.base_branch_saved', ['branch' => $enteredBranch])
-        );
-
-        return 'origin/' . $enteredBranch;
-    }
-
-    /**
      * Gets the configured git provider from project config.
      * Attempts auto-detection from remote URL if not configured.
      *
@@ -1076,204 +583,5 @@ SCRIPT;
         }
 
         return null;
-    }
-
-    /**
-     * Ensures the git provider is configured in project config.
-     * If not configured, attempts auto-detection from remote URL and prompts user if needed.
-     *
-     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
-     * @param \App\Service\Logger $logger The logger instance
-     * @param \App\Service\TranslationService $translator The translation service
-     * @param bool $quiet When true, use auto-detected provider or throw; do not prompt
-     * @return string The provider type ('github' or 'gitlab')
-     * @throws \RuntimeException If not in a git repository or if provider cannot be determined
-     */
-    public function ensureGitProviderConfigured(
-        \Symfony\Component\Console\Style\SymfonyStyle $io,
-        \App\Service\Logger $logger,
-        \App\Service\TranslationService $translator,
-        bool $quiet = false
-    ): string {
-        // Check if we're in a git repository
-        try {
-            $this->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException($translator->trans('config.git_provider_required'));
-        }
-
-        $config = $this->readProjectConfig();
-        $provider = $config['gitProvider'] ?? null;
-
-        // If configured and valid, return it
-        if (is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
-            return $provider;
-        }
-
-        // Try auto-detection from remote URL
-        $parsed = $this->parseGitUrl('origin');
-        $detected = $parsed['provider'] ?? null;
-
-        if ($quiet) {
-            if ($detected !== null && in_array($detected, ['github', 'gitlab'], true)) {
-                return $detected;
-            }
-
-            throw new \RuntimeException(
-                'Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run "stud config:init".'
-            );
-        }
-
-        if ($detected !== null) {
-            $logger->note(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.git_provider_detected', ['provider' => $detected])
-            );
-        }
-
-        // Prompt user for provider
-        $logger->note(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_provider_not_configured')
-        );
-
-        $defaultSuggestion = $detected ?? 'github';
-        $enteredProvider = $logger->choice(
-            $translator->trans('config.git_provider_prompt'),
-            ['github', 'gitlab'],
-            $defaultSuggestion
-        );
-
-        if ($enteredProvider === null || ! in_array($enteredProvider, ['github', 'gitlab'], true)) {
-            throw new \RuntimeException($translator->trans('config.git_provider_required'));
-        }
-
-        // Save to config
-        $logger->text(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_provider_saving')
-        );
-
-        $config['gitProvider'] = $enteredProvider;
-        $this->writeProjectConfig($config);
-
-        $logger->success(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_provider_saved', ['provider' => $enteredProvider])
-        );
-
-        return $enteredProvider;
-    }
-
-    /**
-     * Ensures the git token is configured for the given provider.
-     * Checks project config first, then global config.
-     * If not found, prompts user to configure it (unless quiet).
-     *
-     * @param string $providerType The provider type ('github' or 'gitlab')
-     * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
-     * @param \App\Service\Logger $logger The logger instance
-     * @param \App\Service\TranslationService $translator The translation service
-     * @param array<string, mixed> $globalConfig The global configuration array
-     * @param bool $quiet When true, do not prompt; return null if token missing
-     * @return string|null The token string, or null if user skipped or error occurred (or missing when quiet)
-     * @throws \RuntimeException If not in a git repository
-     */
-    public function ensureGitTokenConfigured(
-        string $providerType,
-        \Symfony\Component\Console\Style\SymfonyStyle $io,
-        \App\Service\Logger $logger,
-        \App\Service\TranslationService $translator,
-        array $globalConfig,
-        bool $quiet = false
-    ): ?string {
-        // Check if we're in a git repository
-        try {
-            $this->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException($translator->trans('config.git_token_required'));
-        }
-
-        $projectConfig = $this->readProjectConfig();
-
-        // Determine token key based on provider
-        $tokenKey = $providerType === 'github' ? 'githubToken' : 'gitlabToken';
-        $globalTokenKey = $providerType === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
-        $oppositeTokenKey = $providerType === 'github' ? 'GITLAB_TOKEN' : 'GITHUB_TOKEN';
-        $oppositeLocalKey = $providerType === 'github' ? 'gitlabToken' : 'githubToken';
-        $oppositeProvider = $providerType === 'github' ? 'GitLab' : 'GitHub';
-
-        // Check if token already exists in project config
-        $token = $projectConfig[$tokenKey] ?? null;
-        if ($token !== null && is_string($token) && trim($token) !== '') {
-            return trim($token);
-        }
-
-        // Check if token exists in global config
-        $globalToken = $globalConfig[$globalTokenKey] ?? null;
-        if ($globalToken !== null && is_string($globalToken) && trim($globalToken) !== '') {
-            return trim($globalToken);
-        }
-
-        // Check for token type mismatch (opposite token exists)
-        $oppositeToken = $projectConfig[$oppositeLocalKey] ?? $globalConfig[$oppositeTokenKey] ?? null;
-        if ($oppositeToken !== null && is_string($oppositeToken) && trim($oppositeToken) !== '') {
-            $logger->warning(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.git_token_type_mismatch', [
-                    'provider' => ucfirst($providerType),
-                    'opposite' => $oppositeProvider,
-                ])
-            );
-        }
-
-        // No token found - in quiet mode return null so caller can fail with clear error
-        if ($quiet) {
-            return null;
-        }
-
-        // Prompt user
-        $logger->note(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_not_configured')
-        );
-
-        // Check if any tokens exist globally
-        $hasAnyGlobalToken = ($globalConfig['GITHUB_TOKEN'] ?? null) !== null
-            || ($globalConfig['GITLAB_TOKEN'] ?? null) !== null;
-
-        if (! $hasAnyGlobalToken) {
-            $logger->note(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $translator->trans('config.git_token_global_suggestion')
-            );
-        }
-
-        $enteredToken = $logger->askHidden(
-            $translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)])
-        );
-
-        if ($enteredToken === null || empty(trim($enteredToken))) {
-            // User skipped - return null
-            return null;
-        }
-
-        $enteredToken = trim($enteredToken);
-
-        // Save to project config
-        $logger->text(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_saving')
-        );
-
-        $projectConfig[$tokenKey] = $enteredToken;
-        $this->writeProjectConfig($projectConfig);
-
-        $logger->success(
-            \App\Service\Logger::VERBOSITY_NORMAL,
-            $translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)])
-        );
-
-        return $enteredToken;
     }
 }

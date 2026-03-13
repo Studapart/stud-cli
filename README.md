@@ -33,34 +33,50 @@
 
 - **PHP 8.2 or higher** is required.
 
+#### Installing PHP 8.2+
+
+**Ubuntu 24.04+ / Debian 12+:**
+```bash
+sudo apt update && sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring
+```
+
+**Ubuntu 22.04** (requires PPA):
+```bash
+sudo add-apt-repository ppa:ondrej/php
+sudo apt update && sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring
+```
+
+**macOS (Homebrew):**
+```bash
+brew install php
+```
+(Homebrew PHP includes xml, curl, and mbstring by default.)
+
+**Fedora 38+ / RHEL 9+:**
+```bash
+sudo dnf install php-cli php-xml php-curl php-mbstring
+```
+
+**Windows (WSL2):** Follow the Ubuntu instructions above inside your WSL2 terminal.
+
+For more detailed help, see [php.watch install guides](https://php.watch/articles/install-php82-ubuntu-debian).
+
 ### PHP Extensions
 
 The following PHP extensions are required:
 
 - **php-xml**: Required for HTML to Markdown conversion (used in `stud submit` command)
-
-#### Installation
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install php-xml
-```
-
-**Fedora/RHEL:**
-```bash
-sudo dnf install php-xml
-```
-
-**macOS (Homebrew):**
-```bash
-brew install php-xml
-```
+- **php-curl**: Required for downloading releases and API calls
+- **php-mbstring**: Required for string handling
 
 #### Verification
 
-To verify that the XML extension is installed, run:
+To verify your installation:
 ```bash
+php -v
+# Should show 8.2.x or higher
 php -m | grep xml
+# Should show xml (and optionally xmlreader, xmlwriter)
 ```
 
 If the command returns nothing, the extension is not installed. Install it using your system's package manager (see instructions above).
@@ -276,50 +292,40 @@ This section is for users who want to use the `stud-cli` tool as a standalone ex
 
 ### User Installation
 
-#### System Requirements
+#### Quick Install (Recommended)
 
-Before installing `stud-cli`, ensure you have:
-- **PHP 8.2 or higher** installed
-- **php-xml extension** installed (see [System Requirements](#system-requirements) above for installation instructions)
-
-#### Recommended Installation (for seamless `stud update`)
-
-This is the recommended installation method as it allows you to use `stud update` without needing `sudo`.
-
-1.  **Download the PHAR file:**
-    Download the PHAR file from the [Releases page](https://github.com/studapart/stud-cli/releases) on GitHub. The file will be named something like `stud-3.4.1.phar` (the version number will vary).
-
-2.  **Move it to a user-owned binary directory:**
-    Move the downloaded PHAR file to a directory in your user's home directory that is in your shell's `$PATH`, and rename it to `stud`. Common locations include:
-    - `~/.local/bin/` (standard on modern Linux/macOS)
-    - `~/bin/` (custom directory)
-
-    Example command (replace `stud-3.4.1.phar` with the actual filename you downloaded):
-    ```bash
-    mv ./stud-3.4.1.phar ~/.local/bin/stud
-    chmod +x ~/.local/bin/stud
-    ```
-
-3.  **Ensure the directory is in your PATH:**
-    Make sure the directory you chose (e.g., `~/.local/bin/`) is in your shell's `$PATH`. You can verify this by running:
-    ```bash
-    echo $PATH
-    ```
-    
-    If it's not in your PATH, add it to your shell configuration file (e.g., `~/.bashrc`, `~/.zshrc`):
-    ```bash
-    export PATH="$HOME/.local/bin:$PATH"
-    ```
-
-    Now you can run `stud-cli` commands from anywhere using `stud <command>`, and you'll be able to update the tool seamlessly with `stud update` without needing `sudo`.
-
-#### Alternative Installation (Global sudo)
-
-If you prefer to install `stud` globally for all users, you can use the traditional method:
+Run this single command to download and install the latest version:
 
 ```bash
-# Replace 'stud-3.4.1.phar' with the actual filename you downloaded
-sudo mv ./stud-3.4.1.phar /usr/local/bin/stud
+curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
+```
+
+This script will:
+- Check your PHP version and suggest installing it if needed
+- Download the latest release
+- Install it to `~/.local/bin/stud`
+- Set up your PATH if needed
+- Optionally run first-time configuration
+
+#### Manual Install
+
+Download the latest PHAR directly:
+
+```bash
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.0/stud-3.9.0.phar -o ~/.local/bin/stud
+chmod +x ~/.local/bin/stud
+```
+
+Or download from the [Releases page](https://github.com/Studapart/stud-cli/releases/latest).
+
+Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PATH"` to your shell config if needed). This allows you to use `stud update` without `sudo`.
+
+#### Global Install (sudo)
+
+If you prefer to install `stud` globally for all users:
+
+```bash
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.0/stud-3.9.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -564,8 +570,8 @@ These commands help you browse, view, and create Jira work items.
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)
-    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `--assignee <accountId>` to set the assignee (when omitted and the field is required, the current user is used). When reporter is required, it is set to the current user. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively.
-    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `--assignee` (assignee account ID). All optional from CLI; missing values trigger prompts in interactive mode.
+    -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `-F`/`--fields` to pass arbitrary fields in `key=value;key=value,value` format (e.g. `--fields "labels=Bug,DX;priority=High;timeoriginalestimate=2h;assignee=<accountId>"`). When reporter is required, it is set to the current user. When the assignee field is available and not set via `--fields`, the current user is assigned by default. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively. Unmatched `--fields` entries are reported as a note; the create still succeeds for matched fields.
+    -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `-F`/`--fields` (arbitrary fields, e.g. `"labels=Bug,DX;priority=High;timeoriginalestimate=2h"`). All optional from CLI; missing values trigger prompts in interactive mode.
     -   **Usage:**
         ```bash
         stud items:create -p PROJ -m "My summary"
@@ -573,9 +579,23 @@ These commands help you browse, view, and create Jira work items.
         echo "Description from pipe" | stud ic -p PROJ -m "Summary"
         stud ic -p PROJ --parent PROJ-100 -m "Sub-task title"
         stud ic -p PROJ -m "Title" -d "# Heading\n**Bold**" --description-format markdown
+        stud ic -p PROJ -m "Title" --fields "labels=bug,backend;timeoriginalestimate=2h"
+        stud ic -p PROJ -m "Title" -F "priority=High;assignee=abc123"
         stud help items:create
         ```
-    -   **Note:** No `--quiet` option. For detailed help and all options run `stud help items:create`.
+    -   **Note:** No `--quiet` option. Unmatched `--fields` entries (fields not available for the project/issue type) are reported as a note; the create still succeeds. For detailed help and all options run `stud help items:create`.
+
+-   **`stud items:update <key>`** (Alias: `stud iu <key>`)
+    -   **Description:** Updates a Jira issue's fields. Use `-m`/`--summary` to update the title, `-d`/`--description` to update the description (with optional `--description-format markdown` for Markdown), and `-F`/`--fields` to update arbitrary fields in `key=value;key=value,value` format. At least one field must be provided. Unmatched `--fields` entries are reported as a note; the update still succeeds for matched fields.
+    -   **Options:** `-m`/`--summary` (update title), `-d`/`--description` (update description), `--description-format` (plain or markdown; default: plain), `-F`/`--fields` (arbitrary fields).
+    -   **Argument:** `<key>` (Jira issue key, e.g. `SCI-71`)
+    -   **Usage:**
+        ```bash
+        stud items:update SCI-71 --summary "New title"
+        stud iu SCI-71 -d "New description" --description-format markdown
+        stud iu SCI-71 --fields "labels=AI-Generated,DX;priority=High"
+        stud iu SCI-71 -m "New title" -F "labels=Bug;timeoriginalestimate=2h"
+        ```
 
 -   **`stud items:search <jql>`** (Alias: `stud search <jql>`)
     -   **Description:** Search for issues using JQL (Jira Query Language).
@@ -626,7 +646,7 @@ These commands help you browse, view, and create Jira work items.
 These commands integrate directly with your local Git repository to streamline your development workflow.
 
 -   **`stud items:start <key>`** (Alias: `stud start <key>`)
-    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
+    -   **Description:** The core "start work" workflow. Creates a new Git branch based on a Jira issue. After fetching, the command compares the local and remote counterparts of the configured base branch and uses whichever is more advanced, so your new branch always starts from the latest code. If `JIRA_TRANSITION_ENABLED` is enabled in your configuration, the command will automatically assign the issue to you and transition it to 'In Progress'. The transition ID is cached per project in `.git/stud.config` to avoid repeated prompts. The command now automatically detects existing branches (local or remote) and switches to them instead of creating duplicates.
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
@@ -808,6 +828,15 @@ These commands integrate directly with your local Git repository to streamline y
         stud ft
         ```
     -   **Note:** This command rewrites commit history. After running `stud flatten`, you will need to use `stud please` to force-push your changes.
+
+-   **`stud sync`** (Alias: `stud sy`)
+    -   **Description:** Fetch the latest base branch and rebase the current feature branch onto it. If the rebase succeeds cleanly, a success message is shown. If the rebase encounters conflicts, it is automatically aborted and the branch is left unchanged. The command requires a clean working directory and must be run from a feature branch (not the base branch).
+    -   **Usage:**
+        ```bash
+        stud sync
+        stud sy
+        ```
+    -   **Note:** After rebasing, you may need to use `stud please` to force-push your changes. If conflicts are detected, the rebase is aborted automatically and you are shown the manual rebase command.
 
 -   **`stud status`** (Alias: `stud ss`)
     -   **Description:** A quick "where am I?" dashboard, showing your current Jira and Git status.

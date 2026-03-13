@@ -23,11 +23,13 @@ class ItemStartHandlerTest extends CommandTestCase
         // which replicates Castor's behavior (snake_case -> slug -> lowercase)
 
         TestKernel::$gitRepository = $this->gitRepository;
+        TestKernel::$gitBranchService = $this->gitBranchService;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
+        $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
         $logger = $this->createMock(Logger::class);
         // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
     }
 
     public function testHandle(): void
@@ -52,7 +54,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -104,7 +106,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $logger->method('section');
         $logger->method('jiraWriteln');
 
-        $handler = new \App\Handler\ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $handler = new \App\Handler\ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -136,7 +138,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -196,7 +198,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -224,7 +226,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -271,7 +273,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -298,7 +300,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -345,7 +347,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -392,7 +394,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -444,7 +446,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -490,7 +492,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -546,7 +548,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -574,7 +576,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -620,7 +622,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -648,7 +650,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -694,7 +696,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -722,7 +724,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -769,7 +771,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -797,7 +799,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -843,7 +845,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -871,7 +873,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -922,7 +924,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $logger->method('warning');
         $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -950,7 +952,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1002,7 +1004,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $logger->method('warning');
         $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1030,7 +1032,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1082,7 +1084,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $logger->method('warning');
         $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1110,7 +1112,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1160,7 +1162,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $logger->method('gitWriteln');
         $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1187,7 +1189,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1234,7 +1236,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1281,7 +1283,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1335,7 +1337,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1384,7 +1386,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1437,7 +1439,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1486,7 +1488,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1541,7 +1543,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1589,7 +1591,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1645,7 +1647,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('warning')
             ->with(Logger::VERBOSITY_NORMAL, $this->stringContains('item.start.transition_error'));
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
         $this->jiraService->expects($this->once())
             ->method('assignIssue')
@@ -1704,12 +1706,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => ['feat/TPW-35-my-awesome-feature'], 'remote' => []]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchBranch')
             ->with('feat/TPW-35-my-awesome-feature');
 
@@ -1746,12 +1748,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => ['feat/TPW-35-my-awesome-feature']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/TPW-35-my-awesome-feature');
 
@@ -1788,7 +1790,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => []]);
@@ -1797,10 +1799,10 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
-        $this->gitRepository->expects($this->never())
+        $this->gitBranchService->expects($this->never())
             ->method('switchBranch');
 
-        $this->gitRepository->expects($this->never())
+        $this->gitBranchService->expects($this->never())
             ->method('switchToRemoteBranch');
 
         $output = new BufferedOutput();
@@ -1833,12 +1835,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => ['feat/TPW-35-different-branch'], 'remote' => []]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchBranch')
             ->with('feat/TPW-35-different-branch');
 
@@ -1875,12 +1877,12 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('fetch');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('findBranchesByIssueKey')
             ->with('TPW-35')
             ->willReturn(['local' => [], 'remote' => ['feat/TPW-35-different-branch']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitBranchService->expects($this->once())
             ->method('switchToRemoteBranch')
             ->with('feat/TPW-35-different-branch');
 
@@ -1891,6 +1893,119 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleCreatesBranchFromResolvedLocalWhenLocalIsAhead(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
+        $gitBranchService = $this->createMock(\App\Service\GitBranchService::class);
+        $gitBranchService->method('resolveLatestBaseBranch')
+            ->with('origin/develop')
+            ->willReturn('develop');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'develop');
+
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->atLeastOnce())
+            ->method('gitWriteln');
+        $logger->method('section');
+        $logger->method('jiraWriteln');
+        $logger->method('text');
+        $logger->method('success');
+
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleNoVerboseLogWhenResolvedMatchesConfigured(): void
+    {
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $gitRepository = $this->createMock(\App\Service\GitRepository::class);
+        $gitBranchService = $this->createMock(\App\Service\GitBranchService::class);
+        $gitBranchService->method('resolveLatestBaseBranch')
+            ->with('origin/develop')
+            ->willReturn('origin/develop');
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $gitRepository->expects($this->once())
+            ->method('fetch');
+
+        $gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('TPW-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+
+        $gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
+
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('text');
+        $logger->method('success');
+        $logger->expects($this->once())
+            ->method('gitWriteln')
+            ->with(
+                Logger::VERBOSITY_VERBOSE,
+                $this->stringContains('item.start.generated_branch')
+            );
+
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $handler->handle($io, 'TPW-35');
 
         $this->assertSame(0, $result);
     }

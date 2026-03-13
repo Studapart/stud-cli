@@ -17,6 +17,11 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Attribute\AgentOutput;
+use App\DTO\ItemCreateInput;
+use App\DTO\ItemUpdateInput;
+use App\Enum\OutputFormat;
+use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
 use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
@@ -35,6 +40,7 @@ use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
 use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
+use App\Handler\ItemUpdateHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
@@ -43,7 +49,9 @@ use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
 use App\Handler\SubmitHandler;
+use App\Handler\SyncHandler;
 use App\Handler\UpdateHandler;
+use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
@@ -53,14 +61,19 @@ use App\Responder\FilterShowResponder;
 use App\Responder\ItemCreateResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
+use App\Responder\ItemUpdateResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
+use App\Response\AgentJsonResponse;
+use App\Service\AgentModeHelper;
 use App\Service\ChangelogParser;
 use App\Service\ConfigValidator;
 use App\Service\FileSystem;
+use App\Service\GitBranchService;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
+use App\Service\GitSetupService;
 use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
@@ -253,6 +266,25 @@ function _get_git_repository(): GitRepository
     return new GitRepository(_get_process_factory(), _get_file_system());
 }
 
+function _get_git_branch_service(): GitBranchService
+{
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "gitBranchService") && \App\Tests\TestKernel::$gitBranchService) {
+        return \App\Tests\TestKernel::$gitBranchService;
+    }
+
+    return new GitBranchService(_get_git_repository());
+}
+
+function _get_git_setup_service(): GitSetupService
+{
+    return new GitSetupService(
+        _get_git_repository(),
+        _get_git_branch_service(),
+        _get_logger(),
+        _get_translation_service()
+    );
+}
+
 /**
  * Gets the appropriate Git provider based on configuration.
  * Reads provider from project config, tokens from project config (with global fallback).
@@ -265,17 +297,15 @@ function _get_git_provider(bool $quiet = false): ?\App\Service\GitProviderInterf
 {
     try {
         $gitRepository = _get_git_repository();
+        $gitSetupService = _get_git_setup_service();
         $logger = _get_logger();
         $translator = _get_translation_service();
 
         // Get provider from project config (with auto-detection)
         $providerType = $gitRepository->getGitProvider();
         if ($providerType === null) {
-            // Try to ensure it's configured (will prompt if needed, unless quiet)
-            $providerType = $gitRepository->ensureGitProviderConfigured(
+            $providerType = $gitSetupService->ensureGitProviderConfigured(
                 io(),
-                $logger,
-                $translator,
                 $quiet
             );
         }
@@ -304,11 +334,9 @@ function _get_git_provider(bool $quiet = false): ?\App\Service\GitProviderInterf
 
         // If token is missing, try to ensure it's configured (will prompt if needed, unless quiet)
         if ($token === null || (is_string($token) && trim($token) === '')) {
-            $token = $gitRepository->ensureGitTokenConfigured(
+            $token = $gitSetupService->ensureGitTokenConfigured(
                 $providerType,
                 io(),
-                $logger,
-                $translator,
                 $globalConfig,
                 $quiet
             );
@@ -402,6 +430,21 @@ function _get_translation_service(): TranslationService
     return new TranslationService($locale, $translationsPath);
 }
 
+function _get_duration_parser(): \App\Service\DurationParser
+{
+    return new \App\Service\DurationParser();
+}
+
+function _get_issue_field_resolver(): \App\Service\IssueFieldResolver
+{
+    return new \App\Service\IssueFieldResolver(_get_jira_service(), _get_duration_parser());
+}
+
+function _get_fields_parser(): \App\Service\FieldsParser
+{
+    return new \App\Service\FieldsParser(_get_duration_parser());
+}
+
 /**
  * Gets the color configuration with theme detection.
  *
@@ -437,10 +480,8 @@ function _get_base_branch(bool $quiet = false): string
 {
     static $baseBranchByQuiet = [];
     if (! isset($baseBranchByQuiet[$quiet])) {
-        $gitRepository = _get_git_repository();
-        $logger = _get_logger();
-        $translator = _get_translation_service();
-        $baseBranchByQuiet[$quiet] = $gitRepository->ensureBaseBranchConfigured(io(), $logger, $translator, $quiet);
+        $gitSetupService = _get_git_setup_service();
+        $baseBranchByQuiet[$quiet] = $gitSetupService->ensureBaseBranchConfigured(io(), $quiet);
     }
 
     return $baseBranchByQuiet[$quiet];
@@ -455,6 +496,14 @@ function _get_error_responder(): ErrorResponder
 }
 
 /**
+ * Gets the AgentModeHelper instance (for --agent JSON input/output).
+ */
+function _get_agent_mode_helper(): AgentModeHelper
+{
+    return new AgentModeHelper();
+}
+
+/**
  * Gets the ColorHelper service instance.
  */
 function _get_color_helper(): \App\Service\ColorHelper
@@ -465,6 +514,19 @@ function _get_color_helper(): \App\Service\ColorHelper
     }
 
     return $colorHelper;
+}
+
+/**
+ * Gets the ResponderHelper service instance (shared presentation helpers for Responders).
+ */
+function _get_responder_helper(): \App\Service\ResponderHelper
+{
+    static $responderHelper = null;
+    if ($responderHelper === null) {
+        $responderHelper = new \App\Service\ResponderHelper(_get_translation_service(), _get_color_helper());
+    }
+
+    return $responderHelper;
 }
 
 /**
@@ -838,7 +900,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         }
 
         // Step 3: Validate command requirements
-        $validator = new ConfigValidator($logger, $translator, _get_git_repository());
+        $validator = new ConfigValidator($logger, $translator, _get_git_branch_service());
         $projectConfig = null;
 
         try {
@@ -949,48 +1011,137 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 // =================================================================================
 
 #[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
-function config_init(): void
-{
+#[AgentOutput(properties: ['message' => 'string'], description: 'Confirmation message')]
+function config_init(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+    }
     $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger());
     $handler->handle(io());
+    if ($format === OutputFormat::Json) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondSuccess('Configuration initialized'));
+
+        return;
+    }
 }
 
 #[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
+#[AgentOutput(responseClass: \App\Response\ConfigShowResponse::class, description: 'Global and project configuration or a single key value')]
 function config_show(
     #[AsOption(name: 'key', shortcut: 'k', description: 'Show only this config key (whitelisted non-secret keys only)')]
     ?string $key = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'With --key: output only the raw value (no section/labels)')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input (stdin or file path) and JSON output')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON file when using --agent (omit to read from stdin)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) && $input['key'] !== '' ? (string) $input['key'] : null;
+    }
     $gitRepository = null;
 
     try {
         $gitRepository = _get_git_repository();
     } catch (\RuntimeException) {
-        // Not in a git repository
     }
     $handler = new ConfigShowHandler(_get_file_system(), _get_config_path(), $gitRepository);
     $response = $handler->handle($key);
+    $quietEffective = $key !== null && $quiet;
+    $responder = new ConfigShowResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $quietEffective, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
     if (! $response->isSuccess()) {
-        $responder = new ConfigShowResponder(_get_translation_service(), _get_logger(), _get_color_helper());
-        $responder->respond(io(), $response, false);
         exit(1);
     }
-    $quietEffective = $key !== null && $quiet;
-    $responder = new ConfigShowResponder(_get_translation_service(), _get_logger(), _get_color_helper());
-    $responder->respond(io(), $response, $quietEffective);
+}
+
+/**
+ * Write agent payload to stdout and exit. Uses helper's writeAgentOutput (returns line when no io) then echo and exit.
+ *
+ * @param array{success: bool, error?: string, data?: mixed} $payload
+ */
+function _agent_output_and_exit(AgentModeHelper $helper, array $payload): void
+{
+    $line = $helper->writeAgentOutput($payload);
+    if ($line !== null) {
+        echo $line;
+        exit($helper->exitCodeForPayload($payload));
+    }
+
+    return;
+}
+
+/**
+ * Read and decode agent JSON input. On failure, outputs the error and returns null.
+ *
+ * @return array<string, mixed>|null null when input is invalid (error already sent to agent output)
+ */
+function _read_agent_input(?string $inputFile): ?array
+{
+    $helper = _get_agent_mode_helper();
+
+    try {
+        return $helper->readAgentInput($inputFile);
+    } catch (AgentModeException $e) {
+        _agent_output_and_exit($helper, $helper->buildErrorPayload($e->getMessage()));
+
+        return null;
+    }
+}
+
+/**
+ * Write an AgentJsonResponse to stdout and exit.
+ */
+function _agent_respond(AgentJsonResponse $agentResponse): void
+{
+    _agent_output_and_exit(_get_agent_mode_helper(), $agentResponse->toPayload());
 }
 
 #[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]
+#[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira and Git provider connectivity status')]
 function config_validate(
     #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
     bool $skipJira = false,
     #[AsOption(name: 'skip-git', description: 'Skip the Git provider connectivity check')]
     bool $skipGit = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $skipJira = (bool) ($input['skipJira'] ?? false);
+        $skipGit = (bool) ($input['skipGit'] ?? false);
+    }
     _get_config();
 
     $jiraService = $skipJira ? null : _get_jira_service();
@@ -1006,7 +1157,7 @@ function config_validate(
         }
         if (! $skipGitForHandler) {
             $gitProvider = _get_git_provider();
-            if ($gitProvider === null) {
+            if ($format === OutputFormat::Cli && $gitProvider === null) {
                 $translator = _get_translation_service();
                 io()->error($translator->trans('config.git_provider_not_configured'));
                 exit(1);
@@ -1016,9 +1167,13 @@ function config_validate(
 
     $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
     $response = $handler->handle();
-    $responder = new ConfigValidateResponder(_get_translation_service(), _get_color_helper());
-    $responder->respond(io(), $response);
+    $responder = new ConfigValidateResponder(_get_responder_helper());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
 
+        return;
+    }
     if (! $response->isSuccess()) {
         exit(1);
     }
@@ -1029,37 +1184,59 @@ function config_validate(
 // =================================================================================
 
 #[AsTask(name: 'projects:list', aliases: ['pj'], description: 'Lists all visible Jira projects')]
+#[AgentOutput(responseClass: \App\Response\ProjectListResponse::class, description: 'List of Jira projects')]
 function projects_list(
-
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+
     $handler = new ProjectListHandler(_get_jira_service());
     $response = $handler->handle();
-    $errorResponder = _get_error_responder();
+    $responder = new ProjectListResponder(_get_responder_helper());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
     if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
+        _get_error_responder()->respond(io(), $response);
         exit(1);
     }
-    $responder = new ProjectListResponder(_get_translation_service(), _get_color_helper());
-    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
-function filters_list(): void
-{
+#[AgentOutput(responseClass: \App\Response\FilterListResponse::class, description: 'List of Jira filters')]
+function filters_list(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+
     $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
     $response = $handler->handle();
-    $errorResponder = _get_error_responder();
+    $responder = new FilterListResponder(_get_responder_helper());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
     if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
+        _get_error_responder()->respond(io(), $response);
         exit(1);
     }
-    $responder = new FilterListResponder(_get_translation_service(), _get_color_helper());
-    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
+#[AgentOutput(responseClass: \App\Response\ItemListResponse::class, description: 'List of work items')]
 function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')]
     bool $all = false,
@@ -1067,80 +1244,150 @@ function items_list(
     ?string $project = null,
     #[AsOption(name: 'sort', shortcut: 's', description: 'Sort results by Key or Status')]
     ?string $sort = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
-    $translator = _get_translation_service();
-
-    if ($sort !== null) {
-        $normalizedSort = strtolower($sort);
-        if (! in_array($normalizedSort, ['key', 'status'], true)) {
-            io()->error($translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
-            exit(1);
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
         }
-        $sort = ucfirst($normalizedSort);
+        $all = (bool) ($input['all'] ?? false);
+        $project = isset($input['project']) ? (string) $input['project'] : null;
+        $sort = isset($input['sort']) ? ucfirst(strtolower((string) $input['sort'])) : null;
+    } else {
+        $translator = _get_translation_service();
+        if ($sort !== null) {
+            $normalizedSort = strtolower($sort);
+            if (! in_array($normalizedSort, ['key', 'status'], true)) {
+                io()->error($translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
+                exit(1);
+            }
+            $sort = ucfirst($normalizedSort);
+        }
     }
 
     $handler = new ItemListHandler(_get_jira_service());
     $response = $handler->handle($all, $project, $sort);
-    $errorResponder = _get_error_responder();
-    if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
-        exit(1);
-    }
-    $responder = new ItemListResponder($translator, _get_color_helper());
-    $responder->respond(io(), $response);
-}
-
-#[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
-function items_search(
-    #[AsArgument(name: 'jql', description: 'The JQL query string')]
-    string $jql,
-): void {
-    _load_constants();
-    $handler = new SearchHandler(_get_jira_service());
-    $response = $handler->handle($jql);
-    $errorResponder = _get_error_responder();
-    if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
-        exit(1);
-    }
-    $responder = new SearchResponder(_get_translation_service(), _get_jira_config(), _get_color_helper());
-    $responder->respond(io(), $response);
-}
-
-#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
-function filters_show(
-    #[AsArgument(name: 'filterName', description: 'The name of the saved Jira filter')]
-    string $filterName,
-): void {
-    _load_constants();
-    $handler = new FilterShowHandler(_get_jira_service());
-    $response = $handler->handle($filterName);
-    $errorResponder = _get_error_responder();
-    if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
-        exit(1);
-    }
-    $responder = new FilterShowResponder(_get_translation_service(), _get_jira_config(), _get_color_helper());
-    $responder->respond(io(), $response);
-}
-
-#[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
-function items_show(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')]
-    string $key,
-): void {
-    _load_constants();
-    $handler = new ItemShowHandler(_get_jira_service());
-    $response = $handler->handle($key);
-    $errorResponder = _get_error_responder();
-    if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
+    $responder = new ItemListResponder(_get_responder_helper());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
 
         return;
     }
-    $responder = new ItemShowResponder(_get_translation_service(), _get_jira_config(), null, _get_color_helper());
-    $responder->respond(io(), $response, $key);
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
+#[AgentOutput(responseClass: \App\Response\SearchResponse::class, description: 'JQL search results')]
+function items_search(
+    #[AsArgument(name: 'jql', description: 'The JQL query string (or inputFile when --agent)')]
+    ?string $jql = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($jql);
+        if ($input === null) {
+            return;
+        }
+        $jql = (string) ($input['jql'] ?? '');
+    } elseif ($jql === null || $jql === '') {
+        io()->error('The "jql" argument is required.');
+        exit(1);
+    }
+    $handler = new SearchHandler(_get_jira_service());
+    $response = $handler->handle($jql);
+    $responder = new SearchResponder(_get_responder_helper(), _get_jira_config());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
+#[AgentOutput(responseClass: \App\Response\FilterShowResponse::class, description: 'Issues from a saved filter')]
+function filters_show(
+    #[AsArgument(name: 'filterName', description: 'The filter name (or inputFile when --agent)')]
+    ?string $filterName = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($filterName);
+        if ($input === null) {
+            return;
+        }
+        $filterName = (string) ($input['filterName'] ?? '');
+    } elseif ($filterName === null || $filterName === '') {
+        io()->error('The "filterName" argument is required.');
+        exit(1);
+    }
+    $handler = new FilterShowHandler(_get_jira_service());
+    $response = $handler->handle($filterName);
+    $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
+#[AgentOutput(responseClass: \App\Response\ItemShowResponse::class, description: 'Detailed work item information')]
+function items_show(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $key = (string) ($input['key'] ?? '');
+    } elseif ($key === null || $key === '') {
+        io()->error('The "key" argument is required.');
+        exit(1);
+    }
+    $handler = new ItemShowHandler(_get_jira_service());
+    $response = $handler->handle($key);
+    $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config());
+    $agentResponse = $responder->respond(io(), $response, $key, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+    }
 }
 
 /**
@@ -1175,6 +1422,7 @@ function _items_create_normalize_summary(?string $summary): ?string
 }
 
 #[AsTask(name: 'items:create', aliases: ['ic'], description: 'Creates a Jira issue in a project')]
+#[AgentOutput(responseClass: \App\Response\ItemCreateResponse::class, description: 'Created issue key and URL')]
 function items_create(
     #[AsOption(name: 'project', shortcut: 'p', description: 'Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)')]
     ?string $project = null,
@@ -1188,30 +1436,133 @@ function items_create(
     ?string $descriptionFormat = null,
     #[AsOption(name: 'parent', description: 'Parent issue key for creating a sub-task')]
     ?string $parent = null,
-    #[AsOption(name: 'assignee', description: 'Assignee account ID (default: current user when field is present)')]
-    ?string $assignee = null,
+    #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
+    ?string $fields = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
-    $interactive = function_exists('posix_isatty') && @posix_isatty(STDIN);
-    $summary = _items_create_normalize_summary($summary);
-    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
-    $response = $handler->handle(io(), $interactive, $project, $type, $summary, $description, $descriptionFormat, $parent, $assignee);
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $interactive = ! $agent && function_exists('posix_isatty') && @posix_isatty(STDIN);
+    /** @var array<string, string|list<string>>|null $fieldsMap */
+    $fieldsMap = null;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $project = $input['project'] ?? null;
+        $type = $input['type'] ?? null;
+        $summary = $input['summary'] ?? null;
+        $description = $input['description'] ?? null;
+        $descriptionFormat = $input['descriptionFormat'] ?? null;
+        $parent = $input['parent'] ?? null;
+        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
+    } else {
+        $summary = _items_create_normalize_summary($summary);
+    }
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser());
+    $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
+    $response = $handler->handle(io(), $interactive, $input);
+    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
     if (! $response->isSuccess()) {
         _get_error_responder()->respond(io(), $response);
         exit(1);
     }
-    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
-    $responder->respond(io(), $response);
+}
+
+#[AsTask(name: 'items:update', aliases: ['iu'], description: 'Update a Jira issue fields')]
+#[AgentOutput(responseClass: \App\Response\ItemUpdateResponse::class, description: 'Updated issue key')]
+function items_update(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'summary', shortcut: 'm', description: 'Update the issue summary/title')]
+    ?string $summary = null,
+    #[AsOption(name: 'description', shortcut: 'd', description: 'Update the issue description (STDIN takes precedence when piping)')]
+    ?string $description = null,
+    #[AsOption(name: 'description-format', description: 'Description format: plain (default) or markdown')]
+    ?string $descriptionFormat = null,
+    #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
+    ?string $fields = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    /** @var array<string, string|list<string>>|null $fieldsMap */
+    $fieldsMap = null;
+    if ($agent) {
+        $input = _read_agent_input($inputFile ?? $key);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) ? (string) $input['key'] : null;
+        $summary = $input['summary'] ?? null;
+        $description = $input['description'] ?? null;
+        $descriptionFormat = $input['descriptionFormat'] ?? null;
+        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
+    }
+    if ($key === null || trim($key) === '') {
+        $translator = _get_translation_service();
+        if ($format === OutputFormat::Json) {
+            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.update.error_no_key')));
+
+            return;
+        }
+        io()->error($translator->trans('item.update.error_no_key'));
+        exit(1);
+    }
+    $handler = new ItemUpdateHandler(_get_jira_service(), _get_translation_service(), _get_fields_parser());
+    $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
+    $response = $handler->handle($input);
+    $responder = new ItemUpdateResponder(_get_translation_service());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
 }
 
 #[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Transition result')]
 function items_transition(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123). Optional - will detect from branch if not provided')]
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent). Optional - will detect from branch if not provided')]
     ?string $key = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) ? (string) $input['key'] : null;
+    }
     $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
-    exit($handler->handle(io(), $key));
+    $exitCode = $handler->handle(io(), $key);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Transition completed', 'Transition failed'));
+
+        return;
+    }
+    exit($exitCode);
 }
 
 // =================================================================================
@@ -1219,32 +1570,74 @@ function items_transition(
 // =================================================================================
 
 #[AsTask(name: 'items:start', aliases: ['start'], description: 'Creates a new git branch from a Jira item')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Branch creation result')]
 function items_start(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')]
-    string $key,
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler->handle(io(), $key);
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $key = (string) ($input['key'] ?? '');
+    } elseif ($key === null || $key === '') {
+        io()->error('The "key" argument is required.');
+        exit(1);
+    }
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
+    $exitCode = $handler->handle(io(), $key);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch created', 'Start failed'));
+
+        return;
+    }
 }
 
 #[AsTask(name: 'items:takeover', aliases: ['to'], description: 'Takes over an issue from another user')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Takeover result')]
 function items_takeover(
-    #[AsArgument(name: 'key', description: 'The Jira issue key (e.g., PROJ-123)')]
-    string $key,
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $key = (string) ($input['key'] ?? '');
+        $quiet = true;
+    } elseif ($key === null || $key === '') {
+        io()->error('The "key" argument is required.');
+        exit(1);
+    }
     $baseBranch = _get_base_branch();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
-    exit($handler->handle(io(), $key, $quiet));
+    $gitBranchService = _get_git_branch_service();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $exitCode = $handler->handle(io(), $key, $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Takeover completed', 'Takeover failed'));
+
+        return;
+    }
+    exit($exitCode);
 }
 
 #[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Rename result')]
 function branch_rename(
-    #[AsArgument(name: 'branch', description: 'The branch to rename (defaults to current branch)')]
+    #[AsArgument(name: 'branch', description: 'The branch to rename (or inputFile when --agent; defaults to current branch)')]
     ?string $branch = null,
     #[AsArgument(name: 'key', description: 'The Jira issue key to regenerate branch name from (e.g., PROJ-123)')]
     ?string $key = null,
@@ -1252,53 +1645,90 @@ function branch_rename(
     ?string $explicitName = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($branch);
+        if ($input === null) {
+            return;
+        }
+        $branch = $input['branch'] ?? null;
+        $key = $input['key'] ?? null;
+        $explicitName = $input['explicitName'] ?? null;
+        $quiet = true;
+    }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
+    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_logger(), _get_html_converter());
+    $exitCode = $handler->handle(io(), $branch, $key, $explicitName, $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch renamed', 'Rename failed'));
 
-    $handler = new BranchRenameHandler(
-        $gitRepository,
-        _get_jira_service(),
-        $gitProvider,
-        _get_translation_service(),
-        _get_jira_config(),
-        _get_base_branch(),
-        _get_logger(),
-        _get_html_converter()
-    );
-    exit($handler->handle(io(), $branch, $key, $explicitName, $quiet));
+        return;
+    }
+    exit($exitCode);
 }
 
 #[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
-function branches_list(): int
-{
+#[AgentOutput(responseClass: \App\Response\BranchListResponse::class, description: 'List of branches with status')]
+function branches_list(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): int {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+
     $gitRepository = _get_git_repository();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service());
+    $handler = new BranchListHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service());
     $response = $handler->handle();
-    $responder = new BranchListResponder(_get_translation_service(), _get_color_helper());
-    $responder->respond(io(), $response);
+    $responder = new BranchListResponder(_get_responder_helper());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return 0;
+    }
 
     return 0;
 }
 
 #[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Cleanup result')]
 function branches_clean(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
-    bool $quiet = false
+    bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): int {
     _load_constants();
+    if ($agent) {
+        $quiet = true;
+    }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
     $baseBranch = _get_base_branch();
-    $handler = new BranchCleanHandler($gitRepository, $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $handler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $exitCode = $handler->handle(io(), $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branches cleaned', 'Clean failed'));
 
-    return $handler->handle(io(), $quiet);
+        return 0;
+    }
+
+    return $exitCode;
 }
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Commit result')]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
     bool $isNew = false,
@@ -1309,65 +1739,152 @@ function commit(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
-    bool $help = false
+    bool $help = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
-    if ($help) {
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $isNew = (bool) ($input['isNew'] ?? false);
+        $message = $input['message'] ?? null;
+        $stageAll = (bool) ($input['stageAll'] ?? false);
+        $quiet = true;
+    }
+    if (! $agent && $help) {
         $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
         $helpService->displayCommandHelp(io(), 'commit');
 
         return;
     }
     $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $handler->handle(io(), $isNew, $message, $stageAll, $quiet);
+    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit created', 'Commit failed'));
+
+        return;
+    }
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Force push result')]
 function please(
-
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Force push completed', 'Force push failed'));
+
+        return;
+    }
 }
 
 #[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Undo result')]
 function commit_undo(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
-    bool $help = false
+    bool $help = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
-    if ($help) {
+    if ($agent) {
+        $quiet = true;
+    } elseif ($help) {
         $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
         $helpService->displayCommandHelp(io(), 'commit:undo');
 
         return;
     }
     $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
-    exit($handler->handle(io(), $quiet));
+    $exitCode = $handler->handle(io(), $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit undone', 'Undo failed'));
+
+        return;
+    }
+    exit($exitCode);
 }
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Flatten result')]
 function flatten(
-
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
     $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
-    exit($handler->handle(io()));
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Flatten completed', 'Flatten failed'));
+
+        return;
+    }
+    exit($exitCode);
+}
+
+#[AsTask(name: 'sync', aliases: ['sy'], description: 'Fetch the latest base branch and rebase the current feature branch onto it')]
+#[AgentOutput(properties: ['message' => 'string', 'rebased' => 'bool'], description: 'Sync result')]
+function sync(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Sync completed', 'Sync failed'));
+
+        return;
+    }
+    exit($exitCode);
 }
 
 #[AsTask(name: 'cache:clear', aliases: ['cc'], description: 'Clear the update check cache to force a version check on next command')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Cache clear result')]
 function cache_clear(
-
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
     $handler = new CacheClearHandler(_get_translation_service(), _get_logger(), _get_file_system());
-    exit($handler->handle(io()));
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Cache cleared', 'Cache clear failed'));
+
+        return;
+    }
+    exit($exitCode);
 }
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Submit result')]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')]
     bool $draft = false,
@@ -1375,13 +1892,31 @@ function submit(
     ?string $labels = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
-    _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $draft = (bool) ($input['draft'] ?? false);
+        $labels = $input['labels'] ?? null;
+        $quiet = true;
+    }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider($quiet);
 
     if ($gitProvider === null) {
+        if ($agent) {
+            $cmdResponder = new AgentCommandResponder();
+            _agent_respond(new AgentJsonResponse(false, error: 'Git provider not configured'));
+
+            return;
+        }
         $gitConfig = _get_git_config();
         $repoOwner = $gitRepository->getRepositoryOwner();
         $repoName = $gitRepository->getRepositoryName();
@@ -1403,66 +1938,106 @@ function submit(
         exit(1);
     }
 
-    $handler = new SubmitHandler(
-        $gitRepository,
-        _get_jira_service(),
-        $gitProvider,
-        _get_jira_config(),
-        _get_base_branch($quiet),
-        _get_translation_service(),
-        _get_logger(),
-        _get_html_converter()
-    );
-    $handler->handle(io(), $draft, $labels, $quiet);
+    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());
+    $exitCode = $handler->handle(io(), $draft, $labels, $quiet);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Pull request created', 'Submit failed'));
+
+        return;
+    }
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Comment post result')]
 function pr_comment(
-    #[AsArgument(name: 'message', description: 'The comment message (optional if piping from STDIN)')]
+    #[AsArgument(name: 'message', description: 'The comment message (or inputFile when --agent; optional if piping from STDIN)')]
     ?string $message = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($message);
+        if ($input === null) {
+            return;
+        }
+        $message = $input['message'] ?? null;
+    }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-
-    $handler = new PrCommentHandler(
-        $gitRepository,
-        $gitProvider,
-        _get_translation_service(),
-        _get_logger()
-    );
+    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io(), $message);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Comment posted', 'Comment failed'));
+
+        return;
+    }
     exit($exitCode);
 }
 
 #[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
-function pr_comments(): void
-{
+#[AgentOutput(responseClass: \App\Response\PrCommentsResponse::class, description: 'Pull request comments and reviews')]
+function pr_comments(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-
-    $handler = new PrCommentsHandler(
-        $gitRepository,
-        $gitProvider,
-        _get_translation_service()
-    );
+    $handler = new PrCommentsHandler($gitRepository, $gitProvider, _get_translation_service());
     $response = $handler->handle();
-    $errorResponder = _get_error_responder();
+    $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
     if (! $response->isSuccess()) {
-        $errorResponder->respond(io(), $response);
+        _get_error_responder()->respond(io(), $response);
         exit(1);
     }
-    $responder = new PrCommentsResponder(_get_translation_service(), _get_comment_body_parser(), _get_color_helper());
-    $responder->respond(io(), $response);
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
+#[AgentOutput(properties: ['commands' => 'array'], description: 'Agent mode schema with all commands')]
 function help(
     #[AsArgument(name: 'command_name', description: 'The command name to get help for')]
-    ?string $commandName = null
+    ?string $commandName = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($commandName);
+        if ($input === null) {
+            return;
+        }
+        $generator = new \App\Service\AgentModeSchemaGenerator();
+        $schema = $generator->generate();
+        $filterCommand = $input['command'] ?? null;
+        if ($filterCommand !== null) {
+            foreach ($schema['commands'] as $cmd) {
+                if ($cmd['name'] === $filterCommand || in_array($filterCommand, $cmd['aliases'] ?? [], true)) {
+                    _agent_respond(new AgentJsonResponse(true, data: $cmd));
+
+                    return;
+                }
+            }
+            _agent_respond(new AgentJsonResponse(false, error: "Unknown command: {$filterCommand}"));
+
+            return;
+        }
+        _agent_respond(new AgentJsonResponse(true, data: $schema));
+
+        return;
+    }
     $translator = _get_translation_service();
     $colorHelper = _get_color_helper();
 
@@ -1724,12 +2299,22 @@ function help(
 
 
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Status result')]
 function status(
-
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $exitCode = $handler->handle(io());
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Status displayed', 'Status failed'));
+
+        return;
+    }
 }
 
 // =================================================================================
@@ -1737,8 +2322,9 @@ function status(
 // =================================================================================
 
 #[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Release creation result')]
 function release(
-    #[AsArgument(name: 'version', description: 'The new version (e.g., 1.2.0). Optional if using --major, --minor, or --patch flags')]
+    #[AsArgument(name: 'version', description: 'The new version (or inputFile when --agent). Optional if using --major, --minor, or --patch flags')]
     ?string $version = null,
     #[AsOption(name: 'major', shortcut: 'M', description: 'Increment major version (X.0.0)')]
     bool $major = false,
@@ -1750,17 +2336,33 @@ function release(
     bool $publish = false,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($version);
+        if ($input === null) {
+            return;
+        }
+        $version = $input['version'] ?? null;
+        $bumpType = $input['bumpType'] ?? ($version === null ? 'patch' : null);
+        $publish = (bool) ($input['publish'] ?? false);
+        $quiet = true;
+        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
+        $handler->handle(io(), $version, $publish, $bumpType, $quiet);
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondSuccess('Release created'));
 
-    // Validate mutually exclusive flags
+        return;
+    }
+
     $flagCount = ($major ? 1 : 0) + ($minor ? 1 : 0) + ($patch ? 1 : 0);
     if ($flagCount > 1) {
         io()->error('Only one of --major, --minor, or --patch can be specified at a time.');
         exit(1);
     }
 
-    // Determine bump type
     $bumpType = null;
     if ($major) {
         $bumpType = 'major';
@@ -1769,11 +2371,9 @@ function release(
     } elseif ($patch) {
         $bumpType = 'patch';
     } elseif ($version === null) {
-        // Default to patch if no version and no flags
         $bumpType = 'patch';
     }
 
-    // If version is provided, flags should not be used
     if ($version !== null && $bumpType !== null) {
         io()->error('Cannot specify both a version and a bump flag (--major, --minor, --patch).');
         exit(1);
@@ -1784,54 +2384,74 @@ function release(
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Deployment result')]
 function deploy(
     #[AsOption(name: 'clean', description: 'Clean up merged branches after deployment')]
-    bool $clean = false
+    bool $clean = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $clean = (bool) ($input['clean'] ?? false);
+    }
     $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     $handler->handle(io());
 
-    // Clean up merged branches if requested (after deployment cleanup)
     if ($clean) {
         $gitRepository = _get_git_repository();
         $githubProvider = _get_github_provider();
-        $cleanHandler = new BranchCleanHandler($gitRepository, $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
-        $cleanHandler->handle(io(), true); // true = quiet mode (non-interactive)
+        $cleanHandler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+        $cleanHandler->handle(io(), true);
+    }
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondSuccess('Deployment completed'));
+
+        return;
     }
 }
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Update is not supported in agent mode')]
 function update(
     #[AsOption(name: 'info', shortcut: 'i', description: 'Preview the changelog of the latest available version without downloading')]
     bool $info = false,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
 ): void {
     _load_constants();
+    if ($agent) {
+        _agent_respond(new AgentJsonResponse(false, error: 'Update is not supported in agent mode'));
 
-    // Get binary path - try Phar first, then fallback
+        return;
+    }
+
     $binaryPath = '';
     if (class_exists('Phar') && \Phar::running(false)) {
         $binaryPath = \Phar::running(false);
     } else {
-        // Fallback for development/testing
         $binaryPath = __FILE__;
     }
 
-    // Get GitHub token from config if available (needed for private repositories)
-    // UpdateHandler is specifically for GitHub (updating stud-cli itself)
     $gitToken = null;
 
     try {
         $gitConfig = _get_git_config();
         $gitToken = $gitConfig['GITHUB_TOKEN'] ?? null;
-    } catch (\Exception $e) {
-        // Config might not exist, that's okay - we'll try without token
+    } catch (\Exception) {
     }
 
-    // Get repository owner and name from APP_REPO_SLUG constant
-    // This constant is baked into the PHAR during build via dump-config
     if (! defined('APP_REPO_SLUG')) {
         io()->error([
             'APP_REPO_SLUG constant is not defined.',
@@ -1840,7 +2460,6 @@ function update(
         exit(1);
     }
 
-    // Parse "owner/repo" format from APP_REPO_SLUG constant
     $nameParts = explode('/', APP_REPO_SLUG, 2);
     if (count($nameParts) !== 2) {
         io()->error([

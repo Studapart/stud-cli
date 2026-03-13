@@ -37,7 +37,7 @@ class ConfigValidator
     public function __construct(
         private readonly Logger $logger,
         private readonly TranslationService $translator,
-        private readonly ?GitRepository $gitRepository = null
+        private readonly ?GitBranchService $gitBranchService = null
     ) {
     }
 
@@ -113,7 +113,7 @@ class ConfigValidator
      */
     public function autoDetectKey(string $key): ?string
     {
-        if ($key === 'baseBranch' && $this->gitRepository !== null) {
+        if ($key === 'baseBranch' && $this->gitBranchService !== null) {
             return $this->autoDetectBaseBranch();
         }
 
@@ -128,13 +128,13 @@ class ConfigValidator
      */
     protected function autoDetectBaseBranch(): ?string
     {
-        if ($this->gitRepository === null) {
+        if ($this->gitBranchService === null) {
             return null;
         }
 
         try {
             $candidates = ['develop', 'main', 'master'];
-            $remoteBranches = $this->gitRepository->getAllRemoteBranches('origin');
+            $remoteBranches = $this->gitBranchService->getAllRemoteBranches('origin');
 
             foreach ($candidates as $candidate) {
                 if (in_array($candidate, $remoteBranches, true)) {

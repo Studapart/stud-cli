@@ -65,60 +65,71 @@ class MigrationExecutor
 
         foreach ($migrations as $migration) {
             try {
-                $this->logger->text(
-                    Logger::VERBOSITY_NORMAL,
-                    $this->translator->trans('migration.running', [
-                        'id' => $migration->getId(),
-                        'description' => $migration->getDescription(),
-                    ])
-                );
-
-                // Execute migration (execute() is defined in AbstractMigration)
-                if ($migration instanceof \App\Migrations\AbstractMigration) {
-                    $migratedConfig = $migration->execute($migratedConfig);
-                } else {
-                    // Fallback for migrations that don't extend AbstractMigration
-                    $migratedConfig = $migration->up($migratedConfig);
-                }
-
-                // Update migration version to this migration's ID
-                $migratedConfig['migration_version'] = $migration->getId();
-
-                // Save config after each migration
+                $migratedConfig = $this->runSingleMigration($migration, $migratedConfig);
                 $this->fileSystem->dumpFile($configPath, $migratedConfig);
-
-                $this->logger->text(
-                    Logger::VERBOSITY_NORMAL,
-                    $this->translator->trans('migration.version_updated', [
-                        'version' => $migration->getId(),
-                    ])
-                );
             } catch (\Throwable $e) {
-                $errorMessage = $this->getErrorMessage($migration->getId(), $e->getMessage());
-
-                // Handle errors based on migration type
-                if ($migration->isPrerequisite()) {
-                    // Prerequisite migrations must succeed
-                    $this->logger->error(
-                        Logger::VERBOSITY_NORMAL,
-                        explode("\n", $errorMessage)
-                    );
-
-                    throw new \RuntimeException(
-                        "Prerequisite migration {$migration->getId()} failed: {$e->getMessage()}",
-                        0,
-                        $e
-                    );
-                }
-
-                // Non-prerequisite migrations: log error but continue
-                $this->logger->warning(
-                    Logger::VERBOSITY_NORMAL,
-                    explode("\n", $errorMessage)
-                );
+                $this->handleMigrationFailure($migration, $e);
             }
         }
 
         return $migratedConfig;
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    private function runSingleMigration(MigrationInterface $migration, array $config): array
+    {
+        $this->logger->text(
+            Logger::VERBOSITY_NORMAL,
+            $this->translator->trans('migration.running', [
+                'id' => $migration->getId(),
+                'description' => $migration->getDescription(),
+            ])
+        );
+
+        if ($migration instanceof \App\Migrations\AbstractMigration) {
+            $config = $migration->execute($config);
+        } else {
+            $config = $migration->up($config);
+        }
+
+        $config['migration_version'] = $migration->getId();
+
+        $this->logger->text(
+            Logger::VERBOSITY_NORMAL,
+            $this->translator->trans('migration.version_updated', [
+                'version' => $migration->getId(),
+            ])
+        );
+
+        return $config;
+    }
+
+    /**
+     * @throws \RuntimeException If the migration is a prerequisite
+     */
+    private function handleMigrationFailure(MigrationInterface $migration, \Throwable $e): void
+    {
+        $errorMessage = $this->getErrorMessage($migration->getId(), $e->getMessage());
+
+        if ($migration->isPrerequisite()) {
+            $this->logger->error(
+                Logger::VERBOSITY_NORMAL,
+                explode("\n", $errorMessage)
+            );
+
+            throw new \RuntimeException(
+                "Prerequisite migration {$migration->getId()} failed: {$e->getMessage()}",
+                0,
+                $e
+            );
+        }
+
+        $this->logger->warning(
+            Logger::VERBOSITY_NORMAL,
+            explode("\n", $errorMessage)
+        );
     }
 }

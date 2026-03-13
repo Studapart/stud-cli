@@ -23,45 +23,41 @@ class InitHandler
 
     public function handle(SymfonyStyle $io): void
     {
-        $existingConfig = $this->fileSystem->fileExists($this->configPath) ? $this->fileSystem->parseFile($this->configPath) : [];
+        $existingConfig = $this->loadExistingConfig();
 
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.description', ['path' => $this->configPath]));
 
-        // Language Configuration
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.language.title'));
-        $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
-        $defaultLanguage = $existingConfig['LANGUAGE'] ?? $this->detectSystemLocale() ?? 'en';
+        $config = $this->buildConfigFromPrompts($existingConfig);
+        $this->applyMigrationVersion($config, $existingConfig);
+        $this->saveConfig($config);
+        $this->promptForCompletion();
+    }
 
-        // Create display options with format "English (en)"
-        $languageOptions = [];
-        $languageMap = []; // Maps display string to code
-        foreach ($availableLanguages as $code => $name) {
-            $display = "{$name} ({$code})";
-            $languageOptions[] = $display;
-            $languageMap[$display] = $code;
-        }
+    /**
+     * @return array<string, mixed>
+     */
+    protected function loadExistingConfig(): array
+    {
+        return $this->fileSystem->fileExists($this->configPath)
+            ? $this->fileSystem->parseFile($this->configPath)
+            : [];
+    }
 
-        // Find the default display option
-        $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
+    /**
+     * @param array<string, mixed> $existingConfig
+     * @return array<string, mixed>
+     */
+    protected function buildConfigFromPrompts(array $existingConfig): array
+    {
+        $languageChoice = $this->promptLanguage($existingConfig);
 
-        $languageChoiceDisplay = $this->logger->choice(
-            $this->translator->trans('config.init.language.prompt'),
-            $languageOptions,
-            $defaultDisplay
-        );
-
-        // Map back to the short code
-        $languageChoice = $languageMap[$languageChoiceDisplay];
-
-        // Jira Configuration
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.token_help'));
         $jiraUrl = $this->logger->ask($this->translator->trans('config.init.jira.url_prompt'), $existingConfig['JIRA_URL'] ?? null);
         $jiraEmail = $this->logger->ask($this->translator->trans('config.init.jira.email_prompt'), $existingConfig['JIRA_EMAIL'] ?? null);
         $jiraToken = $this->logger->askHidden($this->translator->trans('config.init.jira.token_prompt'));
 
-        // Git Provider Configuration
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.git.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, [
             $this->translator->trans('config.init.git.description'),
@@ -71,7 +67,6 @@ class InitHandler
         $githubToken = $this->logger->askHidden($this->translator->trans('config.init.git.github_token_prompt'));
         $gitlabToken = $this->logger->askHidden($this->translator->trans('config.init.git.gitlab_token_prompt'));
 
-        // Jira Transition Configuration
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.description'));
         $jiraTransitionEnabled = $this->logger->confirm(
@@ -79,37 +74,71 @@ class InitHandler
             $existingConfig['JIRA_TRANSITION_ENABLED'] ?? false
         );
 
-        $config = [
+        return [
             'LANGUAGE' => $languageChoice,
             'JIRA_URL' => rtrim($jiraUrl, '/'),
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
-            'GITHUB_TOKEN' => $this->resolveGitTokenForInit(
-                $githubToken,
-                'GITHUB_TOKEN',
-                $existingConfig
-            ),
-            'GITLAB_TOKEN' => $this->resolveGitTokenForInit(
-                $gitlabToken,
-                'GITLAB_TOKEN',
-                $existingConfig
-            ),
+            'GITHUB_TOKEN' => $this->resolveGitTokenForInit($githubToken, 'GITHUB_TOKEN', $existingConfig),
+            'GITLAB_TOKEN' => $this->resolveGitTokenForInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
+    }
 
-        // Preserve migration_version from existing config, or set to latest migration ID if not present
+    /**
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function promptLanguage(array $existingConfig): string
+    {
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.language.title'));
+        $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
+        $defaultLanguage = $existingConfig['LANGUAGE'] ?? $this->detectSystemLocale() ?? 'en';
+
+        $languageOptions = [];
+        $languageMap = [];
+        foreach ($availableLanguages as $code => $name) {
+            $display = "{$name} ({$code})";
+            $languageOptions[] = $display;
+            $languageMap[$display] = $code;
+        }
+
+        $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
+
+        $languageChoiceDisplay = $this->logger->choice(
+            $this->translator->trans('config.init.language.prompt'),
+            $languageOptions,
+            $defaultDisplay
+        );
+
+        return $languageMap[$languageChoiceDisplay];
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function applyMigrationVersion(array &$config, array $existingConfig): void
+    {
         if (isset($existingConfig['migration_version'])) {
             // Tested via integration test (InitHandlerMigrationVersionIntegrationTest)
             $config['migration_version'] = $existingConfig['migration_version'];
-        } else {
-            $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
-            $globalMigrations = $registry->discoverGlobalMigrations();
-            $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
-            if ($latestMigrationId !== null) {
-                $config['migration_version'] = $latestMigrationId;
-            }
+
+            return;
         }
 
+        $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
+        $globalMigrations = $registry->discoverGlobalMigrations();
+        $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
+        if ($latestMigrationId !== null) {
+            $config['migration_version'] = $latestMigrationId;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    protected function saveConfig(array $config): void
+    {
         $configDir = $this->fileSystem->dirname($this->configPath);
         if (! $this->fileSystem->isDir($configDir)) {
             try {
@@ -119,14 +148,9 @@ class InitHandler
             }
         }
 
-        // Filter out only empty strings, preserve null values (they indicate optional fields that weren't set)
         $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
-
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
-
-        // Shell completion setup
-        $this->promptForCompletion();
     }
 
     /**
@@ -246,29 +270,55 @@ class InitHandler
      */
     protected function resolveGitTokenForInit(?string $userInput, string $newKey, array $existingConfig): ?string
     {
-        if ($userInput !== null && trim($userInput) !== '') {
-            return trim($userInput);
+        $fromInput = $this->resolveTokenFromUserInput($userInput);
+        if ($fromInput !== null) {
+            return $fromInput;
+        }
+        $fromNewKey = $this->resolveTokenFromExistingKey($existingConfig, $newKey);
+        if ($fromNewKey !== null) {
+            return $fromNewKey;
         }
 
+        return $this->resolveTokenFromLegacy($existingConfig, $newKey);
+    }
+
+    protected function resolveTokenFromUserInput(?string $userInput): ?string
+    {
+        if ($userInput === null || trim($userInput) === '') {
+            return null;
+        }
+
+        return trim($userInput);
+    }
+
+    /**
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function resolveTokenFromExistingKey(array $existingConfig, string $newKey): ?string
+    {
         $existingNew = $existingConfig[$newKey] ?? null;
-        if ($existingNew !== null && is_string($existingNew) && trim($existingNew) !== '') {
-            return trim($existingNew);
+        if ($existingNew === null || ! is_string($existingNew) || trim($existingNew) === '') {
+            return null;
         }
 
+        return trim($existingNew);
+    }
+
+    /**
+     * @param array<string, mixed> $existingConfig
+     */
+    protected function resolveTokenFromLegacy(array $existingConfig, string $newKey): ?string
+    {
         $legacyToken = $existingConfig['GIT_TOKEN'] ?? null;
         if ($legacyToken === null || ! is_string($legacyToken) || trim($legacyToken) === '') {
             return null;
         }
-
         $provider = isset($existingConfig['GIT_PROVIDER']) && is_string($existingConfig['GIT_PROVIDER'])
             ? strtolower($existingConfig['GIT_PROVIDER'])
             : null;
+        $opposite = $newKey === 'GITHUB_TOKEN' ? 'gitlab' : 'github';
 
-        if ($newKey === 'GITHUB_TOKEN') {
-            return ($provider === 'gitlab') ? null : trim($legacyToken);
-        }
-
-        return ($provider === 'github') ? null : trim($legacyToken);
+        return ($provider === $opposite) ? null : trim($legacyToken);
     }
 
     /**

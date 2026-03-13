@@ -3,10 +3,12 @@
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
+use App\Enum\OutputFormat;
 use App\Responder\ItemShowResponder;
 use App\Response\ItemShowResponse;
 use App\Service\ColorHelper;
 use App\Service\DescriptionFormatter;
+use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -18,11 +20,11 @@ class ItemShowResponderTest extends CommandTestCase
     {
         parent::setUp();
 
+        $helper = new ResponderHelper($this->translationService);
         $this->responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
             null,
-            null
         );
     }
 
@@ -169,11 +171,11 @@ class ItemShowResponderTest extends CommandTestCase
             ->willReturn([
                 ['title' => 'SectionWithNoContent', 'contentLines' => []],
             ]);
+        $helper = new ResponderHelper($this->translationService);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://example.com'],
             $descriptionFormatter,
-            null
         );
         $issue = new WorkItem(
             '1000',
@@ -267,11 +269,11 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondUsesCustomDescriptionFormatter(): void
     {
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
+        $helper = new ResponderHelper($this->translationService);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
             $descriptionFormatter,
-            null
         );
 
         $issue = new WorkItem(
@@ -309,7 +311,6 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondHandlesNullIssueGracefully(): void
     {
-        // Create a response with null issue (defensive check)
         $response = new \ReflectionClass(ItemShowResponse::class);
         $responseInstance = $response->newInstanceWithoutConstructor();
         $successProperty = $response->getProperty('success');
@@ -374,11 +375,10 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperAppliesColors(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            null,
-            $colorHelper
         );
 
         $issue = new WorkItem(
@@ -414,11 +414,10 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperAndVerboseAppliesColorsToVerboseMessage(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            null,
-            $colorHelper
         );
 
         $issue = new WorkItem(
@@ -455,11 +454,10 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondWithColorHelperAndVerboseWithoutColorHelperUsesFallback(): void
     {
+        $helper = new ResponderHelper($this->translationService);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            null,
-            null
         );
 
         $issue = new WorkItem(
@@ -490,11 +488,10 @@ class ItemShowResponderTest extends CommandTestCase
     public function testDisplayDescriptionWithColorHelperAppliesColors(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            null,
-            $colorHelper
         );
 
         $description = "Title: Test Feature\n\n---\n\nUser Story\nAs a developer";
@@ -531,11 +528,10 @@ class ItemShowResponderTest extends CommandTestCase
     public function testDisplayContentWithColorHelperAppliesColorsToListing(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
-            null,
-            $colorHelper
         );
 
         $description = "[ ] Checkbox item 1\n[ ] Checkbox item 2";
@@ -576,11 +572,11 @@ class ItemShowResponderTest extends CommandTestCase
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
         $responder = new ItemShowResponder(
-            $this->translationService,
+            $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
             $descriptionFormatter,
-            $colorHelper
         );
 
         $issue = new WorkItem(
@@ -630,5 +626,29 @@ class ItemShowResponderTest extends CommandTestCase
             }));
 
         $responder->respond($io, $response, 'TPW-35');
+    }
+
+    public function testRespondJsonReturnsSerializedIssue(): void
+    {
+        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
+        $response = ItemShowResponse::success($issue);
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, 'PROJ-1', OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('PROJ-1', $result->data['issue']['key']);
+    }
+
+    public function testRespondJsonReturnsErrorWhenNotSuccess(): void
+    {
+        $response = ItemShowResponse::error('Not found');
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, 'PROJ-1', OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
     }
 }

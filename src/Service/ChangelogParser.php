@@ -63,15 +63,7 @@ class ChangelogParser
 
             $item = $this->extractItemFromLine($line);
             if ($item !== null && $currentSection !== null) {
-                if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
-                    $result['hasBreaking'] = true;
-                    $result['breakingChanges'][] = $item;
-                } else {
-                    if (! isset($result['sections'][$currentSection])) {
-                        $result['sections'][$currentSection] = [];
-                    }
-                    $result['sections'][$currentSection][] = $item;
-                }
+                $this->addItemToResult($item, $currentSection, $result);
             }
         }
 
@@ -121,6 +113,23 @@ class ChangelogParser
         }
 
         return null;
+    }
+
+    /**
+     * @param array{sections: array<string, array<string>>, hasBreaking: bool, breakingChanges: array<string>} $result
+     */
+    protected function addItemToResult(string $item, string $currentSection, array &$result): void
+    {
+        if ($currentSection === self::CHANGELOG_SECTION_BREAKING) {
+            $result['hasBreaking'] = true;
+            $result['breakingChanges'][] = $item;
+
+            return;
+        }
+        if (! isset($result['sections'][$currentSection])) {
+            $result['sections'][$currentSection] = [];
+        }
+        $result['sections'][$currentSection][] = $item;
     }
 
     /**

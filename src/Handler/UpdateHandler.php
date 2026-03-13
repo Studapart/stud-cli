@@ -44,27 +44,12 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
-        $releaseResult = $this->fetchLatestRelease($githubProvider);
-
-        if ($releaseResult['is404']) {
-            // 404 means no releases found - this is a success case (already warned)
-            return 0;
+        $release = $this->getReleaseOrExitCode($githubProvider);
+        if (is_int($release)) {
+            return $release;
         }
-
-        if ($releaseResult['release'] === null) {
-            return 1;
-        }
-
-        $release = $releaseResult['release'];
-
-        if ($this->isAlreadyLatestVersion($release)) {
-            return 0;
-        }
-
-        // Display changelog before downloading
         $this->displayChangelog($githubProvider, $release);
 
-        // If --info flag is set, exit after displaying changelog without downloading
         if ($info) {
             return 0;
         }
@@ -79,33 +64,15 @@ class UpdateHandler
             return 1;
         }
 
-        // Verify the downloaded file's hash before proceeding
         $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
-            try {
-                $this->fileSystem->delete($tempFile);
-            } catch (\RuntimeException $e) {
-                // Ignore cleanup errors - file may already be deleted
-            }
-
-            return 1;
+            return $this->cleanupAndReturn($tempFile, 1);
         }
 
-        // Run prerequisite global migrations before binary replacement
         $migrationResult = $this->runPrerequisiteMigrations($io);
         // @codeCoverageIgnoreStart
-        // Testing this cleanup path requires a real prerequisite migration failure scenario
-        // which is difficult to test with in-memory filesystem due to MigrationRegistry's hardcoded paths.
-        // This path handles cleanup when migrations fail, ensuring temporary files are deleted.
-        // Consider adding an integration test if this becomes critical.
         if ($migrationResult !== 0) {
-            try {
-                $this->fileSystem->delete($tempFile);
-            } catch (\RuntimeException $e) {
-                // Ignore cleanup errors - file may already be deleted
-            }
-
-            return $migrationResult;
+            return $this->cleanupAndReturn($tempFile, $migrationResult);
         }
         // @codeCoverageIgnoreEnd
 
@@ -176,6 +143,27 @@ class UpdateHandler
         }
     }
     // @codeCoverageIgnoreEnd
+
+    /**
+     * Returns the release array to use, or an exit code (0 or 1) if the command should exit.
+     *
+     * @return int|array<string, mixed>
+     */
+    protected function getReleaseOrExitCode(GithubProvider $githubProvider): int|array
+    {
+        $releaseResult = $this->fetchLatestRelease($githubProvider);
+        if ($releaseResult['is404']) {
+            return 0;
+        }
+        if ($releaseResult['release'] === null) {
+            return 1;
+        }
+        if ($this->isAlreadyLatestVersion($releaseResult['release'])) {
+            return 0;
+        }
+
+        return $releaseResult['release'];
+    }
 
     /**
      * @param array<string, mixed> $release
@@ -426,7 +414,7 @@ class UpdateHandler
         // Filter to only prerequisite migrations
         // In test environment, if filtering fails, skip migrations gracefully
         try {
-            $prerequisiteMigrations = array_filter($globalMigrations, [$this, 'isPrerequisiteMigration']);
+            $prerequisiteMigrations = array_filter($globalMigrations, fn (\App\Migrations\MigrationInterface $m) => $m->isPrerequisite());
 
             return $registry->getPendingMigrations($prerequisiteMigrations, $currentVersion);
             // @codeCoverageIgnoreStart
@@ -557,76 +545,69 @@ class UpdateHandler
      */
     protected function isTestEnvironment(): bool
     {
-        // Method 1: Check for explicit test mode constant (most reliable - set by PHPUnit config)
-        // This is the most reliable method as it's explicitly set in phpunit.xml.dist
-        if (defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true) {
+        if ($this->isTestEnvironmentByConstant()) {
+            return true;
+        }
+        // Unreachable when STUD_CLI_TEST_MODE is set (always true in test bootstrap)
+        // @codeCoverageIgnoreStart
+        if ($this->isTestEnvironmentByBacktrace()) {
+            return true;
+        }
+        // @codeCoverageIgnoreEnd
+        if ($this->isTestEnvironmentByClassOrEnv()) {
             return true;
         }
 
-        // Method 2: Check for PHPUnit in the backtrace (reliable for runtime detection)
-        // This catches cases where we're actively being called from a test
-        // @codeCoverageIgnoreStart
+        return false;
+    }
+
+    protected function isTestEnvironmentByConstant(): bool
+    {
+        return defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true;
+    }
+
+    /**
+     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
+     */
+    protected function isTestEnvironmentByBacktrace(): bool
+    {
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30);
         foreach ($backtrace as $frame) {
-            // Check class name for PHPUnit
-            if (isset($frame['class'])) {
-                if (str_contains($frame['class'], 'PHPUnit')) {
-                    return true;
-                }
-
-                // Check if class extends TestCase (even if PHPUnit namespace isn't in the name)
-                try {
-                    $reflection = new \ReflectionClass($frame['class']);
-                    if ($reflection->isSubclassOf(\PHPUnit\Framework\TestCase::class)) {
-                        return true;
-                    }
-                } catch (\ReflectionException $e) {
-                    // Ignore reflection errors - class might not exist
-                }
+            if (! isset($frame['class'])) {
+                continue;
             }
-            // Check function name (PHPUnit test methods typically start with 'test')
-            // @phpstan-ignore-next-line - debug_backtrace() structure can vary, function key may not exist
-            if (array_key_exists('function', $frame) && str_starts_with($frame['function'], 'test')) {
-                // If we're in a test method, we're definitely in a test environment
-                if (isset($frame['class']) && str_contains($frame['class'], 'Test')) {
-                    return true;
-                }
+            if (str_contains($frame['class'], 'PHPUnit')) {
+                return true;
+            }
+            if ($this->isTestCaseSubclass($frame['class'])) {
+                return true;
+            }
+            if (array_key_exists('function', $frame) && str_starts_with((string) $frame['function'], 'test')
+                && str_contains($frame['class'], 'Test')) {
+                return true;
             }
         }
-        // @codeCoverageIgnoreEnd
 
-        // Method 3: Check if PHPUnit's test runner class exists (reliable if class is loaded)
-        // Use autoloading (true) to ensure class is found if available
-        // @codeCoverageIgnoreStart
-        // These detection methods are difficult to test because when called from a test,
-        // the backtrace detection (Method 2) above will return true first, preventing
-        // these methods from being reached. They are fallback detection methods for
-        // edge cases where backtrace detection might not work.
+        return false;
+    }
+
+    /**
+     * @codeCoverageIgnore Fallback detection when backtrace does not hit
+     */
+    protected function isTestEnvironmentByClassOrEnv(): bool
+    {
         if (class_exists(\PHPUnit\Framework\TestCase::class, true)) {
             return true;
         }
-
-        // Method 4: Check for PHPUnit constant (defined in some test setups)
         if (defined('PHPUNIT')) {
             return true;
         }
-
-        // Method 5: Check for PHPUnit environment variable (set by some test runners)
-        $phpunitEnv = getenv('PHPUNIT');
-        if ($phpunitEnv !== false) {
+        if (getenv('PHPUNIT') !== false) {
             return true;
         }
-
-        // Method 6: Check for APP_ENV=test (common in test setups)
-        // Check both getenv() and $_ENV/$_SERVER as PHPUnit sets these differently
         $appEnv = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? null);
-        if ($appEnv !== null && strtolower($appEnv) === 'test') {
-            return true;
-        }
-        // @codeCoverageIgnoreEnd
 
-
-        return false; // @codeCoverageIgnore
+        return $appEnv !== null && strtolower($appEnv) === 'test';
     }
 
     /**
@@ -688,17 +669,26 @@ class UpdateHandler
     }
     // @codeCoverageIgnoreEnd
 
-    /**
-     * Checks if a migration is a prerequisite migration.
-     *
-     * This method is used as a callback for array_filter to filter migrations
-     * to only include prerequisite ones.
-     *
-     * @param \App\Migrations\MigrationInterface $migration The migration to check
-     * @return bool True if the migration is a prerequisite, false otherwise
-     */
-    private function isPrerequisiteMigration(\App\Migrations\MigrationInterface $migration): bool
+    private function cleanupAndReturn(string $tempFile, int $exitCode): int
     {
-        return $migration->isPrerequisite();
+        try {
+            $this->fileSystem->delete($tempFile);
+        } catch (\RuntimeException) {
+        }
+
+        return $exitCode;
+    }
+
+    /**
+     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
+     */
+    private function isTestCaseSubclass(string $className): bool
+    {
+        try {
+            /** @var class-string $className */
+            return (new \ReflectionClass($className))->isSubclassOf(\PHPUnit\Framework\TestCase::class);
+        } catch (\ReflectionException) {
+            return false;
+        }
     }
 }

@@ -2066,4 +2066,23 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $result);
     }
+
+    public function testHandleExistingPrWithNoProviderLogsSuccessAndReturns(): void
+    {
+        $handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            null,
+            $this->jiraConfig,
+            'origin/develop',
+            $this->translationService,
+            $this->logger,
+            $this->htmlConverter
+        );
+
+        $this->logger->expects($this->once())->method('note');
+        $this->logger->expects($this->once())->method('success');
+
+        $this->callPrivateMethod($handler, 'handleExistingPr', ['feat/TPW-35', false, []]);
+    }
 }

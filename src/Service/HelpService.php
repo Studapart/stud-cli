@@ -19,6 +19,7 @@ class HelpService
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',
         'items:create' => 'stud items:create',
+        'items:update' => 'stud items:update',
         'items:start' => 'stud items:start',
         'items:transition' => 'stud items:transition',
         'filters:list' => 'stud filters:list',
@@ -28,6 +29,7 @@ class HelpService
         'commit:undo' => 'stud commit:undo',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
+        'sync' => 'stud sync',
         'cache:clear' => 'stud cache:clear',
         'status' => 'stud status',
         'submit' => 'stud submit',
@@ -96,73 +98,81 @@ class HelpService
         }
 
         $pattern = self::COMMAND_PATTERNS[$commandName];
-        $lines = explode("\n", $readmeContent);
+        $helpLines = $this->extractHelpLinesFromReadme($readmeContent, $pattern);
+        if (empty($helpLines)) {
+            return null;
+        }
 
+        $helpText = $this->formatHelpText(implode("\n", $helpLines));
+        if ($helpText === '') {
+            // @codeCoverageIgnoreStart
+            return null;
+            // @codeCoverageIgnoreEnd
+        }
+
+        return $helpText;
+    }
+
+    /**
+     * Extract help section lines from README content for a given command pattern.
+     *
+     * @return array<int, string>
+     */
+    protected function extractHelpLinesFromReadme(string $readmeContent, string $pattern): array
+    {
+        $lines = explode("\n", $readmeContent);
         $helpLines = [];
         $inSection = false;
         $foundCommand = false;
 
         foreach ($lines as $line) {
-            // Look for the command section (starts with -   **`stud ...`)
             if (! $foundCommand && preg_match('/^-\s+\*\*`' . preg_quote($pattern, '/') . '/', $line)) {
                 $foundCommand = true;
                 $inSection = true;
-                // Extract the command line itself
                 $helpLines[] = $line;
 
                 continue;
             }
 
-            if ($inSection) {
-                // Stop at next command (starts with -   **`stud) or section header (####)
-                if (preg_match('/^#### |^-\s+\*\*`stud /', $line)) {
-                    $currentIndent = strlen($line) - strlen(ltrim($line));
-                    // If it's a new command at same or less indent, stop
-                    // This edge case requires specific README formatting that doesn't exist in current structure
-                    // @codeCoverageIgnoreStart
-                    if (str_contains($line, 'stud ') && $currentIndent <= 4) {
-                        break;
-                    }
-                    // @codeCoverageIgnoreEnd
-                    // If it's a section header, stop
-                    // This edge case requires section headers immediately after command sections
-                    // @codeCoverageIgnoreStart
-                    if (preg_match('/^#### /', $line)) {
-                        break;
-                    }
-                    // @codeCoverageIgnoreEnd
-                }
-
-                // Collect help text lines (skip empty lines at start)
-                if (! empty($helpLines) || trim($line) !== '') {
-                    $helpLines[] = $line;
-                }
+            if (! $inSection) {
+                continue;
+            }
+            if ($this->shouldBreakHelpSection($line)) {
+                break;
+            }
+            if (! empty($helpLines) || trim($line) !== '') {
+                $helpLines[] = $line;
             }
         }
 
-        if (empty($helpLines)) {
-            return null;
+        return $helpLines;
+    }
+
+    protected function shouldBreakHelpSection(string $line): bool
+    {
+        if (! preg_match('/^#### |^-\s+\*\*`stud /', $line)) {
+            return false;
+        }
+        $currentIndent = strlen($line) - strlen(ltrim($line));
+        if (str_contains($line, 'stud ') && $currentIndent <= 4) {
+            return true;
         }
 
-        // Clean up and format the help text
-        $helpText = implode("\n", $helpLines);
-        // Remove markdown formatting but keep structure
-        $helpText = preg_replace('/\*\*`([^`]+)`\*\*/', '$1', $helpText); // Remove bold code markers
-        $helpText = preg_replace('/`([^`]+)`/', '$1', $helpText); // Remove code markers
-        $helpText = preg_replace('/\*\*([^*]+)\*\*/', '$1', $helpText); // Remove bold markers
-        $helpText = preg_replace('/^-\s+/m', '', $helpText); // Remove list markers
-        $helpText = preg_replace('/^    /m', '', $helpText); // Remove indentation
-        $helpText = trim($helpText);
+        return preg_match('/^#### /', $line) === 1;
+    }
 
-        // If all content was stripped by regex replacements, return null
-        // This edge case is extremely rare and hard to simulate in tests
-        // @codeCoverageIgnoreStart
-        if ($helpText === '') {
-            return null;
-        }
-        // @codeCoverageIgnoreEnd
+    /**
+     * Strip markdown formatting from help text and trim.
+     */
+    protected function formatHelpText(string $rawHelpText): string
+    {
+        $helpText = preg_replace('/\*\*`([^`]+)`\*\*/', '$1', $rawHelpText);
+        $helpText = preg_replace('/`([^`]+)`/', '$1', $helpText);
+        $helpText = preg_replace('/\*\*([^*]+)\*\*/', '$1', $helpText);
+        $helpText = preg_replace('/^-\s+/m', '', $helpText);
+        $helpText = preg_replace('/^    /m', '', $helpText);
 
-        return $helpText;
+        return trim($helpText);
     }
 
     /**
@@ -184,230 +194,7 @@ class HelpService
      */
     protected function formatCommandHelpFromTranslation(string $commandName): string
     {
-        // Map command names to their translation keys and metadata
-        $commandMap = [
-            'config:init' => [
-                'alias' => 'init',
-                'description_key' => 'help.command_config_init',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'config:show' => [
-                'alias' => null,
-                'description_key' => 'help.command_config_show',
-                'options' => [
-                    ['name' => '--key', 'shortcut' => '-k', 'description_key' => 'help.option_config_show_key', 'argument' => '<key>'],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_config_show_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'config:validate' => [
-                'alias' => null,
-                'description_key' => 'help.command_config_validate',
-                'options' => [
-                    ['name' => '--skip-jira', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_jira', 'argument' => null],
-                    ['name' => '--skip-git', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_git', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'completion' => [
-                'alias' => null,
-                'description_key' => 'help.command_completion',
-                'options' => [],
-                'arguments' => ['<shell>'],
-            ],
-            'projects:list' => [
-                'alias' => 'pj',
-                'description_key' => 'help.command_projects_list',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'items:list' => [
-                'alias' => 'ls',
-                'description_key' => 'help.command_items_list',
-                'options' => [
-                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_all', 'argument' => null],
-                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_project', 'argument' => '<key>'],
-                    ['name' => '--sort', 'shortcut' => '-s', 'description_key' => 'help.option_items_list_sort', 'argument' => '<value>'],
-                ],
-                'arguments' => [],
-            ],
-            'items:search' => [
-                'alias' => 'search',
-                'description_key' => 'help.command_items_search',
-                'options' => [],
-                'arguments' => ['<jql>'],
-            ],
-            'filters:list' => [
-                'alias' => 'fl',
-                'description_key' => 'help.command_filters_list',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'filters:show' => [
-                'alias' => 'fs',
-                'description_key' => 'help.command_filters_show',
-                'options' => [],
-                'arguments' => ['<filterName>'],
-            ],
-            'items:show' => [
-                'alias' => 'sh',
-                'description_key' => 'help.command_items_show',
-                'options' => [],
-                'arguments' => ['<key>'],
-            ],
-            'items:create' => [
-                'alias' => 'ic',
-                'description_key' => 'help.command_items_create',
-                'options' => [
-                    ['name' => '--project', 'shortcut' => '-p', 'description_key' => 'help.option_items_create_project', 'argument' => '<key>'],
-                    ['name' => '--type', 'shortcut' => '-t', 'description_key' => 'help.option_items_create_type', 'argument' => '<type>'],
-                    ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_create_summary', 'argument' => '<text>'],
-                    ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_create_description', 'argument' => '<text>'],
-                    ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_create_description_format', 'argument' => '<plain|markdown>'],
-                    ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_items_create_parent', 'argument' => '<key>'],
-                    ['name' => '--assignee', 'shortcut' => null, 'description_key' => 'help.option_items_create_assignee', 'argument' => '<id>'],
-                ],
-                'arguments' => [],
-            ],
-            'items:transition' => [
-                'alias' => 'tx',
-                'description_key' => 'help.command_items_transition',
-                'options' => [],
-                'arguments' => ['[<key>]'],
-            ],
-            'items:start' => [
-                'alias' => 'start',
-                'description_key' => 'help.command_items_start',
-                'options' => [],
-                'arguments' => ['<key>'],
-            ],
-            'items:takeover' => [
-                'alias' => 'to',
-                'description_key' => 'help.command_items_takeover',
-                'options' => [
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => ['<key>'],
-            ],
-            'branch:rename' => [
-                'alias' => 'rn',
-                'description_key' => 'help.command_branch_rename',
-                'options' => [
-                    ['name' => '--name', 'shortcut' => '-n', 'description_key' => 'help.option_branch_rename_name', 'argument' => '<name>'],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => ['[<branch>]', '[<key>]'],
-            ],
-            'commit' => [
-                'alias' => 'co',
-                'description_key' => 'help.command_commit',
-                'options' => [
-                    ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
-                    ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
-                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'commit:undo' => [
-                'alias' => 'undo',
-                'description_key' => 'help.command_commit_undo',
-                'options' => [
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'please' => [
-                'alias' => 'pl',
-                'description_key' => 'help.command_please',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'flatten' => [
-                'alias' => 'ft',
-                'description_key' => 'help.command_flatten',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'cache:clear' => [
-                'alias' => 'cc',
-                'description_key' => 'help.command_cache_clear',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'status' => [
-                'alias' => 'ss',
-                'description_key' => 'help.command_status',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'submit' => [
-                'alias' => 'su',
-                'description_key' => 'help.command_submit',
-                'options' => [
-                    ['name' => '--draft', 'shortcut' => '-d', 'description_key' => 'help.option_submit_draft', 'argument' => null],
-                    ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_submit_labels', 'argument' => '<labels>'],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'pr:comment' => [
-                'alias' => 'pc',
-                'description_key' => 'help.command_pr_comment',
-                'options' => [],
-                'arguments' => ['<message>'],
-            ],
-            'pr:comments' => [
-                'alias' => 'pcs',
-                'description_key' => 'help.command_pr_comments',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'update' => [
-                'alias' => 'up',
-                'description_key' => 'help.command_update',
-                'options' => [
-                    ['name' => '--info', 'shortcut' => '-i', 'description_key' => 'help.option_update_info', 'argument' => null],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'release' => [
-                'alias' => 'rl',
-                'description_key' => 'help.command_release',
-                'options' => [
-                    ['name' => '--major', 'shortcut' => '-M', 'description_key' => 'help.option_release_major', 'argument' => null],
-                    ['name' => '--minor', 'shortcut' => '-m', 'description_key' => 'help.option_release_minor', 'argument' => null],
-                    ['name' => '--patch', 'shortcut' => '-b', 'description_key' => 'help.option_release_patch', 'argument' => null],
-                    ['name' => '--publish', 'shortcut' => '-p', 'description_key' => 'help.option_release_publish', 'argument' => null],
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
-                ],
-                'arguments' => ['[<version>]'],
-            ],
-            'deploy' => [
-                'alias' => 'mep',
-                'description_key' => 'help.command_deploy',
-                'options' => [
-                    ['name' => '--clean', 'shortcut' => null, 'description_key' => 'help.option_deploy_clean', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-            'branches:list' => [
-                'alias' => 'bl',
-                'description_key' => 'help.command_branches_list',
-                'options' => [],
-                'arguments' => [],
-            ],
-            'branches:clean' => [
-                'alias' => 'bc',
-                'description_key' => 'help.command_branches_clean',
-                'options' => [
-                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_branches_clean_quiet', 'argument' => null],
-                ],
-                'arguments' => [],
-            ],
-        ];
+        $commandMap = $this->getCommandMap();
 
         if (! isset($commandMap[$commandName])) {
             return $this->translator->trans('help.command_not_found', ['command' => $commandName]);
@@ -416,178 +203,170 @@ class HelpService
         $command = $commandMap[$commandName];
         $lines = [];
 
-        // Command name with alias
+        $lines[] = $this->buildCommandLineWithAlias($command, $commandName);
+        $lines[] = '-   Description: ' . $this->translator->trans($command['description_key']);
+        $lines = array_merge($lines, $this->buildOptionsLines($command));
+        $exampleArgs = $this->buildExampleArgs($command['arguments']);
+        $argsString = ! empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : '';
+        $lines = array_merge($lines, $this->buildUsageSectionLines($command, $commandName, $argsString));
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Command names to translation keys and metadata (description, options, arguments).
+     *
+     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
+     */
+    protected function getCommandMap(): array
+    {
+        return CommandMap::all();
+    }
+
+    /**
+     * Build the command line string including alias when present.
+     *
+     * @param array{alias: ?string, arguments: array<int, string>} $command
+     */
+    protected function buildCommandLineWithAlias(array $command, string $commandName): string
+    {
         $commandLine = "stud {$commandName}";
         if (! empty($command['arguments'])) {
             $commandLine .= ' ' . implode(' ', $command['arguments']);
         }
-        if ($command['alias']) {
+        if ($command['alias'] !== null && $command['alias'] !== '') {
             $commandLine .= " (Alias: stud {$command['alias']}";
             if (! empty($command['arguments'])) {
                 $commandLine .= ' ' . implode(' ', $command['arguments']);
             }
             $commandLine .= ')';
         }
-        $lines[] = $commandLine;
 
-        // Description
-        $description = $this->translator->trans($command['description_key']);
-        $lines[] = "-   Description: {$description}";
+        return $commandLine;
+    }
 
-        // Options
-        if (! empty($command['options'])) {
-            $lines[] = "-   Options:";
-            foreach ($command['options'] as $option) {
-                $optionName = $option['name'];
-                if (isset($option['argument']) && $option['argument']) {
-                    $optionName .= ' ' . $option['argument'];
-                }
-                if (isset($option['shortcut']) && $option['shortcut']) {
-                    $shortcutName = $option['shortcut'];
-                    if (isset($option['argument']) && $option['argument']) {
-                        $shortcutName .= ' ' . $option['argument'];
-                    }
-                    $optionName .= " or {$shortcutName}";
-                }
-                $optionDesc = $this->translator->trans($option['description_key']);
-                $lines[] = "    -   {$optionName}: {$optionDesc}.";
+    /**
+     * Build options section lines.
+     *
+     * @param array{options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>} $command
+     *
+     * @return array<int, string>
+     */
+    protected function buildOptionsLines(array $command): array
+    {
+        $lines = [];
+        if (empty($command['options'])) {
+            return $lines;
+        }
+        $lines[] = '-   Options:';
+        foreach ($command['options'] as $option) {
+            $optionName = $option['name'];
+            if (isset($option['argument']) && $option['argument']) {
+                $optionName .= ' ' . $option['argument'];
             }
+            if (isset($option['shortcut']) && $option['shortcut']) {
+                $shortcutName = $option['shortcut'];
+                if (isset($option['argument']) && $option['argument']) {
+                    $shortcutName .= ' ' . $option['argument'];
+                }
+                $optionName .= " or {$shortcutName}";
+            }
+            $optionDesc = $this->translator->trans($option['description_key']);
+            $lines[] = "    -   {$optionName}: {$optionDesc}.";
         }
 
-        // Usage examples
-        $lines[] = "-   Usage:";
-        $lines[] = "    ``bash";
+        return $lines;
+    }
 
-        // Build example values for arguments
-        // Skip optional arguments (wrapped in square brackets [...])
+    /** @var array<string, string> */
+    private const ARGUMENT_EXAMPLE_MAP = [
+        '<key>' => 'JIRA-33',
+        '<jql>' => '"project = PROJ and status = Done"',
+        '<shell>' => 'bash',
+        '<message>' => '"Comment text"',
+        '<filterName>' => '"My Filter"',
+        '<version>' => '1.2.0',
+        '<branch>' => 'feat/OLD-123-old',
+    ];
+
+    /**
+     * Build example argument values for usage section (required arguments only).
+     *
+     * @param array<int, string> $arguments
+     *
+     * @return array<int, string>
+     */
+    protected function buildExampleArgs(array $arguments): array
+    {
         $exampleArgs = [];
-        foreach ($command['arguments'] as $arg) {
-            // Skip optional arguments (wrapped in square brackets)
+        foreach ($arguments as $arg) {
             if (str_starts_with($arg, '[') && str_ends_with($arg, ']')) {
                 continue;
             }
-            if ($arg === '<key>') {
-                $exampleArgs[] = 'JIRA-33';
-            } elseif (str_contains($arg, '<version>')) {
-                // Currently no command has required <version> argument (only optional [<version>])
-                // This path is untestable with current command set
-                // @codeCoverageIgnoreStart
-                $exampleArgs[] = '1.2.0';
-                // @codeCoverageIgnoreEnd
-            } elseif ($arg === '<jql>') {
-                $exampleArgs[] = '"project = PROJ and status = Done"';
-            } elseif ($arg === '<shell>') {
-                $exampleArgs[] = 'bash';
-            } elseif ($arg === '<message>') {
-                $exampleArgs[] = '"Comment text"';
-            } elseif ($arg === '<filterName>') {
-                $exampleArgs[] = '"My Filter"';
-                // Currently no command has required <branch> argument (only optional [<branch>])
-                // This condition can never be true with current command set
-                // @codeCoverageIgnoreStart
-            } elseif ($arg === '<branch>') { // @phpstan-ignore-line
-                // PHPStan doesn't understand that optional arguments are filtered out above
-                $exampleArgs[] = 'feat/OLD-123-old';
-                // @codeCoverageIgnoreEnd
-            } else {
-                // Fallback for unknown argument types
-                // Currently all commands use known patterns, so this path is untestable
-                // @codeCoverageIgnoreStart
-                $exampleArgs[] = str_replace(['<', '>'], '', $arg);
-                // @codeCoverageIgnoreEnd
-            }
+            $exampleArgs[] = self::ARGUMENT_EXAMPLE_MAP[$arg] ?? str_replace(['<', '>'], '', $arg);
         }
-        $argsString = ! empty($exampleArgs) ? ' ' . implode(' ', $exampleArgs) : ''; // @phpstan-ignore-line implode parameter type (exampleArgs are strings from argument patterns)
 
-        // Basic usage with command name
-        $lines[] = "    stud {$commandName}{$argsString}";
+        return $exampleArgs;
+    }
 
-        // Basic usage with alias
-        if ($command['alias']) {
+    /** @var array<string, string> */
+    private const OPTION_ARGUMENT_SUFFIX_MAP = [
+        '<labels>' => ' "bug,enhancement"',
+        '<message>' => ' "feat: My custom message"',
+        '<key>' => ' PROJ',
+        '<value>' => ' Key',
+        '<name>' => ' custom-branch-name',
+        '<type>' => ' Story',
+        '<text>' => ' "Summary or description text"',
+    ];
+
+    /**
+     * Build usage section lines (header, bash block, command examples).
+     *
+     * @param array{alias: ?string, options: array<int, array{name: string, shortcut: ?string, argument: ?string}>} $command
+     *
+     * @return array<int, string>
+     */
+    protected function buildUsageSectionLines(array $command, string $commandName, string $argsString): array
+    {
+        $lines = ['-   Usage:', '    ``bash', "    stud {$commandName}{$argsString}"];
+        if ($command['alias'] !== null && $command['alias'] !== '') {
             $lines[] = "    stud {$command['alias']}{$argsString}";
         }
-
-        // Usage with options
         if (! empty($command['options'])) {
-            // Show example with first option
             $firstOption = $command['options'][0];
-            $optionExample = $firstOption['shortcut'] ?: $firstOption['name'];
-            if (isset($firstOption['argument']) && $firstOption['argument']) {
-                $optionArg = '';
-                $firstOptionArg = $firstOption['argument'];
-                // PHPStan doesn't understand this handles all commands, not just one
-                if ($firstOptionArg === '<labels>') { // @phpstan-ignore-line
-                    // Currently no command has <labels> as first option argument
-                    // This path is untestable with current command set
-                    // @codeCoverageIgnoreStart
-                    $optionArg = ' "bug,enhancement"';
-                    // @codeCoverageIgnoreEnd
-                } elseif ($firstOptionArg === '<message>') { // @phpstan-ignore-line
-                    // Currently no command has <message> as first option argument
-                    // This path is untestable with current command set
-                    // @codeCoverageIgnoreStart
-                    $optionArg = ' "feat: My custom message"';
-                    // @codeCoverageIgnoreEnd
-                } elseif ($firstOptionArg === '<key>') { // @phpstan-ignore-line
-                    // Currently no command has <key> as first option argument
-                    // This path is untestable with current command set
-                    // @codeCoverageIgnoreStart
-                    $optionArg = ' PROJ';
-                    // @codeCoverageIgnoreEnd
-                } elseif ($firstOptionArg === '<value>') { // @phpstan-ignore-line
-                    // Currently no command has <value> as first option argument
-                    // This path is untestable with current command set
-                    // @codeCoverageIgnoreStart
-                    $optionArg = ' Key';
-                    // @codeCoverageIgnoreEnd
-                } elseif ($firstOptionArg === '<name>') { // @phpstan-ignore-line
-                    $optionArg = ' custom-branch-name';
-                }
-                $optionExample .= $optionArg;
-            }
+            $optionExample = $this->buildOptionExample($firstOption);
             $lines[] = "    stud {$commandName}{$argsString} {$optionExample}";
-            if ($command['alias']) {
+            if ($command['alias'] !== null && $command['alias'] !== '') {
                 $lines[] = "    stud {$command['alias']}{$argsString} {$optionExample}";
             }
-
-            // If there's a second option, show it too
             if (count($command['options']) > 1) {
                 $secondOption = $command['options'][1];
-                $secondOptionExample = $secondOption['shortcut'] ?: $secondOption['name'];
-                if (isset($secondOption['argument']) && $secondOption['argument']) {
-                    $optionArg = '';
-                    $secondOptionArg = $secondOption['argument'];
-                    if ($secondOptionArg === '<labels>') {
-                        $optionArg = ' "bug,enhancement"';
-                    } elseif ($secondOptionArg === '<message>') {
-                        $optionArg = ' "feat: My custom message"';
-                    } elseif ($secondOptionArg === '<key>') {
-                        $optionArg = ' PROJ';
-                    } elseif ($secondOptionArg === '<type>') {
-                        $optionArg = ' Story';
-                    } else {
-                        // Second option never has <text>, <value>, or <name> in current command set (only items:create has 2nd opt <type>)
-                        // @codeCoverageIgnoreStart
-                        $optionArg = '';
-                        if ($secondOptionArg === '<text>') {
-                            $optionArg = ' "Summary or description text"';
-                        } elseif ($secondOptionArg === '<value>') {
-                            $optionArg = ' Key';
-                        } elseif ($secondOptionArg === '<name>') {
-                            $optionArg = ' custom-branch-name';
-                        }
-                        // @codeCoverageIgnoreEnd
-                    }
-                    $secondOptionExample .= $optionArg;
-                }
+                $secondOptionExample = $this->buildOptionExample($secondOption);
                 $lines[] = "    stud {$commandName}{$argsString} {$secondOptionExample}";
-                if ($command['alias']) {
+                if ($command['alias'] !== null && $command['alias'] !== '') {
                     $lines[] = "    stud {$command['alias']}{$argsString} {$secondOptionExample}";
                 }
             }
         }
-        $lines[] = "    ``";
+        $lines[] = '    ``';
 
-        return implode("\n", $lines);
+        return $lines;
+    }
+
+    /**
+     * Build option example string (shortcut or name + argument suffix if present).
+     *
+     * @param array{name: string, shortcut: ?string, argument: ?string} $option
+     */
+    protected function buildOptionExample(array $option): string
+    {
+        $optionExample = $option['shortcut'] ?: $option['name'];
+        if (! isset($option['argument']) || ! $option['argument']) {
+            return $optionExample;
+        }
+        $suffix = self::OPTION_ARGUMENT_SUFFIX_MAP[$option['argument']] ?? '';
+
+        return $optionExample . $suffix;
     }
 }
