@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-03-13
+
 ### Added
 - **Onboarding:** Install script `setup-stud.sh` for one-line install (`curl -fsSL .../setup-stud.sh | bash`). Resolves latest release from GitHub API, checks PHP 8.2+ and extensions (xml, curl, mbstring), installs to `~/.local/bin`, offers PATH setup and `stud init`. Use `--force` to overwrite existing installation. [SCI-73]
 - **Release:** `stud release` now auto-updates version references in README.md (PHAR filename and download URL). [SCI-73]
