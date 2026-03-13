@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-stud.sh — Install or reinstall stud-cli from the latest GitHub release.
+# setup-stud.sh - Install or reinstall stud-cli from the latest GitHub release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
 #        curl -fsSL ... | bash -s -- --force
 
