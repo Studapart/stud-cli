@@ -501,6 +501,7 @@ release:
   updated_lock: composer.lock actualizado
   dumped_config: Config volcado en config/app.php
   updated_changelog: CHANGELOG.md actualizado con la versión %version%
+  updated_readme: Referencias de versión en README.md actualizadas a %version%
   staged: Cambios preparados.
   committed: Incremento de versión commitado.
   published: Rama de release publicada en el remote.

@@ -463,6 +463,7 @@ release:
   updated_lock: "Updated composer.lock"
   dumped_config: "Dumped config to config/app.php"
   updated_changelog: "Updated CHANGELOG.md with version %version%"
+  updated_readme: "Updated README.md version references to %version%"
   staged: "Staged changes."
   committed: "Committed version bump."
   published: "Release branch published to remote."

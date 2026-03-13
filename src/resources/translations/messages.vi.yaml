@@ -501,6 +501,7 @@ release:
   updated_lock: Đã cập nhật composer.lock
   dumped_config: Đã dump cấu hình vào config/app.php
   updated_changelog: Đã cập nhật CHANGELOG.md với phiên bản %version%
+  updated_readme: Đã cập nhật tham chiếu phiên bản trong README.md sang %version%
   staged: Đã staging các thay đổi.
   committed: Đã commit tăng phiên bản.
   published: Nhánh phát hành đã được xuất bản lên remote.

@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Onboarding:** Install script `setup-stud.sh` for one-line install (`curl -fsSL .../setup-stud.sh | bash`). Resolves latest release from GitHub API, checks PHP 8.2+ and extensions (xml, curl, mbstring), installs to `~/.local/bin`, offers PATH setup and `stud init`. Use `--force` to overwrite existing installation. [SCI-73]
+- **Release:** `stud release` now auto-updates version references in README.md (PHAR filename and download URL). [SCI-73]
+
 ### Changed
+- **README:** User installation restructured: Quick Install (one-liner script) > Manual Install > Global Install > Updating. PHP 8.2+ installation instructions added for Ubuntu/Debian, macOS, Fedora/RHEL, and WSL2. [SCI-73]
 - **Code quality:** Reduce complexity violations to meet CONVENTIONS (CC ≤ 10, CRAP ≤ 10) [SCI-68]
   - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
 

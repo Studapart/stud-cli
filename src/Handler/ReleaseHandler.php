@@ -19,7 +19,8 @@ class ReleaseHandler
         private readonly Logger $logger,
         private readonly FileSystem $fileSystem,
         private readonly string $composerJsonPath = 'composer.json',
-        private readonly string $changelogPath = 'CHANGELOG.md'
+        private readonly string $changelogPath = 'CHANGELOG.md',
+        private readonly string $readmePath = 'README.md'
     ) {
     }
     // @codeCoverageIgnoreEnd
@@ -107,6 +108,9 @@ class ReleaseHandler
         $this->updateChangelog($targetVersion);
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_changelog', ['version' => $targetVersion]));
 
+        $this->updateReadme($targetVersion);
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_readme', ['version' => $targetVersion]));
+
         $this->gitRepository->stageAllChanges();
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.staged'));
 
@@ -168,5 +172,24 @@ class ReleaseHandler
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
 
         $this->fileSystem->write($this->changelogPath, $updatedContent);
+    }
+
+    /**
+     * Updates version references in README.md (PHAR filename and download URL).
+     *
+     * @param string $version The new version (e.g. '3.5.0')
+     */
+    protected function updateReadme(string $version): void
+    {
+        try {
+            $content = $this->fileSystem->read($this->readmePath);
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Unable to read README.md', 0, $e);
+        }
+
+        $updated = preg_replace('/stud-\d+\.\d+\.\d+\.phar/', 'stud-' . $version . '.phar', $content);
+        $updated = preg_replace('#releases/download/v\d+\.\d+\.\d+/#', 'releases/download/v' . $version . '/', $updated ?? $content);
+
+        $this->fileSystem->write($this->readmePath, $updated ?? $content);
     }
 }
