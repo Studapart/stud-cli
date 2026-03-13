@@ -140,6 +140,9 @@ function _get_config_path(): string
     if ($home === null) {
         throw new \RuntimeException('Could not determine home directory (set HOME or ensure it is in the environment).');
     }
+    if (str_starts_with((string) $home, 'phar://')) {
+        throw new \RuntimeException('HOME must be a real filesystem path; when running from a PHAR, set HOME to your home directory (e.g. /Users/yourname).');
+    }
 
     return rtrim($home, '/') . '/' . CONFIG_DIR_NAME . '/' . CONFIG_FILE_NAME;
 }

@@ -197,8 +197,10 @@ class FileSystem
             return ! $isLocal || ! $this->isPathWithinRoot($path);
         }
 
-        // For other absolute paths outside root, use native operations (local filesystems only)
-        if (str_starts_with($path, '/') && $this->isLocalFilesystem() && ! $this->isPathWithinRoot($path)) {
+        // Real absolute paths (e.g. /Users/foo/.config/stud/config.yml) must always use native PHP.
+        // When running from a PHAR on macOS, getcwd() can be phar:///.../stud.phar, so Flysystem root
+        // is inside the archive; using Flysystem would write the config inside the PHAR.
+        if ($path !== '' && $path[0] === '/' && ! str_starts_with($path, 'phar://') && $this->isLocalFilesystem()) {
             return true;
         }
 
