@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-stud.sh — Install or reinstall stud-cli from the latest GitHub release.
+# setup-stud.sh - Install or reinstall stud-cli from the latest GitHub release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
 #        curl -fsSL ... | bash -s -- --force
 
@@ -16,6 +16,10 @@ REPO_URL="https://github.com/Studapart/stud-cli"
 API_LATEST="https://api.github.com/repos/Studapart/stud-cli/releases/latest"
 INSTALL_DIR="${HOME}/.local/bin"
 STUD_BIN="${INSTALL_DIR}/stud"
+
+# Strip carriage returns so URLs are valid when script has CRLF line endings (e.g. on macOS)
+REPO_URL="${REPO_URL//$'\r'/}"
+API_LATEST="${API_LATEST//$'\r'/}"
 
 die() {
     echo "$1" >&2
@@ -44,10 +48,10 @@ detect_platform() {
     echo "${os}-${arch}"
 }
 
-# Get latest release version from GitHub API (strip leading v)
+# Get latest release version from GitHub API (strip leading v and any carriage return)
 get_latest_version() {
     local tag_name
-    tag_name=$(curl -sSfL "$API_LATEST" | grep '"tag_name"' | sed 's/.*"v\?\([^"]*\)".*/\1/' | head -1)
+    tag_name=$(curl -sSfL "$API_LATEST" | grep '"tag_name"' | sed 's/.*"v\?\([^"]*\)".*/\1/' | head -1 | tr -d '\r')
     if [ -z "$tag_name" ]; then
         die "Could not determine latest release version from GitHub API."
     fi
@@ -182,7 +186,9 @@ fi
 
 # Download and install
 mkdir -p "$INSTALL_DIR"
+LATEST_VERSION="${LATEST_VERSION//$'\r'/}"
 DOWNLOAD_URL="${REPO_URL}/releases/download/v${LATEST_VERSION}/stud-${LATEST_VERSION}.phar"
+DOWNLOAD_URL="${DOWNLOAD_URL//$'\r'/}"
 if ! curl -sSfL -o "${INSTALL_DIR}/stud" "$DOWNLOAD_URL"; then
     die "Failed to download stud from ${DOWNLOAD_URL}"
 fi

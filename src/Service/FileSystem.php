@@ -128,6 +128,16 @@ class FileSystem
     {
         $this->validatePath($path);
 
+        // Use native mkdir for absolute paths outside Flysystem root (e.g. ~/.config/stud when cwd is elsewhere).
+        // Otherwise the directory would be created under getcwd() and config write would fail on macOS/Linux.
+        if ($this->shouldUseNativeOperations($path)) {
+            if (! @mkdir($path, $mode, true) && ! is_dir($path)) {
+                throw new \RuntimeException("Failed to create directory: {$path}");
+            }
+
+            return;
+        }
+
         try {
             $this->filesystem->createDirectory($path);
         } catch (\League\Flysystem\FilesystemException $e) {

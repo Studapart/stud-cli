@@ -136,7 +136,10 @@ function _load_constants(): void
  */
 function _get_config_path(): string
 {
-    $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
+    $home = $_SERVER['HOME'] ?? getenv('HOME') ?: null;
+    if ($home === null) {
+        throw new \RuntimeException('Could not determine home directory (set HOME or ensure it is in the environment).');
+    }
 
     return rtrim($home, '/') . '/' . CONFIG_DIR_NAME . '/' . CONFIG_FILE_NAME;
 }
