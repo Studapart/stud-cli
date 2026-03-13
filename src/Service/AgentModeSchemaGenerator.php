@@ -84,6 +84,8 @@ class AgentModeSchemaGenerator
             $this->collectArgument($param, $arguments, $inputProperties);
         }
 
+        $this->injectExtraInputProperties($task->name, $inputProperties);
+
         $outputSchema = $this->buildOutputSchema($agentOutput);
 
         return [
@@ -94,6 +96,18 @@ class AgentModeSchemaGenerator
             'input' => ['properties' => $inputProperties],
             'output' => $outputSchema,
         ];
+    }
+
+    /**
+     * Inject agent-only input properties not represented as function parameters (e.g. confluence:push "content").
+     *
+     * @param array<string, array<string, mixed>> $inputProperties
+     */
+    private function injectExtraInputProperties(string $taskName, array &$inputProperties): void
+    {
+        if ($taskName === 'confluence:push') {
+            $inputProperties = ['content' => ['type' => 'string', 'optional' => true, 'default' => '']] + $inputProperties;
+        }
     }
 
     /**

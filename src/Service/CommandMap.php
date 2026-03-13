@@ -18,6 +18,7 @@ class CommandMap
             self::itemCommands(),
             self::branchCommands(),
             self::gitCommands(),
+            self::confluenceCommands(),
             self::systemCommands(),
         );
     }
@@ -320,6 +321,40 @@ class CommandMap
                 'alias' => 'pcs',
                 'description_key' => 'help.command_pr_comments',
                 'options' => [],
+                'arguments' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
+     */
+    private static function confluenceCommands(): array
+    {
+        return [
+            'confluence:push' => [
+                'alias' => 'cpu',
+                'description_key' => 'help.command_confluence_push',
+                'options' => [
+                    ['name' => '--space', 'shortcut' => '-s', 'description_key' => 'help.option_confluence_push_space', 'argument' => '<key>'],
+                    ['name' => '--title', 'shortcut' => '-t', 'description_key' => 'help.option_confluence_push_title', 'argument' => '<title>'],
+                    ['name' => '--file', 'shortcut' => '-f', 'description_key' => 'help.option_confluence_push_file', 'argument' => '<path>'],
+                    ['name' => '--page', 'shortcut' => '-p', 'description_key' => 'help.option_confluence_push_page', 'argument' => '<id>'],
+                    ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_parent', 'argument' => '<id>'],
+                    ['name' => '--url', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_url', 'argument' => null],
+                    ['name' => '--status', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_status', 'argument' => null],
+                    ['name' => '--contact-email', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_contact_email', 'argument' => '<email>'],
+                ],
+                'arguments' => ['[inputFile]'],
+            ],
+            'confluence:page-labels' => [
+                'alias' => null,
+                'description_key' => 'help.command_confluence_page_labels',
+                'options' => [
+                    ['name' => '--page', 'shortcut' => '-p', 'description_key' => 'help.option_confluence_page_labels_page', 'argument' => '<id>'],
+                    ['name' => '--labels', 'shortcut' => '-l', 'description_key' => 'help.option_confluence_page_labels_labels', 'argument' => '<list>'],
+                    ['name' => '--url', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_url', 'argument' => null],
+                ],
                 'arguments' => [],
             ],
         ];
