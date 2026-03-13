@@ -312,7 +312,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.2/stud-3.9.2.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.3/stud-3.9.3.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -325,7 +325,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.2/stud-3.9.2.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.9.3/stud-3.9.3.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
