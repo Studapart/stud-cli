@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Confluence:** New `stud confluence:push` (alias `stud cpu`) command to create or update Confluence Cloud pages from markdown. Content from `--file` or STDIN; markdown is converted to ADF via existing `MarkdownToAdfConverter`. Create flow requires `--space` and `--title` (optional `CONFLUENCE_DEFAULT_SPACE` in `.git/stud.config`); update flow uses `--page` and fetches current version before PUT. Confluence URL is derived from Jira URL by default, overridable with `--url` or `CONFLUENCE_URL` config. Supports `--agent` mode with JSON input/output. [SCI-74]
+
 ## [3.9.3] - 2026-03-13
 
 ## [3.9.2] - 2026-03-13
