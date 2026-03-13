@@ -1174,6 +1174,102 @@ echo 'hello';
         $this->assertSame('bold', $boldNode['text']);
     }
 
+    public function testGetEditMetaFieldsSuccess(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'fields' => [
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'labels' => ['required' => false, 'name' => 'Labels'],
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/rest/api/3/issue/SCI-71/editmeta')
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getEditMetaFields('SCI-71');
+
+        $this->assertCount(2, $result);
+        $this->assertTrue($result['summary']['required']);
+        $this->assertSame('Summary', $result['summary']['name']);
+        $this->assertFalse($result['labels']['required']);
+    }
+
+    public function testGetEditMetaFieldsThrowsOnError(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->willReturn('{"errorMessages":["Not found"]}');
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->jiraService->getEditMetaFields('NONEXISTENT-999');
+    }
+
+    public function testGetEditMetaFieldsSkipsNonArrayMeta(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'fields' => [
+                'summary' => ['required' => true, 'name' => 'Summary'],
+                'invalid' => 'not-an-array',
+            ],
+        ]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getEditMetaFields('SCI-71');
+
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('summary', $result);
+    }
+
+    public function testUpdateIssueSuccess(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(204);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('PUT', '/rest/api/3/issue/SCI-71', $this->callback(function ($opts) {
+                return $opts['json']['fields']['summary'] === 'New title';
+            }))
+            ->willReturn($responseMock);
+
+        $this->jiraService->updateIssue('SCI-71', ['summary' => 'New title']);
+    }
+
+    public function testUpdateIssueThrowsOnError(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->method('getContent')->willReturn('{"errors":{"summary":"invalid"}}');
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\App\Exception\ApiException::class);
+        $this->jiraService->updateIssue('SCI-71', ['summary' => '']);
+    }
+
+    public function testGetEditMetaFieldsEmptyFields(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn(['fields' => []]);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $result = $this->jiraService->getEditMetaFields('SCI-71');
+        $this->assertSame([], $result);
+    }
+
     // Helper to call private methods for testing
     private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {

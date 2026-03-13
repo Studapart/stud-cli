@@ -12,10 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
 
 ### Added
+- **items:update:** New `stud items:update` (alias `stud iu`) command to update Jira issue fields (summary, description, and arbitrary fields via `--fields`) [SCI-72]
+- **items:create / items:update:** New `-F`/`--fields` parameter for passing arbitrary Jira fields in `key=value;key=value,value` format (e.g. `--fields "labels=Bug,DX;priority=High;timeoriginalestimate=2h"`). Shared `FieldsParser` service handles parsing, field matching via createmeta/editmeta, and value transformations [SCI-72]
 - **sync:** New `stud sync` (alias `sy`) command that fetches the latest base branch and rebases the current feature branch onto it. Automatically aborts on conflicts, leaving the branch unchanged [SCI-70]
 - **items:start:** Branch creation now uses the most advanced ref between local and remote base branch, avoiding stale-code starts and unnecessary merge conflicts [SCI-69]
 - **items:create:** Optional `--labels` (comma-separated) and `--original-estimate` (human-friendly: 1d, 0.5d, 1 day, 2h, 30m; converted to seconds) [SCI-65]
   - Labels and time original estimate are only sent when the project/issue type supports them (createmeta). If the user supplies them but they are not supported, the issue is still created and a note lists the skipped fields.
+
+### Breaking
+- **items:create:** Removed dedicated `--labels`, `--original-estimate`, and `--assignee` options. Use `-F`/`--fields` instead (e.g. `--fields "labels=Bug;timeoriginalestimate=2h;assignee=<accountId>"`) [SCI-72]
+- **items:create (agent mode):** JSON input schema changed — `labels`, `originalEstimate`, and `assignee` top-level keys replaced with a `fields` object (e.g. `{"fields": {"labels": ["Bug"], "timeoriginalestimate": "1d"}}`) [SCI-72]
 
 ## [3.8.1] - 2026-03-09
 

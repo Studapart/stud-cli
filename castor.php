@@ -19,6 +19,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 
 use App\Attribute\AgentOutput;
 use App\DTO\ItemCreateInput;
+use App\DTO\ItemUpdateInput;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
@@ -39,6 +40,7 @@ use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
 use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
+use App\Handler\ItemUpdateHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
@@ -59,6 +61,7 @@ use App\Responder\FilterShowResponder;
 use App\Responder\ItemCreateResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
+use App\Responder\ItemUpdateResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
@@ -435,6 +438,11 @@ function _get_duration_parser(): \App\Service\DurationParser
 function _get_issue_field_resolver(): \App\Service\IssueFieldResolver
 {
     return new \App\Service\IssueFieldResolver(_get_jira_service(), _get_duration_parser());
+}
+
+function _get_fields_parser(): \App\Service\FieldsParser
+{
+    return new \App\Service\FieldsParser(_get_duration_parser());
 }
 
 /**
@@ -1428,12 +1436,8 @@ function items_create(
     ?string $descriptionFormat = null,
     #[AsOption(name: 'parent', description: 'Parent issue key for creating a sub-task')]
     ?string $parent = null,
-    #[AsOption(name: 'assignee', description: 'Assignee account ID (default: current user when field is present)')]
-    ?string $assignee = null,
-    #[AsOption(name: 'labels', description: 'Comma-separated labels (only set when project/issue type supports labels)')]
-    ?string $labels = null,
-    #[AsOption(name: 'original-estimate', description: 'Original time estimate (e.g. 1d, 0.5d, 1 day, 2h, 30m; converted to seconds)')]
-    ?string $originalEstimate = null,
+    #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
+    ?string $fields = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -1442,6 +1446,8 @@ function items_create(
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     $interactive = ! $agent && function_exists('posix_isatty') && @posix_isatty(STDIN);
+    /** @var array<string, string|list<string>>|null $fieldsMap */
+    $fieldsMap = null;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -1453,16 +1459,73 @@ function items_create(
         $description = $input['description'] ?? null;
         $descriptionFormat = $input['descriptionFormat'] ?? null;
         $parent = $input['parent'] ?? null;
-        $assignee = $input['assignee'] ?? null;
-        $labels = $input['labels'] ?? null;
-        $originalEstimate = $input['originalEstimate'] ?? null;
+        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
-    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver());
-    $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $assignee, $labels, $originalEstimate);
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser());
+    $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle(io(), $interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'items:update', aliases: ['iu'], description: 'Update a Jira issue fields')]
+#[AgentOutput(responseClass: \App\Response\ItemUpdateResponse::class, description: 'Updated issue key')]
+function items_update(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'summary', shortcut: 'm', description: 'Update the issue summary/title')]
+    ?string $summary = null,
+    #[AsOption(name: 'description', shortcut: 'd', description: 'Update the issue description (STDIN takes precedence when piping)')]
+    ?string $description = null,
+    #[AsOption(name: 'description-format', description: 'Description format: plain (default) or markdown')]
+    ?string $descriptionFormat = null,
+    #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
+    ?string $fields = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    /** @var array<string, string|list<string>>|null $fieldsMap */
+    $fieldsMap = null;
+    if ($agent) {
+        $input = _read_agent_input($inputFile ?? $key);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) ? (string) $input['key'] : null;
+        $summary = $input['summary'] ?? null;
+        $description = $input['description'] ?? null;
+        $descriptionFormat = $input['descriptionFormat'] ?? null;
+        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
+    }
+    if ($key === null || trim($key) === '') {
+        $translator = _get_translation_service();
+        if ($format === OutputFormat::Json) {
+            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.update.error_no_key')));
+
+            return;
+        }
+        io()->error($translator->trans('item.update.error_no_key'));
+        exit(1);
+    }
+    $handler = new ItemUpdateHandler(_get_jira_service(), _get_translation_service(), _get_fields_parser());
+    $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
+    $response = $handler->handle($input);
+    $responder = new ItemUpdateResponder(_get_translation_service());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

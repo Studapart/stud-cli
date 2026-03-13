@@ -237,6 +237,19 @@ class IssueFieldResolverTest extends CommandTestCase
         $this->assertSame([], $skipped);
     }
 
+    public function testApplyOptionalFieldsSkipsInvalidEstimateFormat(): void
+    {
+        $meta = [
+            'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
+        ];
+        $fields = [];
+
+        $skipped = $this->resolver->applyOptionalFieldsFromCreatemeta($meta, $fields, null, 'invalid', $this->translationService);
+
+        $this->assertArrayNotHasKey('timeoriginalestimate', $fields);
+        $this->assertCount(1, $skipped);
+    }
+
     public function testApplyOptionalFieldsSkipsWhenNotInMeta(): void
     {
         $meta = [];

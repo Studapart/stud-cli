@@ -9,6 +9,7 @@ use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
 use App\Response\ItemCreateResponse;
+use App\Service\FieldsParser;
 use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
 use App\Service\JiraService;
@@ -21,7 +22,8 @@ class ItemCreateHandler
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
         private readonly TranslationService $translator,
-        private readonly IssueFieldResolver $fieldResolver
+        private readonly IssueFieldResolver $fieldResolver,
+        private readonly FieldsParser $fieldsParser
     ) {
     }
 
@@ -49,15 +51,28 @@ class ItemCreateHandler
             return $extraError;
         }
 
-        $skippedOptionalFields = $this->fieldResolver->applyOptionalFieldsFromCreatemeta(
-            $stateOrError->allFieldsMeta,
-            $stateOrError->fields,
-            $input->labelsOption,
-            $input->originalEstimateOption,
-            $this->translator
-        );
+        $skippedOptionalFields = $this->applyFieldsOption($stateOrError, $input);
 
         return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields);
+    }
+
+    /**
+     * Parse and apply --fields option via FieldsParser, returning skipped field names.
+     *
+     * @return list<string>
+     */
+    protected function applyFieldsOption(IssueCreationState $state, ItemCreateInput $input): array
+    {
+        $parsedFields = $input->fieldsMap ?? ($input->fieldsOption !== null ? $this->fieldsParser->parse($input->fieldsOption) : []);
+        if ($parsedFields === []) {
+            return [];
+        }
+        $result = $this->fieldsParser->matchAndTransform($parsedFields, $state->allFieldsMeta);
+        foreach ($result['matched'] as $key => $value) {
+            $state->fields[$key] = $value;
+        }
+
+        return $result['unmatched'];
     }
 
     protected function resolveTypeMetadata(
@@ -96,7 +111,6 @@ class ItemCreateHandler
         $typeExplicitlyProvided = ($input->parentKey !== null && trim($input->parentKey) !== '')
             || ($input->type !== null && trim((string) $input->type) !== '');
         $parentKeyTrimmed = ($input->parentKey !== null && trim($input->parentKey) !== '') ? trim($input->parentKey) : null;
-        $assigneeTrimmed = ($input->assigneeOption !== null && trim($input->assigneeOption) !== '') ? trim($input->assigneeOption) : null;
         $descriptionAdf = $state->fields['description'] ?? null;
 
         $fieldValues = [
@@ -104,7 +118,7 @@ class ItemCreateHandler
             'issueTypeId' => $state->issueTypeId,
             'summary' => (string) $state->fields['summary'],
             'descriptionAdf' => $descriptionAdf,
-            'assigneeOption' => $assigneeTrimmed,
+            'assigneeOption' => null,
             'parentKey' => $parentKeyTrimmed,
         ];
         $fillIssueType = $typeExplicitlyProvided || ! $interactive;
@@ -115,7 +129,7 @@ class ItemCreateHandler
             $fieldValues,
             $fillIssueType
         );
-        $this->fieldResolver->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, $assigneeTrimmed);
+        $this->fieldResolver->defaultAssigneeWhenFieldPresent($state->allFieldsMeta, $state->fields, null);
 
         if ($extraRequired === []) {
             return null;
@@ -172,7 +186,7 @@ class ItemCreateHandler
     }
 
     /**
-     * @param array{project: array{key: string}, issuetype: array{id?: string, name?: string}, summary: string, description?: array<string, mixed>} $fields
+     * @param array<string, mixed> $fields
      * @param list<string> $skippedOptionalFields
      */
     protected function createIssueAndReturnResponse(array $fields, array $skippedOptionalFields): ItemCreateResponse

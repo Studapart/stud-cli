@@ -113,11 +113,29 @@ class CommandMap
                     ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_create_description', 'argument' => '<text>'],
                     ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_create_description_format', 'argument' => '<plain|markdown>'],
                     ['name' => '--parent', 'shortcut' => null, 'description_key' => 'help.option_items_create_parent', 'argument' => '<key>'],
-                    ['name' => '--assignee', 'shortcut' => null, 'description_key' => 'help.option_items_create_assignee', 'argument' => '<id>'],
-                    ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_items_create_labels', 'argument' => '<list>'],
-                    ['name' => '--original-estimate', 'shortcut' => null, 'description_key' => 'help.option_items_create_original_estimate', 'argument' => '<value>'],
+                    ['name' => '--fields', 'shortcut' => '-F', 'description_key' => 'help.option_fields', 'argument' => '<fields>'],
                 ],
                 'arguments' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
+     */
+    private static function itemUpdateCommand(): array
+    {
+        return [
+            'items:update' => [
+                'alias' => 'iu',
+                'description_key' => 'help.command_items_update',
+                'options' => [
+                    ['name' => '--summary', 'shortcut' => '-m', 'description_key' => 'help.option_items_update_summary', 'argument' => '<text>'],
+                    ['name' => '--description', 'shortcut' => '-d', 'description_key' => 'help.option_items_update_description', 'argument' => '<text>'],
+                    ['name' => '--description-format', 'shortcut' => null, 'description_key' => 'help.option_items_update_description_format', 'argument' => '<plain|markdown>'],
+                    ['name' => '--fields', 'shortcut' => '-F', 'description_key' => 'help.option_fields', 'argument' => '<fields>'],
+                ],
+                'arguments' => ['<key>'],
             ],
         ];
     }
@@ -129,6 +147,7 @@ class CommandMap
     {
         return array_merge(
             self::itemCreateCommand(),
+            self::itemUpdateCommand(),
             [
                 'items:transition' => [
                     'alias' => 'tx',
