@@ -1,0 +1,2 @@
+# Ensure install script always uses LF (avoids "malformed input for url function" when piped to bash on macOS)
+setup-stud.sh text eol=lf
