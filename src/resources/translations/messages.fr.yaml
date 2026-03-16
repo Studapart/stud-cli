@@ -621,7 +621,7 @@ help:
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"
-  option_confluence_push_file: "Path to markdown file; if omitted, read from STDIN"
+  option_confluence_push_file: "Path to markdown file (create or update); if omitted, read from STDIN"
   option_confluence_push_page: "Existing page ID to update (omit to create)"
   option_confluence_push_parent: "Parent page ID for nesting (create only)"
   option_confluence_push_url: "Override Confluence base URL"

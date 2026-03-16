@@ -2064,7 +2064,7 @@ function confluence_push(
     ?string $space = null,
     #[AsOption(name: 'title', shortcut: 't', description: 'Page title')]
     ?string $title = null,
-    #[AsOption(name: 'file', shortcut: 'f', description: 'Path to markdown file (reads from STDIN if not provided)')]
+    #[AsOption(name: 'file', shortcut: 'f', description: 'Path to markdown file (create or update); if omitted, read from STDIN')]
     ?string $file = null,
     #[AsOption(name: 'page', shortcut: 'p', description: 'Existing page ID to update (omit to create new page)')]
     ?string $page = null,
@@ -2090,7 +2090,20 @@ function confluence_push(
         if ($input === null) {
             return;
         }
-        $content = (string) ($input['content'] ?? '');
+        $filePath = isset($input['file']) && is_string($input['file']) ? trim($input['file']) : '';
+        if ($filePath !== '') {
+            if (is_readable($filePath)) {
+                $content = (string) file_get_contents($filePath);
+            } else {
+                $translator = _get_translation_service();
+                $message = $translator->trans('confluence.push.error_file_not_readable', ['%path%' => $filePath]);
+                _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($message));
+            }
+        } elseif (isset($input['content'])) {
+            $content = (string) $input['content'];
+        } else {
+            $content = '';
+        }
         $space = isset($input['space']) ? (string) $input['space'] : $space;
         $title = isset($input['title']) ? (string) $input['title'] : $title;
         $page = isset($input['page']) ? (string) $input['page'] : (isset($input['pageId']) ? (string) $input['pageId'] : $page);
