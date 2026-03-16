@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Confluence:** `stud confluence:push` (and agent mode) now support loading page content from a file for both create and update. CLI: `-f`/`--file` already applied to update; confirmed and documented. Agent mode: optional JSON property `file` (path to markdown file); when set and readable, content is loaded from the file; when set but not readable, command fails with a clear error and does not fall back to `content`. When both `file` and `content` are present, `file` takes precedence when readable. README and help text state that `-f`/`--file` and agent `file` apply to both create and update. [SCI-76]
+
 ## [3.10.0] - 2026-03-13
 
 ### Added
