@@ -40,6 +40,9 @@ class HelpService
         'deploy' => 'stud deploy',
         'branches:list' => 'stud branches:list',
         'branches:clean' => 'stud branches:clean',
+        'confluence:push' => 'stud confluence:push',
+        'confluence:show' => 'stud confluence:show',
+        'confluence:page-labels' => 'stud confluence:page-labels',
     ];
 
     public function __construct(

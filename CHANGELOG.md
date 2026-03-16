@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Confluence:** New `stud confluence:show` (alias `stud csh`) command to fetch and display a Confluence page by page ID or URL. Returns metadata (id, title, url) and body in markdown. Supports `--page`/`-p`, `--url`, and optional `--confluence-url`. Agent mode: JSON input (pageId, url, confluenceUrl) and JSON output (success, data: id, title, url, body). URL forms supported: paths containing `/pages/<id>` (e.g. `/wiki/spaces/SPACE/pages/123456`). [SCI-75]
 - **Confluence:** `stud confluence:push` (and agent mode) now support loading page content from a file for both create and update. CLI: `-f`/`--file` already applied to update; confirmed and documented. Agent mode: optional JSON property `file` (path to markdown file); when set and readable, content is loaded from the file; when set but not readable, command fails with a clear error and does not fall back to `content`. When both `file` and `content` are present, `file` takes precedence when readable. README and help text state that `-f`/`--file` and agent `file` apply to both create and update. [SCI-76]
 
 ## [3.10.0] - 2026-03-13

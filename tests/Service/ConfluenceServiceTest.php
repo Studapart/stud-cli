@@ -753,4 +753,120 @@ class ConfluenceServiceTest extends TestCase
 
         $this->confluenceService->addPageLabels('12345', []);
     }
+
+    public function testGetPageWithBodyReturnsPageAndDecodedBody(): void
+    {
+        $adfJson = '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hello"}]}]}';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '12345',
+            'title' => 'Page With Body',
+            'version' => ['number' => 2],
+            'spaceId' => '1',
+            '_links' => ['webui' => '/spaces/DEV/pages/12345'],
+            'body' => [
+                'atlas_doc_format' => [
+                    'value' => $adfJson,
+                ],
+            ],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/12345?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('12345');
+
+        self::assertSame('12345', $result['id']);
+        self::assertSame('Page With Body', $result['title']);
+        self::assertSame(2, $result['version']['number']);
+        self::assertSame('1', $result['spaceId']);
+        self::assertSame('doc', $result['body']['type']);
+        self::assertIsArray($result['body']['content']);
+        self::assertCount(1, $result['body']['content']);
+    }
+
+    public function testGetPageWithBodyWhenBodyValueIsArray(): void
+    {
+        $adfArray = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => []]]];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '99',
+            'title' => 'Page',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/99'],
+            'body' => [
+                'atlas_doc_format' => [
+                    'value' => $adfArray,
+                ],
+            ],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/99?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('99');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertCount(1, $result['body']['content']);
+        self::assertSame('paragraph', $result['body']['content'][0]['type']);
+    }
+
+    public function testGetPageWithBodyThrowsOn404(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(404);
+        $responseMock->method('getContent')->with(false)->willReturn('Not found');
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/99999?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Confluence page "99999" not found.');
+
+        $this->confluenceService->getPageWithBody('99999');
+    }
+
+    public function testExtractPageIdFromUrlWithSpacesPagesId(): void
+    {
+        $url = 'https://company.atlassian.net/wiki/spaces/DEV/pages/123456/Glossary';
+        self::assertSame('123456', $this->confluenceService->extractPageIdFromUrl($url));
+    }
+
+    public function testExtractPageIdFromUrlWithPagesIdOnly(): void
+    {
+        $url = 'https://company.atlassian.net/wiki/pages/789';
+        self::assertSame('789', $this->confluenceService->extractPageIdFromUrl($url));
+    }
+
+    public function testExtractPageIdFromUrlThrowsOnEmpty(): void
+    {
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Invalid Confluence URL: empty.');
+
+        $this->confluenceService->extractPageIdFromUrl('');
+    }
+
+    public function testExtractPageIdFromUrlThrowsOnNoPath(): void
+    {
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Invalid Confluence URL: no path.');
+
+        $this->confluenceService->extractPageIdFromUrl('https://example.com');
+    }
+
+    public function testExtractPageIdFromUrlThrowsOnUnsupportedPath(): void
+    {
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Invalid Confluence URL: expected path like');
+
+        $this->confluenceService->extractPageIdFromUrl('https://example.com/wiki/spaces/DEV');
+    }
 }

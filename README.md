@@ -667,7 +667,22 @@ These commands help you browse, view, and create Jira work items.
         echo '{"space":"DEV","title":"Doc","page":"12345","file":"doc.md"}' | stud cpu --agent
         ```
 
--   **`stud confluence:page-labels`**
+   -   **`stud confluence:show`** (Alias: `stud csh`)
+    -   **Description:** Fetch a Confluence page by page ID or page URL and display its metadata (id, title, url) and body in readable format (markdown). Uses the same Confluence auth and base URL as `confluence:push` and `confluence:page-labels`; override with `--confluence-url` or config. At least one of `--page`/`-p` (page ID) or `--url` (page URL) is required. If both are provided, page ID takes precedence. Supported URL forms: paths containing `/pages/<id>` (e.g. `https://domain.atlassian.net/wiki/spaces/SPACE/pages/123456`).
+    -   **Options:**
+        -   `-p`/`--page <id>`: Confluence page ID.
+        -   `--url <url>`: Confluence page URL (e.g. `.../wiki/spaces/SPACE/pages/123456`).
+        -   `--confluence-url <url>`: Override Confluence base URL.
+        -   `--agent`: JSON input/output mode (input: `pageId`, `url`, optional `confluenceUrl`; output: `success`, and on success `data` with `id`, `title`, `url`, `body`).
+    -   **Usage:**
+        ```bash
+        stud confluence:show -p 123456
+        stud csh --url "https://company.atlassian.net/wiki/spaces/DEV/pages/123456/Glossary"
+        echo '{"pageId": "123456"}' | stud confluence:show --agent
+        echo '{"url": "https://company.atlassian.net/wiki/spaces/DEV/pages/123456"}' | stud csh --agent
+        ```
+
+   -   **`stud confluence:page-labels`**
     -   **Description:** Add labels to an existing Confluence page. Use when you want to tag a page (e.g. `research`, `DX`) without editing its body. Labels with special characters may need to be simplified (e.g. use `research` instead of `R&D` if the API rejects them).
     -   **Options:**
         -   `-p`/`--page <id>`: Confluence page ID.

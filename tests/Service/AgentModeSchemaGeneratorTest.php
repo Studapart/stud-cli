@@ -266,6 +266,22 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertSame('string', $props['content']['type'] ?? null);
     }
 
+    public function testConfluenceShowInSchemaWithExpectedOutput(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('confluence:show', $schemaByName);
+        $cmd = $schemaByName['confluence:show'];
+        $this->assertContains('csh', $cmd['aliases'] ?? []);
+        $outputSuccess = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('id', $outputSuccess, 'confluence:show agent output must include id');
+        $this->assertArrayHasKey('title', $outputSuccess);
+        $this->assertArrayHasKey('url', $outputSuccess);
+        $this->assertArrayHasKey('body', $outputSuccess);
+    }
+
     // ------------------------------------------------------------------
     // Source-based parsing (independent verification, no reflection)
     // ------------------------------------------------------------------

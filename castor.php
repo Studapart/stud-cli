@@ -19,6 +19,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 
 use App\Attribute\AgentOutput;
 use App\DTO\ConfluencePushInput;
+use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
 use App\DTO\ItemUpdateInput;
 use App\Enum\OutputFormat;
@@ -31,6 +32,7 @@ use App\Handler\CommitHandler;
 use App\Handler\ConfigShowHandler;
 use App\Handler\ConfigValidateHandler;
 use App\Handler\ConfluencePushHandler;
+use App\Handler\ConfluenceShowHandler;
 use App\Handler\DeployHandler;
 use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
@@ -58,6 +60,7 @@ use App\Responder\BranchListResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
 use App\Responder\ConfluencePushResponder;
+use App\Responder\ConfluenceShowResponder;
 use App\Responder\ErrorResponder;
 use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
@@ -2209,6 +2212,71 @@ function confluence_page_labels(
     }
 }
 
+#[AsTask(name: 'confluence:show', aliases: ['csh'], description: 'Fetch and display a Confluence page by ID or URL')]
+#[AgentOutput(properties: ['id' => 'string', 'title' => 'string', 'url' => 'string', 'body' => 'string'], description: 'Page id, title, url, and body content (markdown)')]
+function confluence_show(
+    #[AsOption(name: 'page', shortcut: 'p', description: 'Confluence page ID')]
+    ?string $page = null,
+    #[AsOption(name: 'url', description: 'Confluence page URL (e.g. .../wiki/spaces/SPACE/pages/123456)')]
+    ?string $url = null,
+    #[AsOption(name: 'confluence-url', description: 'Override Confluence base URL')]
+    ?string $confluenceUrl = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $pageId = $page !== null && trim($page) !== '' ? trim($page) : null;
+    $pageUrl = $url !== null && trim($url) !== '' ? trim($url) : null;
+    $baseUrlOverride = $confluenceUrl !== null && trim($confluenceUrl) !== '' ? trim($confluenceUrl) : null;
+
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $fromInput = isset($input['pageId']) && is_string($input['pageId']) && trim($input['pageId']) !== ''
+            ? trim($input['pageId'])
+            : (isset($input['page']) && is_string($input['page']) && trim($input['page']) !== '' ? trim($input['page']) : null);
+        $pageId = $fromInput ?? $pageId;
+        $pageUrl = isset($input['url']) && is_string($input['url']) && trim($input['url']) !== ''
+            ? trim($input['url'])
+            : $pageUrl;
+        if (isset($input['confluenceUrl']) && is_string($input['confluenceUrl']) && trim($input['confluenceUrl']) !== '') {
+            $baseUrlOverride = trim($input['confluenceUrl']);
+        }
+    }
+
+    if ($pageId === null && $pageUrl === null) {
+        $translator = _get_translation_service();
+        if ($format === OutputFormat::Json) {
+            _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($translator->trans('confluence.show.error_page_or_url_required')));
+        }
+        io()->error($translator->trans('confluence.show.error_page_or_url_required'));
+        exit(1);
+    }
+
+    $baseUrl = _get_confluence_base_url($baseUrlOverride);
+    $confluenceService = _get_confluence_service($baseUrlOverride);
+    $adfConverter = new \App\Service\AdfToMarkdownConverter();
+    $handler = new ConfluenceShowHandler($confluenceService, $adfConverter, _get_translation_service());
+    $inputDto = new ConfluenceShowInput($pageId, $pageUrl);
+    $response = $handler->handle($inputDto, $baseUrl);
+    $responder = new ConfluenceShowResponder();
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
 #[AgentOutput(properties: ['commands' => 'array'], description: 'Agent mode schema with all commands')]
 function help(
@@ -2273,6 +2341,7 @@ function help(
             'pc' => 'pr:comment',
             'pcs' => 'pr:comments',
             'cpu' => 'confluence:push',
+            'csh' => 'confluence:show',
             'ss' => 'status',
             'rl' => 'release',
             'mep' => 'deploy',
@@ -2404,6 +2473,12 @@ function help(
                 'alias' => 'cpu',
                 'args' => '[inputFile]',
                 'description' => $translator->trans('help.command_confluence_push'),
+            ],
+            [
+                'name' => 'confluence:show',
+                'alias' => 'csh',
+                'args' => '[inputFile]',
+                'description' => $translator->trans('help.command_confluence_show'),
             ],
             [
                 'name' => 'confluence:page-labels',
