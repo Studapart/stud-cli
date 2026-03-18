@@ -610,7 +610,7 @@ class HelpServiceTest extends TestCase
         $this->assertStringContainsString('stud branch:rename', $result);
         $this->assertStringContainsString('stud rn', $result);
         $this->assertStringContainsString('--name', $result);
-        $this->assertStringContainsString('-n', $result);
+        $this->assertStringContainsString('-N', $result);
         // Optional arguments should appear in signature but not in examples
         $this->assertStringContainsString('[<branch>]', $result);
         $this->assertStringContainsString('[<key>]', $result);
@@ -682,7 +682,7 @@ class HelpServiceTest extends TestCase
         $this->assertIsString($result);
         $this->assertNotEmpty($result);
         $this->assertStringContainsString('--name', $result);
-        $this->assertStringContainsString('-n', $result);
+        $this->assertStringContainsString('-N', $result);
         $this->assertStringContainsString('<name>', $result);
         // Verify the option appears in usage examples
         $this->assertStringContainsString('custom-branch-name', $result);

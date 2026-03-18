@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.1] - 2026-03-18
+
+### Fixed
+- **branch:rename:** Option shortcut for `--name` changed from `-n` to `-N` to avoid conflict with application-level no-interaction option. Help and CommandMap show `-N` for the name option. [SCI-77]
+- **commit:undo:** Removed redundant `-h`/`--help` option; help is only available via `stud help commit:undo`. [SCI-77]
+
 ## [3.11.0] - 2026-03-18
 
 ### Added
