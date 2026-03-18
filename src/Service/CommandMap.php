@@ -184,7 +184,7 @@ class CommandMap
                 'alias' => 'rn',
                 'description_key' => 'help.command_branch_rename',
                 'options' => [
-                    ['name' => '--name', 'shortcut' => '-n', 'description_key' => 'help.option_branch_rename_name', 'argument' => '<name>'],
+                    ['name' => '--name', 'shortcut' => '-N', 'description_key' => 'help.option_branch_rename_name', 'argument' => '<name>'],
                     ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                 ],
                 'arguments' => ['[<branch>]', '[<key>]'],
