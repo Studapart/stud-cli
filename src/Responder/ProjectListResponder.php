@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ProjectListResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -21,6 +22,7 @@ class ProjectListResponder
 
     public function __construct(
         private readonly ResponderHelper $helper,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -32,10 +34,10 @@ class ProjectListResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'project.list.section');
+        $this->helper->initSection($this->logger, 'project.list.section');
 
         if (empty($response->projects)) {
-            $io->note($this->helper->translator->trans('project.list.no_projects'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('project.list.no_projects'));
 
             return null;
         }
@@ -52,7 +54,7 @@ class ProjectListResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->projects, $io);
+        $viewConfig->render($response->projects, $this->logger);
 
         return null;
     }

@@ -179,6 +179,7 @@ To ensure **all features that display data** behave in a consistent way, we stan
 | Response class | Use case |
 |----------------|----------|
 | `BranchListResponse` | Branch list operations |
+| `ConfluenceShowResponse` | Confluence page show (id, title, url, body) |
 | `FilterListResponse` | Filter list operations |
 | `FilterShowResponse` | Filter show operations |
 | `ItemListResponse` | Item list operations |
@@ -191,6 +192,7 @@ To ensure **all features that display data** behave in a consistent way, we stan
 | Responder class | Structure | Renders |
 |-----------------|-----------|---------|
 | `BranchListResponder` | PageViewConfig + TableBlock | Branch, Status, Remote, PR |
+| `ConfluenceShowResponder` | PageViewConfig (definition list, content) | ID, Title, URL, body (markdown) |
 | `FilterListResponder` | PageViewConfig + TableBlock | Name, Description |
 | `FilterShowResponder` | PageViewConfig + TableBlock | Key, Status, Priority (conditional), Description, Jira URL |
 | `ItemListResponder` | PageViewConfig + TableBlock | Key, Status, Summary |
@@ -213,6 +215,9 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 - **All commands MUST use the Logger service** (obtained via `_get_logger()` in `castor.php`) for console output. Responders and any code that writes to the console must use Logger methods (e.g. `text`, `error`, `success`, `rawValue`) so that verbosity and `--quiet` are handled in one place.
 - **Direct use of `io()` (or the injected `SymfonyStyle` instance) for output is forbidden** in the output path: do not call `$io->writeln()`, `$io->text()`, `$io->error()`, etc. directly. Use the Logger instead. This ensures that `-q` / `--quiet` correctly suppresses non-essential output while still allowing primary-result output (e.g. script-friendly raw values via `Logger::rawValue()`) when required.
+- **Exceptions (the only allowed non-compliance):**
+  1. **Code outside our codebase** (e.g. Castor framework, Composer/vendor). We do not modify third-party code.
+  2. **Code that cannot use Logger for technical reasons** (e.g. runs before Logger can be created or injected). Any such code **must** be explicitly listed in this ADR or in CONVENTIONS.md with a short explanation of why it cannot conform. *(As of this update, no such code exists; all application code can obtain Logger via `_get_logger()` once the task is running.)*
 - **Cross-reference:** See CONVENTIONS.md "Command Output Conventions" for the standard output methods and their usage.
 
 ---

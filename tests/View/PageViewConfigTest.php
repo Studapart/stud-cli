@@ -49,7 +49,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('definitionList')
             ->with($this->anything());
 
-        $this->config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $this->config->render([$issue], $logger);
     }
 
     public function testRenderDoesNothingWhenEmptyDtos(): void
@@ -58,7 +59,8 @@ class PageViewConfigTest extends CommandTestCase
         $io->expects($this->never())
             ->method('section');
 
-        $this->config->render([], $io);
+        $logger = $this->createLogger($io);
+        $this->config->render([], $logger);
     }
 
     public function testRenderDefinitionListCallsIoWithCorrectData(): void
@@ -76,7 +78,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('definitionList')
             ->with($this->anything());
 
-        $this->config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $this->config->render([$issue], $logger);
     }
 
     public function testRenderContentWithListingFormatter(): void
@@ -98,7 +101,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('listing')
             ->with(['Item 1', 'Item 2']);
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithTextFormatter(): void
@@ -120,7 +124,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('text')
             ->with(['Line 1', 'Line 2']);
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithStringContent(): void
@@ -142,7 +147,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('text')
             ->with('Simple text content');
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithNonCallableExtractor(): void
@@ -165,7 +171,8 @@ class PageViewConfigTest extends CommandTestCase
         $io->expects($this->never())
             ->method('listing');
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderSectionWithBothDefinitionItemsAndContent(): void
@@ -192,7 +199,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('text')
             ->with('Content text');
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderWithColorHelperRegistersStyles(): void
@@ -226,7 +234,8 @@ class PageViewConfigTest extends CommandTestCase
         $io->expects($this->once())
             ->method('definitionList');
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderSectionWithColorHelperAppliesColorsToSectionTitle(): void
@@ -248,7 +257,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('section')
             ->with('<section_title>Test Section</>');
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderDefinitionListWithColorHelperAppliesColors(): void
@@ -282,7 +292,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('definitionList')
             ->with($this->anything());
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithColorHelperAppliesColorsToListing(): void
@@ -319,7 +330,8 @@ class PageViewConfigTest extends CommandTestCase
                 return is_array($list) && count($list) === 2;
             }));
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithColorHelperAppliesColorsToText(): void
@@ -350,7 +362,8 @@ class PageViewConfigTest extends CommandTestCase
             ->method('text')
             ->with($this->stringContains('Simple text'));
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 
     public function testRenderContentWithColorHelperAppliesColorsToTextArray(): void
@@ -383,6 +396,7 @@ class PageViewConfigTest extends CommandTestCase
                 return is_array($data) && count($data) === 2;
             }));
 
-        $config->render([$issue], $io);
+        $logger = $this->createLogger($io);
+        $config->render([$issue], $logger);
     }
 }

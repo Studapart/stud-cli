@@ -2539,7 +2539,43 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(true); // User overrides
 
-        $result = $this->handler->handle($io);
+        // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
+        $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
+        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        });
+        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createMock(FileSystem::class);
+        $this->setupMigrationMocks($fileSystem);
+        $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
+            if (str_starts_with($path, '/tmp/')) {
+                @file_put_contents($path, $contents);
+            }
+        });
+        $handlerWithConfirmLogger = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $loggerWithConfirm,
+            $fileSystem,
+            null,
+            $this->httpClient
+        );
+
+        $result = $handlerWithConfirmLogger->handle($io);
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -2683,7 +2719,43 @@ CHANGELOG;
                 return true; // User overrides
             });
 
-        $result = $this->handler->handle($io);
+        // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
+        $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
+        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        });
+        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        });
+        $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
+        $fileSystem = $this->createMock(FileSystem::class);
+        $this->setupMigrationMocks($fileSystem);
+        $fileSystem->method('filePutContents')->willReturnCallback(function ($path, $contents) {
+            if (str_starts_with($path, '/tmp/')) {
+                @file_put_contents($path, $contents);
+            }
+        });
+        $handlerWithConfirmLogger = new UpdateHandler(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService),
+            $loggerWithConfirm,
+            $fileSystem,
+            null,
+            $this->httpClient
+        );
+
+        $result = $handlerWithConfirmLogger->handle($io);
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -2710,8 +2782,9 @@ CHANGELOG;
         // Use /tmp/ path which FileSystem handles specially for in-memory filesystems
         $nonExistentFile = '/tmp/non-existent-file-' . uniqid() . '.phar';
 
+        $logger = new \App\Service\Logger($io, []);
         $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($io, $nonExistentFile, $pharAsset);
+        $result = $updateFileService->verifyHash($logger, $nonExistentFile, $pharAsset);
 
         $this->assertFalse($result);
         // Test intent: handler completed successfully, verified by return value
@@ -2766,8 +2839,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
+        $logger = new \App\Service\Logger($io, []);
         $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($io, $tempFile, $pharAsset);
+        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset);
 
         $this->assertTrue($result);
         // Test intent: handler completed successfully, verified by return value
@@ -2791,22 +2865,18 @@ CHANGELOG;
             'digest' => $wrongHash, // No "sha256:" prefix, but wrong hash
         ];
 
-        $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
         $io->method('isVerbose')->willReturn(false);
-        $io->method('section')->willReturnSelf();
-        $io->method('text')->willReturnSelf();
-        $io->method('warning')->willReturnSelf();
-        $io->method('error')->willReturnSelf();
-        $io->method('writeln')->willReturnSelf();
-        $io->method('newLine')->willReturnSelf();
-        $io->method('success')->willReturnSelf();
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
+        $logger = new \App\Service\Logger($io, []);
         $io->method('confirm')
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
         $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($io, $tempFile, $pharAsset);
+        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset);
 
         $this->assertFalse($result);
 
@@ -2828,12 +2898,17 @@ CHANGELOG;
         ];
 
         $io = $this->createMock(SymfonyStyle::class);
+        $io->method('isQuiet')->willReturn(false);
+        $io->method('isVerbose')->willReturn(false);
+        $io->method('isVeryVerbose')->willReturn(false);
+        $io->method('isDebug')->willReturn(false);
         $io->method('warning')->willReturnSelf();
         $io->method('error')->willReturnSelf();
         $io->expects($this->never())->method('confirm');
+        $logger = new \App\Service\Logger($io, []);
 
         $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($io, $tempFile, $pharAsset, true);
+        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset, true);
 
         $this->assertFalse($result);
 

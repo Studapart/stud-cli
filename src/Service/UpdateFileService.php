@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Symfony\Component\Console\Style\SymfonyStyle;
-
 class UpdateFileService
 {
     public function __construct(
@@ -23,10 +21,10 @@ class UpdateFileService
      * 3. We need atomic operations that work with the running process
      * 4. Flysystem cannot handle this special case
      */
-    public function replaceBinary(SymfonyStyle $io, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
+    public function replaceBinary(Logger $logger, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
     {
         if (! is_writable($binaryPath)) {
-            $io->error(explode("\n", $this->translator->trans('update.error_not_writable')));
+            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_not_writable')));
             @unlink($tempFile);
 
             return 1;
@@ -48,7 +46,7 @@ class UpdateFileService
                 throw new \RuntimeException($errorMessage);
             }
         } catch (\Exception $e) {
-            $io->error(explode("\n", $this->translator->trans('update.error_backup', ['error' => $e->getMessage()])));
+            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_backup', ['error' => $e->getMessage()])));
             @unlink($tempFile);
 
             return 1;
@@ -61,7 +59,7 @@ class UpdateFileService
             chmod($binaryPath, 0755);
 
             // Backup file is left behind for cleanup on next run
-            // Note: No $io->success() call here to avoid zlib error after PHAR replacement
+            // Note: No success() call here to avoid zlib error after PHAR replacement
             return 0;
             // Note: rename() doesn't throw exceptions in PHP, but chmod() might in edge cases
             // Rollback on failure
@@ -70,10 +68,10 @@ class UpdateFileService
         } catch (\Exception $e) {
             try {
                 rename($backupPath, $binaryPath);
-                $io->error(explode("\n", $this->translator->trans('update.error_rollback', ['error' => $e->getMessage()])));
+                $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_rollback', ['error' => $e->getMessage()])));
             } catch (\Exception $rollbackException) {
                 // Rollback also failed - this is a critical state
-                $io->error(explode("\n", $this->translator->trans('update.error_rollback_failed', [
+                $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_rollback_failed', [
                     'original_error' => $e->getMessage(),
                     'rollback_error' => $rollbackException->getMessage(),
                     'backup_path' => $backupPath,
@@ -126,7 +124,7 @@ class UpdateFileService
      * @param array<string, mixed> $pharAsset
      * @param bool $quiet When true, on verification failure do not prompt; return false (abort)
      */
-    public function verifyHash(SymfonyStyle $io, string $tempFile, array $pharAsset, bool $quiet = false): bool
+    public function verifyHash(Logger $logger, string $tempFile, array $pharAsset, bool $quiet = false): bool
     {
         // Extract digest from the asset's JSON object (format: "sha256:...")
         $digest = $pharAsset['digest'] ?? null;
@@ -134,7 +132,7 @@ class UpdateFileService
         // Calculate the local file's SHA-256 hash
         $calculatedHash = @hash_file('sha256', $tempFile);
         if ($calculatedHash === false) {
-            $io->error(explode("\n", $this->translator->trans('update.error_hash_calculation')));
+            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_hash_calculation')));
 
             return false;
         }
@@ -151,7 +149,7 @@ class UpdateFileService
             }
 
             if (strtolower($calculatedHash) === strtolower($expectedHash)) {
-                $io->text($this->translator->trans('update.success_hash_verified'));
+                $logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.success_hash_verified'));
 
                 return true;
             }
@@ -165,13 +163,13 @@ class UpdateFileService
                 'calculated' => $calculatedHash,
             ]);
 
-        $io->warning(explode("\n", $errorMessage));
+        $logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $errorMessage));
 
         if ($quiet) {
             return false;
         }
 
-        $continue = $io->confirm(
+        $continue = $logger->confirm(
             $this->translator->trans('update.prompt_continue_on_verification_failure'),
             false
         );

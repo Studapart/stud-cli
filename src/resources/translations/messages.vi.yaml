@@ -11,6 +11,11 @@ confluence:
     error_api: "Confluence API error: %message%"
     error_file_not_readable: "Cannot read file: %path%"
   show:
+    section: "Confluence page"
+    label_id: "ID"
+    label_title: "Title"
+    label_url: "URL"
+    section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
 

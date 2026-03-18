@@ -33,9 +33,9 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::error('config.show.no_config_found');
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->callback(function ($message) {
+            ->with($this->anything(), $this->callback(function ($message) {
                 return is_string($message) && str_contains($message, 'config.show.no_config_found');
             }));
 
@@ -47,12 +47,12 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en', 'JIRA_URL' => 'https://jira.example.com'], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->anything());
+            ->with($this->anything(), $this->anything());
 
         $this->responder->respond($io, $response);
     }
@@ -65,12 +65,12 @@ class ConfigShowResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->exactly(2))
+        $this->logger->expects($this->exactly(2))
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->exactly(2))
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->exactly(2))
             ->method('definitionList')
-            ->with($this->anything());
+            ->with($this->anything(), $this->anything());
 
         $this->responder->respond($io, $response);
     }
@@ -80,10 +80,12 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
-            ->method('definitionList');
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
+            ->method('definitionList')
+            ->with($this->anything(), $this->anything());
 
         $this->responder->respond($io, $response);
     }
@@ -96,17 +98,15 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::success(['LANGUAGE' => 'en'], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeastOnce())
-            ->method('format')
-            ->willReturnCallback(fn (string $color, string $text) => "<{$color}>{$text}</>");
-
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
-            ->method('definitionList');
+            ->with($colorHelper);
+        $this->logger->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->atLeastOnce())
+            ->method('definitionList')
+            ->with($this->anything(), $this->anything());
 
         $responder->respond($io, $response);
     }
@@ -119,11 +119,12 @@ class ConfigShowResponderTest extends CommandTestCase
         ], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->callback(function (array $firstRow) {
+            ->with($this->anything(), $this->callback(function (array $firstRow) {
                 $values = array_values($firstRow);
 
                 return in_array('true', $values, true) || in_array('{"a":1}', $values, true);
@@ -137,9 +138,10 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::success([], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->never())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->never())
             ->method('definitionList');
 
         $this->responder->respond($io, $response);
@@ -150,11 +152,12 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::success(['key' => new \stdClass()], null);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->callback(function (array $row) {
+            ->with($this->anything(), $this->callback(function (array $row) {
                 $values = array_values($row);
 
                 return $values !== [] && $values[0] === '';
@@ -172,11 +175,6 @@ class ConfigShowResponderTest extends CommandTestCase
             ->method('rawValue')
             ->with('en');
 
-        $io->expects($this->never())
-            ->method('section');
-        $io->expects($this->never())
-            ->method('definitionList');
-
         $this->responder->respond($io, $response, true);
     }
 
@@ -185,13 +183,13 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::successSingleKey('baseBranch', 'main', 'project');
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->callback(function (array $row) {
-                return count($row) === 1 && isset($row['baseBranch']) || array_key_first($row) === 'baseBranch';
+            ->with($this->anything(), $this->callback(function (array $row) {
+                return count($row) === 1 && (isset($row['baseBranch']) || array_key_first($row) === 'baseBranch');
             }));
 
         $this->responder->respond($io, $response, false);
@@ -202,9 +200,9 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::error('config.show.key_not_allowed', ['%key%' => 'JIRA_API_TOKEN']);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->callback(function (string $message) {
+            ->with($this->anything(), $this->callback(function (string $message) {
                 return str_contains($message, 'config.show.key_not_allowed') && str_contains($message, 'JIRA_API_TOKEN');
             }));
 
@@ -219,19 +217,15 @@ class ConfigShowResponderTest extends CommandTestCase
         $response = ConfigShowResponse::successSingleKey('LANGUAGE', 'en', 'global');
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->exactly(3))
-            ->method('format')
-            ->willReturnCallback(fn (string $color, string $text) => "<{$color}>{$text}</>");
-
-        $io->expects($this->once())
+            ->with($colorHelper);
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->anything());
+            ->with($this->anything(), $this->anything());
 
         $responder->respond($io, $response, false);
     }

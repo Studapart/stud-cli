@@ -479,16 +479,18 @@ $this->assertStringContainsString('Update complete! You are now on v1.0.1', $out
 
 All command output must go through the **Logger** service (from `_get_logger()` in tasks), not directly through `$io`; see [ADR-005 §7.6 Output and Logger](documentation/adr-005-responder-pattern-architecture.md#76-output-and-logger).
 
-The following table defines the standard output methods and their usage in `stud-cli`:
+**Exceptions:** Only two cases may bypass Logger: (1) **Code outside our codebase** (Castor, vendor, etc.). (2) **Code that cannot use Logger** because it runs before Logger can be created or injected; any such code must be explicitly documented in CONVENTIONS or ADR-005 with the reason. *(Currently no such code exists.)*
+
+The following table defines the standard Logger output methods. The first argument is the minimum verbosity level (`Logger::VERBOSITY_NORMAL` or `Logger::VERBOSITY_VERBOSE` for verbose-only output):
 
 | Type | Method | Icon | Usage |
 |------|--------|------|-------|
-| **Success** | `$io->success()` | ✅ | Use when an operation completes successfully. Example: "✅ Branch 'feature/TPW-123' created from 'origin/develop'." |
-| **Error** | `$io->error()` | ❌ | Use when an operation fails or encounters an error. Can accept a string or array of strings. Example: `$io->error(['Failed to create branch.', 'Error: ' . $e->getMessage()])` |
-| **Warning** | `$io->warning()` | ⚠️ | Use to warn about potential issues or non-critical problems. Example: "⚠️ No Git provider configured for this project." |
-| **Notice** | `$io->note()` | ℹ️ | Use for informational notices that are not errors or warnings. Example: "ℹ️ A Pull Request already exists for this branch." |
-| **Info** | `$io->text()` | (none) | Use for general informational text that doesn't require special formatting. Example: "Fetching latest changes from origin..." |
-| **Section** | `$io->section()` | (none) | Use to create a section header for grouping related output. Example: `$io->section('Checking for updates')` |
+| **Success** | `$logger->success($verbosity, $message)` | ✅ | Use when an operation completes successfully. Example: `$logger->success(Logger::VERBOSITY_NORMAL, "Branch 'feature/TPW-123' created.")` |
+| **Error** | `$logger->error($verbosity, $message)` | ❌ | Use when an operation fails. Accepts string or array. Example: `$logger->error(Logger::VERBOSITY_NORMAL, ['Failed.', 'Error: ' . $e->getMessage()])` |
+| **Warning** | `$logger->warning($verbosity, $message)` | ⚠️ | Use for non-critical problems. Example: `$logger->warning(Logger::VERBOSITY_NORMAL, 'No Git provider configured.')` |
+| **Notice** | `$logger->note($verbosity, $message)` | ℹ️ | Use for informational notices. Example: `$logger->note(Logger::VERBOSITY_NORMAL, 'A Pull Request already exists.')` |
+| **Info** | `$logger->text($verbosity, $message)` | (none) | Use for general informational text. Example: `$logger->text(Logger::VERBOSITY_NORMAL, 'Fetching latest changes...')` |
+| **Section** | `$logger->section($verbosity, $message)` | (none) | Use for section headers. Example: `$logger->section(Logger::VERBOSITY_NORMAL, 'Checking for updates')` |
 
 ### Output Best Practices
 
@@ -496,16 +498,14 @@ The following table defines the standard output methods and their usage in `stud
 2. **Be concise**: Error messages should be clear and actionable.
 3. **Use arrays for multi-line messages**: When providing detailed error information, use arrays:
    ```php
-   $io->error([
+   $logger->error(Logger::VERBOSITY_NORMAL, [
        'Failed to download the new version.',
        'Error: ' . $e->getMessage(),
    ]);
    ```
-4. **Respect verbosity**: Use `$io->isVerbose()` to provide additional details when the `-v` flag is used:
+4. **Respect verbosity**: Use `Logger::VERBOSITY_VERBOSE` for details that should only appear with `-v`:
    ```php
-   if ($io->isVerbose()) {
-       $io->writeln("  <fg=gray>JQL Query: {$jql}</>");
-   }
+   $logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>JQL Query: {$jql}</>");
    ```
 
 ## CHANGELOG.md Format

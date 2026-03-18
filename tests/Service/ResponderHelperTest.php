@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
@@ -30,8 +31,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle();
+        $logger = new Logger($io, []);
 
-        $helper->initSection($io, 'test.section');
+        $helper->initSection($logger, 'test.section');
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('test.section', $output);
@@ -47,8 +49,9 @@ class ResponderHelperTest extends TestCase
 
         $helper = new ResponderHelper($this->translator, $colorHelper);
         $io = $this->createSymfonyStyle();
+        $logger = new Logger($io, []);
 
-        $helper->initSection($io, 'test.section');
+        $helper->initSection($logger, 'test.section');
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('test.section', $output);
@@ -58,8 +61,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle();
+        $logger = new Logger($io, []);
 
-        $helper->initSection($io, 'test.section', ['key' => 'value']);
+        $helper->initSection($logger, 'test.section', ['key' => 'value']);
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('test.section', $output);
@@ -70,8 +74,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
+        $logger = new Logger($io, []);
 
-        $helper->verboseComment($io, 'test.verbose');
+        $helper->verboseComment($logger, 'test.verbose');
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('test.verbose', $output);
@@ -81,8 +86,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_NORMAL);
+        $logger = new Logger($io, []);
 
-        $helper->verboseComment($io, 'test.verbose');
+        $helper->verboseComment($logger, 'test.verbose');
 
         $output = $this->getOutput($io);
         $this->assertStringNotContainsString('test.verbose', $output);
@@ -97,8 +103,9 @@ class ResponderHelperTest extends TestCase
 
         $helper = new ResponderHelper($this->translator, $colorHelper);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
+        $logger = new Logger($io, []);
 
-        $helper->verboseComment($io, 'test.verbose');
+        $helper->verboseComment($logger, 'test.verbose');
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('[COMMENT]test.verbose', $output);
@@ -108,8 +115,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
+        $logger = new Logger($io, []);
 
-        $helper->verboseComment($io, 'test.msg', ['jql' => 'SELECT *']);
+        $helper->verboseComment($logger, 'test.msg', ['jql' => 'SELECT *']);
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('SELECT *', $output);
@@ -119,8 +127,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
+        $logger = new Logger($io, []);
 
-        $helper->verboseNote($io, 'test.note');
+        $helper->verboseNote($logger, 'test.note');
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('test.note', $output);
@@ -130,8 +139,9 @@ class ResponderHelperTest extends TestCase
     {
         $helper = new ResponderHelper($this->translator);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_NORMAL);
+        $logger = new Logger($io, []);
 
-        $helper->verboseNote($io, 'test.note');
+        $helper->verboseNote($logger, 'test.note');
 
         $output = $this->getOutput($io);
         $this->assertStringNotContainsString('test.note', $output);

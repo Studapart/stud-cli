@@ -7,6 +7,7 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemCreateResponse;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -17,7 +18,8 @@ class ItemCreateResponder
      */
     public function __construct(
         private readonly TranslationService $translator,
-        private readonly array $jiraConfig
+        private readonly array $jiraConfig,
+        private readonly Logger $logger
     ) {
     }
 
@@ -44,10 +46,10 @@ class ItemCreateResponder
             'key' => $response->key,
             'url' => $url,
         ]);
-        $io->success($message);
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $message);
         $skipped = $response->skippedOptionalFields ?? [];
         if ($skipped !== []) {
-            $io->note($this->translator->trans('item.create.note_skipped_optional_fields', ['%fields%' => implode(', ', $skipped)]));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.create.note_skipped_optional_fields', ['%fields%' => implode(', ', $skipped)]));
         }
 
         return null;

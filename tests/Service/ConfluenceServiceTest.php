@@ -817,6 +817,34 @@ class ConfluenceServiceTest extends TestCase
         self::assertSame('paragraph', $result['body']['content'][0]['type']);
     }
 
+    public function testGetPageWithBodyUsesSpaceIdFromNestedSpaceWhenSpaceIdMissing(): void
+    {
+        $adfJson = '{"type":"doc","content":[]}';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'Page',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'space' => ['id' => 'space-99'],
+            'body' => [
+                'atlas_doc_format' => [
+                    'value' => $adfJson,
+                ],
+            ],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('space-99', $result['spaceId']);
+    }
+
     public function testGetPageWithBodyThrowsOn404(): void
     {
         $responseMock = $this->createMock(ResponseInterface::class);
@@ -868,5 +896,166 @@ class ConfluenceServiceTest extends TestCase
         $this->expectExceptionMessage('Invalid Confluence URL: expected path like');
 
         $this->confluenceService->extractPageIdFromUrl('https://example.com/wiki/spaces/DEV');
+    }
+
+    public function testGetPageWithBodyWhenBodyMissingReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'No Body',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            // no 'body' key
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenBodyNotArrayReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'Bad Body',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => 'not-array',
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenAtlasDocFormatMissingReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'No ADF',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => [],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenBodyValueNullReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'Null Value',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => ['atlas_doc_format' => ['value' => null]],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenBodyValueInvalidJsonReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'Bad JSON',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => ['atlas_doc_format' => ['value' => 'not valid json {{{']],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenBodyValueJsonWithoutTypeReturnsEmptyBody(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'No Type',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => ['atlas_doc_format' => ['value' => '[]']],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
+    }
+
+    public function testGetPageWithBodyWhenBodyValueArrayHasTypeNoContent(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'id' => '42',
+            'title' => 'Doc',
+            'version' => ['number' => 1],
+            '_links' => ['webui' => '/pages/42'],
+            'body' => ['atlas_doc_format' => ['value' => ['type' => 'doc']]],
+        ]);
+
+        $this->httpClientMock->expects(self::once())
+            ->method('request')
+            ->with('GET', 'api/v2/pages/42?body-format=atlas_doc_format')
+            ->willReturn($responseMock);
+
+        $result = $this->confluenceService->getPageWithBody('42');
+
+        self::assertSame('doc', $result['body']['type']);
+        self::assertSame([], $result['body']['content'] ?? []);
     }
 }

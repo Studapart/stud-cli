@@ -181,7 +181,7 @@ function _get_config(): array
     $configPath = _get_config_path();
     if (! file_exists($configPath)) {
         $translator = _get_translation_service();
-        io()->error(explode("\n", $translator->trans('config.error.not_found', ['path' => $configPath])));
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, explode("\n", $translator->trans('config.error.not_found', ['path' => $configPath])));
         exit(1);
     }
 
@@ -200,7 +200,7 @@ function _get_jira_config(): array
 
     if (! empty($missingKeys)) {
         $translator = _get_translation_service();
-        io()->error(explode("\n", $translator->trans('config.error.missing_jira_keys', ['keys' => implode(', ', $missingKeys)])));
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, explode("\n", $translator->trans('config.error.missing_jira_keys', ['keys' => implode(', ', $missingKeys)])));
         exit(1);
     }
 
@@ -547,7 +547,7 @@ function _get_base_branch(bool $quiet = false): string
  */
 function _get_error_responder(): ErrorResponder
 {
-    return new ErrorResponder(_get_translation_service(), _get_colour_config());
+    return new ErrorResponder(_get_translation_service(), _get_colour_config(), _get_logger());
 }
 
 /**
@@ -766,9 +766,10 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     // Get translation service (works without config, defaults to 'en')
     $translator = _get_translation_service();
     $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+    $logger = new Logger($io, _get_colour_config());
 
-    $io->warning($translator->trans('config.error.missing_setup'));
-    $io->text($translator->trans('config.error.run_init_instruction'));
+    $logger->warning(Logger::VERBOSITY_NORMAL, $translator->trans('config.error.missing_setup'));
+    $logger->text(Logger::VERBOSITY_NORMAL, $translator->trans('config.error.run_init_instruction'));
 
     // Prevent command execution and set exit code to 1
     $event->disableCommand();
@@ -836,6 +837,7 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     // Get translation service (works without config, defaults to 'en')
     $translator = _get_translation_service();
     $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+    $logger = new Logger($io, _get_colour_config());
 
     $errorMessages = [
         'Required PHP extension is missing: ' . implode(', ', $missingExtensions),
@@ -853,7 +855,7 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
 
     $errorMessages[] = 'After installation, restart your terminal or web server.';
 
-    $io->error($errorMessages);
+    $logger->error(Logger::VERBOSITY_NORMAL, $errorMessages);
 
     // Prevent command execution and set exit code to 1
     $event->disableCommand();
@@ -910,7 +912,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
     try {
         $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-        $logger = _get_logger();
+        $logger = new Logger($io, _get_colour_config());
         $translator = _get_translation_service();
         $fileSystem = _get_file_system();
 
@@ -977,7 +979,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
             if (! $isInteractive || $isQuiet) {
                 // Non-interactive mode: exit with error
                 $missingKeys = array_merge($validationResult->missingGlobalKeys, $validationResult->missingProjectKeys);
-                $io->error([
+                $logger->error(Logger::VERBOSITY_NORMAL, [
                     'Missing required configuration keys: ' . implode(', ', $missingKeys),
                     'Please run "stud config:init" to configure these keys, or run the command without --quiet in interactive mode.',
                 ]);
@@ -1013,7 +1015,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
                     $gitRepository->writeProjectConfig($projectConfig);
                 } catch (\RuntimeException $e) {
                     // Not in a git repository, can't save project config
-                    $io->error('Cannot save project configuration: not in a git repository.');
+                    $logger->error(Logger::VERBOSITY_NORMAL, 'Cannot save project configuration: not in a git repository.');
                     $event->disableCommand();
                     $command->setCode(function () {
                         return 1;
@@ -1055,7 +1057,8 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
     }
 
     $io = new SymfonyStyle($event->getInput(), $output);
-    $io->warning(sprintf(
+    $logger = new Logger($io, _get_colour_config());
+    $logger->warning(Logger::VERBOSITY_NORMAL, sprintf(
         "A new version (v%s) is available. Run 'stud up' to update.",
         $latestVersion
     ));
@@ -1214,7 +1217,7 @@ function config_validate(
             $gitProvider = _get_git_provider();
             if ($format === OutputFormat::Cli && $gitProvider === null) {
                 $translator = _get_translation_service();
-                io()->error($translator->trans('config.git_provider_not_configured'));
+                _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('config.git_provider_not_configured'));
                 exit(1);
             }
         }
@@ -1222,7 +1225,7 @@ function config_validate(
 
     $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
     $response = $handler->handle();
-    $responder = new ConfigValidateResponder(_get_responder_helper());
+    $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1251,7 +1254,7 @@ function projects_list(
 
     $handler = new ProjectListHandler(_get_jira_service());
     $response = $handler->handle();
-    $responder = new ProjectListResponder(_get_responder_helper());
+    $responder = new ProjectListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1277,7 +1280,7 @@ function filters_list(
 
     $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
     $response = $handler->handle();
-    $responder = new FilterListResponder(_get_responder_helper());
+    $responder = new FilterListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1319,7 +1322,7 @@ function items_list(
         if ($sort !== null) {
             $normalizedSort = strtolower($sort);
             if (! in_array($normalizedSort, ['key', 'status'], true)) {
-                io()->error($translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
+                _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.list.error_invalid_sort', ['value' => $sort]));
                 exit(1);
             }
             $sort = ucfirst($normalizedSort);
@@ -1328,7 +1331,7 @@ function items_list(
 
     $handler = new ItemListHandler(_get_jira_service());
     $response = $handler->handle($all, $project, $sort);
-    $responder = new ItemListResponder(_get_responder_helper());
+    $responder = new ItemListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1358,12 +1361,12 @@ function items_search(
         }
         $jql = (string) ($input['jql'] ?? '');
     } elseif ($jql === null || $jql === '') {
-        io()->error('The "jql" argument is required.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "jql" argument is required.');
         exit(1);
     }
     $handler = new SearchHandler(_get_jira_service());
     $response = $handler->handle($jql);
-    $responder = new SearchResponder(_get_responder_helper(), _get_jira_config());
+    $responder = new SearchResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1393,12 +1396,12 @@ function filters_show(
         }
         $filterName = (string) ($input['filterName'] ?? '');
     } elseif ($filterName === null || $filterName === '') {
-        io()->error('The "filterName" argument is required.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "filterName" argument is required.');
         exit(1);
     }
     $handler = new FilterShowHandler(_get_jira_service());
     $response = $handler->handle($filterName);
-    $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config());
+    $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1428,12 +1431,12 @@ function items_show(
         }
         $key = (string) ($input['key'] ?? '');
     } elseif ($key === null || $key === '') {
-        io()->error('The "key" argument is required.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
     $handler = new ItemShowHandler(_get_jira_service());
     $response = $handler->handle($key);
-    $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config());
+    $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $key, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1521,7 +1524,7 @@ function items_create(
     $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser());
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle(io(), $interactive, $input);
-    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config());
+    $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1574,13 +1577,13 @@ function items_update(
 
             return;
         }
-        io()->error($translator->trans('item.update.error_no_key'));
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.update.error_no_key'));
         exit(1);
     }
     $handler = new ItemUpdateHandler(_get_jira_service(), _get_translation_service(), _get_fields_parser());
     $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
     $response = $handler->handle($input);
-    $responder = new ItemUpdateResponder(_get_translation_service());
+    $responder = new ItemUpdateResponder(_get_translation_service(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1640,7 +1643,7 @@ function items_start(
         }
         $key = (string) ($input['key'] ?? '');
     } elseif ($key === null || $key === '') {
-        io()->error('The "key" argument is required.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
     $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
@@ -1672,7 +1675,7 @@ function items_takeover(
         $key = (string) ($input['key'] ?? '');
         $quiet = true;
     } elseif ($key === null || $key === '') {
-        io()->error('The "key" argument is required.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
     $baseBranch = _get_base_branch();
@@ -1742,7 +1745,7 @@ function branches_list(
     $githubProvider = _get_github_provider();
     $handler = new BranchListHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service());
     $response = $handler->handle();
-    $responder = new BranchListResponder(_get_responder_helper());
+    $responder = new BranchListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1813,7 +1816,7 @@ function commit(
     }
     if (! $agent && $help) {
         $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
-        $helpService->displayCommandHelp(io(), 'commit');
+        $helpService->displayCommandHelp(_get_logger(), 'commit');
 
         return;
     }
@@ -1863,7 +1866,7 @@ function commit_undo(
         $quiet = true;
     } elseif ($help) {
         $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
-        $helpService->displayCommandHelp(io(), 'commit:undo');
+        $helpService->displayCommandHelp(_get_logger(), 'commit:undo');
 
         return;
     }
@@ -1977,7 +1980,7 @@ function submit(
         $repoName = $gitRepository->getRepositoryName();
 
         if (! $repoOwner || ! $repoName) {
-            io()->error([
+            _get_logger()->error(Logger::VERBOSITY_NORMAL, [
                 'Could not determine repository owner or name from git remote.',
                 'Please ensure your repository has a remote named "origin" configured.',
                 'You can check with: git remote -v',
@@ -1986,7 +1989,7 @@ function submit(
         }
 
         $providerType = $gitConfig['GIT_PROVIDER'] ?? 'unknown';
-        io()->error([
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, [
             "Git provider '{$providerType}' is not supported or not properly configured.",
             'Please check your configuration file and ensure GIT_PROVIDER is set to "github" or "gitlab".',
         ]);
@@ -2047,7 +2050,7 @@ function pr_comments(
     $gitProvider = _get_git_provider();
     $handler = new PrCommentsHandler($gitRepository, $gitProvider, _get_translation_service());
     $response = $handler->handle();
-    $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser());
+    $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2120,7 +2123,7 @@ function confluence_push(
         if ($file !== null && $file !== '') {
             if (! is_readable($file)) {
                 $translator = _get_translation_service();
-                io()->error($translator->trans('confluence.push.error_file_not_readable', ['%path%' => $file]));
+                _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('confluence.push.error_file_not_readable', ['%path%' => $file]));
                 exit(1);
             }
             $content = (string) file_get_contents($file);
@@ -2146,14 +2149,12 @@ function confluence_push(
             if ($user !== null) {
                 $contactAccountId = $user['accountId'];
                 $contactDisplayName = $user['displayName'];
-                if (io()->isVerbose()) {
-                    io()->writeln('<info>Contact resolved: @' . $contactDisplayName . ' (accountId: ' . $contactAccountId . ')</info>');
-                }
+                _get_logger()->writeln(Logger::VERBOSITY_VERBOSE, '<info>Contact resolved: @' . $contactDisplayName . ' (accountId: ' . $contactAccountId . ')</info>');
             } else {
-                io()->warning("Contact email \"{$contactEmail}\" could not be resolved to a user (Jira user search returned no match). Contact block was not added.");
+                _get_logger()->warning(Logger::VERBOSITY_NORMAL, "Contact email \"{$contactEmail}\" could not be resolved to a user (Jira user search returned no match). Contact block was not added.");
             }
         } catch (\Throwable $e) {
-            io()->warning("Could not resolve contact email \"{$contactEmail}\": " . $e->getMessage() . '. Contact block was not added.');
+            _get_logger()->warning(Logger::VERBOSITY_NORMAL, "Could not resolve contact email \"{$contactEmail}\": " . $e->getMessage() . '. Contact block was not added.');
         }
     }
     $baseUrl = _get_confluence_base_url($confluenceUrl);
@@ -2162,7 +2163,7 @@ function confluence_push(
     $handler = new ConfluencePushHandler($confluenceService, $converter, _get_translation_service());
     $inputDto = new ConfluencePushInput($content, $space, $title, $page !== null && $page !== '' ? $page : null, $parent !== null && $parent !== '' ? $parent : null, $status, $contactAccountId, $contactDisplayName);
     $response = $handler->handle($inputDto, $baseUrl);
-    $responder = new ConfluencePushResponder(_get_translation_service());
+    $responder = new ConfluencePushResponder(_get_translation_service(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2190,24 +2191,22 @@ function confluence_page_labels(
     _load_constants();
     $pageId = trim($page);
     if ($pageId === '') {
-        io()->error('Page ID is required. Use --page/-p.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'Page ID is required. Use --page/-p.');
         exit(1);
     }
     $labelList = array_values(array_filter(array_map('trim', explode(',', $labels))));
     if ($labelList === []) {
-        io()->error('At least one label is required. Use --labels/-l (e.g. --labels "R&D,DX").');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'At least one label is required. Use --labels/-l (e.g. --labels "R&D,DX").');
         exit(1);
     }
 
     try {
         $confluenceService = _get_confluence_service($url);
-        if (io()->isVerbose()) {
-            io()->writeln('<info>POST rest/api/content/' . $pageId . '/label with: ' . implode(', ', $labelList) . '</info>');
-        }
+        _get_logger()->writeln(Logger::VERBOSITY_VERBOSE, '<info>POST rest/api/content/' . $pageId . '/label with: ' . implode(', ', $labelList) . '</info>');
         $confluenceService->addPageLabels($pageId, $labelList);
-        io()->success('Labels added: ' . implode(', ', $labelList));
+        _get_logger()->success(Logger::VERBOSITY_NORMAL, 'Labels added: ' . implode(', ', $labelList));
     } catch (\App\Exception\ApiException $e) {
-        io()->error($e->getMessage() . ($e->getTechnicalDetails() !== '' ? ' ' . $e->getTechnicalDetails() : ''));
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $e->getMessage() . ($e->getTechnicalDetails() !== '' ? ' ' . $e->getTechnicalDetails() : ''));
         exit(1);
     }
 }
@@ -2254,7 +2253,7 @@ function confluence_show(
         if ($format === OutputFormat::Json) {
             _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($translator->trans('confluence.show.error_page_or_url_required')));
         }
-        io()->error($translator->trans('confluence.show.error_page_or_url_required'));
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('confluence.show.error_page_or_url_required'));
         exit(1);
     }
 
@@ -2264,7 +2263,7 @@ function confluence_show(
     $handler = new ConfluenceShowHandler($confluenceService, $adfConverter, _get_translation_service());
     $inputDto = new ConfluenceShowInput($pageId, $pageUrl);
     $response = $handler->handle($inputDto, $baseUrl);
-    $responder = new ConfluenceShowResponder();
+    $responder = new ConfluenceShowResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2314,7 +2313,7 @@ function help(
     $colorHelper = _get_color_helper();
 
     // Register color styles for help output
-    $colorHelper->registerStyles(io());
+    _get_logger()->registerStyles($colorHelper);
 
     // If a command is provided, show help for that specific command
     if ($commandName !== null) {
@@ -2348,39 +2347,41 @@ function help(
         ];
 
         $mappedCommandName = $aliasMap[$commandName] ?? $commandName;
-        $helpService->displayCommandHelp(io(), $mappedCommandName);
+        $helpService->displayCommandHelp(_get_logger(), $mappedCommandName);
 
         return;
     }
 
     // Otherwise, show general help
+    $logger = _get_logger();
     $logo = require APP_LOGO_PATH;
-    io()->writeln($logo(APP_NAME, APP_VERSION));
-    io()->title($translator->trans('help.title'));
+    $logger->writeln(Logger::VERBOSITY_NORMAL, $logo(APP_NAME, APP_VERSION));
+    $logger->title(Logger::VERBOSITY_NORMAL, $translator->trans('help.title'));
 
     $sectionTitle = $translator->trans('help.description_section');
     if ($colorHelper !== null) {
         $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     }
-    io()->section($sectionTitle);
-    io()->writeln('    ' . $translator->trans('help.description_text'));
-    // io()->newLine();
-    // io()->note($translator->trans('help.universal_help_note'));
-    io()->newLine();
-    io()->note($translator->trans('help.command_specific_help_note'));
+    $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
+    $logger->writeln(Logger::VERBOSITY_NORMAL, '    ' . $translator->trans('help.description_text'));
+    // $logger->newLine(Logger::VERBOSITY_NORMAL);
+    // $logger->note(Logger::VERBOSITY_NORMAL, $translator->trans('help.universal_help_note'));
+    $logger->newLine(Logger::VERBOSITY_NORMAL);
+    $logger->note(Logger::VERBOSITY_NORMAL, $translator->trans('help.command_specific_help_note'));
 
     $sectionTitle = $translator->trans('help.global_options_section');
     if ($colorHelper !== null) {
         $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     }
-    io()->section($sectionTitle);
+    $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
     $verboseOption = '-v|vv|vvv, --verbose';
     $verboseDesc = $translator->trans('help.global_option_verbose');
     if ($colorHelper !== null) {
         $verboseOption = $colorHelper->format('definition_key', $verboseOption);
         $verboseDesc = $colorHelper->format('definition_value', $verboseDesc);
     }
-    io()->definitionList(
+    $logger->definitionList(
+        Logger::VERBOSITY_NORMAL,
         // ['-h, --help' => $translator->trans('help.global_option_help')],
         // ['-s, --silent' => $translator->trans('help.global_option_silent')],
         // ['-q, --quiet' => $translator->trans('help.global_option_quiet')],
@@ -2391,8 +2392,8 @@ function help(
     if ($colorHelper !== null) {
         $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     }
-    io()->section($sectionTitle);
-    io()->writeln('  <info>stud</info> [command|alias] [-options] [arguments]');
+    $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
+    $logger->writeln(Logger::VERBOSITY_NORMAL, '  <info>stud</info> [command|alias] [-options] [arguments]');
     $commands = [
         $translator->trans('help.category_configuration') => [
             [
@@ -2564,7 +2565,7 @@ function help(
     ];
 
     foreach ($commands as $category => $commandList) {
-        io()->writeln("\n  <fg=yellow>{$category}</>");
+        $logger->writeln(Logger::VERBOSITY_NORMAL, "\n  <fg=yellow>{$category}</>");
         $tableRows = [];
         foreach ($commandList as $command) {
             $name = $command['name'];
@@ -2583,11 +2584,15 @@ function help(
                 $description,
             ];
         }
-        io()->table([
-            $translator->trans('table.command'),
-            $translator->trans('table.alias'),
-            $translator->trans('table.description'),
-        ], $tableRows);
+        $logger->table(
+            Logger::VERBOSITY_NORMAL,
+            [
+                $translator->trans('table.command'),
+                $translator->trans('table.alias'),
+                $translator->trans('table.description'),
+            ],
+            $tableRows,
+        );
     }
 }
 
@@ -2653,7 +2658,7 @@ function release(
 
     $flagCount = ($major ? 1 : 0) + ($minor ? 1 : 0) + ($patch ? 1 : 0);
     if ($flagCount > 1) {
-        io()->error('Only one of --major, --minor, or --patch can be specified at a time.');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'Only one of --major, --minor, or --patch can be specified at a time.');
         exit(1);
     }
 
@@ -2669,7 +2674,7 @@ function release(
     }
 
     if ($version !== null && $bumpType !== null) {
-        io()->error('Cannot specify both a version and a bump flag (--major, --minor, --patch).');
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'Cannot specify both a version and a bump flag (--major, --minor, --patch).');
         exit(1);
     }
 
@@ -2747,7 +2752,7 @@ function update(
     }
 
     if (! defined('APP_REPO_SLUG')) {
-        io()->error([
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, [
             'APP_REPO_SLUG constant is not defined.',
             'Please ensure the application was built correctly.',
         ]);
@@ -2756,7 +2761,7 @@ function update(
 
     $nameParts = explode('/', APP_REPO_SLUG, 2);
     if (count($nameParts) !== 2) {
-        io()->error([
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, [
             'APP_REPO_SLUG must be in "owner/repo" format.',
             'Current value: ' . APP_REPO_SLUG,
         ]);

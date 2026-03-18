@@ -34,27 +34,27 @@ class ConfigShowResponder
 
         if (! $response->isSuccess()) {
             $message = $this->helper->translator->trans($response->getError() ?? '', $response->getErrorParameters());
-            $io->error($message);
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $message);
 
             return null;
         }
 
         if ($response->isSingleKey()) {
-            $this->respondSingleKey($io, $response, $quiet);
+            $this->respondSingleKey($response, $quiet);
 
             return null;
         }
 
-        $this->renderSection($io, 'config.show.section_global', $response->globalConfig);
+        $this->renderSection('config.show.section_global', $response->globalConfig);
 
         if ($response->projectConfig !== null && $response->projectConfig !== []) {
-            $this->renderSection($io, 'config.show.section_project', $response->projectConfig);
+            $this->renderSection('config.show.section_project', $response->projectConfig);
         }
 
         return null;
     }
 
-    protected function respondSingleKey(SymfonyStyle $io, ConfigShowResponse $response, bool $quiet): void
+    protected function respondSingleKey(ConfigShowResponse $response, bool $quiet): void
     {
         if ($quiet) {
             $this->logger->rawValue($this->formatValue($response->singleKeyValue));
@@ -63,7 +63,7 @@ class ConfigShowResponder
         }
 
         $sectionKey = $response->singleKeySection === 'project' ? 'config.show.section_project' : 'config.show.section_global';
-        $this->helper->initSection($io, $sectionKey);
+        $this->helper->initSection($this->logger, $sectionKey);
 
         $valueStr = $this->formatValue($response->singleKeyValue);
         $label = $response->singleKey ?? '';
@@ -71,19 +71,19 @@ class ConfigShowResponder
             $label = $this->helper->colorHelper->format('definition_key', $label);
             $valueStr = $this->helper->colorHelper->format('definition_value', $valueStr);
         }
-        $io->definitionList([$label => $valueStr]);
+        $this->logger->definitionList(Logger::VERBOSITY_NORMAL, [$label => $valueStr]);
     }
 
     /**
      * @param array<string, mixed> $config
      */
-    protected function renderSection(SymfonyStyle $io, string $sectionTitleKey, array $config): void
+    protected function renderSection(string $sectionTitleKey, array $config): void
     {
-        $this->helper->initSection($io, $sectionTitleKey);
+        $this->helper->initSection($this->logger, $sectionTitleKey);
 
         $rows = $this->buildDefinitionRows($config);
         if ($rows !== []) {
-            $io->definitionList(...$rows);
+            $this->logger->definitionList(Logger::VERBOSITY_NORMAL, ...$rows);
         }
     }
 

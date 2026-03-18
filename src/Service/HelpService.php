@@ -181,15 +181,15 @@ class HelpService
     /**
      * Display help for a command
      */
-    public function displayCommandHelp(\Symfony\Component\Console\Style\SymfonyStyle $io, string $commandName): void
+    public function displayCommandHelp(Logger $logger, string $commandName): void
     {
         // Always use translation-based help for consistent formatting with aliases and options
         $helpText = $this->formatCommandHelpFromTranslation($commandName);
 
-        $io->section($this->translator->trans('help.command_help_title', ['command' => $commandName]));
-        $io->writeln($helpText);
-        $io->newLine();
-        $io->note($this->translator->trans('help.see_readme_note'));
+        $logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('help.command_help_title', ['command' => $commandName]));
+        $logger->writeln(Logger::VERBOSITY_NORMAL, $helpText);
+        $logger->newLine(Logger::VERBOSITY_NORMAL);
+        $logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('help.see_readme_note'));
     }
 
     /**

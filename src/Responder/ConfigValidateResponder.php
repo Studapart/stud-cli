@@ -7,6 +7,7 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ConfigValidateResponse;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -17,6 +18,7 @@ class ConfigValidateResponder
 {
     public function __construct(
         private readonly ResponderHelper $helper,
+        private readonly Logger $logger
     ) {
     }
 
@@ -28,12 +30,12 @@ class ConfigValidateResponder
 
         if (! $response->isSuccess() && $response->getError() !== null) {
             $message = $this->helper->translator->trans($response->getError());
-            $io->error(explode("\n", $message));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $message));
 
             return null;
         }
 
-        $this->helper->initSection($io, 'config.validate.section_title');
+        $this->helper->initSection($this->logger, 'config.validate.section_title');
 
         $jiraLabel = $this->helper->translator->trans('config.validate.label_jira');
         $gitLabel = $this->helper->translator->trans('config.validate.label_git_provider');
@@ -47,7 +49,8 @@ class ConfigValidateResponder
             $gitValue = $this->helper->colorHelper->format('definition_value', $gitValue);
         }
 
-        $io->definitionList(
+        $this->logger->definitionList(
+            Logger::VERBOSITY_NORMAL,
             [$jiraLabel => $jiraValue],
             [$gitLabel => $gitValue]
         );

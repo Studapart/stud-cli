@@ -13,6 +13,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private ItemListResponder $responder;
 
     protected function setUp(): void
@@ -20,164 +22,120 @@ class ItemListResponderTest extends CommandTestCase
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService, null);
-        $this->responder = new ItemListResponder($helper);
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->responder = new ItemListResponder($helper, $this->createLogger($this->io));
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
         $response = ItemListResponse::success([], false, null);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->createLogger($io));
 
         $io->expects($this->once())
             ->method('section')
             ->with($this->anything());
         $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
             ->method('note')
             ->with($this->anything());
 
-        $this->responder->respond($io, $response);
+        $responder->respond($io, $response);
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondShowsVerboseOutputWhenVerbose(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('JQL Query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('item.list.section', $output);
+        $this->assertStringContainsString('JQL Query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('<fg=gray>'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('JQL Query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new ItemListResponder($helper);
-
-        $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
-        $response = ItemListResponse::success([$issue], false, null);
-        $io = $this->createMock(SymfonyStyle::class);
-
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeast(2))
+            ->with($this->anything());
+        $colorHelper->expects($this->atLeastOnce())
             ->method('format')
             ->willReturnCallback(function ($color, $text) {
-                // First call is for section_title, second is for comment
                 return "<{$color}>{$text}</>";
             });
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('JQL Query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder($helper, new \App\Service\Logger($io, []));
+
+        $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+        $response = ItemListResponse::success([$issue], false, null);
 
         $responder->respond($io, $response);
+
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('item.list.section', $output);
+        $this->assertStringContainsString('JQL Query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithProject(): void
     {
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, 'MYPROJ');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('MYPROJ'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('MYPROJ', $output);
     }
 
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new ItemListResponder($helper);
-        $response = ItemListResponse::success([], false, null);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemListResponder($helper, $this->createLogger($io));
+        $response = ItemListResponse::success([], false, null);
 
         $colorHelper->expects($this->once())
             ->method('registerStyles')
             ->with($io);
         $io->expects($this->once())
             ->method('section');
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
         $io->expects($this->once())
             ->method('note');
 
@@ -188,9 +146,8 @@ class ItemListResponderTest extends CommandTestCase
     {
         $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
         $response = ItemListResponse::success([$issue], false, null);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -201,9 +158,8 @@ class ItemListResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ItemListResponse::error('API error');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);

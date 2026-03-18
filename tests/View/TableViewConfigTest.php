@@ -57,7 +57,8 @@ class TableViewConfigTest extends CommandTestCase
                 })
             );
 
-        $this->config->render($issues, $io);
+        $logger = $this->createLogger($io);
+        $this->config->render($issues, $logger);
     }
 
     public function testConditionalColumnVisibilityShowsPriorityWhenPresent(): void
@@ -81,7 +82,8 @@ class TableViewConfigTest extends CommandTestCase
                 })
             );
 
-        $this->config->render($issues, $io);
+        $logger = $this->createLogger($io);
+        $this->config->render($issues, $logger);
     }
 
     public function testConditionalColumnVisibilityHidesPriorityWhenAbsent(): void
@@ -104,7 +106,8 @@ class TableViewConfigTest extends CommandTestCase
                 })
             );
 
-        $this->config->render($issues, $io);
+        $logger = $this->createLogger($io);
+        $this->config->render($issues, $logger);
     }
 
     public function testColumnFormattersAreAppliedCorrectly(): void
@@ -133,7 +136,8 @@ class TableViewConfigTest extends CommandTestCase
                 })
             );
 
-        $config->render($issues, $io);
+        $logger = $this->createLogger($io);
+        $config->render($issues, $logger);
     }
 
     public function testBuildHeadersUsesTranslationService(): void
@@ -391,6 +395,7 @@ class TableViewConfigTest extends CommandTestCase
                 $this->anything()
             );
 
-        $config->render($issues, $io);
+        $logger = $this->createLogger($io);
+        $config->render($issues, $logger);
     }
 }
