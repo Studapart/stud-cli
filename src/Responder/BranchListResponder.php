@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\BranchListResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -21,6 +22,7 @@ class BranchListResponder
 
     public function __construct(
         private readonly ResponderHelper $helper,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -32,17 +34,17 @@ class BranchListResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'branches.list.section');
-        $this->helper->verboseComment($io, 'branches.list.fetching_local');
+        $this->helper->initSection($this->logger, 'branches.list.section');
+        $this->helper->verboseComment($this->logger, 'branches.list.fetching_local');
 
         if (empty($response->rows)) {
-            $io->writeln($this->helper->translator->trans('branches.list.no_branches'));
+            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('branches.list.no_branches'));
 
             return null;
         }
 
-        $this->helper->verboseComment($io, 'branches.list.fetching_remote', ['count' => count($response->rows)]);
-        $this->helper->verboseNote($io, 'branches.list.note_origin');
+        $this->helper->verboseComment($this->logger, 'branches.list.fetching_remote', ['count' => count($response->rows)]);
+        $this->helper->verboseNote($this->logger, 'branches.list.note_origin');
 
         $viewConfig = new PageViewConfig([
             new Section(
@@ -58,7 +60,7 @@ class BranchListResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->rows, $io);
+        $viewConfig->render($response->rows, $this->logger);
 
         return null;
     }

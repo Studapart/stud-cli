@@ -9,6 +9,7 @@ use App\Response\AgentJsonResponse;
 use App\Response\ItemShowResponse;
 use App\Service\DescriptionFormatter;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Content;
 use App\View\DefinitionItem;
@@ -26,6 +27,7 @@ class ItemShowResponder
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
+        private readonly Logger $logger,
         private readonly ?DescriptionFormatter $descriptionFormatter = null,
     ) {
         $this->serializer = new DtoSerializer();
@@ -38,15 +40,15 @@ class ItemShowResponder
         }
 
         $key = strtoupper($key);
-        $this->helper->initSection($io, 'item.show.section', ['key' => $key]);
+        $this->helper->initSection($this->logger, 'item.show.section', ['key' => $key]);
 
         if (! $response->isSuccess()) {
-            $io->error($this->helper->translator->trans('item.show.error_not_found', ['key' => $key]));
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('item.show.error_not_found', ['key' => $key]));
 
             return null;
         }
 
-        $this->helper->verboseComment($io, 'item.show.fetching', ['key' => $key]);
+        $this->helper->verboseComment($this->logger, 'item.show.fetching', ['key' => $key]);
 
         $issue = $response->issue;
         if ($issue === null) {
@@ -60,7 +62,7 @@ class ItemShowResponder
 
         $sections = $this->buildSections($issue->description, $context);
         $viewConfig = new PageViewConfig($sections, $this->helper->translator, $this->helper->colorHelper);
-        $viewConfig->render([$issue], $io, $context);
+        $viewConfig->render([$issue], $this->logger, $context);
 
         return null;
     }

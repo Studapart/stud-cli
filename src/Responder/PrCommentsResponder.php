@@ -10,6 +10,7 @@ use App\Response\AgentJsonResponse;
 use App\Response\PrCommentsResponse;
 use App\Service\CommentBodyParser;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -29,6 +30,7 @@ class PrCommentsResponder
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly CommentBodyParser $bodyParser,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -49,61 +51,61 @@ class PrCommentsResponder
             ]);
         }
 
-        $this->helper->initSection($io, 'pr.comments.section', ['number' => $response->pullNumber]);
+        $this->helper->initSection($this->logger, 'pr.comments.section', ['number' => $response->pullNumber]);
 
-        $this->renderIssueComments($io, $response);
-        $this->renderReviews($io, $response);
-        $this->renderReviewComments($io, $response);
+        $this->renderIssueComments($response);
+        $this->renderReviews($response);
+        $this->renderReviewComments($response);
 
         return null;
     }
 
-    protected function renderIssueComments(SymfonyStyle $io, PrCommentsResponse $response): void
+    protected function renderIssueComments(PrCommentsResponse $response): void
     {
-        $this->helper->initSection($io, 'pr.comments.issue_comments');
+        $this->helper->initSection($this->logger, 'pr.comments.issue_comments');
 
         if (empty($response->issueComments)) {
-            $io->note($this->helper->translator->trans('pr.comments.no_comments'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('pr.comments.no_comments'));
 
             return;
         }
 
         foreach ($response->issueComments as $comment) {
-            $this->renderSingleComment($io, $comment, false);
+            $this->renderSingleComment($comment, false);
         }
     }
 
-    protected function renderReviews(SymfonyStyle $io, PrCommentsResponse $response): void
+    protected function renderReviews(PrCommentsResponse $response): void
     {
-        $this->helper->initSection($io, 'pr.comments.reviews');
+        $this->helper->initSection($this->logger, 'pr.comments.reviews');
 
         if (empty($response->reviews)) {
-            $io->note($this->helper->translator->trans('pr.comments.no_comments'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('pr.comments.no_comments'));
 
             return;
         }
 
         foreach ($response->reviews as $comment) {
-            $this->renderSingleComment($io, $comment, false);
+            $this->renderSingleComment($comment, false);
         }
     }
 
-    protected function renderReviewComments(SymfonyStyle $io, PrCommentsResponse $response): void
+    protected function renderReviewComments(PrCommentsResponse $response): void
     {
-        $this->helper->initSection($io, 'pr.comments.review_comments');
+        $this->helper->initSection($this->logger, 'pr.comments.review_comments');
 
         if (empty($response->reviewComments)) {
-            $io->note($this->helper->translator->trans('pr.comments.no_comments'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('pr.comments.no_comments'));
 
             return;
         }
 
         foreach ($response->reviewComments as $comment) {
-            $this->renderSingleComment($io, $comment, true);
+            $this->renderSingleComment($comment, true);
         }
     }
 
-    protected function renderSingleComment(SymfonyStyle $io, PullRequestComment $comment, bool $isReview): void
+    protected function renderSingleComment(PullRequestComment $comment, bool $isReview): void
     {
         $authorLabel = $this->helper->translator->trans('pr.comments.table.author');
         $dateLabel = $this->helper->translator->trans('pr.comments.table.date');
@@ -115,38 +117,38 @@ class PrCommentsResponder
         if ($this->helper->colorHelper !== null) {
             $headerLine = $this->helper->colorHelper->format('section_title', $headerLine);
         }
-        $io->section($headerLine);
+        $this->logger->section(Logger::VERBOSITY_NORMAL, $headerLine);
 
         $segments = $this->bodyParser->parse($comment->body);
         foreach ($segments as $segment) {
-            $this->renderCommentSegment($io, $segment);
+            $this->renderCommentSegment($segment);
         }
     }
 
     /**
      * @param array<string, mixed> $segment
      */
-    protected function renderCommentSegment(SymfonyStyle $io, array $segment): void
+    protected function renderCommentSegment(array $segment): void
     {
         if ($segment['type'] === 'text') {
-            $this->renderTextSegment($io, $segment);
+            $this->renderTextSegment($segment);
 
             return;
         }
         if ($segment['type'] === 'list') {
-            $this->renderListSegment($io, $segment);
+            $this->renderListSegment($segment);
 
             return;
         }
         if ($segment['type'] === 'table' && isset($segment['headers'], $segment['rows'])) {
-            $this->renderTableSegment($io, $segment['headers'], $segment['rows']);
+            $this->renderTableSegment($segment['headers'], $segment['rows']);
         }
     }
 
     /**
      * @param array<string, mixed> $segment
      */
-    protected function renderTextSegment(SymfonyStyle $io, array $segment): void
+    protected function renderTextSegment(array $segment): void
     {
         if (! isset($segment['content']) || $segment['content'] === '') {
             return;
@@ -155,13 +157,13 @@ class PrCommentsResponder
         if ($this->helper->colorHelper !== null) {
             $text = $this->helper->colorHelper->format('text_content', $text);
         }
-        $io->text($text);
+        $this->logger->text(Logger::VERBOSITY_NORMAL, $text);
     }
 
     /**
      * @param array<string, mixed> $segment
      */
-    protected function renderListSegment(SymfonyStyle $io, array $segment): void
+    protected function renderListSegment(array $segment): void
     {
         if (! isset($segment['items']) || $segment['items'] === []) {
             return;
@@ -170,14 +172,14 @@ class PrCommentsResponder
         if ($this->helper->colorHelper !== null) {
             $items = array_map(fn (string $item) => $this->helper->colorHelper->format('listing_item', $item), $items);
         }
-        $io->listing($items);
+        $this->logger->listing(Logger::VERBOSITY_NORMAL, $items);
     }
 
     /**
      * @param array<int, string> $headers
      * @param array<int, array<int, string>> $rows
      */
-    protected function renderTableSegment(SymfonyStyle $io, array $headers, array $rows): void
+    protected function renderTableSegment(array $headers, array $rows): void
     {
         // Defensive: parser does not currently produce table segments with 0 data rows
         // @codeCoverageIgnoreStart
@@ -202,7 +204,7 @@ class PrCommentsResponder
             new Section('', [new TableBlock($columns)]),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($safeRows, $io, []);
+        $viewConfig->render($safeRows, $this->logger, []);
     }
 
     /**

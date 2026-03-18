@@ -14,6 +14,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemShowResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private ItemShowResponder $responder;
 
     protected function setUp(): void
@@ -21,9 +23,11 @@ class ItemShowResponderTest extends CommandTestCase
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService);
+        $this->io = $this->createMock(SymfonyStyle::class);
         $this->responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($this->io),
             null,
         );
     }
@@ -31,22 +35,21 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondDisplaysErrorWhenResponseIsNotSuccessful(): void
     {
         $response = ItemShowResponse::error('Issue not found');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('error')
             ->with($this->callback(function ($message) {
                 return is_string($message) && ! empty($message);
             }));
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('definitionList');
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondDisplaysDefinitionListWhenSuccessful(): void
@@ -64,14 +67,13 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->atLeastOnce())
+        $this->io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('definitionList')
             ->with(
                 $this->callback(function ($arg) {
@@ -96,14 +98,21 @@ class ItemShowResponderTest extends CommandTestCase
                     return is_array($arg) && in_array('https://your-company.atlassian.net/browse/TPW-35', $arg, true);
                 })
             );
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('error');
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondDisplaysVerboseOutputWhenVerbose(): void
     {
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemShowResponder(
+            new ResponderHelper($this->translationService),
+            ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            new \App\Service\Logger($io, []),
+            null,
+        );
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -117,18 +126,11 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->callback(function ($message) {
-                return is_string($message) && str_contains($message, 'TPW-35');
-            }));
+        $responder->respond($io, $response, 'TPW-35');
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('TPW-35', $output);
     }
 
     public function testRespondDisplaysDescriptionSections(): void
@@ -147,20 +149,19 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->atLeastOnce())
+        $this->io->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->atLeastOnce())
+        $this->io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) {
                 return is_array($content);
             }));
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondHandlesDescriptionSectionWithEmptyContent(): void
@@ -172,9 +173,11 @@ class ItemShowResponderTest extends CommandTestCase
                 ['title' => 'SectionWithNoContent', 'contentLines' => []],
             ]);
         $helper = new ResponderHelper($this->translationService);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://example.com'],
+            $this->createLogger($io),
             $descriptionFormatter,
         );
         $issue = new WorkItem(
@@ -190,7 +193,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $io->expects($this->atLeastOnce())
             ->method('section')
@@ -216,19 +218,18 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('definitionList');
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('text');
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondDisplaysLabelsCorrectly(): void
@@ -246,9 +247,8 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('definitionList')
             ->with(
                 $this->anything(),
@@ -263,16 +263,18 @@ class ItemShowResponderTest extends CommandTestCase
                 $this->anything()
             );
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondUsesCustomDescriptionFormatter(): void
     {
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
         $helper = new ResponderHelper($this->translationService);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($io),
             $descriptionFormatter,
         );
 
@@ -320,19 +322,17 @@ class ItemShowResponderTest extends CommandTestCase
         $issueProperty->setAccessible(true);
         $issueProperty->setValue($responseInstance, null);
 
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('definitionList');
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('error');
 
-        $this->responder->respond($io, $responseInstance, 'TPW-35');
+        $this->responder->respond($this->io, $responseInstance, 'TPW-35');
     }
 
     public function testRespondDisplaysContentWithListsAndText(): void
@@ -351,34 +351,35 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->atLeastOnce())
+        $this->io->expects($this->atLeastOnce())
             ->method('section');
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('definitionList');
-        // May call listing or text depending on formatting
-        $io->expects($this->any())
+        $this->io->expects($this->any())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list);
             }));
-        $io->expects($this->any())
+        $this->io->expects($this->any())
             ->method('text')
             ->with($this->callback(function ($text) {
                 return is_array($text);
             }));
 
-        $this->responder->respond($io, $response, 'TPW-35');
+        $this->responder->respond($this->io, $response, 'TPW-35');
     }
 
     public function testRespondWithColorHelperAppliesColors(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($io),
+            null,
         );
 
         $issue = new WorkItem(
@@ -394,7 +395,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
@@ -414,10 +414,20 @@ class ItemShowResponderTest extends CommandTestCase
     public function testRespondWithColorHelperAndVerboseAppliesColorsToVerboseMessage(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper->expects($this->atLeastOnce())
+            ->method('registerStyles')
+            ->with($this->anything());
+        $colorHelper->expects($this->atLeastOnce())
+            ->method('format')
+            ->willReturnCallback(fn ($color, $text) => "<{$color}>{$text}</>");
+
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            new \App\Service\Logger($io, []),
+            null,
         );
 
         $issue = new WorkItem(
@@ -433,31 +443,22 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $colorHelper->expects($this->atLeastOnce())
-            ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeastOnce())
-            ->method('format')
-            ->willReturnCallback(fn ($color, $text) => "<{$color}>{$text}</>");
-
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('TPW-35'));
 
         $responder->respond($io, $response, 'TPW-35');
+
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('TPW-35', $output);
     }
 
     public function testRespondWithColorHelperAndVerboseWithoutColorHelperUsesFallback(): void
     {
         $helper = new ResponderHelper($this->translationService);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            new \App\Service\Logger($io, []),
+            null,
         );
 
         $issue = new WorkItem(
@@ -473,25 +474,23 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('<fg=gray>'));
 
         $responder->respond($io, $response, 'TPW-35');
+
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('TPW-35', $output);
     }
 
     public function testDisplayDescriptionWithColorHelperAppliesColors(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($io),
+            null,
         );
 
         $description = "Title: Test Feature\n\n---\n\nUser Story\nAs a developer";
@@ -508,7 +507,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
@@ -529,9 +527,12 @@ class ItemShowResponderTest extends CommandTestCase
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($io),
+            null,
         );
 
         $description = "[ ] Checkbox item 1\n[ ] Checkbox item 2";
@@ -548,7 +549,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
@@ -573,9 +573,11 @@ class ItemShowResponderTest extends CommandTestCase
         $colorHelper = $this->createMock(ColorHelper::class);
         $descriptionFormatter = $this->createMock(DescriptionFormatter::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new ItemShowResponder(
             $helper,
             ['JIRA_URL' => 'https://your-company.atlassian.net'],
+            $this->createLogger($io),
             $descriptionFormatter,
         );
 
@@ -592,7 +594,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $descriptionFormatter->expects($this->once())
             ->method('parseSections')
@@ -634,7 +635,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::success($issue);
         $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, 'PROJ-1', OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -646,7 +647,7 @@ class ItemShowResponderTest extends CommandTestCase
         $response = ItemShowResponse::error('Not found');
         $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, 'PROJ-1', OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);

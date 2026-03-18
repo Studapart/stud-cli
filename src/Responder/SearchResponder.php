@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\SearchResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -25,6 +26,7 @@ class SearchResponder
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -36,11 +38,11 @@ class SearchResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'search.section');
-        $this->helper->verboseComment($io, 'search.jql_query', ['jql' => $response->jql]);
+        $this->helper->initSection($this->logger, 'search.section');
+        $this->helper->verboseComment($this->logger, 'search.jql_query', ['jql' => $response->jql]);
 
         if (empty($response->issues)) {
-            $io->note($this->helper->translator->trans('search.no_results'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('search.no_results'));
 
             return null;
         }
@@ -60,7 +62,7 @@ class SearchResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->issues, $io, ['jiraConfig' => $this->jiraConfig]);
+        $viewConfig->render($response->issues, $this->logger, ['jiraConfig' => $this->jiraConfig]);
 
         return null;
     }

@@ -4,11 +4,11 @@ namespace App\Tests\Service;
 
 use App\Service\FileSystem;
 use App\Service\HelpService;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class HelpServiceTest extends TestCase
 {
@@ -94,281 +94,323 @@ class HelpServiceTest extends TestCase
 
     public function testDisplayCommandHelpForExistingCommand(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
-        $this->helpService->displayCommandHelp($io, 'commit');
+        $this->helpService->displayCommandHelp($logger, 'commit');
     }
 
     public function testDisplayCommandHelpForNonExistentCommand(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->callback(function ($message) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
                 return is_string($message) && ! empty($message);
             }));
 
-        $this->helpService->displayCommandHelp($io, 'nonexistent');
+        $this->helpService->displayCommandHelp($logger, 'nonexistent');
     }
 
     public function testDisplayCommandHelpCallsSection(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $logger = $this->createMock(Logger::class);
 
-        $io->expects($this->once())
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
 
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
 
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
-        $this->helpService->displayCommandHelp($io, 'commit');
+        $this->helpService->displayCommandHelp($logger, 'commit');
     }
 
     public function testDisplayCommandHelpForNonExistentCommandCallsSection(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
+        $logger = $this->createMock(Logger::class);
 
-        $io->expects($this->once())
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
 
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
 
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
-        $this->helpService->displayCommandHelp($io, 'nonexistent');
+        $this->helpService->displayCommandHelp($logger, 'nonexistent');
     }
 
     public function testDisplayCommandHelpFallsBackToTranslationWhenCommandNotFound(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->callback(function ($message) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($message) {
                 return is_string($message) && ! empty($message);
             }));
 
         // Use a command that doesn't exist in README and doesn't have a translation key
-        $this->helpService->displayCommandHelp($io, 'nonexistentcommand12345');
+        $this->helpService->displayCommandHelp($logger, 'nonexistentcommand12345');
     }
 
     public function testDisplayCommandHelpUsesTranslationWhenReadmeReturnsNull(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
+            ->with(Logger::VERBOSITY_NORMAL, $this->callback(function ($title) {
                 return is_string($title) && ! empty($title);
             }));
-        $io->expects($this->atLeastOnce())
+        $logger->expects($this->atLeastOnce())
             ->method('writeln')
-            ->with($this->isType('string'));
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
             ->method('note')
-            ->with($this->isType('string'));
+            ->with(Logger::VERBOSITY_NORMAL, $this->isType('string'));
 
         // Test with a command that exists in COMMAND_PATTERNS but might not be in README
         // This tests the fallback to translation when getCommandHelp returns null
-        $this->helpService->displayCommandHelp($io, 'completion');
+        $this->helpService->displayCommandHelp($logger, 'completion');
     }
 
     public function testDisplayCommandHelpWithAliasAndArguments(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test release command which has alias 'rl' and argument '<version>'
-        $this->helpService->displayCommandHelp($io, 'release');
+        $this->helpService->displayCommandHelp($logger, 'release');
     }
 
     public function testDisplayCommandHelpWithVersionArgument(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test release command with optional [<version>] argument
-        $this->helpService->displayCommandHelp($io, 'release');
+        $this->helpService->displayCommandHelp($logger, 'release');
     }
 
     public function testDisplayCommandHelpWithJqlArgument(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test items:search command with <jql> argument
-        $this->helpService->displayCommandHelp($io, 'items:search');
+        $this->helpService->displayCommandHelp($logger, 'items:search');
     }
 
     public function testDisplayCommandHelpWithShellArgument(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test completion command with <shell> argument
-        $this->helpService->displayCommandHelp($io, 'completion');
+        $this->helpService->displayCommandHelp($logger, 'completion');
     }
 
     public function testDisplayCommandHelpWithLabelsOption(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test submit command which has --labels option with <labels> argument
-        $this->helpService->displayCommandHelp($io, 'submit');
+        $this->helpService->displayCommandHelp($logger, 'submit');
     }
 
     public function testDisplayCommandHelpWithMessageOption(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test commit command which has --message option with <message> argument
-        $this->helpService->displayCommandHelp($io, 'commit');
+        $this->helpService->displayCommandHelp($logger, 'commit');
     }
 
     public function testDisplayCommandHelpWithKeyOption(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test items:list command which has --project option with <key> argument
-        $this->helpService->displayCommandHelp($io, 'items:list');
+        $this->helpService->displayCommandHelp($logger, 'items:list');
     }
 
     public function testDisplayCommandHelpWithMultipleOptions(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test submit command which has multiple options (--draft and --labels)
-        $this->helpService->displayCommandHelp($io, 'submit');
+        $this->helpService->displayCommandHelp($logger, 'submit');
     }
 
     public function testDisplayCommandHelpWithCommitMultipleOptions(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test commit command which has multiple options (--new and --message)
-        $this->helpService->displayCommandHelp($io, 'commit');
+        $this->helpService->displayCommandHelp($logger, 'commit');
     }
 
     public function testFormatCommandHelpFromTranslationWithVersionArgument(): void
@@ -459,18 +501,22 @@ class HelpServiceTest extends TestCase
 
     public function testDisplayCommandHelpWithPrCommentCommand(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test pr:comment command which has alias 'pc' and argument '<message>'
-        $this->helpService->displayCommandHelp($io, 'pr:comment');
+        $this->helpService->displayCommandHelp($logger, 'pr:comment');
     }
 
     public function testFormatCommandHelpFromTranslationWithPrComment(): void
@@ -489,18 +535,22 @@ class HelpServiceTest extends TestCase
 
     public function testDisplayCommandHelpWithFiltersShow(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->atLeastOnce())
-            ->method('writeln');
-        $io->expects($this->atLeastOnce())
-            ->method('newLine');
-        $io->expects($this->atLeastOnce())
-            ->method('note');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())
+            ->method('section')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('writeln')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('newLine')
+            ->with(Logger::VERBOSITY_NORMAL);
+        $logger->expects($this->atLeastOnce())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, $this->anything());
 
         // Test filters:show command which has alias 'fs' and argument '<filterName>'
-        $this->helpService->displayCommandHelp($io, 'filters:show');
+        $this->helpService->displayCommandHelp($logger, 'filters:show');
     }
 
     public function testFormatCommandHelpFromTranslationWithFiltersShow(): void

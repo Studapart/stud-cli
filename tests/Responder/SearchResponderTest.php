@@ -7,12 +7,18 @@ use App\Enum\OutputFormat;
 use App\Responder\SearchResponder;
 use App\Response\SearchResponse;
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SearchResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private SearchResponder $responder;
 
     protected function setUp(): void
@@ -20,148 +26,119 @@ class SearchResponderTest extends CommandTestCase
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService, null);
+        $this->io = $this->createMock(SymfonyStyle::class);
         $this->responder = new SearchResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
+        ], $this->createLogger($this->io));
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
         $response = SearchResponse::success([], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('note')
             ->with($this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = SearchResponse::success([$issue], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondShowsVerboseOutputWhenVerbose(): void
     {
+        $output = new BufferedOutput(OutputInterface::VERBOSITY_VERBOSE);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+        $logger = new Logger($io, []);
+        $responder = new SearchResponder(new ResponderHelper($this->translationService, null), [
+            'JIRA_URL' => 'https://your-company.atlassian.net',
+        ], $logger);
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = SearchResponse::success([$issue], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('search.jql_query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $out = $output->fetch();
+        $this->assertStringContainsString('search.section', $out);
+        $this->assertStringContainsString('project = TPW', $out);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
     {
+        $output = new BufferedOutput(OutputInterface::VERBOSITY_VERBOSE);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
+        $logger = new Logger($io, []);
+        $responder = new SearchResponder(new ResponderHelper($this->translationService, null), [
+            'JIRA_URL' => 'https://your-company.atlassian.net',
+        ], $logger);
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = SearchResponse::success([$issue], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('<fg=gray>'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $out = $output->fetch();
+        $this->assertStringContainsString('project = TPW', $out);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
     {
+        $output = new BufferedOutput(OutputInterface::VERBOSITY_VERBOSE);
+        $input = new ArrayInput([]);
+        $input->setInteractive(false);
+        $io = new SymfonyStyle($input, $output);
         $colorHelper = $this->createMock(ColorHelper::class);
+        $colorHelper->method('registerStyles')->willReturnCallback(function (): void {});
+        $colorHelper->method('format')->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $logger = new Logger($io, []);
         $responder = new SearchResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
-
+        ], $logger);
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = SearchResponse::success([$issue], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $colorHelper->expects($this->atLeastOnce())
-            ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeast(2))
-            ->method('format')
-            ->willReturnCallback(function ($color, $text) {
-                // First call is for section_title, second is for comment
-                return "<{$color}>{$text}</>";
-            });
-
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('search.jql_query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
 
         $responder->respond($io, $response);
+
+        $out = $output->fetch();
+        $this->assertStringContainsString('search.section', $out);
+        $this->assertStringContainsString('project = TPW', $out);
     }
 
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createMock(SymfonyStyle::class);
         $responder = new SearchResponder($helper, [
             'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
+        ], $this->createLogger($io));
         $response = SearchResponse::success([], 'project = TPW');
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->once())
             ->method('registerStyles')
             ->with($io);
         $io->expects($this->once())
             ->method('section');
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
         $io->expects($this->once())
             ->method('note');
 
@@ -172,9 +149,8 @@ class SearchResponderTest extends CommandTestCase
     {
         $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
         $response = SearchResponse::success([$issue], 'project = PROJ');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -185,9 +161,8 @@ class SearchResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = SearchResponse::error('API error');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);

@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\FilterShowResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -25,6 +26,7 @@ class FilterShowResponder
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -36,13 +38,13 @@ class FilterShowResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'filter.show.section', ['filterName' => $response->filterName]);
+        $this->helper->initSection($this->logger, 'filter.show.section', ['filterName' => $response->filterName]);
 
         $jql = 'filter = "' . $response->filterName . '"';
-        $this->helper->verboseComment($io, 'filter.show.jql_query', ['jql' => $jql]);
+        $this->helper->verboseComment($this->logger, 'filter.show.jql_query', ['jql' => $jql]);
 
         if (empty($response->issues)) {
-            $io->note($this->helper->translator->trans('filter.show.no_results', ['filterName' => $response->filterName]));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('filter.show.no_results', ['filterName' => $response->filterName]));
 
             return null;
         }
@@ -62,7 +64,7 @@ class FilterShowResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->issues, $io, ['jiraConfig' => $this->jiraConfig]);
+        $viewConfig->render($response->issues, $this->logger, ['jiraConfig' => $this->jiraConfig]);
 
         return null;
     }

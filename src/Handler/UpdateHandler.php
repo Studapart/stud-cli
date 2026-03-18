@@ -64,7 +64,7 @@ class UpdateHandler
             return 1;
         }
 
-        $verificationResult = $this->updateFileService->verifyHash($io, $tempFile, $pharAsset, $quiet);
+        $verificationResult = $this->updateFileService->verifyHash($this->logger, $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
             return $this->cleanupAndReturn($tempFile, 1);
         }
@@ -76,7 +76,7 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->updateFileService->replaceBinary($io, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown');
+        return $this->updateFileService->replaceBinary($this->logger, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown');
     }
 
     /**

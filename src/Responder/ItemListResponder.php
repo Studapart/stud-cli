@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemListResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -21,6 +22,7 @@ class ItemListResponder
 
     public function __construct(
         private readonly ResponderHelper $helper,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -32,15 +34,13 @@ class ItemListResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'item.list.section');
+        $this->helper->initSection($this->logger, 'item.list.section');
 
         $jql = $this->buildJql($response);
-        if ($io->isVerbose()) {
-            $io->writeln('  ' . $this->helper->formatComment("JQL Query: {$jql}"));
-        }
+        $this->logger->comment(Logger::VERBOSITY_VERBOSE, '  ' . $this->helper->formatComment("JQL Query: {$jql}"));
 
         if (empty($response->issues)) {
-            $io->note($this->helper->translator->trans('item.list.no_items'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('item.list.no_items'));
 
             return null;
         }
@@ -58,7 +58,7 @@ class ItemListResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->issues, $io);
+        $viewConfig->render($response->issues, $this->logger);
 
         return null;
     }

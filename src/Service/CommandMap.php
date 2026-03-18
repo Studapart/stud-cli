@@ -347,6 +347,16 @@ class CommandMap
                 ],
                 'arguments' => ['[inputFile]'],
             ],
+            'confluence:show' => [
+                'alias' => 'csh',
+                'description_key' => 'help.command_confluence_show',
+                'options' => [
+                    ['name' => '--page', 'shortcut' => '-p', 'description_key' => 'help.option_confluence_show_page', 'argument' => '<id>'],
+                    ['name' => '--url', 'shortcut' => null, 'description_key' => 'help.option_confluence_show_url', 'argument' => '<url>'],
+                    ['name' => '--confluence-url', 'shortcut' => null, 'description_key' => 'help.option_confluence_push_url', 'argument' => null],
+                ],
+                'arguments' => ['[inputFile]'],
+            ],
             'confluence:page-labels' => [
                 'alias' => null,
                 'description_key' => 'help.command_confluence_page_labels',

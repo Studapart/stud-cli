@@ -13,6 +13,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterShowResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private FilterShowResponder $responder;
 
     protected function setUp(): void
@@ -20,150 +22,117 @@ class FilterShowResponderTest extends CommandTestCase
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService, null);
+        $this->io = $this->createMock(SymfonyStyle::class);
         $this->responder = new FilterShowResponder($helper, [
-            'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
+            'JIRA_URL' => 'https://jira.example.com',
+        ], $this->createLogger($this->io));
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
         $response = FilterShowResponse::success([], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('note')
             ->with($this->callback(function ($message) {
                 return is_string($message) && str_contains($message, 'My Filter');
             }));
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondShowsVerboseOutputWhenVerbose(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new FilterShowResponder(new ResponderHelper($this->translationService, null), [
+            'JIRA_URL' => 'https://jira.example.com',
+        ], new \App\Service\Logger($io, []));
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('filter.show.jql_query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('filter.show.section', $output);
+        $this->assertStringContainsString('filter.show.jql_query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
     {
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = FilterShowResponse::success([$issue], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new FilterShowResponder(new ResponderHelper($this->translationService, null), [
+            'JIRA_URL' => 'https://jira.example.com',
+        ], new \App\Service\Logger($io, []));
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('<fg=gray>'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $responder->respond($io, $response);
 
-        $this->responder->respond($io, $response);
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('filter.show.jql_query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
-        $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new FilterShowResponder($helper, [
-            'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
-
-        $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
-        $response = FilterShowResponse::success([$issue], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
-
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeast(2))
+            ->with($this->anything());
+        $colorHelper->expects($this->atLeastOnce())
             ->method('format')
             ->willReturnCallback(function ($color, $text) {
-                // First call is for section_title, second is for comment
                 return "<{$color}>{$text}</>";
             });
 
-        $io->expects($this->once())
-            ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(true);
-        $io->expects($this->once())
-            ->method('writeln')
-            ->with($this->stringContains('filter.show.jql_query'));
-        $io->expects($this->once())
-            ->method('table')
-            ->with($this->anything(), $this->anything());
+        $helper = new ResponderHelper($this->translationService, $colorHelper);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new FilterShowResponder($helper, [
+            'JIRA_URL' => 'https://jira.example.com',
+        ], new \App\Service\Logger($io, []));
+
+        $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
+        $response = FilterShowResponse::success([$issue], 'My Filter');
 
         $responder->respond($io, $response);
+
+        $output = $this->getOutput($io);
+        $this->assertStringContainsString('filter.show.section', $output);
+        $this->assertStringContainsString('filter.show.jql_query', $output);
     }
 
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new FilterShowResponder($helper, [
-            'JIRA_URL' => 'https://your-company.atlassian.net',
-        ]);
-        $response = FilterShowResponse::success([], 'My Filter');
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new FilterShowResponder($helper, [
+            'JIRA_URL' => 'https://jira.example.com',
+        ], $this->createLogger($io));
+        $response = FilterShowResponse::success([], 'My Filter');
 
         $colorHelper->expects($this->once())
             ->method('registerStyles')
             ->with($io);
         $io->expects($this->once())
             ->method('section');
-        $io->expects($this->once())
-            ->method('isVerbose')
-            ->willReturn(false);
         $io->expects($this->once())
             ->method('note');
 
@@ -174,9 +143,8 @@ class FilterShowResponderTest extends CommandTestCase
     {
         $issue = new WorkItem('1', 'PROJ-1', 'Test Issue', 'Open', 'user', '', [], 'Story');
         $response = FilterShowResponse::success([$issue], 'My Filter');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -187,9 +155,8 @@ class FilterShowResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = FilterShowResponse::error('API error');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
