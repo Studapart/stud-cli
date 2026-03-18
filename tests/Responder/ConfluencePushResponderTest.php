@@ -7,12 +7,13 @@ namespace App\Tests\Responder;
 use App\Enum\OutputFormat;
 use App\Responder\ConfluencePushResponder;
 use App\Response\ConfluencePushResponse;
+use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ConfluencePushResponderTest extends CommandTestCase
 {
-    public function testRespondCliSuccessCallsIoSuccessWithMessage(): void
+    public function testRespondCliSuccessCallsLoggerSuccessWithMessage(): void
     {
         $response = ConfluencePushResponse::success(
             '12345',
@@ -20,14 +21,14 @@ class ConfluencePushResponderTest extends CommandTestCase
             'https://example.atlassian.net/wiki/spaces/DEV/pages/12345',
             'created'
         );
-        $responder = new ConfluencePushResponder($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects(self::once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects(self::once())
             ->method('success')
-            ->with(self::callback(function (string $message): bool {
+            ->with(self::anything(), self::callback(function (string $message): bool {
                 return str_contains($message, 'My Page') && str_contains($message, '12345');
             }));
+        $responder = new ConfluencePushResponder($this->translationService, $logger);
+        $io = $this->createMock(SymfonyStyle::class);
 
         $result = $responder->respond($io, $response, OutputFormat::Cli);
 
@@ -42,26 +43,26 @@ class ConfluencePushResponderTest extends CommandTestCase
             'https://example.atlassian.net/wiki/spaces/DOC/pages/67890',
             'updated'
         );
-        $responder = new ConfluencePushResponder($this->translationService);
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects(self::once())
+        $logger = $this->createMock(Logger::class);
+        $logger->expects(self::once())
             ->method('success')
-            ->with(self::callback(function (string $message): bool {
+            ->with(self::anything(), self::callback(function (string $message): bool {
                 return str_contains($message, 'Updated Page') && str_contains($message, '67890');
             }));
+        $responder = new ConfluencePushResponder($this->translationService, $logger);
+        $io = $this->createMock(SymfonyStyle::class);
 
         $responder->respond($io, $response, OutputFormat::Cli);
     }
 
-    public function testRespondCliErrorCallsIoError(): void
+    public function testRespondCliErrorCallsLoggerError(): void
     {
         $response = ConfluencePushResponse::error('Space not found');
-        $responder = new ConfluencePushResponder($this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $logger->expects(self::once())->method('error')->with(self::anything(), 'Space not found');
+        $logger->expects(self::never())->method('success');
+        $responder = new ConfluencePushResponder($this->translationService, $logger);
         $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects(self::once())->method('error')->with('Space not found');
-        $io->expects(self::never())->method('success');
 
         $result = $responder->respond($io, $response, OutputFormat::Cli);
 
@@ -76,11 +77,11 @@ class ConfluencePushResponderTest extends CommandTestCase
             'https://example.atlassian.net/wiki/spaces/DEV/pages/12345',
             'updated'
         );
-        $responder = new ConfluencePushResponder($this->translationService);
+        $logger = $this->createMock(Logger::class);
+        $logger->expects(self::never())->method('success');
+        $logger->expects(self::never())->method('error');
+        $responder = new ConfluencePushResponder($this->translationService, $logger);
         $io = $this->createMock(SymfonyStyle::class);
-
-        $io->expects(self::never())->method('success');
-        $io->expects(self::never())->method('error');
 
         $agentResponse = $responder->respond($io, $response, OutputFormat::Json);
 
@@ -95,7 +96,7 @@ class ConfluencePushResponderTest extends CommandTestCase
     public function testRespondJsonErrorReturnsAgentJsonResponseWithError(): void
     {
         $response = ConfluencePushResponse::error('No content provided');
-        $responder = new ConfluencePushResponder($this->translationService);
+        $responder = new ConfluencePushResponder($this->translationService, $this->createMock(Logger::class));
         $io = $this->createMock(SymfonyStyle::class);
 
         $agentResponse = $responder->respond($io, $response, OutputFormat::Json);

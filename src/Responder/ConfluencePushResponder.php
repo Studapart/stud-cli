@@ -7,13 +7,15 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ConfluencePushResponse;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ConfluencePushResponder
 {
     public function __construct(
-        private readonly TranslationService $translator
+        private readonly TranslationService $translator,
+        private readonly Logger $logger
     ) {
     }
 
@@ -33,7 +35,7 @@ class ConfluencePushResponder
         }
 
         if (! $response->isSuccess()) {
-            $io->error($response->getError());
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $response->getError());
 
             return null;
         }
@@ -45,7 +47,7 @@ class ConfluencePushResponder
             '%title%' => $response->title ?? '',
             '%url%' => $response->url ?? '',
         ]);
-        $io->success($message);
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $message);
 
         return null;
     }

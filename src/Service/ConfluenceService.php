@@ -336,6 +336,110 @@ class ConfluenceService
     }
 
     /**
+     * Get a page by ID including body in ADF format.
+     * Uses body-format=atlas_doc_format so the response includes the page body.
+     *
+     * @return array{id: string, title: string, version: array{number: int}, spaceId: string|null, _links: array{webui: string}, body: array{type: string, content?: array<int, mixed>}}
+     */
+    public function getPageWithBody(string $pageId): array
+    {
+        $url = self::API_PREFIX . '/pages/' . $pageId . '?body-format=atlas_doc_format';
+        $response = $this->client->request('GET', $url);
+
+        if ($response->getStatusCode() !== 200) {
+            throw new ApiException(
+                "Confluence page \"{$pageId}\" not found.",
+                $this->extractTechnicalDetails($response),
+                $response->getStatusCode()
+            );
+        }
+
+        $data = $response->toArray();
+        $mapped = $this->mapPageResponseFromArray($data);
+        $mapped['version'] = [
+            'number' => (int) ($data['version']['number'] ?? 0),
+        ];
+        $mapped['spaceId'] = isset($data['spaceId']) ? (string) $data['spaceId'] : null;
+        if ($mapped['spaceId'] === null && isset($data['space']['id'])) {
+            $mapped['spaceId'] = (string) $data['space']['id'];
+        }
+        $mapped['body'] = $this->extractBodyAdf($data);
+
+        return $mapped;
+    }
+
+    /**
+     * Extract ADF body from Confluence v2 page response (body.atlas_doc_format.value).
+     *
+     * @param array<string, mixed> $data
+     * @return array{type: string, content?: array<int, mixed>}
+     */
+    protected function extractBodyAdf(array $data): array
+    {
+        $body = $data['body'] ?? null;
+        if (! is_array($body)) {
+            return ['type' => 'doc', 'content' => []];
+        }
+        $adf = $body['atlas_doc_format'] ?? null;
+        if (! is_array($adf)) {
+            return ['type' => 'doc', 'content' => []];
+        }
+        $value = $adf['value'] ?? null;
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+
+            return $this->normalizeBodyAdf($decoded);
+        }
+        if (is_array($value)) {
+            return $this->normalizeBodyAdf($value);
+        }
+
+        return ['type' => 'doc', 'content' => []];
+    }
+
+    /**
+     * @param mixed $adf
+     * @return array{type: string, content?: array<int, mixed>}
+     */
+    protected function normalizeBodyAdf(mixed $adf): array
+    {
+        if (! is_array($adf) || ! isset($adf['type'])) {
+            return ['type' => 'doc', 'content' => []];
+        }
+        $content = isset($adf['content']) && is_array($adf['content']) ? $adf['content'] : [];
+
+        return ['type' => (string) $adf['type'], 'content' => $content];
+    }
+
+    /**
+     * Extract Confluence page ID from a Confluence page URL.
+     * Supports: /wiki/spaces/SPACE/pages/123456 and /pages/123456 (path segment).
+     *
+     * @throws ApiException when the URL cannot be parsed to a page ID
+     */
+    public function extractPageIdFromUrl(string $url): string
+    {
+        $trimmed = trim($url);
+        if ($trimmed === '') {
+            throw new ApiException('Invalid Confluence URL: empty.', 'url: (empty)', 400);
+        }
+        $parsed = parse_url($trimmed);
+        $path = isset($parsed['path']) ? trim($parsed['path'], '/') : '';
+        if ($path === '') {
+            throw new ApiException('Invalid Confluence URL: no path.', 'url: ' . $trimmed, 400);
+        }
+        if (preg_match('#(?:^|/)pages/(\d+)(?:/|$)#', '/' . $path . '/', $m)) {
+            return $m[1];
+        }
+
+        throw new ApiException(
+            'Invalid Confluence URL: expected path like /wiki/spaces/SPACE/pages/123456 or /pages/123456.',
+            'url: ' . $trimmed,
+            400
+        );
+    }
+
+    /**
      * Update an existing page.
      *
      * @param string $pageId Page ID

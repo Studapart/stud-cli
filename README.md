@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.10.0/stud-3.10.0.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.11.0/stud-3.11.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.10.0/stud-3.10.0.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.11.0/stud-3.11.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -645,11 +645,11 @@ These commands help you browse, view, and create Jira work items.
 #### Confluence Commands
 
 -   **`stud confluence:push`** (Alias: `stud cpu`)
-    -   **Description:** Create or update a Confluence Cloud page from markdown content. Converts markdown to Atlassian Document Format (ADF) and uses the Confluence REST API v2. Uses the same Jira credentials (email + API token) when Confluence is on the same Atlassian domain. The Confluence base URL is derived from `JIRA_URL` by default (e.g. `https://your-domain.atlassian.net/wiki`); override with `--url` or set `CONFLUENCE_URL` in config. For create, use `--space` and `--title`; you can set `CONFLUENCE_DEFAULT_SPACE` in `.git/stud.config` as fallback. For update, use `--page` with the existing page ID. Space can be specified by key (e.g. `DEV`). Parent can be a page ID or a folder ID; if create fails with "title already exists" under a parent, the command finds the existing page by title and updates it instead.
+    -   **Description:** Create or update a Confluence Cloud page from markdown content. Converts markdown to Atlassian Document Format (ADF) and uses the Confluence REST API v2. Uses the same Jira credentials (email + API token) when Confluence is on the same Atlassian domain. The Confluence base URL is derived from `JIRA_URL` by default (e.g. `https://your-domain.atlassian.net/wiki`); override with `--url` or set `CONFLUENCE_URL` in config. For create, use `--space` and `--title`; you can set `CONFLUENCE_DEFAULT_SPACE` in `.git/stud.config` as fallback. For update, use `--page` with the existing page ID. Content can be provided via `-f`/`--file` (CLI) or the `file` property (agent mode) for both create and update. Space can be specified by key (e.g. `DEV`). Parent can be a page ID or a folder ID; if create fails with "title already exists" under a parent, the command finds the existing page by title and updates it instead.
     -   **Options:**
         -   `-s`/`--space <key>`: Confluence space key (e.g. `DEV`). Required for create unless `CONFLUENCE_DEFAULT_SPACE` is set in `.git/stud.config`.
         -   `-t`/`--title <title>`: Page title. Required for create; optional for update (keeps existing title if omitted).
-        -   `-f`/`--file <path>`: Path to a markdown file. If omitted, content is read from STDIN.
+        -   `-f`/`--file <path>`: Path to markdown file (create or update); if omitted, content is read from STDIN.
         -   `-p`/`--page <id>`: Existing page ID to update. If provided, the command updates the page instead of creating one.
         -   `--parent <id>`: Parent page or folder ID for nesting (create only).
         -   `--contact-email <email>`: Add a "Contact: @User" block at the bottom; user is resolved by email via Jira (for Confluence @mentions).
@@ -664,9 +664,25 @@ These commands help you browse, view, and create Jira work items.
         stud cpu --page 12345 --title "New Title" --file updated.md
         stud cpu -s PROD -t "Doc" --parent 5315756039 --contact-email jane@example.com -f doc.md
         echo '{"space":"DEV","title":"Sprint 42 Retro","content":"# Retro\n\n## What went well\n..."}' | stud cpu --agent
+        echo '{"space":"DEV","title":"Doc","page":"12345","file":"doc.md"}' | stud cpu --agent
         ```
 
--   **`stud confluence:page-labels`**
+   -   **`stud confluence:show`** (Alias: `stud csh`)
+    -   **Description:** Fetch a Confluence page by page ID or page URL and display its metadata (id, title, url) and body in readable format (markdown). Uses the same Confluence auth and base URL as `confluence:push` and `confluence:page-labels`; override with `--confluence-url` or config. At least one of `--page`/`-p` (page ID) or `--url` (page URL) is required. If both are provided, page ID takes precedence. Supported URL forms: paths containing `/pages/<id>` (e.g. `https://domain.atlassian.net/wiki/spaces/SPACE/pages/123456`).
+    -   **Options:**
+        -   `-p`/`--page <id>`: Confluence page ID.
+        -   `--url <url>`: Confluence page URL (e.g. `.../wiki/spaces/SPACE/pages/123456`).
+        -   `--confluence-url <url>`: Override Confluence base URL.
+        -   `--agent`: JSON input/output mode (input: `pageId`, `url`, optional `confluenceUrl`; output: `success`, and on success `data` with `id`, `title`, `url`, `body`).
+    -   **Usage:**
+        ```bash
+        stud confluence:show -p 123456
+        stud csh --url "https://company.atlassian.net/wiki/spaces/DEV/pages/123456/Glossary"
+        echo '{"pageId": "123456"}' | stud confluence:show --agent
+        echo '{"url": "https://company.atlassian.net/wiki/spaces/DEV/pages/123456"}' | stud csh --agent
+        ```
+
+   -   **`stud confluence:page-labels`**
     -   **Description:** Add labels to an existing Confluence page. Use when you want to tag a page (e.g. `research`, `DX`) without editing its body. Labels with special characters may need to be simplified (e.g. use `research` instead of `R&D` if the API rejects them).
     -   **Options:**
         -   `-p`/`--page <id>`: Confluence page ID.

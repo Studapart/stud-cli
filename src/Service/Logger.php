@@ -29,6 +29,15 @@ class Logger
     }
 
     /**
+     * Registers color styles with the underlying output (for use by ViewConfig/ResponderHelper).
+     * Keeps $io encapsulated while allowing ColorHelper to register styles per ADR-005.
+     */
+    public function registerStyles(ColorHelper $colorHelper): void
+    {
+        $colorHelper->registerStyles($this->io);
+    }
+
+    /**
      * Logs an error message.
      * Errors are always shown, even when output is quiet (--quiet means non-interactive, not suppress errors).
      *

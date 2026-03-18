@@ -252,6 +252,36 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
     }
 
+    public function testConfluencePushInputIncludesFileAndContentProperties(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('confluence:push', $schemaByName);
+        $props = $schemaByName['confluence:push']['input']['properties'] ?? [];
+        $this->assertArrayHasKey('file', $props, 'confluence:push agent input must include "file" property');
+        $this->assertArrayHasKey('content', $props, 'confluence:push agent input must include "content" property');
+        $this->assertSame('string', $props['file']['type'] ?? null);
+        $this->assertSame('string', $props['content']['type'] ?? null);
+    }
+
+    public function testConfluenceShowInSchemaWithExpectedOutput(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('confluence:show', $schemaByName);
+        $cmd = $schemaByName['confluence:show'];
+        $this->assertContains('csh', $cmd['aliases'] ?? []);
+        $outputSuccess = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('id', $outputSuccess, 'confluence:show agent output must include id');
+        $this->assertArrayHasKey('title', $outputSuccess);
+        $this->assertArrayHasKey('url', $outputSuccess);
+        $this->assertArrayHasKey('body', $outputSuccess);
+    }
+
     // ------------------------------------------------------------------
     // Source-based parsing (independent verification, no reflection)
     // ------------------------------------------------------------------

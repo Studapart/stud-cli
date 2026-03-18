@@ -15,81 +15,80 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterListResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private FilterListResponder $responder;
 
     protected function setUp(): void
     {
         parent::setUp();
         $helper = new ResponderHelper($this->translationService);
-        $this->responder = new FilterListResponder($helper);
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->responder = new FilterListResponder($helper, $this->createLogger($this->io));
     }
 
     public function testRespondShowsNoteWhenNoFilters(): void
     {
         $response = FilterListResponse::success([]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('note')
             ->with($this->callback(fn ($m) => is_string($m) && $m !== ''));
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondRendersTableWhenFiltersPresent(): void
     {
         $filter = new Filter('My Filter', 'Description');
         $response = FilterListResponse::success([$filter]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->never())
+        $this->io->expects($this->never())
             ->method('note');
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondWithColorHelperAppliesFormatting(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new FilterListResponder($helper);
+        $responder = new FilterListResponder($helper, $this->createLogger($this->io));
         $filter = new Filter('My Filter', 'Description');
         $response = FilterListResponse::success([$filter]);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->atLeastOnce())
             ->method('registerStyles')
-            ->with($io);
+            ->with($this->io);
         $colorHelper->expects($this->atLeastOnce())
             ->method('format')
             ->willReturnCallback(fn ($color, $text) => "<{$color}>{$text}</>");
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $responder->respond($io, $response);
+        $responder->respond($this->io, $response);
     }
 
     public function testRespondJsonReturnsSerializedFilters(): void
     {
         $filter = new Filter('My Filter', 'Description');
         $response = FilterListResponse::success([$filter]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -100,9 +99,8 @@ class FilterListResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = FilterListResponse::error('API error');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);

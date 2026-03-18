@@ -14,8 +14,8 @@ class ItemCreateResponderTest extends CommandTestCase
     {
         $response = ItemCreateResponse::success('PROJ-42', 'https://jira.example.com/rest/api/3/issue/123');
         $jiraConfig = ['JIRA_URL' => 'https://jira.example.com'];
-        $responder = new ItemCreateResponder($this->translationService, $jiraConfig);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, $jiraConfig, $this->createLogger($io));
 
         $io->expects($this->once())
             ->method('success')
@@ -31,8 +31,8 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondDoesNotCallSuccessWhenResponseIsError(): void
     {
         $response = ItemCreateResponse::error('Something failed');
-        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $io->expects($this->never())->method('success');
 
@@ -42,8 +42,8 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondUsesSelfWhenJiraUrlEmpty(): void
     {
         $response = ItemCreateResponse::success('PROJ-1', 'https://api.jira/issue/1');
-        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => '']);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => ''], $this->createLogger($io));
 
         $io->expects($this->once())
             ->method('success')
@@ -57,8 +57,8 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondShowsNoteWhenSkippedOptionalFields(): void
     {
         $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/1', ['labels', 'time original estimate']);
-        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $io->expects($this->once())->method('success');
         $io->expects($this->once())
@@ -75,8 +75,8 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsCreatedIssueData(): void
     {
         $response = ItemCreateResponse::success('PROJ-1', 'https://jira.example.com/issue/PROJ-1', []);
-        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
 
@@ -88,8 +88,8 @@ class ItemCreateResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ItemCreateResponse::error('Failed to create');
-        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com']);
         $io = $this->createMock(SymfonyStyle::class);
+        $responder = new ItemCreateResponder($this->translationService, ['JIRA_URL' => 'https://jira.example.com'], $this->createLogger($io));
 
         $result = $responder->respond($io, $response, OutputFormat::Json);
 

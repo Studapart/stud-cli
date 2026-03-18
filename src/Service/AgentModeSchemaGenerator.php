@@ -106,7 +106,10 @@ class AgentModeSchemaGenerator
     private function injectExtraInputProperties(string $taskName, array &$inputProperties): void
     {
         if ($taskName === 'confluence:push') {
-            $inputProperties = ['content' => ['type' => 'string', 'optional' => true, 'default' => '']] + $inputProperties;
+            $inputProperties = [
+                'file' => ['type' => 'string', 'optional' => true],
+                'content' => ['type' => 'string', 'optional' => true, 'default' => ''],
+            ] + $inputProperties;
         }
     }
 

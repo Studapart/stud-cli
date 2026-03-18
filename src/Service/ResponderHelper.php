@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Symfony\Component\Console\Style\SymfonyStyle;
-
 /**
  * Shared presentation helpers for Responders.
  *
@@ -24,53 +22,41 @@ class ResponderHelper
     }
 
     /**
-     * Register color styles and render a formatted section title.
-     *
-     * Combines the "register styles" and "section title" boilerplate into one call.
+     * Register color styles and render a formatted section title via Logger (ADR-005).
      *
      * @param array<string, string|int> $params Translation parameters
      */
-    public function initSection(SymfonyStyle $io, string $transKey, array $params = []): void
+    public function initSection(Logger $logger, string $transKey, array $params = []): void
     {
         if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+            $logger->registerStyles($this->colorHelper);
         }
 
         $title = $this->translator->trans($transKey, $params);
         if ($this->colorHelper !== null) {
             $title = $this->colorHelper->format('section_title', $title);
         }
-        $io->section($title);
+        $logger->section(Logger::VERBOSITY_NORMAL, $title);
     }
 
     /**
-     * Write a verbose comment line (only when -v is active).
-     *
-     * Uses colorHelper 'comment' style when available, falls back to <fg=gray>.
+     * Write a verbose comment line (only when -v is active) via Logger.
      *
      * @param array<string, string|int> $params Translation parameters
      */
-    public function verboseComment(SymfonyStyle $io, string $transKey, array $params = []): void
+    public function verboseComment(Logger $logger, string $transKey, array $params = []): void
     {
-        if (! $io->isVerbose()) {
-            return;
-        }
-
-        $io->writeln('  ' . $this->formatComment($this->translator->trans($transKey, $params)));
+        $logger->comment(Logger::VERBOSITY_VERBOSE, '  ' . $this->formatComment($this->translator->trans($transKey, $params)));
     }
 
     /**
-     * Write a verbose note line (only when -v is active).
+     * Write a verbose note line (only when -v is active) via Logger.
      *
      * @param array<string, string|int> $params Translation parameters
      */
-    public function verboseNote(SymfonyStyle $io, string $transKey, array $params = []): void
+    public function verboseNote(Logger $logger, string $transKey, array $params = []): void
     {
-        if (! $io->isVerbose()) {
-            return;
-        }
-
-        $io->note('  ' . $this->formatComment($this->translator->trans($transKey, $params)));
+        $logger->note(Logger::VERBOSITY_VERBOSE, '  ' . $this->formatComment($this->translator->trans($transKey, $params)));
     }
 
     /**

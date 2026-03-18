@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\FilterListResponse;
 use App\Service\DtoSerializer;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
 use App\View\PageViewConfig;
@@ -21,6 +22,7 @@ class FilterListResponder
 
     public function __construct(
         private readonly ResponderHelper $helper,
+        private readonly Logger $logger,
         ?DtoSerializer $serializer = null,
     ) {
         $this->serializer = $serializer ?? new DtoSerializer();
@@ -32,10 +34,10 @@ class FilterListResponder
             return $this->respondJson($response);
         }
 
-        $this->helper->initSection($io, 'filter.list.section');
+        $this->helper->initSection($this->logger, 'filter.list.section');
 
         if (empty($response->filters)) {
-            $io->note($this->helper->translator->trans('filter.list.no_filters'));
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->helper->translator->trans('filter.list.no_filters'));
 
             return null;
         }
@@ -52,7 +54,7 @@ class FilterListResponder
             ),
         ], $this->helper->translator, $this->helper->colorHelper);
 
-        $viewConfig->render($response->filters, $io);
+        $viewConfig->render($response->filters, $this->logger);
 
         return null;
     }

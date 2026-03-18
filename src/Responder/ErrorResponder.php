@@ -7,11 +7,12 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ResponseInterface;
+use App\Service\Logger;
 use App\Service\TranslationService;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * ErrorResponder handles all error Responses with consistent formatting.
+ * ErrorResponder handles all error Responses with consistent formatting (ADR-005: output via Logger).
  */
 class ErrorResponder
 {
@@ -22,7 +23,8 @@ class ErrorResponder
         /** @phpstan-ignore-next-line - Translator property reserved for future i18n error messages */
         private readonly TranslationService $translator,
         /** @phpstan-ignore-next-line - Colors property reserved for future color formatting implementation */
-        private readonly array $colors
+        private readonly array $colors,
+        private readonly Logger $logger
     ) {
     }
 
@@ -37,7 +39,7 @@ class ErrorResponder
             return new AgentJsonResponse(false, error: $error);
         }
 
-        $io->error($error);
+        $this->logger->error(Logger::VERBOSITY_NORMAL, $error);
 
         return null;
     }

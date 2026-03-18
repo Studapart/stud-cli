@@ -8,6 +8,7 @@ use App\Enum\OutputFormat;
 use App\Responder\ConfigValidateResponder;
 use App\Response\ConfigValidateResponse;
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -16,12 +17,15 @@ class ConfigValidateResponderTest extends CommandTestCase
 {
     private ConfigValidateResponder $responder;
 
+    private Logger $logger;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService);
-        $this->responder = new ConfigValidateResponder($helper);
+        $this->logger = $this->createMock(Logger::class);
+        $this->responder = new ConfigValidateResponder($helper, $this->logger);
     }
 
     public function testRespondOutputsSectionAndDefinitionListWhenAllOk(): void
@@ -34,12 +38,12 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('section')
-            ->with($this->anything());
-        $io->expects($this->once())
-            ->method('definitionList')
             ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
+            ->method('definitionList')
+            ->with($this->anything(), $this->anything(), $this->anything());
 
         $this->responder->respond($io, $response);
     }
@@ -49,12 +53,12 @@ class ConfigValidateResponderTest extends CommandTestCase
         $response = ConfigValidateResponse::error('config.error.not_found');
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->callback(function ($arg) {
+            ->with($this->anything(), $this->callback(function ($arg) {
                 return is_array($arg) && count($arg) >= 1;
             }));
-        $io->expects($this->never())
+        $this->logger->expects($this->never())
             ->method('section');
 
         $this->responder->respond($io, $response);
@@ -70,11 +74,13 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
             ->with(
+                $this->anything(),
                 $this->callback(function (array $jiraRow) {
                     $value = array_values($jiraRow)[0] ?? '';
 
@@ -96,11 +102,13 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
             ->with(
+                $this->anything(),
                 $this->callback(function (array $row) {
                     $value = array_values($row)[0] ?? '';
 
@@ -120,7 +128,8 @@ class ConfigValidateResponderTest extends CommandTestCase
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new ConfigValidateResponder($helper);
+        $logger = $this->createMock(Logger::class);
+        $responder = new ConfigValidateResponder($helper, $logger);
         $response = ConfigValidateResponse::create(
             ConfigValidateResponse::STATUS_OK,
             null,
@@ -129,17 +138,15 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $colorHelper->expects($this->once())
+        $logger->expects($this->once())
             ->method('registerStyles')
-            ->with($io);
-        $colorHelper->expects($this->atLeastOnce())
-            ->method('format')
-            ->willReturnCallback(fn (string $color, string $text) => "<{$color}>{$text}</>");
-
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
-            ->method('definitionList');
+            ->with($colorHelper);
+        $logger->expects($this->atLeastOnce())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $logger->expects($this->atLeastOnce())
+            ->method('definitionList')
+            ->with($this->anything(), $this->anything(), $this->anything());
 
         $responder->respond($io, $response);
     }
@@ -154,11 +161,12 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
-            ->method('section');
-        $io->expects($this->once())
+        $this->logger->expects($this->once())
+            ->method('section')
+            ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->isType('array'), $this->isType('array'));
+            ->with($this->anything(), $this->isType('array'), $this->isType('array'));
 
         $this->responder->respond($io, $response);
     }

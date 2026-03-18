@@ -13,6 +13,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ProjectListResponderTest extends CommandTestCase
 {
+    private SymfonyStyle&\PHPUnit\Framework\MockObject\MockObject $io;
+
     private ProjectListResponder $responder;
 
     protected function setUp(): void
@@ -20,66 +22,63 @@ class ProjectListResponderTest extends CommandTestCase
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService);
-        $this->responder = new ProjectListResponder($helper);
+        $this->io = $this->createMock(SymfonyStyle::class);
+        $this->responder = new ProjectListResponder($helper, $this->createLogger($this->io));
     }
 
     public function testRespondReturnsZeroOnEmptyProjects(): void
     {
         $response = ProjectListResponse::success([]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('note')
             ->with($this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondRendersTableOnSuccess(): void
     {
         $project = new Project('PROJ', 'My Project');
         $response = ProjectListResponse::success([$project]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('section')
             ->with($this->anything());
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('table')
             ->with($this->anything(), $this->anything());
 
-        $this->responder->respond($io, $response);
+        $this->responder->respond($this->io, $response);
     }
 
     public function testRespondWithColorHelperRegistersStyles(): void
     {
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
-        $responder = new ProjectListResponder($helper);
+        $responder = new ProjectListResponder($helper, $this->createLogger($this->io));
         $response = ProjectListResponse::success([]);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $colorHelper->expects($this->once())
             ->method('registerStyles')
-            ->with($io);
-        $io->expects($this->once())
+            ->with($this->io);
+        $this->io->expects($this->once())
             ->method('section');
-        $io->expects($this->once())
+        $this->io->expects($this->once())
             ->method('note');
 
-        $responder->respond($io, $response);
+        $responder->respond($this->io, $response);
     }
 
     public function testRespondJsonReturnsSerializedProjects(): void
     {
         $project = new Project('PROJ', 'My Project');
         $response = ProjectListResponse::success([$project]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -91,9 +90,8 @@ class ProjectListResponderTest extends CommandTestCase
     public function testRespondJsonReturnsErrorOnFailure(): void
     {
         $response = ProjectListResponse::error('API error');
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
@@ -103,9 +101,8 @@ class ProjectListResponderTest extends CommandTestCase
     public function testRespondCliReturnsNull(): void
     {
         $response = ProjectListResponse::success([]);
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Cli);
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Cli);
 
         $this->assertNull($result);
     }

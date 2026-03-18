@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\View;
 
 use App\Service\ColorHelper;
+use App\Service\Logger;
 use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class PageViewConfig implements ViewConfigInterface
 {
@@ -29,19 +29,18 @@ class PageViewConfig implements ViewConfigInterface
      * @param array<int, mixed> $dtos
      * @param array<string, mixed> $context
      */
-    public function render(array $dtos, SymfonyStyle $io, array $context = []): void
+    public function render(array $dtos, Logger $logger, array $context = []): void
     {
         if (empty($dtos)) {
             return;
         }
 
-        // Register color styles before rendering
         if ($this->colorHelper !== null) {
-            $this->colorHelper->registerStyles($io);
+            $logger->registerStyles($this->colorHelper);
         }
 
         foreach ($this->sections as $section) {
-            $this->renderSection($section, $dtos, $io, $context);
+            $this->renderSection($section, $dtos, $logger, $context);
         }
     }
 
@@ -49,16 +48,14 @@ class PageViewConfig implements ViewConfigInterface
      * @param array<int, mixed> $dtos
      * @param array<string, mixed> $context
      */
-    protected function renderSection(Section $section, array $dtos, SymfonyStyle $io, array $context): void
+    protected function renderSection(Section $section, array $dtos, Logger $logger, array $context): void
     {
-        // Only create section if title is not empty (for table-only views, section is created by responder)
         if (! empty($section->title)) {
             $sectionTitle = $section->title;
-            // Apply section_title color if ColorHelper is available
             if ($this->colorHelper !== null) {
                 $sectionTitle = $this->colorHelper->format('section_title', $sectionTitle);
             }
-            $io->section($sectionTitle);
+            $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
         }
 
         $partitioned = $this->partitionSectionItems($section->items);
@@ -66,14 +63,14 @@ class PageViewConfig implements ViewConfigInterface
         $dto = $dtos[0] ?? null;
         if ($dto !== null) {
             if ($partitioned['definitionItems'] !== []) {
-                $this->renderDefinitionList($partitioned['definitionItems'], $dto, $io, $context);
+                $this->renderDefinitionList($partitioned['definitionItems'], $dto, $logger, $context);
             }
             foreach ($partitioned['contentItems'] as $content) {
-                $this->renderContent($content, $dto, $io, $context);
+                $this->renderContent($content, $dto, $logger, $context);
             }
         }
         foreach ($partitioned['tableBlocks'] as $tableBlock) {
-            $this->renderTableBlock($tableBlock, $dtos, $io, $context);
+            $this->renderTableBlock($tableBlock, $dtos, $logger, $context);
         }
     }
 
@@ -107,14 +104,13 @@ class PageViewConfig implements ViewConfigInterface
      * @param DefinitionItem[] $items
      * @param array<string, mixed> $context
      */
-    protected function renderDefinitionList(array $items, mixed $dto, SymfonyStyle $io, array $context): void
+    protected function renderDefinitionList(array $items, mixed $dto, Logger $logger, array $context): void
     {
         $definitionData = [];
         foreach ($items as $item) {
             $key = $this->translator->trans($item->translationKey);
             $value = ($item->valueExtractor)($dto, $context);
 
-            // Apply colors if ColorHelper is available
             if ($this->colorHelper !== null) {
                 $key = $this->colorHelper->format('definition_key', $key);
                 if (is_string($value)) {
@@ -125,13 +121,13 @@ class PageViewConfig implements ViewConfigInterface
             $definitionData[] = [$key => $value];
         }
 
-        $io->definitionList(...$definitionData);
+        $logger->definitionList(Logger::VERBOSITY_NORMAL, ...$definitionData);
     }
 
     /**
      * @param array<string, mixed> $context
      */
-    protected function renderContent(Content $content, mixed $dto, SymfonyStyle $io, array $context): void
+    protected function renderContent(Content $content, mixed $dto, Logger $logger, array $context): void
     {
         $extractor = $content->contentExtractor;
         if (! is_callable($extractor)) {
@@ -141,23 +137,20 @@ class PageViewConfig implements ViewConfigInterface
         $contentData = $extractor($dto, $context);
 
         if ($content->formatter === 'listing' && is_array($contentData)) {
-            // Apply listing_item color if ColorHelper is available
             if ($this->colorHelper !== null) {
                 $contentData = array_map(fn ($item) => $this->colorHelper->format('listing_item', (string) $item), $contentData);
             }
-            $io->listing($contentData);
+            $logger->listing(Logger::VERBOSITY_NORMAL, $contentData);
         } elseif ($content->formatter === 'text' && is_array($contentData)) {
-            // Apply text_content color if ColorHelper is available
             if ($this->colorHelper !== null) {
                 $contentData = array_map(fn ($item) => $this->colorHelper->format('text_content', (string) $item), $contentData);
             }
-            $io->text($contentData);
+            $logger->text(Logger::VERBOSITY_NORMAL, $contentData);
         } elseif (is_string($contentData)) {
-            // Apply text_content color if ColorHelper is available
             if ($this->colorHelper !== null) {
                 $contentData = $this->colorHelper->format('text_content', $contentData);
             }
-            $io->text($contentData);
+            $logger->text(Logger::VERBOSITY_NORMAL, $contentData);
         }
     }
 
@@ -167,13 +160,13 @@ class PageViewConfig implements ViewConfigInterface
      * @param array<int, mixed> $dtos
      * @param array<string, mixed> $context
      */
-    protected function renderTableBlock(TableBlock $tableBlock, array $dtos, SymfonyStyle $io, array $context): void
+    protected function renderTableBlock(TableBlock $tableBlock, array $dtos, Logger $logger, array $context): void
     {
         $visibleColumns = $this->getVisibleColumns($tableBlock->columns, $dtos);
         $headers = $this->buildHeaders($visibleColumns);
         $rows = $this->buildRows($dtos, $visibleColumns, $context);
 
-        $io->table($headers, $rows);
+        $logger->table(Logger::VERBOSITY_NORMAL, $headers, $rows);
     }
 
     /**
