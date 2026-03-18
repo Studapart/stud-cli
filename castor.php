@@ -1699,7 +1699,7 @@ function branch_rename(
     ?string $branch = null,
     #[AsArgument(name: 'key', description: 'The Jira issue key to regenerate branch name from (e.g., PROJ-123)')]
     ?string $key = null,
-    #[AsOption(name: 'name', shortcut: 'n', description: 'Explicit new branch name (no prefix will be added)')]
+    #[AsOption(name: 'name', shortcut: 'N', description: 'Explicit new branch name (no prefix will be added)')]
     ?string $explicitName = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
@@ -1854,8 +1854,6 @@ function please(
 function commit_undo(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
-    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
-    bool $help = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -1864,11 +1862,6 @@ function commit_undo(
     _load_constants();
     if ($agent) {
         $quiet = true;
-    } elseif ($help) {
-        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
-        $helpService->displayCommandHelp(_get_logger(), 'commit:undo');
-
-        return;
     }
     $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
     $exitCode = $handler->handle(io(), $quiet);

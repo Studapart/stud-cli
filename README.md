@@ -746,7 +746,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   `<branch>` (optional): The branch to rename. Defaults to the current branch if not provided.
         -   `<key>` (optional): The Jira issue key to regenerate the branch name from (e.g., `PROJ-123`). If not provided, the key will be extracted from the current branch name.
     -   **Options:**
-        -   `--name <name>` or `-n <name>`: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument.
+        -   `--name <name>` or `-N <name>`: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument.
         -   `--quiet` or `-q`: Non-interactive: use defaults for all confirmations (rename, remote only, rebase, create PR).
     -   **Usage:**
         ```bash
