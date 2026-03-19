@@ -1119,6 +1119,7 @@ function config_show(
             return;
         }
         $key = isset($input['key']) && $input['key'] !== '' ? (string) $input['key'] : null;
+        $quiet = (bool) ($input['quiet'] ?? false);
     }
     $gitRepository = null;
 
@@ -1522,7 +1523,13 @@ function items_create(
         $description = $input['description'] ?? null;
         $descriptionFormat = $input['descriptionFormat'] ?? null;
         $parent = $input['parent'] ?? null;
-        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
+        if (isset($input['fields'])) {
+            if (is_array($input['fields'])) {
+                $fieldsMap = $input['fields'];
+            } else {
+                $fields = is_string($input['fields']) ? $input['fields'] : null;
+            }
+        }
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
@@ -1686,7 +1693,7 @@ function items_takeover(
             return;
         }
         $key = (string) ($input['key'] ?? '');
-        $quiet = true;
+        $quiet = (bool) ($input['quiet'] ?? true);
     } elseif ($key === null || $key === '') {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
@@ -1728,7 +1735,7 @@ function branch_rename(
         $branch = $input['branch'] ?? null;
         $key = $input['key'] ?? null;
         $explicitName = $input['explicitName'] ?? null;
-        $quiet = true;
+        $quiet = (bool) ($input['quiet'] ?? true);
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
@@ -2298,7 +2305,7 @@ function help(
         }
         $generator = new \App\Service\AgentModeSchemaGenerator();
         $schema = $generator->generate();
-        $filterCommand = $input['command'] ?? null;
+        $filterCommand = $input['commandName'] ?? $input['command'] ?? null;
         if ($filterCommand !== null) {
             foreach ($schema['commands'] as $cmd) {
                 if ($cmd['name'] === $filterCommand || in_array($filterCommand, $cmd['aliases'] ?? [], true)) {
