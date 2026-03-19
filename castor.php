@@ -1693,7 +1693,7 @@ function items_takeover(
             return;
         }
         $key = (string) ($input['key'] ?? '');
-        $quiet = (bool) ($input['quiet'] ?? true);
+        $quiet = true; // agent mode is non-interactive; no need to read from input
     } elseif ($key === null || $key === '') {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
@@ -1735,7 +1735,7 @@ function branch_rename(
         $branch = $input['branch'] ?? null;
         $key = $input['key'] ?? null;
         $explicitName = $input['explicitName'] ?? null;
-        $quiet = (bool) ($input['quiet'] ?? true);
+        $quiet = true; // agent mode is non-interactive; no need to read from input
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
