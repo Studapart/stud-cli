@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **items:update --agent:** JSON input was not applied when a positional key was used (e.g. `stud iu SCI-79 --agent`): the task treated the key as an input file path and tried to read from it instead of stdin, so `key` and `fields` from the piped JSON were never used. Agent input is now read from the explicit input file only, or from stdin when no file is given; the issue key is taken from JSON when present, otherwise from the positional argument. Agent mode now also accepts `fields` as a string (e.g. `"labels=A,B"`) in addition to an object (e.g. `{"labels": ["A","B"]}`), in parity with items:create. [SCI-79]
 - **PHAR (Castor 1.3):** Repacked PHAR no longer fails with "Class App\Service\TranslationService not found". Bootstrap in `castor.php` now loads the project's `vendor/autoload.php` when running inside a PHAR, since Castor 1.3's repack stub only loads `.castor-vendor`. [SCI-78]
 
 ### Changed
