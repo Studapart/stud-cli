@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.11.1/stud-3.11.1.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.0/stud-3.12.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.11.1/stud-3.11.1.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.0/stud-3.12.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -587,7 +587,7 @@ These commands help you browse, view, and create Jira work items.
     -   **Note:** No `--quiet` option. Unmatched `--fields` entries (fields not available for the project/issue type) are reported as a note; the create still succeeds. For detailed help and all options run `stud help items:create`.
 
 -   **`stud items:update <key>`** (Alias: `stud iu <key>`)
-    -   **Description:** Updates a Jira issue's fields. Use `-m`/`--summary` to update the title, `-d`/`--description` to update the description (with optional `--description-format markdown` for Markdown), and `-F`/`--fields` to update arbitrary fields in `key=value;key=value,value` format. At least one field must be provided. Unmatched `--fields` entries are reported as a note; the update still succeeds for matched fields.
+    -   **Description:** Updates a Jira issue's fields. Use `-m`/`--summary` to update the title, `-d`/`--description` to update the description (with optional `--description-format markdown` for Markdown), and `-F`/`--fields` to update arbitrary fields in `key=value;key=value,value` format. At least one field must be provided. Unmatched `--fields` entries are reported as a note; the update still succeeds for matched fields. With `--agent`, input is JSON (stdin or file): `key`, `summary`, `description`, `descriptionFormat`, and `fields` (object e.g. `{"labels": ["A","B"]}` or string e.g. `"labels=A,B"`).
     -   **Options:** `-m`/`--summary` (update title), `-d`/`--description` (update description), `--description-format` (plain or markdown; default: plain), `-F`/`--fields` (arbitrary fields).
     -   **Argument:** `<key>` (Jira issue key, e.g. `SCI-71`)
     -   **Usage:**
@@ -1034,6 +1034,13 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 | `stud deploy` | `--clean` | Clean up merged branches after deployment (non-interactive) |
 
 **Semantics of `--quiet`:** When a command supports `--quiet` (or `-q`), it means *non-interactive: use documented defaults and do not prompt*. Success/error/warning output is unchanged; only interactive prompts are skipped. Useful for scripts and CI.
+
+**Agent mode (JSON input/output):** Commands that support `--agent` accept the same parameters via JSON (stdin or a file path) as via CLI options and arguments. JSON keys use camelCase (e.g. `stageAll`, `commandName`). Run `echo '{}' | stud help --agent` for the full schema. Parity expectations:
+
+- Every CLI option and argument that affects outcome (not just “non-interactive”) has a corresponding JSON property. For commands where `--quiet` only means “non-interactive, use defaults” (e.g. `items:takeover`, `branch:rename`), agent mode is already non-interactive, so `quiet` is not exposed in agent input.
+- For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
+- For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
+- For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
 
 **Example snippets:**
 

@@ -107,7 +107,8 @@ class SearchResponderTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
         $colorHelper = $this->createMock(ColorHelper::class);
-        $colorHelper->method('registerStyles')->willReturnCallback(function (): void {});
+        $colorHelper->method('registerStyles')->willReturnCallback(function (): void {
+        });
         $colorHelper->method('format')->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $logger = new Logger($io, []);
