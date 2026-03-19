@@ -149,7 +149,7 @@ This project is configured to be compiled into a single, executable PHAR file us
 
 2.  **Compile:**
     ```bash
-    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
+    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux-amd64.phar stud.phar
     ```
     This will generate an executable `stud.phar` file in the project's root directory.
 
@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.0/stud-3.12.0.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.1/stud-3.12.1.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.0/stud-3.12.0.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.1/stud-3.12.1.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
