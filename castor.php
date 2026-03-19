@@ -1565,15 +1565,23 @@ function items_update(
     /** @var array<string, string|list<string>>|null $fieldsMap */
     $fieldsMap = null;
     if ($agent) {
-        $input = _read_agent_input($inputFile ?? $key);
+        // Read from explicit input file only; otherwise stdin. Using $key as input source would treat
+        // a Jira key (e.g. SCI-79) as a file path and prevent JSON (including fields) from being read.
+        $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
-        $key = isset($input['key']) ? (string) $input['key'] : null;
+        $key = isset($input['key']) ? (string) $input['key'] : $key;
         $summary = $input['summary'] ?? null;
         $description = $input['description'] ?? null;
         $descriptionFormat = $input['descriptionFormat'] ?? null;
-        $fieldsMap = isset($input['fields']) && is_array($input['fields']) ? $input['fields'] : null;
+        if (isset($input['fields'])) {
+            if (is_array($input['fields'])) {
+                $fieldsMap = $input['fields'];
+            } else {
+                $fields = is_string($input['fields']) ? $input['fields'] : null;
+            }
+        }
     }
     if ($key === null || trim($key) === '') {
         $translator = _get_translation_service();

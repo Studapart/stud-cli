@@ -587,7 +587,7 @@ These commands help you browse, view, and create Jira work items.
     -   **Note:** No `--quiet` option. Unmatched `--fields` entries (fields not available for the project/issue type) are reported as a note; the create still succeeds. For detailed help and all options run `stud help items:create`.
 
 -   **`stud items:update <key>`** (Alias: `stud iu <key>`)
-    -   **Description:** Updates a Jira issue's fields. Use `-m`/`--summary` to update the title, `-d`/`--description` to update the description (with optional `--description-format markdown` for Markdown), and `-F`/`--fields` to update arbitrary fields in `key=value;key=value,value` format. At least one field must be provided. Unmatched `--fields` entries are reported as a note; the update still succeeds for matched fields.
+    -   **Description:** Updates a Jira issue's fields. Use `-m`/`--summary` to update the title, `-d`/`--description` to update the description (with optional `--description-format markdown` for Markdown), and `-F`/`--fields` to update arbitrary fields in `key=value;key=value,value` format. At least one field must be provided. Unmatched `--fields` entries are reported as a note; the update still succeeds for matched fields. With `--agent`, input is JSON (stdin or file): `key`, `summary`, `description`, `descriptionFormat`, and `fields` (object e.g. `{"labels": ["A","B"]}` or string e.g. `"labels=A,B"`).
     -   **Options:** `-m`/`--summary` (update title), `-d`/`--description` (update description), `--description-format` (plain or markdown; default: plain), `-F`/`--fields` (arbitrary fields).
     -   **Argument:** `<key>` (Jira issue key, e.g. `SCI-71`)
     -   **Usage:**
