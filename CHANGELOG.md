@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Build (Castor 1.3+):** Release workflow and build documentation now use the PHAR filename produced by Castor 1.3+ (`stud.linux-amd64.phar`) instead of `stud.linux.phar`. Updated: `.github/workflows/release.yml`, README.md compile instructions, and AI.md build command. [SCI-81]
+
 ## [3.12.0] - 2026-03-19
 
 ### Fixed

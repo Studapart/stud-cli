@@ -149,7 +149,7 @@ This project is configured to be compiled into a single, executable PHAR file us
 
 2.  **Compile:**
     ```bash
-    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux.phar stud.phar
+    PATH="~/.config/composer/vendor/bin:$PATH" vendor/bin/castor repack --logo-file src/repack/logo.php --app-name stud --app-version 1.0.0 && mv stud.linux-amd64.phar stud.phar
     ```
     This will generate an executable `stud.phar` file in the project's root directory.
 
