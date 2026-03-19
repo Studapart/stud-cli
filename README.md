@@ -1035,6 +1035,13 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 
 **Semantics of `--quiet`:** When a command supports `--quiet` (or `-q`), it means *non-interactive: use documented defaults and do not prompt*. Success/error/warning output is unchanged; only interactive prompts are skipped. Useful for scripts and CI.
 
+**Agent mode (JSON input/output):** Commands that support `--agent` accept the same parameters via JSON (stdin or a file path) as via CLI options and arguments. JSON keys use camelCase (e.g. `stageAll`, `commandName`). Run `echo '{}' | stud help --agent` for the full schema. Parity expectations:
+
+- Every CLI option and argument that affects outcome (not just “non-interactive”) has a corresponding JSON property. For commands where `--quiet` only means “non-interactive, use defaults” (e.g. `items:takeover`, `branch:rename`), agent mode is already non-interactive, so `quiet` is not exposed in agent input.
+- For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
+- For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
+- For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
+
 **Example snippets:**
 
 ```bash
