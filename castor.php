@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+// When running as repacked PHAR (Castor 1.3+), the stub only loads .castor-vendor; load project autoload so App\ is available.
+if (\extension_loaded('Phar') && \Phar::running(false) !== '') {
+    require_once 'phar://' . \Phar::running(false) . '/vendor/autoload.php';
+}
+
 // =================================================================================
 // Constants & Configuration
 // =================================================================================

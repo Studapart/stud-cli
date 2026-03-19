@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **PHAR (Castor 1.3):** Repacked PHAR no longer fails with "Class App\Service\TranslationService not found". Bootstrap in `castor.php` now loads the project's `vendor/autoload.php` when running inside a PHAR, since Castor 1.3's repack stub only loads `.castor-vendor`. [SCI-78]
+
+### Changed
+- Upgraded jolicode/castor from ^1.1.0 to ^1.3.0. Relaxed symfony/console constraint to ^7.3 (from ^7.3,<7.4) to satisfy castor 1.3 requirement. [SCI-78]
+
 ## [3.11.1] - 2026-03-18
 
 ### Fixed
