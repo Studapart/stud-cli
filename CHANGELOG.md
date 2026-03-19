@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-03-19
+
 ### Fixed
 - **Agent mode parity (SCI-80):** All commands that support `--agent` now accept the same parameters via JSON as via CLI where they affect outcome. Gaps fixed: `config:show` now reads `quiet` from agent input (raw-value-only output for a single key); `items:create` accepts `fields` as a string (e.g. `"labels=A;B"`) in addition to an object; `items:takeover` and `branch:rename` always run non-interactively in agent mode (no `quiet` in agent input, since agent is already non-interactive); `help` accepts both `commandName` (schema-canonical) and `command` (legacy) in JSON. Integration tests added for config:show, items:create, and help agent parity. README documents agent-mode parity and `fields` shape.
 - **items:update --agent:** JSON input was not applied when a positional key was used (e.g. `stud iu SCI-79 --agent`): the task treated the key as an input file path and tried to read from it instead of stdin, so `key` and `fields` from the piped JSON were never used. Agent input is now read from the explicit input file only, or from stdin when no file is given; the issue key is taken from JSON when present, otherwise from the positional argument. Agent mode now also accepts `fields` as a string (e.g. `"labels=A,B"`) in addition to an object (e.g. `{"labels": ["A","B"]}`), in parity with items:create. [SCI-79]
