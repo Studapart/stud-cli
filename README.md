@@ -355,6 +355,8 @@ This is especially useful for checking breaking changes before updating.
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
 
+**GitHub Actions:** For a composite action that installs stud, writes `~/.config/stud/config.yml` (and optionally `.git/stud.config`), runs `stud config:validate --agent`, plus guidance on secrets, permissions, and fork safety, see [GitHub Actions with stud-cli](documentation/github-actions.md).
+
 **Automatic Configuration Migration:** `stud-cli` includes an automatic migration system that updates your configuration format when the tool is updated. Global configuration migrations run automatically during `stud update`, and project-specific migrations run on-demand when you execute commands in a git repository. If mandatory configuration keys are missing, the tool will prompt you interactively or provide helpful error messages in non-interactive mode.
 
 #### `stud config:init` (Alias: `stud init`)
@@ -1058,6 +1060,7 @@ stud to PROJ-123 -q                      # switch to first branch found, no prom
 
 **CI guidance:**
 
+- **GitHub Actions:** See [documentation/github-actions.md](documentation/github-actions.md) for the `stud-cli-setup` composite, required secrets, `skipGit` behavior with `config:validate --agent`, the `jira-label-sync` workflow (repository variable **`STUD_JIRA_LABEL_MAP`** for GitHub→Jira label JSON), and public-repo / fork constraints.
 - **Config must be complete:** Ensure global config (`~/.config/stud/config.yml`) and, if needed, project config (`.git/stud.config`) are present and valid so commands do not prompt. Use `stud config:validate` (optionally with `--skip-jira` or `--skip-git`) as a health check.
 - **Prefer non-interactive flags:** Use `--quiet`, `-m`, `--draft`, `--labels`, `--all`, etc. where available to avoid prompts.
 - **Environment:** Set `HOME` (or the config path) in CI so `stud` can find its config; avoid relying on interactive wizards like `stud config:init` in CI.

@@ -1,0 +1,149 @@
+name: stud-cli-setup
+description: >-
+  Install stud-cli (PHP 8.2+, pinned setup-stud.sh), write ~/.config/stud/config.yml and optionally
+  .git/stud.config from workflow inputs/secrets, then run stud config:validate --agent.
+author: Studapart
+
+branding:
+  icon: terminal
+  color: purple
+
+inputs:
+  jira-url:
+    description: Jira Cloud base URL without trailing slash (e.g. https://your-domain.atlassian.net).
+    required: true
+  jira-email:
+    description: Atlassian account email for the Jira REST API.
+    required: true
+  jira-api-token:
+    description: Jira API token. Pass from a GitHub secret; do not echo or print.
+    required: true
+  language:
+    description: stud global LANGUAGE value (e.g. en).
+    required: false
+    default: en
+  github-token:
+    description: Optional GITHUB_TOKEN for stud GitHub operations.
+    required: false
+    default: ''
+  gitlab-token:
+    description: Optional GitLab personal access token.
+    required: false
+    default: ''
+  gitlab-instance-url:
+    description: Optional GitLab instance URL when using GitLab.
+    required: false
+    default: ''
+  jira-transition-enabled:
+    description: 'If true, sets JIRA_TRANSITION_ENABLED: true in global config.'
+    required: false
+    default: 'false'
+  stud-install-ref:
+    description: >-
+      Git ref on Studapart/stud-cli for setup-stud.sh (branch, tag, or SHA). Pin to a tag or SHA
+      for supply-chain consistency; must include --skip-init support when using the default install args.
+    required: false
+    default: develop
+  run-config-validate:
+    description: Run stud config:validate --agent after writing configuration.
+    required: false
+    default: 'true'
+  validate-skip-git:
+    description: When true, pass skipGit true to config:validate (Jira-only CI jobs).
+    required: false
+    default: 'true'
+  project-stud-config:
+    description: >-
+      Optional multiline content written to .git/stud.config. Requires actions/checkout (or equivalent)
+      before this action so the repository .git directory exists.
+    required: false
+    default: ''
+  php-version:
+    description: PHP version passed to shivammathur/setup-php.
+    required: false
+    default: '8.2'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: xml, curl, mbstring
+
+    - name: Install stud-cli
+      shell: bash
+      env:
+        STUD_INSTALL_REF: ${{ inputs.stud-install-ref }}
+      run: |
+        set -euo pipefail
+        url="https://raw.githubusercontent.com/Studapart/stud-cli/${STUD_INSTALL_REF}/setup-stud.sh"
+        curl -fsSL "$url" | bash -s -- --force --skip-init
+
+    - name: Add stud to PATH
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+    - name: Write global stud config
+      shell: bash
+      env:
+        JIRA_URL: ${{ inputs.jira-url }}
+        JIRA_EMAIL: ${{ inputs.jira-email }}
+        JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
+        LANGUAGE: ${{ inputs.language }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITLAB_TOKEN: ${{ inputs.gitlab-token }}
+        GITLAB_INSTANCE_URL: ${{ inputs.gitlab-instance-url }}
+        JIRA_TRANSITION_ENABLED: ${{ inputs.jira-transition-enabled }}
+      run: |
+        set -euo pipefail
+        cfg="${HOME}/.config/stud/config.yml"
+        mkdir -p "${HOME}/.config/stud"
+        umask 077
+        jira_url="${JIRA_URL%/}"
+        {
+          echo "LANGUAGE: ${LANGUAGE}"
+          echo "JIRA_URL: ${jira_url}"
+          echo "JIRA_EMAIL: ${JIRA_EMAIL}"
+          echo "JIRA_API_TOKEN: ${JIRA_API_TOKEN}"
+          if [ -n "${GITHUB_TOKEN}" ]; then
+            echo "GITHUB_TOKEN: ${GITHUB_TOKEN}"
+          fi
+          if [ -n "${GITLAB_TOKEN}" ]; then
+            echo "GITLAB_TOKEN: ${GITLAB_TOKEN}"
+          fi
+          if [ -n "${GITLAB_INSTANCE_URL}" ]; then
+            echo "GITLAB_INSTANCE_URL: ${GITLAB_INSTANCE_URL}"
+          fi
+          if [ "${JIRA_TRANSITION_ENABLED}" = "true" ]; then
+            echo "JIRA_TRANSITION_ENABLED: true"
+          else
+            echo "JIRA_TRANSITION_ENABLED: false"
+          fi
+        } > "$cfg"
+        chmod 600 "$cfg"
+
+    - name: Write project stud config
+      if: ${{ inputs.project-stud-config != '' }}
+      shell: bash
+      env:
+        PROJECT_STUD_CONFIG: ${{ inputs.project-stud-config }}
+      run: |
+        set -euo pipefail
+        mkdir -p .git
+        printf '%s\n' "${PROJECT_STUD_CONFIG}" > .git/stud.config
+        chmod 600 .git/stud.config
+
+    - name: Validate stud configuration
+      if: ${{ inputs.run-config-validate == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "${{ inputs.validate-skip-git }}" = 'true' ]; then
+          echo '{"skipJira":false,"skipGit":true}' | stud config:validate --agent
+        else
+          echo '{"skipJira":false,"skipGit":false}' | stud config:validate --agent
+        fi
