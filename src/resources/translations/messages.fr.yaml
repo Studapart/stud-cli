@@ -68,6 +68,30 @@ config:
     status_ok: "OK"
     status_fail: "Échec"
     status_skipped: "Ignoré"
+  project_init:
+    section_title: "Configuration du projet"
+    not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
+    unknown_keys: "Clés inconnues dans le JSON agent : %keys%. Voir stud config:project-init et stud help --agent."
+    reserved_keys: "Ces clés ne peuvent pas être définies par cette commande : %keys%"
+    invalid_git_provider: "gitProvider doit être github ou gitlab."
+    invalid_transition_id: "transitionId doit être un entier positif ou nul."
+    base_branch_error: "%message%"
+    interactive_title: "Configuration stud du projet"
+    interactive_hint: "Appuyez sur Entrée pour conserver la valeur actuelle. Laissez les champs optionnels vides pour les ignorer."
+    prompt_project_key: "Clé de projet Jira (cache de transition ; optionnel)"
+    prompt_jira_default_project: "Clé de projet Jira par défaut pour items:create (optionnel)"
+    prompt_confluence_default_space: "Clé d'espace Confluence par défaut (optionnel)"
+    prompt_transition_id: "ID de transition Jira mis en cache (optionnel, chiffres uniquement)"
+    prompt_base_branch: "Nom de la branche de base"
+    prompt_git_provider: "Fournisseur Git pour ce dépôt"
+    prompt_gitlab_instance_url: "URL de l'instance GitLab (optionnel, auto-hébergé)"
+    prompt_github_token_hint: "Jeton GitHub : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
+    prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
+    prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
+    prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
+    status_updated: "Configuration du projet mise à jour (.git/stud.config)."
+    status_unchanged: "Aucune modification écrite (configuration inchangée)."
+    failed: "Échec de la mise à jour de la configuration du projet."
   error:
     not_found: 'Fichier de configuration introuvable à : %path%
 
@@ -570,6 +594,10 @@ help:
   command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
   command_config_show: "Afficher la configuration actuelle (globale et projet) avec les secrets masqués ; sûr à partager."
   command_config_validate: "Valider que la configuration est présente et que Jira et le fournisseur Git sont accessibles. Utilisez --skip-jira ou --skip-git pour des vérifications partielles."
+  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Utilisez les options CLI, stud config:project-init --agent avec du JSON, ou le mode interactif sans option. Les clés agent inconnues sont rejetées ; migration_version est réservée."
+  option_config_project_init_project_key: "Clé de projet Jira (cache de transition avec transition-id)"
+  option_config_project_init_base_branch: "Branche de base ; la présence sur origin est vérifiée sauf si --skip-base-branch-remote-check est défini"
+  option_config_project_init_skip_base: "Ne pas vérifier que la branche de base existe sur origin"
   command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).

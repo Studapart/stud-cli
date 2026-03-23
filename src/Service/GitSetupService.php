@@ -380,4 +380,29 @@ class GitSetupService
 
         return $enteredToken;
     }
+
+    /**
+     * Ensures the branch exists on origin (same check as ensureBaseBranchConfigured).
+     *
+     * @throws \RuntimeException When the branch is missing on the remote
+     */
+    public function validateBaseBranchOnRemote(string $baseBranch): void
+    {
+        $branchName = str_replace('origin/', '', $baseBranch);
+        if ($branchName === '' || ! $this->gitRepository->remoteBranchExists('origin', $branchName)) {
+            throw new \RuntimeException(
+                $this->translator->trans('config.base_branch_invalid', [
+                    'branch' => $branchName !== '' ? $branchName : $baseBranch,
+                ])
+            );
+        }
+    }
+
+    /**
+     * Returns the first matching remote branch name from the usual default candidates, if any.
+     */
+    public function detectDefaultBaseBranchName(): ?string
+    {
+        return $this->detectBaseBranch();
+    }
 }
