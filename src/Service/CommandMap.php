@@ -242,6 +242,18 @@ class CommandMap
                 ],
                 'arguments' => [],
             ],
+            'push' => [
+                'alias' => 'ps',
+                'description_key' => 'help.command_push',
+                'options' => [
+                    ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
+                    ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
+                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                    ['name' => '--no-please', 'shortcut' => null, 'description_key' => 'help.option_push_no_please', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
         ];
     }
 

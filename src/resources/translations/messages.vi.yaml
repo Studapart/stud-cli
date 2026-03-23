@@ -264,6 +264,11 @@ please:
 
     Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
   warning_force: ⚠️  Đang ép buộc với lease...
+push:
+  pushing: "Đang đẩy nhánh %branch%..."
+  success: "✅ Đã đẩy nhánh lên origin."
+  error_push: "Push thất bại. Nhánh của bạn có thể đã lệch so với remote.\nĐồng bộ hoặc chạy 'stud please' để force-push với lease."
+  confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
   error_no_commit: Không có commit nào để hoàn tác.
@@ -580,10 +585,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Hướng dẫn bạn tạo một commit thông thường.
   command_commit_undo: "Xóa commit cuối cùng và giữ các thay đổi chưa stage. Cảnh báo hoặc yêu cầu xác nhận nếu đã push; dùng 'stud please' để force-push sau đó."
+  command_push: "Commit giống stud commit, sau đó push HEAD lên origin (cùng kiểu push không ép như bước kiểm tra của stud submit). Sau khi push thất bại chạy hoặc hỏi stud please trừ khi tắt. CLI: --no-please. JSON agent: chỉ pleaseFallback (mặc định true; false = không stud please). stud push --agent --no-please tương đương pleaseFallback false."
   command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
   command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
-  command_submit: Đẩy nhánh hiện tại và tạo Pull Request.
+  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
   command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
@@ -601,6 +607,7 @@ help:
   option_commit_new: Tạo một commit logic mới thay vì fixup
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)
+  option_push_no_please: "Sau khi push thường thất bại, không chạy hoặc hỏi stud please"
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật

@@ -82,7 +82,7 @@ class SubmitHandler
         }
 
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.pushing', ['branch' => $branch]));
-        $pushProcess = $this->gitRepository->pushToOrigin('HEAD');
+        $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if (! $pushProcess->isSuccessful()) {
             $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_push')));
 

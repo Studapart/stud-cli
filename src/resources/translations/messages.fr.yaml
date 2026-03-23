@@ -264,6 +264,11 @@ please:
 
     Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
   warning_force: ⚠️  Forçage avec lease...
+push:
+  pushing: "Poussée de la branche %branch%…"
+  success: "✅ Branche poussée vers origin."
+  error_push: "Échec du push. Votre branche a peut-être divergé du remote.\nSynchronisez ou exécutez « stud please » pour un force-push avec lease."
+  confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
   error_no_commit: Il n'y a pas de commit à annuler.
@@ -580,10 +585,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Vous guide à travers la création d'un commit conventionnel.
   command_commit_undo: "Supprime le dernier commit et garde les modifications non indexées. Refuse ou demande confirmation si le dernier commit est déjà poussé ; utilisez 'stud please' pour force-push après annulation."
+  command_push: "Comme stud commit, puis pousse HEAD vers origin (même push non forcé que la pré-vérification de stud submit). Après un push échoué, exécute ou propose stud please sauf si désactivé. CLI : --no-please. JSON agent : uniquement pleaseFallback (défaut true ; false = pas de stud please). stud push --agent --no-please équivaut à pleaseFallback false."
   command_please: Un force-push sûr pour utilisateur avancé (force-with-lease).
   command_flatten: Fusionner automatiquement tous les commits fixup! dans leurs commits cibles.
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
-  command_submit: Pousse la branche actuelle et crée une Pull Request.
+  command_submit: "Pousse la branche actuelle et crée une Pull Request. JSON agent : stageAll optionnel — si true, exécute stud push d'abord (isNew, message, pleaseFallback optionnels ; comme stud push --agent)."
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
   command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
   command_status: Un tableau de bord rapide "où suis-je ?".
@@ -601,6 +607,7 @@ help:
   option_commit_new: Créer un nouveau commit logique au lieu d'un fixup
   option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
   option_commit_all: Mettre en staging toutes les modifications avant de committer (restaure l'ancien comportement)
+  option_push_no_please: "Après un push normal échoué, ne pas exécuter ni proposer stud please"
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour

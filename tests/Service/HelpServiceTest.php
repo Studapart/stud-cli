@@ -72,6 +72,7 @@ class HelpServiceTest extends TestCase
             'items:transition',
             'branch:rename',
             'commit',
+            'push',
             'please',
             'status',
             'submit',

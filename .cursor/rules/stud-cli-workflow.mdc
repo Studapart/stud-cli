@@ -20,7 +20,8 @@ Never use these directly — use the `stud --agent` equivalent instead:
 | Forbidden | Use instead |
 |-----------|-------------|
 | `git commit` | `echo '{"stageAll": true}' \| stud co --agent` |
-| `git push` + `gh pr create` | `echo '{"labels": "AI-Generated,RFR"}' \| stud submit --agent` |
+| `git commit` + `git push` (no PR) | `echo '{"stageAll": true}' \| stud push --agent` |
+| `git push` + `gh pr create` | `echo '{"labels": "AI-Generated,RFR","stageAll": true}' \| stud submit --agent` when changes are not committed yet; otherwise `echo '{"labels": "AI-Generated,RFR"}' \| stud submit --agent` |
 | `gh pr comment` | `echo '{"message": "..."}' \| stud pc --agent` |
 | `git checkout -b` (for Jira work) | `stud start <KEY>` |
 

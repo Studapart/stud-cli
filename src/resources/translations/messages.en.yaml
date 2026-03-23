@@ -275,6 +275,13 @@ please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
 
+# Push Handler (commit + origin push; same non-force push as submit preflight)
+push:
+  pushing: "Pushing branch %branch%..."
+  success: "✅ Branch pushed to origin."
+  error_push: "Push failed. Your branch may have diverged from the remote.\nTry syncing or run 'stud please' to force-push with lease."
+  confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
+
 # Commit Undo Handler
 commit_undo:
   error_not_repo: "Not in a git repository."
@@ -591,10 +598,11 @@ help:
   command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
   command_commit: "Guides you through making a conventional commit."
   command_commit_undo: "Removes the last commit and keeps changes unstaged. Refuses or prompts when the last commit is already pushed; use 'stud please' to force-push after undoing."
+  command_push: "Commits like stud commit, then pushes HEAD to origin (same non-force push as stud submit preflight). After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
-  command_submit: "Pushes the current branch and creates a Pull Request."
+  command_submit: "Pushes the current branch and creates a Pull Request. Agent JSON: optional stageAll — when true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."
@@ -614,6 +622,7 @@ help:
   option_commit_new: "Create a new logical commit instead of a fixup"
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
   option_commit_all: "Stage all changes before committing (restores old behavior)"
+  option_push_no_please: "After a failed normal push, do not run or prompt for stud please"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
   option_update_info: "Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating"

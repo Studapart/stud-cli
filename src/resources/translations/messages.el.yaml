@@ -264,6 +264,11 @@ please:
 
     Για την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε "stud submit".'
   warning_force: ⚠️  Εξαναγκασμός με lease...
+push:
+  pushing: "Ωθώντας κλάδο %branch%..."
+  success: "✅ Ο κλάδος ωθήθηκε στο origin."
+  error_push: "Το push απέτυχε. Ο κλάδος σας μπορεί να έχει αποκλίνει από το remote.\nΣυγχρονίστε ή εκτελέστε 'stud please' για force-push με lease."
+  confirm_please: "Το κανονικό push απέτυχε. Εκτέλεση 'stud please' (force-with-lease) τώρα;"
 commit_undo:
   error_not_repo: Δεν βρίσκεστε σε git repository.
   error_no_commit: Δεν υπάρχει commit προς ακύρωση.
@@ -580,10 +585,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit.
   command_commit_undo: "Αφαιρεί το τελευταίο commit και αφήνει τις αλλαγές unstaged. Προειδοποιεί ή ζητά επιβεβαίωση αν έχει ήδη γίνει push· χρησιμοποιήστε 'stud please' για force-push μετά."
+  command_push: "Όπως το stud commit, μετά ωθεί το HEAD στο origin (ίδιο μη εξαναγκαστικό push με το preflight του stud submit). Μετά από αποτυχημένο push εκτελεί ή προσφέρει stud please εκτός αν απενεργοποιηθεί. CLI: --no-please. JSON agent: μόνο pleaseFallback (προεπιλογή true· false = χωρίς stud please). stud push --agent --no-please = pleaseFallback false."
   command_please: Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease).
   command_flatten: Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους.
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
-  command_submit: Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request.
+  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request. JSON agent: προαιρετικό stageAll — όταν true, εκτελεί πρώτα stud push (προαιρετικά isNew, message, pleaseFallback· όπως stud push --agent)."
   command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
   command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου.
   command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".
@@ -601,6 +607,7 @@ help:
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)
+  option_push_no_please: "Μετά από αποτυχημένο κανονικό push, να μην εκτελείται ή να προσφέρεται το stud please"
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
   option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση

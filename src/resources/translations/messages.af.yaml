@@ -264,6 +264,11 @@ please:
 
     Vir die aanvanklike push en om ''n Pull Request te skep, gebruik asseblief "stud submit".'
   warning_force: ⚠️  Dwing met lease...
+push:
+  pushing: "Branch %branch% word gestoot..."
+  success: "✅ Branch na origin gestoot."
+  error_push: "Stoot het misluk. U branch het dalk van die remote afgewyk.\nSinkroniseer of voer 'stud please' uit vir force-push met lease."
+  confirm_please: "Normale stoot het misluk. Voer nou 'stud please' (force-with-lease) uit?"
 commit_undo:
   error_not_repo: Nie in 'n git repository nie.
   error_no_commit: Daar is geen commit om ongedaan te maak nie.
@@ -580,10 +585,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Lei jou deur die maak van 'n konvensionele commit.
   command_commit_undo: "Verwyder die laaste commit en hou veranderinge unstaged. Waarsku of vra bevestiging as reeds gepush; gebruik 'stud please' om daarna force-push te doen."
+  command_push: "Soos stud commit, stoot dan HEAD na origin (dieselfde nie-gedwonge stoot as stud submit se voorafkontrole). Na mislukte stoot: stud please tensy afgeskakel. CLI: --no-please. Agent-JSON: slegs pleaseFallback (verstek true; false = geen stud please). stud push --agent --no-please = pleaseFallback false."
   command_please: '''n Veilige force-push vir gevorderde gebruikers (force-with-lease).'
   command_flatten: Voeg outomaties alle fixup! commits saam in hul teiken commits.
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.
-  command_submit: Stuur die huidige tak en skep 'n Pull Request.
+  command_submit: "Stuur die huidige tak en skep 'n Pull Request. Agent-JSON: opsioneel stageAll — indien true word stud push eers uitgevoer (opsioneel isNew, message, pleaseFallback; soos stud push --agent)."
   command_pr_comment: Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument.
   command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit.
   command_status: '''n Vinnige "waar is ek?" dashboard.'
@@ -601,6 +607,7 @@ help:
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
   option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
   option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
+  option_push_no_please: "Na 'n mislukte normale stoot, moenie stud please uitvoer of aanbied nie"
   option_submit_draft: Skep 'n Draft Pull Request (gemerk as "Draft" op GitHub)
   option_submit_labels: Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys
   option_update_info: Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer

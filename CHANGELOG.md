@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`stud submit --agent`:** Optional JSON `stageAll` (with optional `isNew`, `message`, `pleaseFallback`) runs the same commit + origin push path as `stud push` before PR creation. Agent schema updated. Documented in README, `AI.md`, and `.cursor/rules/stud-cli-workflow.mdc`.
+
+### Changed
+
+- **Agent JSON for `push` / `submit` (stageAll path):** Removed redundant `noPlease` from the generated agent schema; use `pleaseFallback: false` only. CLI `--no-please` on `stud push` still works and, with `--agent`, is applied as `pleaseFallback: false` before the handler runs.
+
+- **`stud push` / `stud ps` (SCI-83):** Commit (same behavior and flags as `stud commit`) then non-force `origin` push shared with `stud submit` preflight via `GitRepository::pushHeadToOrigin()`. On rejected push: quiet and agent (default) run `stud please` unless disabled via CLI `--no-please` or agent JSON `pleaseFallback: false` (agent schema documents `pleaseFallback` only, not `noPlease`). Interactive mode prompts first. Help, CommandMap, eight locales, README, and tests added.
+
 - **GitHub Actions (SCI-82):** Composite action `.github/actions/stud-cli-setup` installs stud (pinned `setup-stud.sh` ref, PHP 8.2+), writes global (and optional project) config without printing secrets, and runs `stud config:validate --agent`. Documentation in `documentation/github-actions.md` (secrets, `skipGit`, fork safety, `pull_request_target` warning). Workflow `.github/workflows/jira-label-sync.yml` syncs PR labels to Jira using repository variable **`STUD_JIRA_LABEL_MAP`** (JSON object) instead of a committed map file. `setup-stud.sh` supports `--skip-init` for non-interactive installs without relying on `--force` alone.
 
 ## [3.12.1] - 2026-03-19

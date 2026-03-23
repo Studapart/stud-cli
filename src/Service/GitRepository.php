@@ -328,6 +328,14 @@ SCRIPT;
         return $this->runQuietly("git push --set-upstream origin {$branchName}");
     }
 
+    /**
+     * Non-force push of HEAD to origin (same ref as submit preflight). Delegates to {@see pushToOrigin}.
+     */
+    public function pushHeadToOrigin(): Process
+    {
+        return $this->pushToOrigin('HEAD');
+    }
+
     public function getMergeBase(string $baseBranch, string $head): string
     {
         return trim($this->run("git merge-base {$baseBranch} {$head}")->getOutput());
