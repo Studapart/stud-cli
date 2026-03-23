@@ -53,7 +53,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -105,7 +105,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -181,7 +181,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(false);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -197,7 +197,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn(null);
 
@@ -218,7 +218,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature'); // No Jira key
@@ -269,7 +269,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature'); // No Jira key
@@ -291,7 +291,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-99]'); // Different key in commit
@@ -343,7 +343,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -390,7 +390,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -424,7 +424,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -474,7 +474,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -536,7 +536,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -599,7 +599,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -633,7 +633,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -673,7 +673,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -720,7 +720,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -761,7 +761,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -888,7 +888,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -960,7 +960,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1008,7 +1008,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1333,7 +1333,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1405,7 +1405,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1446,7 +1446,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1528,7 +1528,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1594,7 +1594,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1681,7 +1681,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1746,7 +1746,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1807,7 +1807,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1887,7 +1887,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -1964,7 +1964,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
@@ -2010,7 +2010,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');

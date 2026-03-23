@@ -264,6 +264,11 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+push:
+  pushing: "Отправка ветки %branch%..."
+  success: "✅ Ветка отправлена в origin."
+  error_push: "Push не удался. Ветка могла разойтись с удалённым репозиторием.\nСинхронизируйтесь или выполните «stud please» для force-push с lease."
+  confirm_please: "Обычный push не удался. Выполнить сейчас «stud please» (force-with-lease)?"
 commit_undo:
   error_not_repo: Не в git-репозитории.
   error_no_commit: Нет коммита для отмены.
@@ -580,6 +585,7 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Проводит вас через создание обычного коммита.
   command_commit_undo: "Удаляет последний коммит и оставляет изменения без индексации. Предупреждает или запрашивает подтверждение, если уже отправлен; используйте 'stud please' для force-push после отмены."
+  command_push: "Делает commit как stud commit, затем отправляет HEAD в origin (тот же обычный push, что и preflight у stud submit). После неудачного push запускает или предлагает stud please, кроме случая --no-please. JSON агента: необязательный pleaseFallback (по умолчанию true); CLI --no-please имеет приоритет над true pleaseFallback в JSON."
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
@@ -601,6 +607,7 @@ help:
   option_commit_new: Создать новый логический коммит вместо fixup
   option_commit_message: Обойти интерактивный промптер и использовать предоставленное сообщение для коммита
   option_commit_all: Подготовить все изменения перед коммитом (восстанавливает старое поведение)
+  option_push_no_please: "После неудачного обычного push не запускать и не предлагать stud please"
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
   option_update_info: Предварительный просмотр changelog последней доступной версии без загрузки или установки. Полезно для проверки критических изменений перед обновлением

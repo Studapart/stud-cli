@@ -854,6 +854,21 @@ These commands integrate directly with your local Git repository to streamline y
         stud commit -q --all
         ```
 
+-   **`stud push`** (Alias: `stud ps`)
+    -   **Description:** Runs the same commit flow as `stud commit`, then pushes `HEAD` to `origin` using the same non-force command as `stud submit` preflight (`git push --set-upstream origin HEAD`). Does **not** open or update a pull request. If that push is rejected (for example non-fast-forward), behavior depends on mode:
+        - **Interactive** (no `-q`, no `--agent`): asks whether to run `stud please` unless you pass `--no-please`.
+        - **Quiet** (`-q`) or **agent** (`--agent`): runs `stud please` automatically after a failed push, unless `--no-please` is set or agent JSON sets `"pleaseFallback": false`. If both CLI `--no-please` and agent JSON apply, **`--no-please` wins** over a true `pleaseFallback` in JSON.
+    -   **Options:** Same commit-related flags as `stud commit` (`--new`, `-m` / `--message`, `-a` / `--all`, `-q` / `--quiet`), plus:
+        -   `--no-please`: After a failed normal push, do not prompt for or run `stud please`.
+    -   **Agent JSON:** `isNew`, `message`, `stageAll` (same as `stud commit`), and optional `pleaseFallback` (boolean; when omitted, treated as `true`).
+    -   **Usage:**
+        ```bash
+        stud push
+        stud ps -m "feat(scope): summary" -a
+        stud push -q --all
+        echo '{"stageAll":true,"pleaseFallback":false}' | stud push --agent
+        ```
+
 -   **`stud please`** (Alias: `stud pl`)
     -   **Description:** A power-user, safe force-push using `git push --force-with-lease`.
     -   **Usage:**

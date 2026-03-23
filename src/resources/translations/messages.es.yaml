@@ -264,6 +264,11 @@ please:
 
     Para el push inicial y para crear una Pull Request, por favor use "stud submit".'
   warning_force: ⚠️  Forzando con lease...
+push:
+  pushing: "Empujando rama %branch%..."
+  success: "✅ Rama enviada a origin."
+  error_push: "Push fallido. Su rama puede haber divergido del remoto.\nSincronice o ejecute 'stud please' para force-push con lease."
+  confirm_please: "El push normal falló. ¿Ejecutar ahora 'stud please' (force-with-lease)?"
 commit_undo:
   error_not_repo: No está en un repositorio git.
   error_no_commit: No hay commit que deshacer.
@@ -580,6 +585,7 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Le guía a través de la creación de un commit convencional.
   command_commit_undo: "Elimina el último commit y deja los cambios sin preparar. Avisa o pide confirmación si ya está pusheado; use 'stud please' para force-push después."
+  command_push: "Hace commit como stud commit y luego empuja HEAD a origin (mismo push sin fuerza que el preflight de stud submit). Tras un push fallido ejecuta u ofrece stud please salvo con --no-please. JSON del agente: pleaseFallback opcional (true por defecto); el CLI --no-please prevalece sobre pleaseFallback true en JSON."
   command_please: Un force-push seguro para usuario avanzado (force-with-lease).
   command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
@@ -601,6 +607,7 @@ help:
   option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
   option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
   option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)
+  option_push_no_please: "Tras un push normal fallido, no ejecutar ni ofrecer stud please"
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
   option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar

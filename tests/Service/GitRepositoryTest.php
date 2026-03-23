@@ -566,6 +566,20 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository->pushToOrigin('my-branch');
     }
 
+    public function testPushHeadToOrigin(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git push --set-upstream origin HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+
+        $this->gitRepository->pushHeadToOrigin();
+    }
+
     public function testGetMergeBase(): void
     {
         $process = $this->createMock(Process::class);

@@ -264,6 +264,11 @@ please:
 
     Voor de eerste push en om een Pull Request te maken, gebruik alstublieft "stud submit".'
   warning_force: ⚠️  Forceren met lease...
+push:
+  pushing: "Branch %branch% pushen..."
+  success: "✅ Branch naar origin gepusht."
+  error_push: "Push mislukt. Uw branch wijkt mogelijk af van de remote.\nSynchroniseer of voer 'stud please' uit voor force-push met lease."
+  confirm_please: "Normale push mislukt. Nu 'stud please' (force-with-lease) uitvoeren?"
 commit_undo:
   error_not_repo: Niet in een git repository.
   error_no_commit: Er is geen commit om ongedaan te maken.
@@ -622,6 +627,7 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Begeleidt u bij het maken van een conventionele commit.
   command_commit_undo: "Verwijdert de laatste commit en houdt wijzigingen unstaged. Waarschuwt of vraagt bevestiging als al gepusht; gebruik 'stud please' om daarna force-push te doen."
+  command_push: "Zoals stud commit, daarna HEAD naar origin pushen (zelfde niet-forcerende push als stud submit preflight). Na mislukte push voert stud please uit of biedt het aan, tenzij --no-please. Agent-JSON: optioneel pleaseFallback (standaard true); CLI --no-please gaat voor op true pleaseFallback in JSON."
   command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
   command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
@@ -643,6 +649,7 @@ help:
   option_commit_new: Maak een nieuwe logische commit in plaats van een fixup
   option_commit_message: Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit
   option_commit_all: Stage alle wijzigingen voordat u commit (herstelt het oude gedrag)
+  option_push_no_please: "Na een mislukte normale push stud please niet uitvoeren of aanbieden"
   option_submit_draft: Maak een Draft Pull Request (gemarkeerd als "Draft" op GitHub)
   option_submit_labels: Komma-gescheiden lijst van labels om toe te passen op de Pull Request. Als een label niet bestaat, wordt u gevraagd deze te maken, te negeren of opnieuw te proberen met een gecorrigeerde lijst
   option_update_info: Bekijk het changelog van de nieuwste beschikbare versie zonder te downloaden of te installeren. Handig voor het controleren van breaking changes voordat u update

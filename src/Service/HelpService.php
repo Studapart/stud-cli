@@ -27,6 +27,7 @@ class HelpService
         'branch:rename' => 'stud branch:rename',
         'commit' => 'stud commit',
         'commit:undo' => 'stud commit:undo',
+        'push' => 'stud push',
         'please' => 'stud please',
         'flatten' => 'stud flatten',
         'sync' => 'stud sync',

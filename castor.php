@@ -54,6 +54,7 @@ use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
+use App\Handler\PushHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
@@ -1850,6 +1851,60 @@ function commit(
     }
 }
 
+#[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Push result')]
+function push(
+    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
+    bool $isNew = false,
+    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')]
+    ?string $message = null,
+    #[AsOption(name: 'all', shortcut: 'a', description: 'Stage all changes before committing')]
+    bool $stageAll = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: no prompts; failed push runs stud please unless --no-please')]
+    bool $quiet = false,
+    #[AsOption(name: 'no-please', description: 'After a failed normal push, do not run or prompt for stud please')]
+    bool $noPlease = false,
+    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
+    bool $help = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $pleaseFallback = true;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $isNew = (bool) ($input['isNew'] ?? false);
+        $message = $input['message'] ?? null;
+        $stageAll = (bool) ($input['stageAll'] ?? false);
+        $quiet = true;
+        if (array_key_exists('pleaseFallback', $input)) {
+            $pleaseFallback = (bool) $input['pleaseFallback'];
+        }
+    }
+    if (! $agent && $help) {
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService->displayCommandHelp(_get_logger(), 'push');
+
+        return;
+    }
+    $gitRepository = _get_git_repository();
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
+    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPlease, $agent, $pleaseFallback);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed'));
+
+        return;
+    }
+}
+
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Force push result')]
 function please(
@@ -2348,6 +2403,7 @@ function help(
             'rn' => 'branch:rename',
             'co' => 'commit',
             'undo' => 'commit:undo',
+            'ps' => 'push',
             'pl' => 'please',
             'su' => 'submit',
             'pc' => 'pr:comment',
@@ -2532,6 +2588,11 @@ function help(
                 'name' => 'commit:undo',
                 'alias' => 'undo',
                 'description' => $translator->trans('help.command_commit_undo'),
+            ],
+            [
+                'name' => 'push',
+                'alias' => 'ps',
+                'description' => $translator->trans('help.command_push'),
             ],
             [
                 'name' => 'please',

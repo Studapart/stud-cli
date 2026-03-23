@@ -470,8 +470,8 @@ class BranchRenameHandlerTest extends CommandTestCase
         // getCurrentBranchName is called multiple times:
         // 1. In handle() to determine target branch (returns 'old-branch' initially)
         // 2. In findAssociatedPullRequest() (returns 'old-branch')
-        // 3. In SubmitHandler (returns 'new-branch' after rename)
-        // 4. In updatePullRequestAfterRename() to find new PR (returns 'new-branch')
+        // 3. In SubmitHandler preflight (returns 'new-branch' after rename)
+        // 4. In commentOnNewPullRequest() (returns 'new-branch')
         $this->gitRepository->expects($this->atLeast(4))
             ->method('getCurrentBranchName')
             ->willReturnOnConsecutiveCalls('old-branch', 'old-branch', 'new-branch', 'new-branch');
@@ -493,8 +493,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository->expects($this->once())
-            ->method('pushToOrigin')
-            ->with('HEAD')
+            ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
         $this->gitRepository->expects($this->once())
             ->method('getMergeBase')
@@ -849,8 +848,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository->expects($this->once())
-            ->method('pushToOrigin')
-            ->with('HEAD')
+            ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
         $this->gitRepository->expects($this->once())
             ->method('getMergeBase')
@@ -965,8 +963,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository->expects($this->once())
-            ->method('pushToOrigin')
-            ->with('HEAD')
+            ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
         $this->gitRepository->expects($this->once())
             ->method('getMergeBase')
@@ -1044,8 +1041,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
         $this->gitRepository->expects($this->once())
-            ->method('pushToOrigin')
-            ->with('HEAD')
+            ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
         $this->gitRepository->expects($this->once())
             ->method('getMergeBase')
