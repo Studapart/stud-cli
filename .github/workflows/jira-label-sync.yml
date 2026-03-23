@@ -1,4 +1,5 @@
-# Sync a subset of GitHub PR labels to Jira using stud items:update --agent.
+# Sync mapped GitHub PR labels to Jira using stud items:show + items:update --agent.
+# Preserves Jira labels that are not values in STUD_JIRA_LABEL_MAP.
 #
 # Requires: secrets STUD_JIRA_* and repository variable STUD_JIRA_LABEL_MAP (JSON object).
 # See documentation/github-actions.md
@@ -35,7 +36,7 @@ jobs:
           stud-install-ref: ${{ github.event.pull_request.head.sha }}
           validate-skip-git: true
 
-      - name: Map PR labels to Jira and run items:update
+      - name: Merge mapped PR labels into Jira (items:show + items:update)
         shell: bash
         env:
           LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
@@ -48,7 +49,8 @@ jobs:
             exit 1
           fi
           MAP_FILE="$(mktemp)"
-          trap 'rm -f "${MAP_FILE}"' EXIT
+          SHOW_FILE="$(mktemp)"
+          trap 'rm -f "${MAP_FILE}" "${SHOW_FILE}" payload.json' EXIT
           printf '%s' "${LABEL_MAP_JSON}" > "${MAP_FILE}"
           if ! jq -e . "${MAP_FILE}" >/dev/null 2>&1; then
             echo 'STUD_JIRA_LABEL_MAP is not valid JSON.'
@@ -59,17 +61,43 @@ jobs:
             echo 'No Jira issue key found in branch name; expected a segment like PROJ-123.'
             exit 1
           fi
-          JIRA_LABELS="$(echo "${LABELS_JSON}" | jq -r --slurpfile m "${MAP_FILE}" '
-            [ .[].name ]
-            | map($m[0][.] // empty)
-            | map(select(length > 0))
-            | unique
-            | join(",")
-          ')"
-          if [ -z "${JIRA_LABELS}" ]; then
-            echo 'No mapped Jira labels for current PR labels; skipping items:update.'
+          jq -n --arg key "${KEY}" '{key: $key}' | stud items:show --agent > "${SHOW_FILE}"
+          if ! jq -e '.success == true' "${SHOW_FILE}" >/dev/null 2>&1; then
+            echo 'stud items:show --agent failed or returned success=false.'
+            cat "${SHOW_FILE}"
+            exit 1
+          fi
+          CURRENT="$(jq -c '.data.issue.labels // []' "${SHOW_FILE}")"
+          PR_NAMES="$(echo "${LABELS_JSON}" | jq -c '[.[].name]')"
+          MERGED="$(jq -cn \
+            --argjson current "${CURRENT}" \
+            --argjson prn "${PR_NAMES}" \
+            --slurpfile m "${MAP_FILE}" \
+            '
+              ($m[0]) as $map
+              | ($map | to_entries) as $entries
+              | ($entries | map(.value) | unique) as $managed
+              | (reduce $entries[] as $e ({}; .[$e.value] += [$e.key])) as $groups
+              | (
+                  [ $current[] | . as $l | select(($managed | any(. == $l)) | not) ]
+                  + [
+                      $managed[] as $v
+                      | select(
+                          ($groups[$v] // []) as $ghs
+                          | any($ghs[]; . as $g | ($prn | index($g)) != null)
+                        )
+                      | $v
+                    ]
+                )
+              | unique
+              | sort
+            ')"
+          CUR_SORT="$(echo "${CURRENT}" | jq -c 'unique | sort')"
+          if [ "${MERGED}" = "${CUR_SORT}" ]; then
+            echo 'Jira labels already match merged PR sync map; skipping items:update.'
             exit 0
           fi
-          jq -n --arg key "${KEY}" --arg fields "labels=${JIRA_LABELS}" '{key: $key, fields: $fields}' > payload.json
+          FIELDS_VALUE="$(echo "${MERGED}" | jq -r 'join(",")')"
+          jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" '{key: $key, fields: $fields}' > payload.json
           stud items:update --agent < payload.json
           rm -f payload.json
