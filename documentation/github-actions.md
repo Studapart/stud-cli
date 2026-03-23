@@ -96,6 +96,14 @@ Workflow **`.github/workflows/jira-label-sync.yml`** runs on **`pull_request`** 
 
 You can change this variable in the GitHub UI without committing code. The workflow validates that the value is JSON before running `jq`. Variables are not secret; do not put credentials in this JSON.
 
+**Merge semantics (does not wipe unrelated Jira labels):** Jira’s `labels` field is replaced in full on each **`items:update`**. The workflow therefore calls **`stud items:show --agent`** first (JSON input `{"key":"PROJ-123"}`) and reads **`data.issue.labels`**. It builds the next label set as:
+
+- Keep every label already on the issue whose name is **not** a **value** in `STUD_JIRA_LABEL_MAP` (unmanaged labels are never removed by this workflow).
+- For each **distinct Jira name** that appears as a map value (a “managed” target): add that label if **any** GitHub label that maps to it is on the PR; remove **only** that Jira name if **none** of those GitHub labels are on the PR. Multiple GitHub labels mapping to the same Jira label behave as an OR for “present on the PR”.
+- If the merged list equals the current list (order-insensitive), the workflow skips **`items:update`** to avoid noise.
+
+**Edge case:** An empty PR label list still runs the merge so managed Jira labels are removed when no mapped GitHub labels remain; it does not short-circuit in a way that would skip those removals.
+
 **Install ref:** The workflow uses **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** so `setup-stud.sh` matches the PR branch tip. In another repository, pin **`stud-install-ref`** to a **release tag** instead.
 
 ## Example: call composite then `items:update`
