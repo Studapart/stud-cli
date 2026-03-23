@@ -1,0 +1,75 @@
+# Sync a subset of GitHub PR labels to Jira using stud items:update --agent.
+#
+# Requires: secrets STUD_JIRA_* and repository variable STUD_JIRA_LABEL_MAP (JSON object).
+# See documentation/github-actions.md
+#
+# Safeguards:
+# - Skips fork PRs (secrets are unavailable on pull_request from forks)
+
+name: Jira label sync
+
+on:
+  pull_request:
+    types: [labeled, unlabeled]
+
+jobs:
+  jira-label-sync:
+    name: Jira label sync
+    if: >-
+      ${{ github.event.pull_request.head.repo.fork == false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up stud and Jira config
+        uses: ./.github/actions/stud-cli-setup
+        with:
+          jira-url: ${{ secrets.STUD_JIRA_URL }}
+          jira-email: ${{ secrets.STUD_JIRA_EMAIL }}
+          jira-api-token: ${{ secrets.STUD_JIRA_API_TOKEN }}
+          # Tip of the PR branch: ensures setup-stud.sh matches this workflow (e.g. --skip-init). Consumers should pin a release tag.
+          stud-install-ref: ${{ github.event.pull_request.head.sha }}
+          validate-skip-git: true
+
+      - name: Map PR labels to Jira and run items:update
+        shell: bash
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
+          HEAD_REF: ${{ github.head_ref }}
+          LABEL_MAP_JSON: ${{ vars.STUD_JIRA_LABEL_MAP }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LABEL_MAP_JSON//[[:space:]]/}" ]; then
+            echo 'Repository variable STUD_JIRA_LABEL_MAP is not set. Set it to a JSON object mapping GitHub PR label names to Jira labels, e.g. {"bug":"Bug","enhancement":"Story"}'
+            exit 1
+          fi
+          MAP_FILE="$(mktemp)"
+          trap 'rm -f "${MAP_FILE}"' EXIT
+          printf '%s' "${LABEL_MAP_JSON}" > "${MAP_FILE}"
+          if ! jq -e . "${MAP_FILE}" >/dev/null 2>&1; then
+            echo 'STUD_JIRA_LABEL_MAP is not valid JSON.'
+            exit 1
+          fi
+          KEY="$(printf '%s' "${HEAD_REF}" | grep -oE '[A-Z][A-Z0-9]*-[0-9]+' | head -1)"
+          if [ -z "${KEY}" ]; then
+            echo 'No Jira issue key found in branch name; expected a segment like PROJ-123.'
+            exit 1
+          fi
+          JIRA_LABELS="$(echo "${LABELS_JSON}" | jq -r --slurpfile m "${MAP_FILE}" '
+            [ .[].name ]
+            | map($m[0][.] // empty)
+            | map(select(length > 0))
+            | unique
+            | join(",")
+          ')"
+          if [ -z "${JIRA_LABELS}" ]; then
+            echo 'No mapped Jira labels for current PR labels; skipping items:update.'
+            exit 0
+          fi
+          jq -n --arg key "${KEY}" --arg fields "labels=${JIRA_LABELS}" '{key: $key, fields: $fields}' > payload.json
+          stud items:update --agent < payload.json
+          rm -f payload.json

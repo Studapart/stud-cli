@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub Actions (SCI-82):** Composite action `.github/actions/stud-cli-setup` installs stud (pinned `setup-stud.sh` ref, PHP 8.2+), writes global (and optional project) config without printing secrets, and runs `stud config:validate --agent`. Documentation in `documentation/github-actions.md` (secrets, `skipGit`, fork safety, `pull_request_target` warning). Workflow `.github/workflows/jira-label-sync.yml` syncs PR labels to Jira using repository variable **`STUD_JIRA_LABEL_MAP`** (JSON object) instead of a committed map file. `setup-stud.sh` supports `--skip-init` for non-interactive installs without relying on `--force` alone.
+
 ## [3.12.1] - 2026-03-19
 
 ### Changed
