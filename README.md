@@ -857,10 +857,10 @@ These commands integrate directly with your local Git repository to streamline y
 -   **`stud push`** (Alias: `stud ps`)
     -   **Description:** Runs the same commit flow as `stud commit`, then pushes `HEAD` to `origin` using the same non-force command as `stud submit` preflight (`git push --set-upstream origin HEAD`). Does **not** open or update a pull request. If that push is rejected (for example non-fast-forward), behavior depends on mode:
         - **Interactive** (no `-q`, no `--agent`): asks whether to run `stud please` unless you pass `--no-please`.
-        - **Quiet** (`-q`) or **agent** (`--agent`): runs `stud please` automatically after a failed push, unless `--no-please` is set or agent JSON sets `"pleaseFallback": false`. If both CLI `--no-please` and agent JSON apply, **`--no-please` wins** over a true `pleaseFallback` in JSON.
+        - **Quiet** (`-q`) or **agent** (`--agent`): runs `stud please` automatically after a failed push unless disabled. **CLI:** pass `--no-please` to opt out. **Agent JSON:** use `"pleaseFallback": false` only (no separate `noPlease` key). If you run `stud push --agent --no-please`, that is equivalent to `pleaseFallback: false`.
     -   **Options:** Same commit-related flags as `stud commit` (`--new`, `-m` / `--message`, `-a` / `--all`, `-q` / `--quiet`), plus:
         -   `--no-please`: After a failed normal push, do not prompt for or run `stud please`.
-    -   **Agent JSON:** `isNew`, `message`, `stageAll` (same as `stud commit`), and optional `pleaseFallback` (boolean; when omitted, treated as `true`).
+    -   **Agent JSON:** `isNew`, `message`, `stageAll` (same as `stud commit`), and optional `pleaseFallback` (boolean; default `true`; set `false` to skip `stud please` after a failed push). Do not send `noPlease` in JSON — use `pleaseFallback` only.
     -   **Usage:**
         ```bash
         stud push
@@ -921,6 +921,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (clean tree, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when the working tree is already clean and committed.
     -   **Usage:**
         ```bash
         stud submit
@@ -930,6 +931,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
         stud submit -q
+        echo '{"labels":"AI-Generated,RFR","stageAll":true}' | stud submit --agent
         ```
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
@@ -1058,6 +1060,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 - For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
 - For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
 - For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
+- For `submit`, agent JSON may include `stageAll` (and optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
 
 **Example snippets:**
 

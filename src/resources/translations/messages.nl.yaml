@@ -627,11 +627,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Begeleidt u bij het maken van een conventionele commit.
   command_commit_undo: "Verwijdert de laatste commit en houdt wijzigingen unstaged. Waarschuwt of vraagt bevestiging als al gepusht; gebruik 'stud please' om daarna force-push te doen."
-  command_push: "Zoals stud commit, daarna HEAD naar origin pushen (zelfde niet-forcerende push als stud submit preflight). Na mislukte push voert stud please uit of biedt het aan, tenzij --no-please. Agent-JSON: optioneel pleaseFallback (standaard true); CLI --no-please gaat voor op true pleaseFallback in JSON."
+  command_push: "Zoals stud commit, daarna HEAD naar origin pushen (zelfde niet-forcerende push als stud submit preflight). Na mislukte push: stud please tenzij uitgeschakeld. CLI: --no-please. Agent-JSON: alleen pleaseFallback (standaard true; false = geen stud please). stud push --agent --no-please = pleaseFallback false."
   command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
   command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
-  command_submit: Pusht de huidige tak en maakt een Pull Request.
+  command_submit: "Pusht de huidige tak en maakt een Pull Request. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
   command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
   command_status: Een snelle "waar ben ik?" dashboard.

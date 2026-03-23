@@ -252,6 +252,32 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
     }
 
+    public function testSubmitInputIncludesStageAllAndPushRelatedProperties(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('submit', $schemaByName);
+        $props = $schemaByName['submit']['input']['properties'] ?? [];
+        foreach (['stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
+            $this->assertArrayHasKey($key, $props, 'submit agent input must include "' . $key . '" property');
+        }
+        $this->assertArrayNotHasKey('noPlease', $props, 'submit agent input must not include redundant noPlease; use pleaseFallback');
+    }
+
+    public function testPushAgentInputHasPleaseFallbackNotNoPlease(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('push', $schemaByName);
+        $props = $schemaByName['push']['input']['properties'] ?? [];
+        $this->assertArrayHasKey('pleaseFallback', $props);
+        $this->assertArrayNotHasKey('noPlease', $props, 'push agent JSON uses pleaseFallback only; CLI retains --no-please');
+    }
+
     public function testConfluencePushInputIncludesFileAndContentProperties(): void
     {
         $schemaByName = [];

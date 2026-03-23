@@ -585,11 +585,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Le guía a través de la creación de un commit convencional.
   command_commit_undo: "Elimina el último commit y deja los cambios sin preparar. Avisa o pide confirmación si ya está pusheado; use 'stud please' para force-push después."
-  command_push: "Hace commit como stud commit y luego empuja HEAD a origin (mismo push sin fuerza que el preflight de stud submit). Tras un push fallido ejecuta u ofrece stud please salvo con --no-please. JSON del agente: pleaseFallback opcional (true por defecto); el CLI --no-please prevalece sobre pleaseFallback true en JSON."
+  command_push: "Hace commit como stud commit y luego empuja HEAD a origin (mismo push sin fuerza que el preflight de stud submit). Tras un push fallido ejecuta u ofrece stud please salvo si se desactiva. CLI: --no-please. JSON del agente: solo pleaseFallback (true por defecto; false = sin stud please). stud push --agent --no-please equivale a pleaseFallback false."
   command_please: Un force-push seguro para usuario avanzado (force-with-lease).
   command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
-  command_submit: Envía la rama actual y crea una Pull Request.
+  command_submit: "Envía la rama actual y crea una Pull Request. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
   command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
   command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual.
   command_status: Un panel de control rápido "¿dónde estoy?".

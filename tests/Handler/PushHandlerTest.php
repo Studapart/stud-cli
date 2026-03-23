@@ -159,6 +159,29 @@ class PushHandlerTest extends CommandTestCase
         $this->assertSame(0, $handler->handle($this->io(), false, null, false, true, false, true, true));
     }
 
+    /**
+     * In agent mode, CLI-only noPlease is not passed through; pleaseFallback is the sole control.
+     */
+    public function testPushFailsAgentIgnoresNoPleaseWhenPleaseFallbackTrue(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(0);
+
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
+
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->willReturn(0);
+
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $this->assertSame(0, $handler->handle($this->io(), false, null, false, true, true, true, true));
+    }
+
     public function testPushFailsInteractiveUserDeclinesPlease(): void
     {
         $commitHandler = $this->createMock(CommitHandler::class);

@@ -1178,6 +1178,24 @@ function _read_agent_input(?string $inputFile): ?array
 }
 
 /**
+ * Agent-only: when submit JSON has stageAll true, run the same commit + origin push path as stud push before PR creation.
+ *
+ * @param array<string, mixed> $input Agent JSON (uses isNew, message, pleaseFallback when present)
+ */
+function _agent_submit_run_push_phase(\Symfony\Component\Console\Style\SymfonyStyle $io, array $input): int
+{
+    $isNew = (bool) ($input['isNew'] ?? false);
+    $message = isset($input['message']) && is_string($input['message']) ? $input['message'] : null;
+    $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
+    $gitRepository = _get_git_repository();
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
+    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+
+    return $pushHandler->handle($io, $isNew, $message, true, true, false, true, $pleaseFallback);
+}
+
+/**
  * Write an AgentJsonResponse to stdout and exit.
  */
 function _agent_respond(AgentJsonResponse $agentResponse): void
@@ -1882,8 +1900,10 @@ function push(
         $message = $input['message'] ?? null;
         $stageAll = (bool) ($input['stageAll'] ?? false);
         $quiet = true;
-        if (array_key_exists('pleaseFallback', $input)) {
-            $pleaseFallback = (bool) $input['pleaseFallback'];
+        $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
+        // CLI --no-please with --agent maps to pleaseFallback false (agent JSON uses pleaseFallback only).
+        if ($noPlease) {
+            $pleaseFallback = false;
         }
     }
     if (! $agent && $help) {
@@ -1896,7 +1916,8 @@ function push(
     $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
     $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPlease, $agent, $pleaseFallback);
+    $noPleaseForHandler = $agent ? false : $noPlease;
+    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed'));
@@ -2024,6 +2045,8 @@ function submit(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    /** @var array<string, mixed>|null $agentSubmitInput when set, stageAll was true and push phase must run first */
+    $agentSubmitInput = null;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -2032,6 +2055,9 @@ function submit(
         $draft = (bool) ($input['draft'] ?? false);
         $labels = $input['labels'] ?? null;
         $quiet = true;
+        if (($input['stageAll'] ?? false) === true) {
+            $agentSubmitInput = $input;
+        }
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider($quiet);
@@ -2062,6 +2088,16 @@ function submit(
             'Please check your configuration file and ensure GIT_PROVIDER is set to "github" or "gitlab".',
         ]);
         exit(1);
+    }
+
+    if ($agent && $agentSubmitInput !== null) {
+        $pushExit = _agent_submit_run_push_phase(io(), $agentSubmitInput);
+        if ($pushExit !== 0) {
+            $cmdResponder = new AgentCommandResponder();
+            _agent_respond($cmdResponder->respondFromExitCode($pushExit, 'Pull request created', 'Commit or push before submit failed'));
+
+            return;
+        }
     }
 
     $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());

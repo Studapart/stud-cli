@@ -22,10 +22,10 @@ class PushHandler
 
     /**
      * Run commit (same semantics as stud commit), then push HEAD to origin. On a failed non-fast-forward
-     * push, optionally delegates to {@see PleaseHandler} per quiet, agent, `--no-please`, and agent
-     * `pleaseFallback` rules.
+     * push, optionally delegates to {@see PleaseHandler} per quiet, agent, `--no-please` (CLI only), and
+     * agent `pleaseFallback` (JSON / folded from CLI `--no-please` when using `--agent`).
      *
-     * @param bool $pleaseFallback Agent JSON only: when false, disables the please fallback. Ignored when not in agent mode (pass true).
+     * @param bool $pleaseFallback In agent mode: when false, disables the please fallback (the only agent control). Ignored when not in agent mode (pass true).
      */
     public function handle(
         SymfonyStyle $io,
@@ -65,19 +65,23 @@ class PushHandler
         bool $agentMode,
         bool $pleaseFallback,
     ): int {
+        if ($agentMode) {
+            if (! $pleaseFallback) {
+                $this->emitPushFailedError();
+
+                return 1;
+            }
+
+            return $this->pleaseHandler->handle($io);
+        }
+
         if ($noPlease) {
             $this->emitPushFailedError();
 
             return 1;
         }
 
-        if ($agentMode && ! $pleaseFallback) {
-            $this->emitPushFailedError();
-
-            return 1;
-        }
-
-        $interactive = ! $quiet && ! $agentMode;
+        $interactive = ! $quiet;
         if ($interactive) {
             $confirmed = $this->logger->confirm(
                 $this->translator->trans('push.confirm_please'),
