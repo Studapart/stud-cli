@@ -45,6 +45,9 @@ config:
       description: Automatische transitie naar 'In Uitvoering' inschakelen bij het starten van een ticket.
       prompt: Automatische Jira transitie naar 'In Uitvoering' inschakelen?
     success: Configuratie succesvol opgeslagen!
+    project_follow_up:
+      hint_run_later: "Projectspecifieke instellingen staan in `.git/stud.config` in een Git-repository. Ga naar een projectmap en voer `stud config:project-init` uit om de installatie af te ronden."
+      prompt_configure_now: "Deze repository heeft nog geen volledige project-stud-configuratie (bijvoorbeeld een basisbranch). Nu instellen?"
     completion:
       title: Shell Auto-aanvulling Instellen
       prompt: We hebben gedetecteerd dat u '%shell%' gebruikt. Wilt u shell auto-aanvulling instellen?

@@ -367,6 +367,8 @@ For detailed instructions on creating tokens and required permissions/scopes, se
 
 At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
 
+**Project configuration (`.git/stud.config`):** After your global settings are saved, the wizard checks whether you are inside a Git repository. If you are **not** in a repo, you get a short note that per-project settings live in `.git/stud.config` and that you can run `stud config:project-init` from a project folder when ready (this text does not mention `--agent`). If you **are** in a repo and the project config is **incomplete** (see below), you are asked once whether to continue with the same flow as `stud config:project-init`; if you decline, you see the same note as when you are outside a repo. If `baseBranch` is already set in `.git/stud.config`, no prompt is shown.
+
 **Usage:**
 ```bash
 stud config:init

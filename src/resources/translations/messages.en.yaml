@@ -46,6 +46,9 @@ config:
       description: "Enable automatic transition to 'In Progress' when starting work on an issue."
       prompt: "Enable automatic Jira transition to 'In Progress'?"
     success: "Configuration saved successfully!"
+    project_follow_up:
+      hint_run_later: "Project-specific settings are stored in `.git/stud.config` inside a Git repository. When you are in a project folder, run `stud config:project-init` to finish setup."
+      prompt_configure_now: "This repository does not have a complete project-level stud configuration yet (for example, a base branch). Set it up now?"
     completion:
       title: "Shell Auto-Completion Setup"
       prompt: "We detected you are using '%shell%'. Would you like to set up shell auto-completion?"

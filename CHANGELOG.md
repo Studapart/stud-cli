@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`config:init` (SCI-83):** After saving global config, interactive `stud config:init` suggests project setup when appropriate: users not in a Git repo see a note to run `stud config:project-init` from a project folder; users in a repo without a non-empty `baseBranch` in `.git/stud.config` get an optional prompt to run the same logic as `stud config:project-init`. Agent mode skips this follow-up. README and all locales updated.
+
 - **`stud submit --agent`:** Optional JSON `stageAll` (with optional `isNew`, `message`, `pleaseFallback`) runs the same commit + origin push path as `stud push` before PR creation. Agent schema updated. Documented in README, `AI.md`, and `.cursor/rules/stud-cli-workflow.mdc`.
 
 ### Changed

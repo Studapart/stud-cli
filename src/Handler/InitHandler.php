@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Service\FileSystem;
 use App\Service\GitTokenPromptResolver;
+use App\Service\InitProjectConfigFollowUpService;
 use App\Service\Logger;
 use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
@@ -20,10 +21,15 @@ class InitHandler
         private readonly TranslationService $translator,
         private readonly Logger $logger,
         private readonly GitTokenPromptResolver $gitTokenPromptResolver,
+        private readonly ?InitProjectConfigFollowUpService $projectConfigFollowUp = null,
     ) {
     }
 
-    public function handle(SymfonyStyle $io): void
+    /**
+     * @param bool $isAgentMode When true, skips post-save project follow-up (same as `stud config:init --agent`).
+     * @param bool $isInteractiveCli From Castor input; when false, project follow-up only shows the run-later note.
+     */
+    public function handle(SymfonyStyle $io, bool $isAgentMode = false, bool $isInteractiveCli = true): void
     {
         $existingConfig = $this->loadExistingConfig();
 
@@ -33,6 +39,9 @@ class InitHandler
         $config = $this->buildConfigFromPrompts($existingConfig);
         $this->applyMigrationVersion($config, $existingConfig);
         $this->saveConfig($config);
+        if ($this->projectConfigFollowUp !== null) {
+            $this->projectConfigFollowUp->runAfterGlobalSave($io, $isAgentMode, $isInteractiveCli);
+        }
         $this->promptForCompletion();
     }
 
