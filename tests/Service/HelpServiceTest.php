@@ -63,6 +63,7 @@ class HelpServiceTest extends TestCase
     {
         $commands = [
             'config:init',
+            'config:project-init',
             'completion',
             'projects:list',
             'items:list',

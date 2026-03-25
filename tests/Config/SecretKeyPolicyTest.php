@@ -86,6 +86,7 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertContains('LANGUAGE', $allowed);
         $this->assertContains('JIRA_URL', $allowed);
         $this->assertContains('JIRA_DEFAULT_PROJECT', $allowed);
+        $this->assertContains('CONFLUENCE_DEFAULT_SPACE', $allowed);
         $this->assertContains('baseBranch', $allowed);
         $this->assertContains('gitProvider', $allowed);
     }

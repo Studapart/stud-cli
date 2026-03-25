@@ -32,7 +32,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem = $this->createMock(FileSystem::class);
         // Logger will be created per test with real $io for interactive methods
         $this->logger = $this->createMock(\App\Service\Logger::class);
-        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->logger);
+        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->logger, new \App\Service\GitTokenPromptResolver());
     }
 
     /**
@@ -42,7 +42,7 @@ class InitHandlerTest extends CommandTestCase
     {
         $realLogger = new \App\Service\Logger($io, []);
 
-        return new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger);
+        return new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
     }
 
     /**
@@ -837,7 +837,7 @@ class InitHandlerTest extends CommandTestCase
 
         // Use real Logger for this test so output is actually written
         $realLogger = new \App\Service\Logger($io, ['text' => 'white', 'muted' => 'gray']);
-        $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger);
+        $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
 
         $handlerWithRealLogger->handle($io);
 
@@ -1047,7 +1047,7 @@ class InitHandlerTest extends CommandTestCase
 
         // Use real logger so it can read from input stream
         $realLogger = new \App\Service\Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, $configPath, $this->translationService, $realLogger);
+        $handler = new InitHandler($this->fileSystem, $configPath, $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to create config directory: ' . $configDir);
@@ -1134,75 +1134,5 @@ class InitHandlerTest extends CommandTestCase
 
         $result = $this->callPrivateMethod($handler, 'filterEmptyStrings', [false]);
         $this->assertTrue($result, 'False should return true');
-    }
-
-    public function testResolveGitTokenForInitUsesUserInputWhenNonEmpty(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            'user_entered_token',
-            'GITHUB_TOKEN',
-            ['GIT_TOKEN' => 'legacy', 'GIT_PROVIDER' => 'github'],
-        ]);
-        $this->assertSame('user_entered_token', $result);
-    }
-
-    public function testResolveGitTokenForInitPreservesExistingNewKeyWhenPromptEmpty(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITHUB_TOKEN',
-            ['GITHUB_TOKEN' => 'existing_github'],
-        ]);
-        $this->assertSame('existing_github', $result);
-    }
-
-    public function testResolveGitTokenForInitPreservesLegacyTokenForGithubWhenProviderUnset(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITHUB_TOKEN',
-            ['GIT_TOKEN' => 'legacy_token'],
-        ]);
-        $this->assertSame('legacy_token', $result);
-    }
-
-    public function testResolveGitTokenForInitPreservesLegacyTokenForGithubWhenProviderGithub(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITHUB_TOKEN',
-            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'github'],
-        ]);
-        $this->assertSame('legacy_token', $result);
-    }
-
-    public function testResolveGitTokenForInitReturnsNullForGithubWhenProviderGitlab(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITHUB_TOKEN',
-            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'gitlab'],
-        ]);
-        $this->assertNull($result);
-    }
-
-    public function testResolveGitTokenForInitPreservesLegacyTokenForGitlabWhenProviderGitlab(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITLAB_TOKEN',
-            ['GIT_TOKEN' => 'legacy_token', 'GIT_PROVIDER' => 'gitlab'],
-        ]);
-        $this->assertSame('legacy_token', $result);
-    }
-
-    public function testResolveGitTokenForInitReturnsNullWhenNoExistingToken(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'resolveGitTokenForInit', [
-            null,
-            'GITHUB_TOKEN',
-            [],
-        ]);
-        $this->assertNull($result);
     }
 }

@@ -53,6 +53,16 @@ class CommandMap
                 ],
                 'arguments' => [],
             ],
+            'config:project-init' => [
+                'alias' => 'cpi',
+                'description_key' => 'help.command_config_project_init',
+                'options' => [
+                    ['name' => '--project-key', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_project_key', 'argument' => '<key>'],
+                    ['name' => '--base-branch', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_base_branch', 'argument' => '<branch>'],
+                    ['name' => '--skip-base-branch-remote-check', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_skip_base', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
         ];
     }
 

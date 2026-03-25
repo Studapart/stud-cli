@@ -378,7 +378,7 @@ stud init
 **Description:** Displays your current configuration (global and, when run inside a git repository, project configuration from `.git/stud.config`). All secret keys (tokens, passwords, and keys whose names contain TOKEN, PASSWORD, or SECRET) are redacted with a fixed placeholder, so the output is **safe to share** with support or for debugging. Use this to verify your setup or to troubleshoot configuration issues.
 
 **Options:**
-- `-k`/`--key <key>`: Show only the value for one config key. Only whitelisted non-secret keys are allowed (e.g. `LANGUAGE`, `JIRA_URL`, `JIRA_DEFAULT_PROJECT`, `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `gitlabInstanceUrl`, `migration_version`). Effective value uses project-over-global precedence.
+- `-k`/`--key <key>`: Show only the value for one config key. Only whitelisted non-secret keys are allowed (e.g. `LANGUAGE`, `JIRA_URL`, `JIRA_DEFAULT_PROJECT`, `CONFLUENCE_DEFAULT_SPACE`, `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `gitlabInstanceUrl`, `migration_version`). Effective value uses project-over-global precedence.
 - `-q`/`--quiet`: With `--key`, output only the raw value (one line, no section or labels). Ignored when `--key` is not set.
 
 **Usage:**
@@ -406,6 +406,28 @@ stud config:validate --skip-git
 ```
 
 **Output:** Displays a short result per component: **Jira: OK** / **Jira: Fail (reason)** / **Jira: Skipped**, and **Git provider: OK** / **Git provider: Fail (reason)** / **Git provider: Skipped**. If the configuration file is missing or invalid, the command fails with a clear message (no silent success).
+
+#### `stud config:project-init` (Alias: `stud cpi`)
+
+**Description:** Creates or merges `.git/stud.config` in the current Git repository. New values override only the keys you supply; other keys (including tokens) stay as they are unless you set them again. Empty or whitespace-only string values are ignored (same idea as `config:init`, which does not persist empty strings), so you cannot clear an existing value by passing a blank. The `migration_version` key is always preserved by the writer and cannot be set through this command. Use it from CI or agent sessions instead of hand-editing YAML.
+
+**Supported keys:** `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `githubToken`, `gitlabToken`, `gitlabInstanceUrl`, `JIRA_DEFAULT_PROJECT` (via `--jira-default-project` or agent JSON `jiraDefaultProject`), `CONFLUENCE_DEFAULT_SPACE` (via `--confluence-default-space` or agent JSON `confluenceDefaultSpace`). Unknown keys in agent JSON are rejected with a clear error.
+
+**Base branch:** When you set `baseBranch`, the branch must exist on `origin` unless you pass `--skip-base-branch-remote-check` or agent JSON `skipBaseBranchRemoteCheck: true` (e.g. shallow CI without full remote refs).
+
+**Modes:**
+- **Interactive:** Run `stud config:project-init` with no flags inside a repo; you are prompted for optional fields with sensible defaults (including base-branch detection like other commands).
+- **CLI flags:** Pass one or more `--project-key`, `--base-branch`, etc. Any flag present selects non-interactive mode.
+- **Agent:** `echo '{"projectKey":"SCI","baseBranch":"develop"}' | stud config:project-init --agent` — see `stud help --agent` for the full input schema.
+
+**Usage:**
+```bash
+stud config:project-init
+stud cpi --project-key SCI --base-branch develop
+echo '{"jiraDefaultProject":"SCI","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+```
+
+**Note:** Requires a Git checkout (the command fails with a clear message if `.git` is not available). Global `~/.config/stud/config.yml` is not required for this command.
 
 #### `stud completion <shell>`
 

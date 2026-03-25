@@ -13,6 +13,7 @@ class HelpService
         'config:init' => 'stud config:init',
         'config:show' => 'stud config:show',
         'config:validate' => 'stud config:validate',
+        'config:project-init' => 'stud config:project-init',
         'completion' => 'stud completion',
         'projects:list' => 'stud projects:list',
         'items:list' => 'stud items:list',

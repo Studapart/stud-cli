@@ -68,6 +68,30 @@ config:
     status_ok: "OK"
     status_fail: "Αποτυχία"
     status_skipped: "Παραλείφθηκε"
+  project_init:
+    section_title: "Ρύθμιση έργου"
+    not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."
+    unknown_keys: "Άγνωστα κλειδιά στο JSON του agent: %keys%. Δείτε stud config:project-init και stud help --agent."
+    reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
+    invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
+    invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
+    base_branch_error: "%message%"
+    interactive_title: "Ρύθμιση stud έργου"
+    interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
+    prompt_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης· προαιρετικό)"
+    prompt_jira_default_project: "Προεπιλεγμένο κλειδί έργου Jira για items:create (προαιρετικό)"
+    prompt_confluence_default_space: "Προεπιλεγμένο κλειδί χώρου Confluence (προαιρετικό)"
+    prompt_transition_id: "Αποθηκευμένο ID μετάβασης Jira (προαιρετικό, μόνο ψηφία)"
+    prompt_base_branch: "Όνομα βασικού κλάδου"
+    prompt_git_provider: "Πάροχος Git για αυτό το αποθετήριο"
+    prompt_gitlab_instance_url: "URL εγκατάστασης GitLab (προαιρετικό, self-hosted)"
+    prompt_github_token_hint: "Διακριτικό GitHub: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
+    prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
+    prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
+    prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
+    status_updated: "Η ρύθμιση έργου ενημερώθηκε (.git/stud.config)."
+    status_unchanged: "Δεν εγγράφηκαν αλλαγές (η ρύθμιση παρέμεινε ίδια)."
+    failed: "Η ενημέρωση ρύθμισης έργου απέτυχε."
   error:
     not_found: 'Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%
 
@@ -570,6 +594,10 @@ help:
   command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
   command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
+  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Χρησιμοποιήστε σημαίες CLI, stud config:project-init --agent με JSON, ή διαδραστικά χωρίς σημαίες. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
+  option_config_project_init_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης με transition-id)"
+  option_config_project_init_base_branch: "Βασικός κλάδος· ελέγχεται η ύπαρξη στο origin εκτός αν έχει οριστεί --skip-base-branch-remote-check"
+  option_config_project_init_skip_base: "Να μην ελέγχεται αν ο βασικός κλάδος υπάρχει στο origin"
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).

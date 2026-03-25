@@ -34,6 +34,8 @@ use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
+use App\Handler\ConfigProjectInitHandler;
+use App\Handler\ConfigProjectInitPromptCollector;
 use App\Handler\ConfigShowHandler;
 use App\Handler\ConfigValidateHandler;
 use App\Handler\ConfluencePushHandler;
@@ -63,6 +65,7 @@ use App\Handler\SyncHandler;
 use App\Handler\UpdateHandler;
 use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
+use App\Responder\ConfigProjectInitResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
 use App\Responder\ConfluencePushResponder;
@@ -750,6 +753,8 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     $whitelistedCommands = [
         'config:init',
         'config:show',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -816,6 +821,8 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without extensions (user needs to see help/init)
     $whitelistedCommands = [
         'config:init',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -899,6 +906,8 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
     $whitelistedCommands = [
         'config:init',
         'config:show',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -1090,7 +1099,7 @@ function config_init(
             return;
         }
     }
-    $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger());
+    $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger(), new \App\Service\GitTokenPromptResolver());
     $handler->handle(io());
     if ($format === OutputFormat::Json) {
         $cmdResponder = new AgentCommandResponder();
@@ -1251,6 +1260,105 @@ function config_validate(
     $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
     $response = $handler->handle();
     $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'config:project-init', aliases: ['cpi'], description: 'Create or merge project stud config (.git/stud.config); flags, agent JSON, or interactive when no values are given')]
+#[AgentOutput(responseClass: \App\Response\ConfigProjectInitResponse::class, description: 'Merged project configuration (redacted) and whether the file was updated')]
+function config_project_init(
+    #[AsOption(name: 'project-key', description: 'Jira project key (transition cache)')]
+    ?string $projectKey = null,
+    #[AsOption(name: 'transition-id', description: 'Jira transition ID to cache')]
+    ?int $transitionId = null,
+    #[AsOption(name: 'base-branch', description: 'Repository base branch (validated on origin unless skipped)')]
+    ?string $baseBranch = null,
+    #[AsOption(name: 'git-provider', description: 'github or gitlab')]
+    ?string $gitProvider = null,
+    #[AsOption(name: 'github-token', description: 'GitHub PAT for this repository')]
+    ?string $githubToken = null,
+    #[AsOption(name: 'gitlab-token', description: 'GitLab PAT for this repository')]
+    ?string $gitlabToken = null,
+    #[AsOption(name: 'gitlab-instance-url', description: 'Self-hosted GitLab instance URL')]
+    ?string $gitlabInstanceUrl = null,
+    #[AsOption(name: 'jira-default-project', description: 'Default Jira project for stud items:create')]
+    ?string $jiraDefaultProject = null,
+    #[AsOption(name: 'confluence-default-space', description: 'Default Confluence space key')]
+    ?string $confluenceDefaultSpace = null,
+    #[AsOption(name: 'skip-base-branch-remote-check', description: 'Skip verifying base-branch on origin')]
+    bool $skipBaseBranchRemoteCheck = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $rawAgentInput = [];
+    $skipRemote = $skipBaseBranchRemoteCheck;
+
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $rawAgentInput = $input;
+        $skipRemote = (bool) ($input['skipBaseBranchRemoteCheck'] ?? false);
+    }
+
+    $cliPatches = [];
+    if (! $agent) {
+        if ($projectKey !== null && trim($projectKey) !== '') {
+            $cliPatches['projectKey'] = trim($projectKey);
+        }
+        if ($transitionId !== null) {
+            $cliPatches['transitionId'] = $transitionId;
+        }
+        if ($baseBranch !== null && trim($baseBranch) !== '') {
+            $cliPatches['baseBranch'] = trim($baseBranch);
+        }
+        if ($gitProvider !== null && trim($gitProvider) !== '') {
+            $cliPatches['gitProvider'] = strtolower(trim($gitProvider));
+        }
+        if ($githubToken !== null && trim($githubToken) !== '') {
+            $cliPatches['githubToken'] = trim($githubToken);
+        }
+        if ($gitlabToken !== null && trim($gitlabToken) !== '') {
+            $cliPatches['gitlabToken'] = trim($gitlabToken);
+        }
+        if ($gitlabInstanceUrl !== null && trim($gitlabInstanceUrl) !== '') {
+            $cliPatches['gitlabInstanceUrl'] = trim($gitlabInstanceUrl);
+        }
+        if ($jiraDefaultProject !== null && trim($jiraDefaultProject) !== '') {
+            $cliPatches['jiraDefaultProject'] = trim($jiraDefaultProject);
+        }
+        if ($confluenceDefaultSpace !== null && trim($confluenceDefaultSpace) !== '') {
+            $cliPatches['confluenceDefaultSpace'] = trim($confluenceDefaultSpace);
+        }
+    }
+
+    $hasExplicitCli = $cliPatches !== [] || ($skipBaseBranchRemoteCheck && ! $agent);
+    $interactive = ! $agent && ! $hasExplicitCli;
+
+    $gitRepository = _get_git_repository();
+    $gitSetup = _get_git_setup_service();
+    $promptCollector = new ConfigProjectInitPromptCollector(
+        $gitRepository,
+        $gitSetup,
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver()
+    );
+    $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+    $response = $handler->handle($rawAgentInput, $cliPatches, $skipRemote, $interactive, $agent);
+    $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2426,6 +2534,7 @@ function help(
         // Map aliases to command names
         $aliasMap = [
             'init' => 'config:init',
+            'cpi' => 'config:project-init',
             'pj' => 'projects:list',
             'ls' => 'items:list',
             'search' => 'items:search',
@@ -2513,6 +2622,11 @@ function help(
             [
                 'name' => 'config:validate',
                 'description' => $translator->trans('help.command_config_validate'),
+            ],
+            [
+                'name' => 'config:project-init',
+                'alias' => 'cpi',
+                'description' => $translator->trans('help.command_config_project_init'),
             ],
             [
                 'name' => 'completion',

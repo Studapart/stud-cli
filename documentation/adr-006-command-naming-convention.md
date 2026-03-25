@@ -61,7 +61,7 @@ We chose the `object:verb` pattern because:
 6. **Alias Friendly:** Short aliases (`ls`, `sh`, `rn`) work well with this pattern
 
 **Command Categories:**
-- **Configuration:** `config:init`, `completion`
+- **Configuration:** `config:init`, `config:project-init`, `completion`
 - **Jira Information:** `projects:list`, `items:list`, `items:show`, `items:search`, `items:transition`, `filters:list`, `filters:show`
 - **Git Workflow:** `items:start`, `items:takeover`, `branch:rename`, `branches:list`, `branches:clean`, `commit`, `please`, `flatten`, `status`, `submit`, `pr:comment`
 - **Release:** `release`, `deploy`

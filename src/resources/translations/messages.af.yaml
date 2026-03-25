@@ -68,6 +68,30 @@ config:
     status_ok: "OK"
     status_fail: "Misluk"
     status_skipped: "Oorgeslaan"
+  project_init:
+    section_title: "Projekkonfigurasie"
+    not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."
+    unknown_keys: "Onbekende sleutels in agent-JSON: %keys%. Sien stud config:project-init en stud help --agent."
+    reserved_keys: "Hierdie sleutels kan nie met hierdie opdrag gestel word nie: %keys%"
+    invalid_git_provider: "gitProvider moet github of gitlab wees."
+    invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
+    base_branch_error: "%message%"
+    interactive_title: "Stud-projekkonfigurasie"
+    interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
+    prompt_project_key: "Jira-projekkode (oorgangs-kas; opsioneel)"
+    prompt_jira_default_project: "Verstek Jira-projekkode vir items:create (opsioneel)"
+    prompt_confluence_default_space: "Verstek Confluence-ruimtekode (opsioneel)"
+    prompt_transition_id: "Gebufferde Jira-oorgang-ID (opsioneel, slegs syfers)"
+    prompt_base_branch: "Naam van die basis-tak"
+    prompt_git_provider: "Git-verskaffer vir hierdie repository"
+    prompt_gitlab_instance_url: "GitLab-instansie-URL (opsioneel, self-aangebied)"
+    prompt_github_token_hint: "GitHub-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
+    prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
+    prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
+    prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
+    status_updated: "Projekkonfigurasie bygewerk (.git/stud.config)."
+    status_unchanged: "Geen veranderinge geskryf nie (konfigurasie onveranderd)."
+    failed: "Bywerking van projekkonfigurasie het misluk."
   error:
     not_found: 'Konfigurasielêer nie gevind by: %path%
 
@@ -570,6 +594,10 @@ help:
   command_config_init: Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel.
   command_config_show: "Vertoon huidige konfigurasie (globaal en projek) met geheime verberg; veilig om te deel."
   command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira en die Git-verskaffer bereikbaar is. Gebruik --skip-jira of --skip-git vir gedeeltelijke kontroles."
+  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Gebruik CLI-vlae, stud config:project-init --agent met JSON, of interaktief sonder vlae. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
+  option_config_project_init_project_key: "Jira-projekkode (oorgangs-kas met transition-id)"
+  option_config_project_init_base_branch: "Basis-tak; bestaan op origin word nagegaan tensy --skip-base-branch-remote-check gestel is"
+  option_config_project_init_skip_base: "Moenie nagaan of die basis-tak op origin bestaan nie"
   command_completion: Genereer shell outo-voltooiing scripts vir bash of zsh.
   command_projects_list: Lys alle sigbare Jira projekte.
   command_items_list: Lys aktiewe werkitems (jou dashboard).
