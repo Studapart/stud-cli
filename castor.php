@@ -90,11 +90,13 @@ use App\Service\GitBranchService;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
+use App\Service\InitProjectConfigFollowUpService;
 use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
 use App\Service\ProcessFactory;
+use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ThemeDetector;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
@@ -104,6 +106,7 @@ use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 
+use function Castor\input;
 use function Castor\io;
 
 use Symfony\Component\Console\ConsoleEvents;
@@ -346,6 +349,29 @@ function _get_git_setup_service(): GitSetupService
         _get_git_branch_service(),
         _get_logger(),
         _get_translation_service()
+    );
+}
+
+function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUpService
+{
+    $gitRepository = _get_git_repository();
+    $gitSetup = _get_git_setup_service();
+    $promptCollector = new ConfigProjectInitPromptCollector(
+        $gitRepository,
+        $gitSetup,
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver()
+    );
+    $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+
+    return new InitProjectConfigFollowUpService(
+        $gitRepository,
+        new ProjectStudConfigAdequacyChecker(),
+        $projectInitHandler,
+        new ConfigProjectInitResponder(_get_responder_helper(), _get_logger()),
+        _get_translation_service(),
+        _get_logger(),
     );
 }
 
@@ -1099,8 +1125,15 @@ function config_init(
             return;
         }
     }
-    $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger(), new \App\Service\GitTokenPromptResolver());
-    $handler->handle(io());
+    $handler = new InitHandler(
+        _get_file_system(),
+        _get_config_path(),
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver(),
+        _get_init_project_config_follow_up_service()
+    );
+    $handler->handle(io(), $agent, input()->isInteractive());
     if ($format === OutputFormat::Json) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondSuccess('Configuration initialized'));

@@ -45,6 +45,9 @@ config:
       description: Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word.
       prompt: Aktiveer outomatiese Jira oorgang na 'In Proses'?
     success: Konfigurasie suksesvol gestoor!
+    project_follow_up:
+      hint_run_later: "Projekspesifieke instellings word in `.git/stud.config` binne 'n Git-repository gestoor. Wanneer jy in 'n projekvouer is, voer `stud config:project-init` uit om die opstelling te voltooi."
+      prompt_configure_now: "Hierdie repository het nog nie 'n volledige projekvlak stud-konfigurasie nie (byvoorbeeld 'n basisbranch). Nou opstel?"
     completion:
       title: Shell Outo-voltooiing Opstelling
       prompt: Ons het gedetecteer dat jy '%shell%' gebruik. Wil jy shell outo-voltooiing opstel?

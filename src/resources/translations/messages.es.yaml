@@ -45,6 +45,9 @@ config:
       description: Habilitar transición automática a 'En progreso' al iniciar trabajo en un ticket.
       prompt: ¿Habilitar transición automática de Jira a 'En progreso'?
     success: ¡Configuración guardada exitosamente!
+    project_follow_up:
+      hint_run_later: "La configuración específica del proyecto se guarda en `.git/stud.config` dentro de un repositorio Git. Cuando estés en una carpeta de proyecto, ejecuta `stud config:project-init` para completar la configuración."
+      prompt_configure_now: "Este repositorio aún no tiene una configuración stud de proyecto completa (por ejemplo, una rama base). ¿Configurarla ahora?"
     completion:
       title: Configuración de auto-completado del shell
       prompt: Hemos detectado que está usando '%shell%'. ¿Le gustaría configurar el auto-completado del shell?

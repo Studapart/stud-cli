@@ -45,6 +45,9 @@ config:
       description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
       prompt: Bật chuyển đổi tự động Jira sang 'Đang thực hiện'?
     success: Cấu hình đã được lưu thành công!
+    project_follow_up:
+      hint_run_later: "Cài đặt theo từng dự án được lưu trong `.git/stud.config` trong kho Git. Khi bạn ở thư mục dự án, chạy `stud config:project-init` để hoàn tất thiết lập."
+      prompt_configure_now: "Kho này chưa có cấu hình stud cấp dự án đầy đủ (ví dụ nhánh gốc). Thiết lập ngay?"
     completion:
       title: Thiết lập Tự động hoàn thành Shell
       prompt: Chúng tôi phát hiện bạn đang sử dụng '%shell%'. Bạn có muốn thiết lập tự động hoàn thành shell không?

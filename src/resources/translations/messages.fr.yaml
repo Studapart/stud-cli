@@ -45,6 +45,9 @@ config:
       description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
       prompt: Activer la transition automatique Jira vers 'En cours' ?
     success: Configuration enregistrée avec succès !
+    project_follow_up:
+      hint_run_later: "Les paramètres propres au projet sont enregistrés dans `.git/stud.config` dans un dépôt Git. Lorsque vous êtes dans un dossier de projet, exécutez `stud config:project-init` pour terminer la configuration."
+      prompt_configure_now: "Ce dépôt n'a pas encore de configuration stud de projet complète (par exemple une branche de base). La configurer maintenant ?"
     completion:
       title: Configuration de l'auto-complétion du shell
       prompt: Nous avons détecté que vous utilisez '%shell%'. Souhaitez-vous configurer l'auto-complétion du shell ?

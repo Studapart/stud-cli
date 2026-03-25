@@ -4,6 +4,7 @@ namespace App\Tests\Handler;
 
 use App\Handler\InitHandler;
 use App\Service\FileSystem;
+use App\Service\InitProjectConfigFollowUpService;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -128,6 +129,60 @@ class InitHandlerTest extends CommandTestCase
         $handler->handle($io);
 
         // Test intent: title() was called, verified by mocked fileSystem->filePutContents() being called
+    }
+
+    public function testHandleRunsProjectConfigFollowUpWhenInjected(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->with('/tmp/config.yml')
+            ->willReturn(false);
+
+        $this->fileSystem->expects($this->once())
+            ->method('dirname')
+            ->with('/tmp/config.yml')
+            ->willReturn('/tmp');
+
+        $this->fileSystem->expects($this->exactly(2))
+            ->method('isDir')
+            ->willReturnCallback(function ($path) {
+                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+            });
+
+        $this->fileSystem->expects($this->once())
+            ->method('filePutContents');
+
+        $followUp = $this->createMock(InitProjectConfigFollowUpService::class);
+        $followUp->expects($this->once())
+            ->method('runAfterGlobalSave')
+            ->with($this->isInstanceOf(SymfonyStyle::class), false, true);
+
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "0\n");
+        fwrite($inputStream, "jira_url\n");
+        fwrite($inputStream, "jira_email\n");
+        fwrite($inputStream, "jira_token\n");
+        fwrite($inputStream, "github_token\n");
+        fwrite($inputStream, "\n");
+        fwrite($inputStream, "n\n");
+        fwrite($inputStream, "1\n");
+        rewind($inputStream);
+
+        $input->setStream($inputStream);
+        $io = new SymfonyStyle($input, $output);
+
+        $realLogger = new \App\Service\Logger($io, []);
+        $handler = new InitHandler(
+            $this->fileSystem,
+            '/tmp/config.yml',
+            $this->translationService,
+            $realLogger,
+            new \App\Service\GitTokenPromptResolver(),
+            $followUp
+        );
+        $handler->handle($io, false, true);
     }
 
     public function testHandleWithExistingConfig(): void
