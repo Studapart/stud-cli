@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.1/stud-3.12.1.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.0/stud-3.13.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.12.1/stud-3.12.1.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.0/stud-3.13.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -355,6 +355,8 @@ This is especially useful for checking breaking changes before updating.
 
 Before using `stud-cli` for the first time, you need to configure your Jira connection details.
 
+**GitHub Actions:** For a composite action that installs stud, writes `~/.config/stud/config.yml` (and optionally `.git/stud.config`), runs `stud config:validate --agent`, plus guidance on secrets, permissions, and fork safety, see [GitHub Actions with stud-cli](documentation/github-actions.md).
+
 **Automatic Configuration Migration:** `stud-cli` includes an automatic migration system that updates your configuration format when the tool is updated. Global configuration migrations run automatically during `stud update`, and project-specific migrations run on-demand when you execute commands in a git repository. If mandatory configuration keys are missing, the tool will prompt you interactively or provide helpful error messages in non-interactive mode.
 
 #### `stud config:init` (Alias: `stud init`)
@@ -364,6 +366,8 @@ Before using `stud-cli` for the first time, you need to configure your Jira conn
 For detailed instructions on creating tokens and required permissions/scopes, see the [Token Setup Guide](#token-setup-guide) above.
 
 At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
+
+**Project configuration (`.git/stud.config`):** After your global settings are saved, the wizard checks whether you are inside a Git repository. If you are **not** in a repo, you get a short note that per-project settings live in `.git/stud.config` and that you can run `stud config:project-init` from a project folder when ready (this text does not mention `--agent`). If you **are** in a repo and the project config is **incomplete** (see below), you are asked once whether to continue with the same flow as `stud config:project-init`; if you decline, you see the same note as when you are outside a repo. If `baseBranch` is already set in `.git/stud.config`, no prompt is shown.
 
 **Usage:**
 ```bash
@@ -376,7 +380,7 @@ stud init
 **Description:** Displays your current configuration (global and, when run inside a git repository, project configuration from `.git/stud.config`). All secret keys (tokens, passwords, and keys whose names contain TOKEN, PASSWORD, or SECRET) are redacted with a fixed placeholder, so the output is **safe to share** with support or for debugging. Use this to verify your setup or to troubleshoot configuration issues.
 
 **Options:**
-- `-k`/`--key <key>`: Show only the value for one config key. Only whitelisted non-secret keys are allowed (e.g. `LANGUAGE`, `JIRA_URL`, `JIRA_DEFAULT_PROJECT`, `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `gitlabInstanceUrl`, `migration_version`). Effective value uses project-over-global precedence.
+- `-k`/`--key <key>`: Show only the value for one config key. Only whitelisted non-secret keys are allowed (e.g. `LANGUAGE`, `JIRA_URL`, `JIRA_DEFAULT_PROJECT`, `CONFLUENCE_DEFAULT_SPACE`, `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `gitlabInstanceUrl`, `migration_version`). Effective value uses project-over-global precedence.
 - `-q`/`--quiet`: With `--key`, output only the raw value (one line, no section or labels). Ignored when `--key` is not set.
 
 **Usage:**
@@ -404,6 +408,28 @@ stud config:validate --skip-git
 ```
 
 **Output:** Displays a short result per component: **Jira: OK** / **Jira: Fail (reason)** / **Jira: Skipped**, and **Git provider: OK** / **Git provider: Fail (reason)** / **Git provider: Skipped**. If the configuration file is missing or invalid, the command fails with a clear message (no silent success).
+
+#### `stud config:project-init` (Alias: `stud cpi`)
+
+**Description:** Creates or merges `.git/stud.config` in the current Git repository. New values override only the keys you supply; other keys (including tokens) stay as they are unless you set them again. Empty or whitespace-only string values are ignored (same idea as `config:init`, which does not persist empty strings), so you cannot clear an existing value by passing a blank. The `migration_version` key is always preserved by the writer and cannot be set through this command. Use it from CI or agent sessions instead of hand-editing YAML.
+
+**Supported keys:** `projectKey`, `transitionId`, `baseBranch`, `gitProvider`, `githubToken`, `gitlabToken`, `gitlabInstanceUrl`, `JIRA_DEFAULT_PROJECT` (via `--jira-default-project` or agent JSON `jiraDefaultProject`), `CONFLUENCE_DEFAULT_SPACE` (via `--confluence-default-space` or agent JSON `confluenceDefaultSpace`). Unknown keys in agent JSON are rejected with a clear error.
+
+**Base branch:** When you set `baseBranch`, the branch must exist on `origin` unless you pass `--skip-base-branch-remote-check` or agent JSON `skipBaseBranchRemoteCheck: true` (e.g. shallow CI without full remote refs).
+
+**Modes:**
+- **Interactive:** Run `stud config:project-init` with no flags inside a repo; you are prompted for optional fields with sensible defaults (including base-branch detection like other commands).
+- **CLI flags:** Pass one or more `--project-key`, `--base-branch`, etc. Any flag present selects non-interactive mode.
+- **Agent:** `echo '{"projectKey":"SCI","baseBranch":"develop"}' | stud config:project-init --agent` — see `stud help --agent` for the full input schema.
+
+**Usage:**
+```bash
+stud config:project-init
+stud cpi --project-key SCI --base-branch develop
+echo '{"jiraDefaultProject":"SCI","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+```
+
+**Note:** Requires a Git checkout (the command fails with a clear message if `.git` is not available). Global `~/.config/stud/config.yml` is not required for this command.
 
 #### `stud completion <shell>`
 
@@ -779,7 +805,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   Suggests creating PR if none exists after rename.
 
 -   **`stud branches:list`** (Alias: `stud bl`)
-    -   **Description:** Lists all local branches with their status (merged, stale, active PR, or active). Shows whether each branch exists on remote and has an associated Pull Request.
+    -   **Description:** Lists all local branches with `Status` and `Auto clean` values computed from one shared conservative eligibility flow. Also shows whether each branch exists on remote and has an associated Pull Request.
     -   **Usage:**
         ```bash
         stud branches:list
@@ -788,11 +814,15 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Status Definitions:**
         -   **merged**: Branch is merged into develop and exists on remote
         -   **stale**: Branch is merged into develop but doesn't exist on remote
-        -   **active-pr**: Branch has an associated Pull Request (open or closed)
+        -   **active-pr**: Branch has an open associated Pull Request
         -   **active**: Branch is not merged and has commits
+    -   **Auto clean Definitions:**
+        -   **Yes**: Safe to auto-delete (merged by git or provider-confirmed merged PR, with no blockers)
+        -   **No**: Do not delete automatically (protected/current/open PR/not merged)
+        -   **Manual**: Ambiguous or unresolved signals; requires explicit review
 
 -   **`stud branches:clean`** (Alias: `stud bc`)
-    -   **Description:** Interactive cleanup of merged/stale branches. Identifies branches that are merged into develop and don't exist on remote, then prompts for confirmation before deletion. Protected branches (develop, main, master) are never deleted.
+    -   **Description:** Cleanup using the same conservative eligibility resolver as `branches:list`.
     -   **Options:**
         -   `--quiet` or `-q`: Remove all matching branches without prompting (non-interactive mode).
     -   **Usage:**
@@ -805,32 +835,17 @@ These commands integrate directly with your local Git repository to streamline y
         stud branches:clean --quiet
         stud bc -q
         ```
-    -   **Branch Deletion Decision Matrix:**
-        
-        The command evaluates each local branch against the following criteria to determine if it should be deleted:
-        
-        | Protected? | Current Branch? | Merged into develop? | Has Open PR? | Exists on Remote? | Action |
-        |------------|-----------------|----------------------|--------------|-------------------|--------|
-        | ✅ Yes | - | - | - | - | ❌ **SKIP** (never deleted) |
-        | ❌ No | ✅ Yes | - | - | - | ⚠️ **SKIP** (notify user, switch branch first) |
-        | ❌ No | ❌ No | ❌ No | - | - | ❌ **SKIP** (not merged) |
-        | ❌ No | ❌ No | ✅ Yes | ✅ Yes | - | ❌ **SKIP** (has open PR) |
-        | ❌ No | ❌ No | ✅ Yes | ❌ No | ✅ Yes | ✅ **CANDIDATE** (prompt for local + remote deletion) |
-        | ❌ No | ❌ No | ✅ Yes | ❌ No | ❌ No | ✅ **CANDIDATE** (delete local only) |
-        
-        **Notes:**
-        - **Protected branches:** `develop`, `main`, `master` are always skipped
-        - **Current branch:** Cannot be deleted (you must switch branches first)
-        - **Merge check:** Uses `git branch --merged develop` to determine if branch is merged
-        - **PR check:** If GitHub provider is available, checks for open PRs (closed PRs don't prevent deletion)
-        - **Remote branches:** In interactive mode, you'll be prompted separately to delete remote branches
-        - **Quiet mode:** Only deletes local branches, never prompts for remote deletion
-        - **Error handling:** If merge check or PR check fails, the branch is skipped (safe default)
+    -   **Eligibility Summary:**
+        -   **No:** Protected branch, current branch, or open PR.
+        -   **Yes:** Merged into resolved base branch by git, or provider confirms merged PR (including squash/rebase merge paths).
+        -   **Manual:** Ambiguous or unavailable signals (e.g. unresolved base in non-interactive mode, provider unavailable, closed-but-unconfirmed PR).
+        -   **Base branch resolution order:** configured base branch, then `develop`, `main`, `master`.
+        -   If no base branch can be resolved: interactive mode asks for one; quiet/agent mode marks such branches as `Manual`.
         
     -   **Behavior:**
-        -   Scans for branches merged into develop that don't exist on remote
-        -   Never deletes protected branches (develop, main, master)
-        -   In interactive mode, displays list of branches to be deleted and prompts for confirmation
+        -   Quiet/agent mode deletes only `Yes` branches
+        -   Quiet/agent mode never auto-deletes `Manual` branches and reports reasons at the end
+        -   Interactive mode asks explicit confirmation for each `Manual` branch
         -   In quiet mode, deletes all matching branches without prompting
         -   Handles deletion errors gracefully (logs warning and continues with other branches)
         -   For branches that exist on remote, prompts separately to delete the remote branch as well
@@ -850,6 +865,21 @@ These commands integrate directly with your local Git repository to streamline y
         stud commit --all
         stud co -a
         stud commit -q --all
+        ```
+
+-   **`stud push`** (Alias: `stud ps`)
+    -   **Description:** Runs the same commit flow as `stud commit`, then pushes `HEAD` to `origin` using the same non-force command as `stud submit` preflight (`git push --set-upstream origin HEAD`). Does **not** open or update a pull request. If that push is rejected (for example non-fast-forward), behavior depends on mode:
+        - **Interactive** (no `-q`, no `--agent`): asks whether to run `stud please` unless you pass `--no-please`.
+        - **Quiet** (`-q`) or **agent** (`--agent`): runs `stud please` automatically after a failed push unless disabled. **CLI:** pass `--no-please` to opt out. **Agent JSON:** use `"pleaseFallback": false` only (no separate `noPlease` key). If you run `stud push --agent --no-please`, that is equivalent to `pleaseFallback: false`.
+    -   **Options:** Same commit-related flags as `stud commit` (`--new`, `-m` / `--message`, `-a` / `--all`, `-q` / `--quiet`), plus:
+        -   `--no-please`: After a failed normal push, do not prompt for or run `stud please`.
+    -   **Agent JSON:** `isNew`, `message`, `stageAll` (same as `stud commit`), and optional `pleaseFallback` (boolean; default `true`; set `false` to skip `stud please` after a failed push). Do not send `noPlease` in JSON — use `pleaseFallback` only.
+    -   **Usage:**
+        ```bash
+        stud push
+        stud ps -m "feat(scope): summary" -a
+        stud push -q --all
+        echo '{"stageAll":true,"pleaseFallback":false}' | stud push --agent
         ```
 
 -   **`stud please`** (Alias: `stud pl`)
@@ -904,6 +934,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (clean tree, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when the working tree is already clean and committed.
     -   **Usage:**
         ```bash
         stud submit
@@ -913,6 +944,7 @@ These commands integrate directly with your local Git repository to streamline y
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
         stud submit -q
+        echo '{"labels":"AI-Generated,RFR","stageAll":true}' | stud submit --agent
         ```
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
@@ -1041,6 +1073,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 - For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
 - For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
 - For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
+- For `submit`, agent JSON may include `stageAll` (and optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
 
 **Example snippets:**
 
@@ -1058,6 +1091,7 @@ stud to PROJ-123 -q                      # switch to first branch found, no prom
 
 **CI guidance:**
 
+- **GitHub Actions:** See [documentation/github-actions.md](documentation/github-actions.md) for the `stud-cli-setup` composite, required secrets, `skipGit` behavior with `config:validate --agent`, the `jira-label-sync` workflow (repository variable **`STUD_JIRA_LABEL_MAP`** for GitHub→Jira label JSON), and public-repo / fork constraints.
 - **Config must be complete:** Ensure global config (`~/.config/stud/config.yml`) and, if needed, project config (`.git/stud.config`) are present and valid so commands do not prompt. Use `stud config:validate` (optionally with `--skip-jira` or `--skip-git`) as a health check.
 - **Prefer non-interactive flags:** Use `--quiet`, `-m`, `--draft`, `--labels`, `--all`, etc. where available to avoid prompts.
 - **Environment:** Set `HOME` (or the config path) in CI so `stud` can find its config; avoid relying on interactive wizards like `stud config:init` in CI.

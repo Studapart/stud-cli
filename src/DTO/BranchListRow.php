@@ -9,6 +9,7 @@ final class BranchListRow
     public function __construct(
         public readonly string $branch,
         public readonly string $status,
+        public readonly string $autoClean,
         public readonly string $remote,
         public readonly string $pr
     ) {

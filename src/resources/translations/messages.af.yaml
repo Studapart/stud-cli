@@ -45,6 +45,9 @@ config:
       description: Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word.
       prompt: Aktiveer outomatiese Jira oorgang na 'In Proses'?
     success: Konfigurasie suksesvol gestoor!
+    project_follow_up:
+      hint_run_later: "Projekspesifieke instellings word in `.git/stud.config` binne 'n Git-repository gestoor. Wanneer jy in 'n projekvouer is, voer `stud config:project-init` uit om die opstelling te voltooi."
+      prompt_configure_now: "Hierdie repository het nog nie 'n volledige projekvlak stud-konfigurasie nie (byvoorbeeld 'n basisbranch). Nou opstel?"
     completion:
       title: Shell Outo-voltooiing Opstelling
       prompt: Ons het gedetecteer dat jy '%shell%' gebruik. Wil jy shell outo-voltooiing opstel?
@@ -68,6 +71,30 @@ config:
     status_ok: "OK"
     status_fail: "Misluk"
     status_skipped: "Oorgeslaan"
+  project_init:
+    section_title: "Projekkonfigurasie"
+    not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."
+    unknown_keys: "Onbekende sleutels in agent-JSON: %keys%. Sien stud config:project-init en stud help --agent."
+    reserved_keys: "Hierdie sleutels kan nie met hierdie opdrag gestel word nie: %keys%"
+    invalid_git_provider: "gitProvider moet github of gitlab wees."
+    invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
+    base_branch_error: "%message%"
+    interactive_title: "Stud-projekkonfigurasie"
+    interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
+    prompt_project_key: "Jira-projekkode (oorgangs-kas; opsioneel)"
+    prompt_jira_default_project: "Verstek Jira-projekkode vir items:create (opsioneel)"
+    prompt_confluence_default_space: "Verstek Confluence-ruimtekode (opsioneel)"
+    prompt_transition_id: "Gebufferde Jira-oorgang-ID (opsioneel, slegs syfers)"
+    prompt_base_branch: "Naam van die basis-tak"
+    prompt_git_provider: "Git-verskaffer vir hierdie repository"
+    prompt_gitlab_instance_url: "GitLab-instansie-URL (opsioneel, self-aangebied)"
+    prompt_github_token_hint: "GitHub-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
+    prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
+    prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
+    prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
+    status_updated: "Projekkonfigurasie bygewerk (.git/stud.config)."
+    status_unchanged: "Geen veranderinge geskryf nie (konfigurasie onveranderd)."
+    failed: "Bywerking van projekkonfigurasie het misluk."
   error:
     not_found: 'Konfigurasielêer nie gevind by: %path%
 
@@ -264,6 +291,11 @@ please:
 
     Vir die aanvanklike push en om ''n Pull Request te skep, gebruik asseblief "stud submit".'
   warning_force: ⚠️  Dwing met lease...
+push:
+  pushing: "Branch %branch% word gestoot..."
+  success: "✅ Branch na origin gestoot."
+  error_push: "Stoot het misluk. U branch het dalk van die remote afgewyk.\nSinkroniseer of voer 'stud please' uit vir force-push met lease."
+  confirm_please: "Normale stoot het misluk. Voer nou 'stud please' (force-with-lease) uit?"
 commit_undo:
   error_not_repo: Nie in 'n git repository nie.
   error_no_commit: Daar is geen commit om ongedaan te maak nie.
@@ -565,6 +597,10 @@ help:
   command_config_init: Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel.
   command_config_show: "Vertoon huidige konfigurasie (globaal en projek) met geheime verberg; veilig om te deel."
   command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira en die Git-verskaffer bereikbaar is. Gebruik --skip-jira of --skip-git vir gedeeltelijke kontroles."
+  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Gebruik CLI-vlae, stud config:project-init --agent met JSON, of interaktief sonder vlae. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
+  option_config_project_init_project_key: "Jira-projekkode (oorgangs-kas met transition-id)"
+  option_config_project_init_base_branch: "Basis-tak; bestaan op origin word nagegaan tensy --skip-base-branch-remote-check gestel is"
+  option_config_project_init_skip_base: "Moenie nagaan of die basis-tak op origin bestaan nie"
   command_completion: Genereer shell outo-voltooiing scripts vir bash of zsh.
   command_projects_list: Lys alle sigbare Jira projekte.
   command_items_list: Lys aktiewe werkitems (jou dashboard).
@@ -580,10 +616,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Lei jou deur die maak van 'n konvensionele commit.
   command_commit_undo: "Verwyder die laaste commit en hou veranderinge unstaged. Waarsku of vra bevestiging as reeds gepush; gebruik 'stud please' om daarna force-push te doen."
+  command_push: "Soos stud commit, stoot dan HEAD na origin (dieselfde nie-gedwonge stoot as stud submit se voorafkontrole). Na mislukte stoot: stud please tensy afgeskakel. CLI: --no-please. Agent-JSON: slegs pleaseFallback (verstek true; false = geen stud please). stud push --agent --no-please = pleaseFallback false."
   command_please: '''n Veilige force-push vir gevorderde gebruikers (force-with-lease).'
   command_flatten: Voeg outomaties alle fixup! commits saam in hul teiken commits.
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.
-  command_submit: Stuur die huidige tak en skep 'n Pull Request.
+  command_submit: "Stuur die huidige tak en skep 'n Pull Request. Agent-JSON: opsioneel stageAll — indien true word stud push eers uitgevoer (opsioneel isNew, message, pleaseFallback; soos stud push --agent)."
   command_pr_comment: Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument.
   command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit.
   command_status: '''n Vinnige "waar is ek?" dashboard.'
@@ -601,6 +638,7 @@ help:
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
   option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
   option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)
+  option_push_no_please: "Na 'n mislukte normale stoot, moenie stud please uitvoer of aanbied nie"
   option_submit_draft: Skep 'n Draft Pull Request (gemerk as "Draft" op GitHub)
   option_submit_labels: Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys
   option_update_info: Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer
@@ -609,8 +647,8 @@ help:
   option_release_patch: Verhoog patch weergawe (X.Y.Z). Dit is die verstek as geen vlae verskaf word nie
   option_release_publish: Publiseer die vrystelling tak na die afgeleë repository
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Lys plaaslike/afstand takke met status (saamgevoeg, verouderd, aktiewe PR)
-  command_branches_clean: Interaktiewe skoonmaak van saamgevoegde/verouderde takke
+  command_branches_list: Lys takke met status en konserwatiewe auto-clean geskiktheid
+  command_branches_clean: Maak takke skoon met konserwatiewe auto-clean geskiktheid
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -650,6 +688,7 @@ branches:
     column:
       branch: Tak
       status: Status
+      auto_clean: Auto clean
       remote: Afstand
       pr: PR
     status:
@@ -657,6 +696,10 @@ branches:
       stale: verouderd
       active_pr: aktiewe-pr
       active: aktief
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Kry plaaslike takke...
     fetching_remote: Kry afstand takke vir %count% plaaslike takke...
     note_origin: 'Let wel: Slegs ''origin'' afstand word gekontroleer. Ander afstande word geïgnoreer.'
@@ -685,3 +728,17 @@ branches:
     remote_kept_quiet: Afstand tak 'origin/%branch%' behou (gebruik interaktiewe modus om afstand takke te verwyder)
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: Basis tak kon nie opgelos word nie. Voer basis taknaam in
+    manual_confirm: "Handmatige besluit vir '%branch%' (%reason%). Verwyder hierdie tak? (j/N)"
+    manual_report_header: 'Handmatige takke in nie-interaktiewe modus oorgeslaan (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Herlaai 'stud branches:clean' sonder --quiet om handmatige takke te hersien."
+    reason:
+      protected_branch: beskermde tak
+      current_branch: huidige tak
+      open_pull_request: oop pull request
+      base_branch_unresolved: basis tak nie opgelos nie
+      merge_check_failed: merge-kontrole het misluk
+      closed_pull_request_unmerged: geslote pull request nie as saamgevoeg bevestig nie
+      provider_unavailable: provider-data nie beskikbaar nie
+      not_merged: nie saamgevoeg nie

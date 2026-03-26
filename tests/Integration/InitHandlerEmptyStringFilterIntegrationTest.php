@@ -95,7 +95,7 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $io = new SymfonyStyle($input, $output);
 
         $logger = new Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, $this->configPath, $this->translationService, $logger);
+        $handler = new InitHandler($this->fileSystem, $this->configPath, $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
 
         // Execute handler
         $handler->handle($io);

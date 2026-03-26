@@ -46,6 +46,9 @@ config:
       description: "Enable automatic transition to 'In Progress' when starting work on an issue."
       prompt: "Enable automatic Jira transition to 'In Progress'?"
     success: "Configuration saved successfully!"
+    project_follow_up:
+      hint_run_later: "Project-specific settings are stored in `.git/stud.config` inside a Git repository. When you are in a project folder, run `stud config:project-init` to finish setup."
+      prompt_configure_now: "This repository does not have a complete project-level stud configuration yet (for example, a base branch). Set it up now?"
     completion:
       title: "Shell Auto-Completion Setup"
       prompt: "We detected you are using '%shell%'. Would you like to set up shell auto-completion?"
@@ -69,6 +72,30 @@ config:
     status_ok: "OK"
     status_fail: "Fail"
     status_skipped: "Skipped"
+  project_init:
+    section_title: "Project configuration"
+    not_git_repository: "Not inside a Git repository. Run this command from a repository checkout."
+    unknown_keys: "Unknown keys in agent JSON: %keys%. See stud config:project-init and stud help --agent."
+    reserved_keys: "These keys cannot be set via this command: %keys%"
+    invalid_git_provider: "gitProvider must be github or gitlab."
+    invalid_transition_id: "transitionId must be a non-negative integer."
+    base_branch_error: "%message%"
+    interactive_title: "Project stud configuration"
+    interactive_hint: "Press Enter to keep the current value. Leave optional fields blank to skip."
+    prompt_project_key: "Jira project key (for transition cache; optional)"
+    prompt_jira_default_project: "Default Jira project key for items:create (optional)"
+    prompt_confluence_default_space: "Default Confluence space key (optional)"
+    prompt_transition_id: "Cached Jira transition ID (optional, digits only)"
+    prompt_base_branch: "Base branch name"
+    prompt_git_provider: "Git provider for this repository"
+    prompt_gitlab_instance_url: "GitLab instance URL (optional, for self-hosted)"
+    prompt_github_token_hint: "GitHub token: leave blank to skip; enter '.' to keep the existing token."
+    prompt_github_token: "GitHub token for this repository (hidden)"
+    prompt_gitlab_token_hint: "GitLab token: leave blank to skip; enter '.' to keep the existing token."
+    prompt_gitlab_token: "GitLab token for this repository (hidden)"
+    status_updated: "Project configuration updated (.git/stud.config)."
+    status_unchanged: "No changes written (configuration unchanged)."
+    failed: "Project configuration update failed."
   error:
     not_found: "Configuration file not found at: %path%\nPlease run \"stud config:init\" to create one."
     missing_jira_keys: "Your configuration file is missing required Jira keys: %keys%\nPlease run \"stud config:init\" again."
@@ -274,6 +301,13 @@ status:
 please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
+
+# Push Handler (commit + origin push; same non-force push as submit preflight)
+push:
+  pushing: "Pushing branch %branch%..."
+  success: "✅ Branch pushed to origin."
+  error_push: "Push failed. Your branch may have diverged from the remote.\nTry syncing or run 'stud please' to force-push with lease."
+  confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
 
 # Commit Undo Handler
 commit_undo:
@@ -511,6 +545,7 @@ branches:
     column:
       branch: "Branch"
       status: "Status"
+      auto_clean: "Auto clean"
       remote: "Remote"
       pr: "PR"
     status:
@@ -518,6 +553,10 @@ branches:
       stale: "stale"
       active_pr: "active-pr"
       active: "active"
+    auto_clean:
+      yes: "Yes"
+      no: "No"
+      manual: "Manual"
   clean:
     section: "Branch Cleanup"
     note_origin: "Note: Only checking 'origin' remote. Other remotes are ignored."
@@ -543,6 +582,20 @@ branches:
     remote_kept_quiet: "Remote branch 'origin/%branch%' kept (use interactive mode to delete remote branches)"
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: "Base branch could not be resolved. Enter base branch name"
+    manual_confirm: "Manual decision for '%branch%' (%reason%). Delete this branch? (y/N)"
+    manual_report_header: "Manual branches skipped in non-interactive mode (%count%):"
+    manual_report_row: "- %branch% (%reason%)"
+    manual_report_hint: "Re-run 'stud branches:clean' without --quiet to review manual branches."
+    reason:
+      protected_branch: "protected branch"
+      current_branch: "current branch"
+      open_pull_request: "open pull request"
+      base_branch_unresolved: "base branch unresolved"
+      merge_check_failed: "merge check failed"
+      closed_pull_request_unmerged: "closed pull request not confirmed as merged"
+      provider_unavailable: "provider data unavailable"
+      not_merged: "not merged"
 
 # Table Headers
 table:
@@ -576,6 +629,10 @@ help:
   command_config_init: "Interactive wizard to set up Jira & Git connection details."
   command_config_show: "Display current configuration (global and project) with secrets redacted; safe for sharing. Use -k/--key to show one whitelisted key; -q/--quiet with --key outputs only the raw value."
   command_config_validate: "Validate that configuration is present and that Jira and the Git provider are reachable. Use --skip-jira or --skip-git to run partial checks."
+  command_config_project_init: "Create or merge .git/stud.config (project key, base branch, provider, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Use CLI flags, stud config:project-init --agent with JSON, or run interactively with no flags. Unknown agent keys are rejected; migration_version is reserved."
+  option_config_project_init_project_key: "Jira project key (transition cache with transition-id)"
+  option_config_project_init_base_branch: "Base branch; existence on origin is checked unless --skip-base-branch-remote-check is set"
+  option_config_project_init_skip_base: "Do not verify that the base branch exists on origin"
   command_completion: "Generates shell completion scripts for bash or zsh."
   command_projects_list: "Lists all visible Jira projects."
   command_items_list: "Lists active work items (your dashboard)."
@@ -591,17 +648,18 @@ help:
   command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
   command_commit: "Guides you through making a conventional commit."
   command_commit_undo: "Removes the last commit and keeps changes unstaged. Refuses or prompts when the last commit is already pushed; use 'stud please' to force-push after undoing."
+  command_push: "Commits like stud commit, then pushes HEAD to origin (same non-force push as stud submit preflight). After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false."
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
-  command_submit: "Pushes the current branch and creates a Pull Request."
+  command_submit: "Pushes the current branch and creates a Pull Request. Agent JSON: optional stageAll — when true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."
-  command_branches_list: "List local/remote branches with status (merged, stale, active PR)"
-  command_branches_clean: "Interactive cleanup of merged/stale branches"
+  command_branches_list: "List local branches with status and conservative auto-clean eligibility"
+  command_branches_clean: "Clean branches using conservative auto-clean eligibility"
   command_update: "Checks for and installs new versions of the tool."
   universal_help_note: "Tip: Use --help (or -h) with any command to see detailed help. For example: stud commit --help"
   command_specific_help_note: "Tip: Run 'stud help <command>' to see detailed help for a specific command. For example: stud help commit"
@@ -614,6 +672,7 @@ help:
   option_commit_new: "Create a new logical commit instead of a fixup"
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
   option_commit_all: "Stage all changes before committing (restores old behavior)"
+  option_push_no_please: "After a failed normal push, do not run or prompt for stud please"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
   option_update_info: "Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating"

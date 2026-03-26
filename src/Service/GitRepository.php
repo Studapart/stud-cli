@@ -328,6 +328,14 @@ SCRIPT;
         return $this->runQuietly("git push --set-upstream origin {$branchName}");
     }
 
+    /**
+     * Non-force push of HEAD to origin (same ref as submit preflight). Delegates to {@see pushToOrigin}.
+     */
+    public function pushHeadToOrigin(): Process
+    {
+        return $this->pushToOrigin('HEAD');
+    }
+
     public function getMergeBase(string $baseBranch, string $head): string
     {
         return trim($this->run("git merge-base {$baseBranch} {$head}")->getOutput());
@@ -504,7 +512,7 @@ SCRIPT;
      * Reads the project-specific config file.
      * Returns an empty array if the file doesn't exist.
      *
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string}
      */
     public function readProjectConfig(): array
     {
@@ -527,7 +535,7 @@ SCRIPT;
      * Writes the project-specific config file.
      * Preserves migration_version if it exists in the current config.
      *
-     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, migration_version?: string} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {

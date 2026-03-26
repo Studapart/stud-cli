@@ -46,7 +46,7 @@ class BranchListResponderTest extends CommandTestCase
 
     public function testRespondRendersTableWhenRowsPresent(): void
     {
-        $row = new BranchListRow('feat/PROJ-123 (current)', 'Active', '✓', '✗');
+        $row = new BranchListRow('feat/PROJ-123 (current)', 'Active', 'No', '✓', '✗');
         $response = BranchListResponse::success([$row]);
         $io = $this->createMock(SymfonyStyle::class);
         $logger = $this->createLogger($io);
@@ -66,7 +66,7 @@ class BranchListResponderTest extends CommandTestCase
 
     public function testRespondShowsVerboseMessagesWhenVerbose(): void
     {
-        $row = new BranchListRow('main', 'Active', '✓', '✗');
+        $row = new BranchListRow('main', 'Active', 'No', '✓', '✗');
         $response = BranchListResponse::success([$row]);
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
         $logger = new Logger($io, []);
@@ -94,7 +94,7 @@ class BranchListResponderTest extends CommandTestCase
         $io = $this->createSymfonyStyle(OutputInterface::VERBOSITY_VERBOSE);
         $logger = new Logger($io, []);
         $responder = new BranchListResponder($helper, $logger);
-        $row = new BranchListRow('main', 'Active', '✓', '✗');
+        $row = new BranchListRow('main', 'Active', 'No', '✓', '✗');
         $response = BranchListResponse::success([$row]);
 
         $responder->respond($io, $response);
@@ -106,7 +106,7 @@ class BranchListResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedRows(): void
     {
-        $row = new BranchListRow('feat/test', 'active', 'origin/feat/test', '');
+        $row = new BranchListRow('feat/test', 'active', 'yes', 'origin/feat/test', '');
         $response = BranchListResponse::success([$row]);
         $io = $this->createMock(SymfonyStyle::class);
 

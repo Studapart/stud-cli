@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Service\FileSystem;
+use App\Service\GitTokenPromptResolver;
+use App\Service\InitProjectConfigFollowUpService;
 use App\Service\Logger;
 use App\Service\MigrationRegistry;
 use App\Service\TranslationService;
@@ -17,11 +19,17 @@ class InitHandler
         private readonly FileSystem $fileSystem,
         private readonly string $configPath,
         private readonly TranslationService $translator,
-        private readonly Logger $logger
+        private readonly Logger $logger,
+        private readonly GitTokenPromptResolver $gitTokenPromptResolver,
+        private readonly ?InitProjectConfigFollowUpService $projectConfigFollowUp = null,
     ) {
     }
 
-    public function handle(SymfonyStyle $io): void
+    /**
+     * @param bool $isAgentMode When true, skips post-save project follow-up (same as `stud config:init --agent`).
+     * @param bool $isInteractiveCli From Castor input; when false, project follow-up only shows the run-later note.
+     */
+    public function handle(SymfonyStyle $io, bool $isAgentMode = false, bool $isInteractiveCli = true): void
     {
         $existingConfig = $this->loadExistingConfig();
 
@@ -31,6 +39,9 @@ class InitHandler
         $config = $this->buildConfigFromPrompts($existingConfig);
         $this->applyMigrationVersion($config, $existingConfig);
         $this->saveConfig($config);
+        if ($this->projectConfigFollowUp !== null) {
+            $this->projectConfigFollowUp->runAfterGlobalSave($io, $isAgentMode, $isInteractiveCli);
+        }
         $this->promptForCompletion();
     }
 
@@ -79,8 +90,8 @@ class InitHandler
             'JIRA_URL' => rtrim($jiraUrl, '/'),
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
-            'GITHUB_TOKEN' => $this->resolveGitTokenForInit($githubToken, 'GITHUB_TOKEN', $existingConfig),
-            'GITLAB_TOKEN' => $this->resolveGitTokenForInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig),
+            'GITHUB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($githubToken, 'GITHUB_TOKEN', $existingConfig),
+            'GITLAB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
     }
@@ -257,68 +268,6 @@ class InitHandler
 
         // Language not supported, return null to fallback to 'en'
         return null;
-    }
-
-    /**
-     * Resolves the Git token value for config:init when the user leaves the prompt empty.
-     * Preserves legacy GIT_TOKEN / GIT_PROVIDER so that re-running config:init does not wipe tokens.
-     *
-     * @param string|null $userInput   Value from the interactive prompt (null or empty = "keep existing or skip")
-     * @param string      $newKey     Either 'GITHUB_TOKEN' or 'GITLAB_TOKEN'
-     * @param array<string, mixed> $existingConfig The raw config read from file (may contain GIT_TOKEN, GIT_PROVIDER, or new keys)
-     * @return string|null The token to write, or null
-     */
-    protected function resolveGitTokenForInit(?string $userInput, string $newKey, array $existingConfig): ?string
-    {
-        $fromInput = $this->resolveTokenFromUserInput($userInput);
-        if ($fromInput !== null) {
-            return $fromInput;
-        }
-        $fromNewKey = $this->resolveTokenFromExistingKey($existingConfig, $newKey);
-        if ($fromNewKey !== null) {
-            return $fromNewKey;
-        }
-
-        return $this->resolveTokenFromLegacy($existingConfig, $newKey);
-    }
-
-    protected function resolveTokenFromUserInput(?string $userInput): ?string
-    {
-        if ($userInput === null || trim($userInput) === '') {
-            return null;
-        }
-
-        return trim($userInput);
-    }
-
-    /**
-     * @param array<string, mixed> $existingConfig
-     */
-    protected function resolveTokenFromExistingKey(array $existingConfig, string $newKey): ?string
-    {
-        $existingNew = $existingConfig[$newKey] ?? null;
-        if ($existingNew === null || ! is_string($existingNew) || trim($existingNew) === '') {
-            return null;
-        }
-
-        return trim($existingNew);
-    }
-
-    /**
-     * @param array<string, mixed> $existingConfig
-     */
-    protected function resolveTokenFromLegacy(array $existingConfig, string $newKey): ?string
-    {
-        $legacyToken = $existingConfig['GIT_TOKEN'] ?? null;
-        if ($legacyToken === null || ! is_string($legacyToken) || trim($legacyToken) === '') {
-            return null;
-        }
-        $provider = isset($existingConfig['GIT_PROVIDER']) && is_string($existingConfig['GIT_PROVIDER'])
-            ? strtolower($existingConfig['GIT_PROVIDER'])
-            : null;
-        $opposite = $newKey === 'GITHUB_TOKEN' ? 'gitlab' : 'github';
-
-        return ($provider === $opposite) ? null : trim($legacyToken);
     }
 
     /**

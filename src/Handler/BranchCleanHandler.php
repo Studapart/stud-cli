@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Enum\BranchAutoCleanDecision;
+use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
-use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\Logger;
 use App\Service\TranslationService;
@@ -19,8 +20,8 @@ class BranchCleanHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly ?GitProviderInterface $githubProvider,
-        private readonly string $baseBranch,
+        private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
+        private readonly ?string $configuredBaseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
     ) {
@@ -30,12 +31,22 @@ class BranchCleanHandler
     {
         $this->displayHeader();
 
-        $result = $this->findBranchesToClean();
+        $baseBranch = $this->resolveBaseBranch($quiet);
+        $result = $this->findBranchesToClean($baseBranch);
         $branchesToCleanLocal = $result['local_only'];
         $branchesToCleanRemote = $result['with_remote'];
         $currentBranchSkipped = $result['current_branch_skipped'];
+        $manualBranches = $result['manual'];
 
-        if ($this->shouldExitEarly($branchesToCleanLocal, $branchesToCleanRemote, $currentBranchSkipped)) {
+        if (! $quiet) {
+            $this->addManuallyConfirmedBranches($manualBranches, $branchesToCleanLocal, $branchesToCleanRemote);
+        }
+
+        if ($this->shouldExitEarly($branchesToCleanLocal, $branchesToCleanRemote, $currentBranchSkipped, $manualBranches)) {
+            if ($quiet) {
+                $this->displayManualBranchesReport($manualBranches);
+            }
+
             return 0;
         }
 
@@ -48,6 +59,9 @@ class BranchCleanHandler
 
         $deletedCount = $this->deleteBranches($branchesToCleanLocal, $branchesToCleanRemote, $quiet);
         $this->displayDeletionResult($deletedCount);
+        if ($quiet) {
+            $this->displayManualBranchesReport($manualBranches);
+        }
 
         return 0;
     }
@@ -69,19 +83,21 @@ class BranchCleanHandler
      * @param array<string> $branchesToCleanLocal Local-only branches
      * @param array<string> $branchesToCleanRemote Branches with remote
      * @param bool $currentBranchSkipped Whether current branch was skipped
+     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
      * @return bool True if should exit early, false otherwise
      */
-    protected function shouldExitEarly(array $branchesToCleanLocal, array $branchesToCleanRemote, bool $currentBranchSkipped): bool
+    protected function shouldExitEarly(array $branchesToCleanLocal, array $branchesToCleanRemote, bool $currentBranchSkipped, array $manualBranches): bool
     {
         $totalBranches = count($branchesToCleanLocal) + count($branchesToCleanRemote);
+        $hasManualBranches = ! empty($manualBranches);
 
-        if ($totalBranches === 0 && ! $currentBranchSkipped) {
+        if ($totalBranches === 0 && ! $currentBranchSkipped && ! $hasManualBranches) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.none'));
 
             return true;
         }
 
-        if ($totalBranches === 0) {
+        if ($totalBranches === 0 && ! $hasManualBranches) {
             return true;
         }
 
@@ -169,58 +185,63 @@ class BranchCleanHandler
     }
 
     /**
-     * Finds branches that are safe to clean (merged, not protected, not current).
-     *
-     * @return array{local_only: array<string>, with_remote: array<string>, current_branch_skipped: bool}
+     * @return array{
+     *   local_only: array<string>,
+     *   with_remote: array<string>,
+     *   current_branch_skipped: bool,
+     *   manual: array<int, array{branch: string, reason: string, remote_exists: bool}>
+     * }
      */
-    protected function findBranchesToClean(): array
+    protected function findBranchesToClean(?string $baseBranch): array
     {
         $allBranches = $this->fetchAllBranches();
         $remoteBranchesSet = $this->fetchRemoteBranchesSet();
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>");
-
-        // Fetch all PRs once and build PR map for optimized lookups
-        $prMap = $this->buildPrMap();
+        $prSnapshot = $this->eligibilityResolver->buildPullRequestSnapshot();
 
         $branchesToCleanLocal = [];
         $branchesToCleanRemote = [];
         $currentBranchSkipped = false;
+        $manualBranches = [];
 
         foreach ($allBranches as $branch) {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Evaluating branch: {$branch}</>");
-
-            if ($this->shouldSkipBranch($branch, $currentBranch, $currentBranchSkipped)) {
-                continue;
-            }
-
-            if (! $this->isBranchMerged($branch)) {
-                continue;
-            }
-
-            if ($this->hasOpenPullRequest($branch, $prMap)) {
-                continue;
-            }
-
             $remoteExists = isset($remoteBranchesSet[$branch]);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Exists on remote: " . ($remoteExists ? 'yes' : 'no') . "</>");
+            $eligibility = $this->eligibilityResolver->evaluate(
+                $branch,
+                $currentBranch,
+                $remoteExists,
+                $baseBranch,
+                $prSnapshot['map'],
+                $prSnapshot['available']
+            );
 
-            // Branch is merged and safe to delete
-            if ($remoteExists) {
-                $branchesToCleanRemote[] = $branch;
-                $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=green>Added to remote deletion list</>");
-            } else {
-                $branchesToCleanLocal[] = $branch;
-                $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=green>Added to local-only deletion list</>");
+            if ($eligibility->reason === 'current_branch') {
+                $currentBranchSkipped = true;
+            }
+
+            if ($eligibility->decision === BranchAutoCleanDecision::Yes) {
+                if ($remoteExists) {
+                    $branchesToCleanRemote[] = $branch;
+                } else {
+                    $branchesToCleanLocal[] = $branch;
+                }
+            }
+
+            if ($eligibility->decision === BranchAutoCleanDecision::Manual) {
+                $manualBranches[] = [
+                    'branch' => $branch,
+                    'reason' => $eligibility->reason,
+                    'remote_exists' => $remoteExists,
+                ];
             }
         }
-
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Summary: " . count($branchesToCleanLocal) . " local-only, " . count($branchesToCleanRemote) . " with remote</>");
 
         return [
             'local_only' => $branchesToCleanLocal,
             'with_remote' => $branchesToCleanRemote,
             'current_branch_skipped' => $currentBranchSkipped,
+            'manual' => $manualBranches,
         ];
     }
 
@@ -252,161 +273,89 @@ class BranchCleanHandler
         return array_flip($remoteBranches);
     }
 
-    /**
-     * Checks if a branch should be skipped (protected or current).
-     *
-     * @param string $branch Branch name to check
-     * @param string $currentBranch Current branch name
-     * @param bool $currentBranchSkipped Reference to track if current branch was skipped
-     * @return bool True if branch should be skipped, false otherwise
-     */
-    protected function shouldSkipBranch(string $branch, string $currentBranch, bool &$currentBranchSkipped): bool
+    protected function resolveBaseBranch(bool $quiet): ?string
     {
-        if ($this->isProtectedBranch($branch)) {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=yellow>Protected branch, skipping</>");
-
-            return true;
+        $resolved = $this->eligibilityResolver->resolveBaseBranch($this->configuredBaseBranch);
+        if ($resolved !== null || $quiet) {
+            return $resolved;
         }
 
-        if ($branch === $currentBranch) {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=yellow>Current branch, will skip</>");
-            $currentBranchSkipped = true;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if a branch is merged into the base branch.
-     *
-     * @param string $branch Branch name to check
-     * @return bool True if branch is merged, false otherwise
-     */
-    protected function isBranchMerged(string $branch): bool
-    {
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking if merged into {$this->baseBranch}...</>");
-
-        try {
-            $isMerged = $this->gitBranchService->isBranchMergedInto($branch, $this->baseBranch);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Merged into {$this->baseBranch}: " . ($isMerged ? 'yes' : 'no') . "</>");
-
-            return $isMerged;
-        } catch (\Exception $e) {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=yellow>Warning: Could not check merge status for {$branch}: {$e->getMessage()}</>");
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=red>Exception: {$e->getMessage()}</>");
-
-            return false;
-        }
-    }
-
-    /**
-     * Checks if a branch has an open pull request.
-     *
-     * @param string $branch Branch name to check
-     * @param array<string, array<string, mixed>>|null $prMap Optional PR map for optimized lookups
-     * @return bool True if branch has an open PR, false otherwise
-     */
-    protected function hasOpenPullRequest(string $branch, ?array $prMap = null): bool
-    {
-        if ($this->githubProvider === null) {
-            return false;
-        }
-
-        // Use PR map if provided (optimized path)
-        if ($prMap !== null) {
-            if (! isset($prMap[$branch])) {
-                return false;
-            }
-
-            $pr = $prMap[$branch];
-            $prState = $pr['state'] ?? 'unknown';
-            $prNumber = $pr['number'] ?? '?';
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>PR #{$prNumber} found (state: {$prState})</>");
-
-            if ($prState === 'open') {
-                $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=yellow>Open PR found, skipping deletion</>");
-
-                return true;
-            }
-
-            return false;
-        }
-
-        // Fallback to per-branch API call (backward compatibility)
-        try {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>Checking PR status...</>");
-            $pr = $this->githubProvider->findPullRequestByBranchName($branch, 'all');
-            if ($pr === null) {
-                return false;
-            }
-
-            $prState = $pr['state'] ?? 'unknown';
-            $prNumber = $pr['number'] ?? '?';
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=gray>PR #{$prNumber} found (state: {$prState})</>");
-
-            if ($prState === 'open') {
-                $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=yellow>Open PR found, skipping deletion</>");
-
-                return true;
-            }
-
-            return false;
-        } catch (\Exception $e) {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Warning: Could not check PR for {$branch}: {$e->getMessage()}</>");
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "      <fg=red>PR check exception: {$e->getMessage()}</>");
-
-            return false;
-        }
-    }
-
-    /**
-     * Builds a map of branch names to PR data for optimized lookups.
-     *
-     * @return array<string, array<string, mixed>> Map of branch name => PR data, or empty array if fetch fails
-     */
-    protected function buildPrMap(): array
-    {
-        if (! $this->githubProvider) {
-            return [];
-        }
-
-        try {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Fetching all PRs for optimized lookups...</>");
-            $allPrs = $this->githubProvider->getAllPullRequests('all');
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Fetched " . count($allPrs) . " PRs</>");
-
-            $prMap = [];
-            foreach ($allPrs as $pr) {
-                // Extract branch name from head.ref
-                if (! isset($pr['head']['ref'])) {
-                    continue;
+        $enteredBranch = $this->logger->ask(
+            $this->translator->trans('branches.clean.base_branch_prompt'),
+            'develop',
+            function (?string $value): string {
+                $branch = trim((string) $value);
+                if ($branch === '') {
+                    throw new \RuntimeException('Base branch cannot be empty.');
                 }
 
-                $branchName = $pr['head']['ref'];
+                return $branch;
+            }
+        );
+        if ($enteredBranch === null || ! $this->gitRepository->remoteBranchExists('origin', $enteredBranch)) {
+            return null;
+        }
 
-                // Only map PRs from the same repository (exclude fork PRs)
-                // PRs from the same repo have head.repo.full_name === base.repo.full_name
-                $headRepoFullName = $pr['head']['repo']['full_name'] ?? null;
-                $baseRepoFullName = $pr['base']['repo']['full_name'] ?? null;
-                if ($headRepoFullName === null || $baseRepoFullName === null || $headRepoFullName !== $baseRepoFullName) {
-                    continue;
-                }
+        return 'origin/' . $enteredBranch;
+    }
 
-                $prMap[$branchName] = $pr;
+    /**
+     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
+     * @param array<string> $branchesToCleanLocal
+     * @param array<string> $branchesToCleanRemote
+     */
+    protected function addManuallyConfirmedBranches(array $manualBranches, array &$branchesToCleanLocal, array &$branchesToCleanRemote): void
+    {
+        foreach ($manualBranches as $manualBranch) {
+            $confirm = $this->logger->confirm(
+                $this->translator->trans('branches.clean.manual_confirm', [
+                    'branch' => $manualBranch['branch'],
+                    'reason' => $this->translateReason($manualBranch['reason']),
+                ]),
+                false
+            );
+            if (! $confirm) {
+                continue;
             }
 
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Built PR map with " . count($prMap) . " entries</>");
-
-            return $prMap;
-        } catch (\Exception $e) {
-            // Log warning and return empty map (will fall back to per-branch calls)
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Warning: Failed to fetch all PRs, falling back to per-branch lookups: {$e->getMessage()}</>");
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>PR map build exception: {$e->getMessage()}</>");
-
-            return [];
+            if ($manualBranch['remote_exists']) {
+                $branchesToCleanRemote[] = $manualBranch['branch'];
+            } else {
+                $branchesToCleanLocal[] = $manualBranch['branch'];
+            }
         }
+    }
+
+    /**
+     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
+     */
+    protected function displayManualBranchesReport(array $manualBranches): void
+    {
+        if ($manualBranches === []) {
+            return;
+        }
+
+        $this->logger->note(
+            Logger::VERBOSITY_NORMAL,
+            $this->translator->trans('branches.clean.manual_report_header', ['count' => count($manualBranches)])
+        );
+
+        foreach ($manualBranches as $manualBranch) {
+            $this->logger->text(
+                Logger::VERBOSITY_NORMAL,
+                $this->translator->trans('branches.clean.manual_report_row', [
+                    'branch' => $manualBranch['branch'],
+                    'reason' => $this->translateReason($manualBranch['reason']),
+                ])
+            );
+        }
+
+        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.manual_report_hint'));
+    }
+
+    protected function translateReason(string $reason): string
+    {
+        return $this->translator->trans("branches.clean.reason.{$reason}");
     }
 
     /**

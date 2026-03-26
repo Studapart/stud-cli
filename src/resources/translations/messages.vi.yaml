@@ -45,6 +45,9 @@ config:
       description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
       prompt: Bật chuyển đổi tự động Jira sang 'Đang thực hiện'?
     success: Cấu hình đã được lưu thành công!
+    project_follow_up:
+      hint_run_later: "Cài đặt theo từng dự án được lưu trong `.git/stud.config` trong kho Git. Khi bạn ở thư mục dự án, chạy `stud config:project-init` để hoàn tất thiết lập."
+      prompt_configure_now: "Kho này chưa có cấu hình stud cấp dự án đầy đủ (ví dụ nhánh gốc). Thiết lập ngay?"
     completion:
       title: Thiết lập Tự động hoàn thành Shell
       prompt: Chúng tôi phát hiện bạn đang sử dụng '%shell%'. Bạn có muốn thiết lập tự động hoàn thành shell không?
@@ -68,6 +71,30 @@ config:
     status_ok: "OK"
     status_fail: "Lỗi"
     status_skipped: "Đã bỏ qua"
+  project_init:
+    section_title: "Cấu hình dự án"
+    not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."
+    unknown_keys: "Khóa không xác định trong JSON agent: %keys%. Xem stud config:project-init và stud help --agent."
+    reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
+    invalid_git_provider: "gitProvider phải là github hoặc gitlab."
+    invalid_transition_id: "transitionId phải là số nguyên không âm."
+    base_branch_error: "%message%"
+    interactive_title: "Cấu hình stud cho dự án"
+    interactive_hint: "Nhấn Enter để giữ giá trị hiện tại. Để trống các trường tùy chọn nếu muốn bỏ qua."
+    prompt_project_key: "Mã dự án Jira (bộ nhớ chuyển trạng thái; tùy chọn)"
+    prompt_jira_default_project: "Mã dự án Jira mặc định cho items:create (tùy chọn)"
+    prompt_confluence_default_space: "Mã không gian Confluence mặc định (tùy chọn)"
+    prompt_transition_id: "ID chuyển trạng thái Jira đã lưu (tùy chọn, chỉ chữ số)"
+    prompt_base_branch: "Tên nhánh cơ sở"
+    prompt_git_provider: "Nhà cung cấp Git cho kho này"
+    prompt_gitlab_instance_url: "URL phiên bản GitLab (tùy chọn, tự host)"
+    prompt_github_token_hint: "Token GitHub: để trống để bỏ qua; nhập '.' để giữ token hiện có."
+    prompt_github_token: "Token GitHub cho kho này (ẩn)"
+    prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
+    prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
+    status_updated: "Đã cập nhật cấu hình dự án (.git/stud.config)."
+    status_unchanged: "Không ghi thay đổi (cấu hình không đổi)."
+    failed: "Cập nhật cấu hình dự án thất bại."
   error:
     not_found: 'Không tìm thấy tệp cấu hình tại: %path%
 
@@ -264,6 +291,11 @@ please:
 
     Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
   warning_force: ⚠️  Đang ép buộc với lease...
+push:
+  pushing: "Đang đẩy nhánh %branch%..."
+  success: "✅ Đã đẩy nhánh lên origin."
+  error_push: "Push thất bại. Nhánh của bạn có thể đã lệch so với remote.\nĐồng bộ hoặc chạy 'stud please' để force-push với lease."
+  confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
   error_no_commit: Không có commit nào để hoàn tác.
@@ -565,6 +597,10 @@ help:
   command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
   command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
   command_config_validate: "Xác thực rằng cấu hình có mặt và Jira cùng nhà cung cấp Git có thể truy cập. Dùng --skip-jira hoặc --skip-git để kiểm tra từng phần."
+  command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Dùng cờ CLI, stud config:project-init --agent với JSON, hoặc chạy tương tác không cờ. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
+  option_config_project_init_project_key: "Mã dự án Jira (bộ nhớ chuyển trạng thái với transition-id)"
+  option_config_project_init_base_branch: "Nhánh cơ sở; kiểm tra tồn tại trên origin trừ khi bật --skip-base-branch-remote-check"
+  option_config_project_init_skip_base: "Không kiểm tra nhánh cơ sở có tồn tại trên origin"
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
@@ -580,10 +616,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Hướng dẫn bạn tạo một commit thông thường.
   command_commit_undo: "Xóa commit cuối cùng và giữ các thay đổi chưa stage. Cảnh báo hoặc yêu cầu xác nhận nếu đã push; dùng 'stud please' để force-push sau đó."
+  command_push: "Commit giống stud commit, sau đó push HEAD lên origin (cùng kiểu push không ép như bước kiểm tra của stud submit). Sau khi push thất bại chạy hoặc hỏi stud please trừ khi tắt. CLI: --no-please. JSON agent: chỉ pleaseFallback (mặc định true; false = không stud please). stud push --agent --no-please tương đương pleaseFallback false."
   command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
   command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
-  command_submit: Đẩy nhánh hiện tại và tạo Pull Request.
+  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
   command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
@@ -601,6 +638,7 @@ help:
   option_commit_new: Tạo một commit logic mới thay vì fixup
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)
+  option_push_no_please: "Sau khi push thường thất bại, không chạy hoặc hỏi stud please"
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật
@@ -609,8 +647,8 @@ help:
   option_release_patch: Tăng phiên bản bản vá (X.Y.Z). Đây là mặc định nếu không có cờ nào được cung cấp
   option_release_publish: Xuất bản nhánh phát hành đến kho lưu trữ từ xa
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Liệt kê các nhánh local/remote với trạng thái (đã hợp nhất, lỗi thời, PR đang hoạt động)
-  command_branches_clean: Dọn dẹp tương tác các nhánh đã hợp nhất/lỗi thời
+  command_branches_list: Liệt kê nhánh với trạng thái và auto-clean bảo thủ
+  command_branches_clean: Dọn dẹp nhánh bằng auto-clean bảo thủ
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -650,6 +688,7 @@ branches:
     column:
       branch: Nhánh
       status: Trạng thái
+      auto_clean: Auto clean
       remote: Remote
       pr: PR
     status:
@@ -657,6 +696,10 @@ branches:
       stale: lỗi thời
       active_pr: pr-đang hoạt động
       active: đang hoạt động
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Đang lấy các nhánh local...
     fetching_remote: Đang lấy các nhánh remote cho %count% nhánh local...
     note_origin: 'Lưu ý: Chỉ kiểm tra remote ''origin''. Các remote khác bị bỏ qua.'
@@ -685,3 +728,17 @@ branches:
     remote_kept_quiet: Giữ lại nhánh remote 'origin/%branch%' (sử dụng chế độ tương tác để xóa nhánh remote)
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: Không xác định được nhánh base. Nhập tên nhánh base
+    manual_confirm: "Quyết định thủ công cho '%branch%' (%reason%). Xóa nhánh này? (y/N)"
+    manual_report_header: 'Nhánh thủ công bị bỏ qua ở chế độ không tương tác (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Chạy lại 'stud branches:clean' không có --quiet để xem nhánh thủ công."
+    reason:
+      protected_branch: nhánh được bảo vệ
+      current_branch: nhánh hiện tại
+      open_pull_request: pull request đang mở
+      base_branch_unresolved: chưa xác định nhánh base
+      merge_check_failed: kiểm tra merge thất bại
+      closed_pull_request_unmerged: pull request đã đóng nhưng chưa xác nhận merged
+      provider_unavailable: dữ liệu provider không khả dụng
+      not_merged: chưa merge

@@ -45,6 +45,9 @@ config:
       description: Включить автоматический переход в 'В работе' при начале работы над задачей.
       prompt: Включить автоматический переход Jira в 'В работе'?
     success: Конфигурация успешно сохранена!
+    project_follow_up:
+      hint_run_later: "Параметры проекта хранятся в `.git/stud.config` внутри репозитория Git. Перейдите в папку проекта и выполните `stud config:project-init`, чтобы завершить настройку."
+      prompt_configure_now: "В этом репозитории ещё нет полной проектной конфигурации stud (например, базовой ветки). Настроить сейчас?"
     completion:
       title: Настройка автодополнения оболочки
       prompt: Мы обнаружили, что вы используете '%shell%'. Хотите ли вы настроить автодополнение оболочки?
@@ -68,6 +71,30 @@ config:
     status_ok: "OK"
     status_fail: "Ошибка"
     status_skipped: "Пропущено"
+  project_init:
+    section_title: "Конфигурация проекта"
+    not_git_repository: "Вы не в репозитории Git. Запускайте команду из рабочей копии репозитория."
+    unknown_keys: "Неизвестные ключи в JSON агента: %keys%. См. stud config:project-init и stud help --agent."
+    reserved_keys: "Эти ключи нельзя задать этой командой: %keys%"
+    invalid_git_provider: "gitProvider должен быть github или gitlab."
+    invalid_transition_id: "transitionId должен быть неотрицательным целым числом."
+    base_branch_error: "%message%"
+    interactive_title: "Конфигурация проекта stud"
+    interactive_hint: "Нажмите Enter, чтобы оставить текущее значение. Оставьте необязательные поля пустыми, чтобы пропустить."
+    prompt_project_key: "Ключ проекта Jira (кэш перехода; необязательно)"
+    prompt_jira_default_project: "Ключ проекта Jira по умолчанию для items:create (необязательно)"
+    prompt_confluence_default_space: "Ключ пространства Confluence по умолчанию (необязательно)"
+    prompt_transition_id: "Кэшированный ID перехода Jira (необязательно, только цифры)"
+    prompt_base_branch: "Имя базовой ветки"
+    prompt_git_provider: "Провайдер Git для этого репозитория"
+    prompt_gitlab_instance_url: "URL инстанса GitLab (необязательно, self-hosted)"
+    prompt_github_token_hint: "Токен GitHub: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
+    prompt_github_token: "Токен GitHub для этого репозитория (скрыт)"
+    prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
+    prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
+    status_updated: "Конфигурация проекта обновлена (.git/stud.config)."
+    status_unchanged: "Изменения не записаны (конфигурация без изменений)."
+    failed: "Не удалось обновить конфигурацию проекта."
   error:
     not_found: 'Файл конфигурации не найден по адресу: %path%
 
@@ -264,6 +291,11 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+push:
+  pushing: "Отправка ветки %branch%..."
+  success: "✅ Ветка отправлена в origin."
+  error_push: "Push не удался. Ветка могла разойтись с удалённым репозиторием.\nСинхронизируйтесь или выполните «stud please» для force-push с lease."
+  confirm_please: "Обычный push не удался. Выполнить сейчас «stud please» (force-with-lease)?"
 commit_undo:
   error_not_repo: Не в git-репозитории.
   error_no_commit: Нет коммита для отмены.
@@ -565,6 +597,10 @@ help:
   command_config_init: Интерактивный мастер для настройки деталей подключения Jira и Git.
   command_config_show: "Показать текущую конфигурацию (глобальную и проекта) с скрытыми секретами; безопасно для обмена."
   command_config_validate: "Проверить наличие конфигурации и доступность Jira и Git-провайдера. Используйте --skip-jira или --skip-git для частичных проверок."
+  command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Используйте флаги CLI, stud config:project-init --agent с JSON или интерактивно без флагов. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
+  option_config_project_init_project_key: "Ключ проекта Jira (кэш перехода с transition-id)"
+  option_config_project_init_base_branch: "Базовая ветка; наличие на origin проверяется, если не задан --skip-base-branch-remote-check"
+  option_config_project_init_skip_base: "Не проверять, существует ли базовая ветка на origin"
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
   command_projects_list: Список всех видимых проектов Jira.
   command_items_list: Список активных элементов работы (ваша панель управления).
@@ -580,10 +616,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Проводит вас через создание обычного коммита.
   command_commit_undo: "Удаляет последний коммит и оставляет изменения без индексации. Предупреждает или запрашивает подтверждение, если уже отправлен; используйте 'stud please' для force-push после отмены."
+  command_push: "Делает commit как stud commit, затем отправляет HEAD в origin (тот же обычный push, что и preflight у stud submit). После неудачного push запускает или предлагает stud please, если не отключено. CLI: --no-please. JSON агента: только pleaseFallback (по умолчанию true; false = без stud please). stud push --agent --no-please эквивалентно pleaseFallback false."
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
-  command_submit: Отправляет текущую ветку и создает Pull Request.
+  command_submit: "Отправляет текущую ветку и создаёт Pull Request. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
   command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
   command_status: Быстрая панель управления "где я?".
@@ -601,6 +638,7 @@ help:
   option_commit_new: Создать новый логический коммит вместо fixup
   option_commit_message: Обойти интерактивный промптер и использовать предоставленное сообщение для коммита
   option_commit_all: Подготовить все изменения перед коммитом (восстанавливает старое поведение)
+  option_push_no_please: "После неудачного обычного push не запускать и не предлагать stud please"
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
   option_update_info: Предварительный просмотр changelog последней доступной версии без загрузки или установки. Полезно для проверки критических изменений перед обновлением
@@ -609,8 +647,8 @@ help:
   option_release_patch: Увеличить версию патча (X.Y.Z). Это значение по умолчанию, если флаги не указаны
   option_release_publish: Опубликовать ветку релиза в удаленном репозитории
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Список локальных/удалённых веток со статусом (слита, устарела, активная PR)
-  command_branches_clean: Интерактивная очистка слитых/устаревших веток
+  command_branches_list: Список веток со статусом и консервативной auto-clean оценкой
+  command_branches_clean: Очистка веток с консервативной auto-clean оценкой
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -650,6 +688,7 @@ branches:
     column:
       branch: Ветка
       status: Статус
+      auto_clean: Auto clean
       remote: Удалённая
       pr: PR
     status:
@@ -657,6 +696,10 @@ branches:
       stale: устарела
       active_pr: активная-pr
       active: активная
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Получение локальных веток...
     fetching_remote: Получение удалённых веток для %count% локальных веток...
     note_origin: 'Примечание: Проверяется только удалённый репозиторий ''origin''. Другие репозитории игнорируются.'
@@ -685,3 +728,17 @@ branches:
     remote_kept_quiet: Удалённая ветка 'origin/%branch%' сохранена (используйте интерактивный режим для удаления удалённых веток)
     pruning_refs: Удаление устаревших ссылок на удалённые ветки...
     force_delete_warning: Использование принудительного удаления для ветки %branch% (удалённая ветка была удалена)
+    base_branch_prompt: Базовая ветка не определена. Введите имя базовой ветки
+    manual_confirm: "Ручное решение для '%branch%' (%reason%). Удалить эту ветку? (д/N)"
+    manual_report_header: 'Ручные ветки, пропущенные в неинтерактивном режиме (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Запустите 'stud branches:clean' без --quiet, чтобы рассмотреть ручные ветки."
+    reason:
+      protected_branch: защищённая ветка
+      current_branch: текущая ветка
+      open_pull_request: открытый pull request
+      base_branch_unresolved: базовая ветка не определена
+      merge_check_failed: проверка merge не удалась
+      closed_pull_request_unmerged: закрытый pull request не подтверждён как слитый
+      provider_unavailable: данные провайдера недоступны
+      not_merged: не слита

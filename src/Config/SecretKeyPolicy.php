@@ -43,6 +43,7 @@ final class SecretKeyPolicy
             'LANGUAGE',
             'JIRA_URL',
             'JIRA_DEFAULT_PROJECT',
+            'CONFLUENCE_DEFAULT_SPACE',
             'projectKey',
             'transitionId',
             'baseBranch',

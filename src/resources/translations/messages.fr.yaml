@@ -45,6 +45,9 @@ config:
       description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
       prompt: Activer la transition automatique Jira vers 'En cours' ?
     success: Configuration enregistrée avec succès !
+    project_follow_up:
+      hint_run_later: "Les paramètres propres au projet sont enregistrés dans `.git/stud.config` dans un dépôt Git. Lorsque vous êtes dans un dossier de projet, exécutez `stud config:project-init` pour terminer la configuration."
+      prompt_configure_now: "Ce dépôt n'a pas encore de configuration stud de projet complète (par exemple une branche de base). La configurer maintenant ?"
     completion:
       title: Configuration de l'auto-complétion du shell
       prompt: Nous avons détecté que vous utilisez '%shell%'. Souhaitez-vous configurer l'auto-complétion du shell ?
@@ -68,6 +71,30 @@ config:
     status_ok: "OK"
     status_fail: "Échec"
     status_skipped: "Ignoré"
+  project_init:
+    section_title: "Configuration du projet"
+    not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
+    unknown_keys: "Clés inconnues dans le JSON agent : %keys%. Voir stud config:project-init et stud help --agent."
+    reserved_keys: "Ces clés ne peuvent pas être définies par cette commande : %keys%"
+    invalid_git_provider: "gitProvider doit être github ou gitlab."
+    invalid_transition_id: "transitionId doit être un entier positif ou nul."
+    base_branch_error: "%message%"
+    interactive_title: "Configuration stud du projet"
+    interactive_hint: "Appuyez sur Entrée pour conserver la valeur actuelle. Laissez les champs optionnels vides pour les ignorer."
+    prompt_project_key: "Clé de projet Jira (cache de transition ; optionnel)"
+    prompt_jira_default_project: "Clé de projet Jira par défaut pour items:create (optionnel)"
+    prompt_confluence_default_space: "Clé d'espace Confluence par défaut (optionnel)"
+    prompt_transition_id: "ID de transition Jira mis en cache (optionnel, chiffres uniquement)"
+    prompt_base_branch: "Nom de la branche de base"
+    prompt_git_provider: "Fournisseur Git pour ce dépôt"
+    prompt_gitlab_instance_url: "URL de l'instance GitLab (optionnel, auto-hébergé)"
+    prompt_github_token_hint: "Jeton GitHub : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
+    prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
+    prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
+    prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
+    status_updated: "Configuration du projet mise à jour (.git/stud.config)."
+    status_unchanged: "Aucune modification écrite (configuration inchangée)."
+    failed: "Échec de la mise à jour de la configuration du projet."
   error:
     not_found: 'Fichier de configuration introuvable à : %path%
 
@@ -264,6 +291,11 @@ please:
 
     Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
   warning_force: ⚠️  Forçage avec lease...
+push:
+  pushing: "Poussée de la branche %branch%…"
+  success: "✅ Branche poussée vers origin."
+  error_push: "Échec du push. Votre branche a peut-être divergé du remote.\nSynchronisez ou exécutez « stud please » pour un force-push avec lease."
+  confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
   error_no_commit: Il n'y a pas de commit à annuler.
@@ -565,6 +597,10 @@ help:
   command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
   command_config_show: "Afficher la configuration actuelle (globale et projet) avec les secrets masqués ; sûr à partager."
   command_config_validate: "Valider que la configuration est présente et que Jira et le fournisseur Git sont accessibles. Utilisez --skip-jira ou --skip-git pour des vérifications partielles."
+  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Utilisez les options CLI, stud config:project-init --agent avec du JSON, ou le mode interactif sans option. Les clés agent inconnues sont rejetées ; migration_version est réservée."
+  option_config_project_init_project_key: "Clé de projet Jira (cache de transition avec transition-id)"
+  option_config_project_init_base_branch: "Branche de base ; la présence sur origin est vérifiée sauf si --skip-base-branch-remote-check est défini"
+  option_config_project_init_skip_base: "Ne pas vérifier que la branche de base existe sur origin"
   command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
   command_projects_list: Liste tous les projets Jira visibles.
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
@@ -580,10 +616,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Vous guide à travers la création d'un commit conventionnel.
   command_commit_undo: "Supprime le dernier commit et garde les modifications non indexées. Refuse ou demande confirmation si le dernier commit est déjà poussé ; utilisez 'stud please' pour force-push après annulation."
+  command_push: "Comme stud commit, puis pousse HEAD vers origin (même push non forcé que la pré-vérification de stud submit). Après un push échoué, exécute ou propose stud please sauf si désactivé. CLI : --no-please. JSON agent : uniquement pleaseFallback (défaut true ; false = pas de stud please). stud push --agent --no-please équivaut à pleaseFallback false."
   command_please: Un force-push sûr pour utilisateur avancé (force-with-lease).
   command_flatten: Fusionner automatiquement tous les commits fixup! dans leurs commits cibles.
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
-  command_submit: Pousse la branche actuelle et crée une Pull Request.
+  command_submit: "Pousse la branche actuelle et crée une Pull Request. JSON agent : stageAll optionnel — si true, exécute stud push d'abord (isNew, message, pleaseFallback optionnels ; comme stud push --agent)."
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
   command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
   command_status: Un tableau de bord rapide "où suis-je ?".
@@ -601,6 +638,7 @@ help:
   option_commit_new: Créer un nouveau commit logique au lieu d'un fixup
   option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
   option_commit_all: Mettre en staging toutes les modifications avant de committer (restaure l'ancien comportement)
+  option_push_no_please: "Après un push normal échoué, ne pas exécuter ni proposer stud please"
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour
@@ -609,8 +647,8 @@ help:
   option_release_patch: Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni
   option_release_publish: Publier la branche de release sur le dépôt distant
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Liste les branches locales/distantes avec statut (fusionnée, obsolète, PR active)
-  command_branches_clean: Nettoyage interactif des branches fusionnées/obsolètes
+  command_branches_list: Liste les branches avec statut et éligibilité auto-clean conservatrice
+  command_branches_clean: Nettoyage des branches avec éligibilité auto-clean conservatrice
   option_quiet: "Non-interactif : utiliser les valeurs par défaut, pas de questions"
   option_items_create_project: "Clé projet Jira (ou JIRA_DEFAULT_PROJECT dans .git/stud.config)"
   option_items_create_type: "Type de ticket (défaut : Story)"
@@ -650,6 +688,7 @@ branches:
     column:
       branch: Branche
       status: Statut
+      auto_clean: Auto clean
       remote: Distant
       pr: PR
     status:
@@ -657,6 +696,10 @@ branches:
       stale: obsolète
       active_pr: pr-active
       active: active
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Récupération des branches locales...
     fetching_remote: Récupération des branches distantes pour %count% branches locales...
     note_origin: 'Note: Seul le dépôt distant ''origin'' est vérifié. Les autres dépôts distants sont ignorés.'
@@ -685,3 +728,17 @@ branches:
     remote_kept_quiet: Branche distante 'origin/%branch%' conservée (utilisez le mode interactif pour supprimer les branches distantes)
     pruning_refs: Nettoyage des références de suivi distantes obsolètes...
     force_delete_warning: Utilisation de la suppression forcée pour la branche %branch% (la branche distante a été supprimée)
+    base_branch_prompt: La branche de base est introuvable. Entrez le nom de la branche de base
+    manual_confirm: "Décision manuelle pour '%branch%' (%reason%). Supprimer cette branche ? (o/N)"
+    manual_report_header: 'Branches manuelles ignorées en mode non-interactif (%count%) :'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Relancez 'stud branches:clean' sans --quiet pour examiner les branches manuelles."
+    reason:
+      protected_branch: branche protégée
+      current_branch: branche courante
+      open_pull_request: pull request ouverte
+      base_branch_unresolved: branche de base non résolue
+      merge_check_failed: vérification de fusion échouée
+      closed_pull_request_unmerged: pull request fermée non confirmée comme fusionnée
+      provider_unavailable: données provider indisponibles
+      not_merged: non fusionnée

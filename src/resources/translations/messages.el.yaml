@@ -45,6 +45,9 @@ config:
       description: Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα.
       prompt: Ενεργοποίηση αυτόματης μετάβασης Jira σε 'Σε Εξέλιξη';
     success: Η ρύθμιση αποθηκεύτηκε με επιτυχία!
+    project_follow_up:
+      hint_run_later: "Οι ρυθμίσεις επιπέδου project αποθηκεύονται στο `.git/stud.config` μέσα σε ένα αποθετήριο Git. Όταν βρίσκεστε σε φάκελο project, εκτελέστε `stud config:project-init` για να ολοκληρώσετε τη ρύθμιση."
+      prompt_configure_now: "Αυτό το αποθετήριο δεν έχει ακόμα πλήρη stud ρύθμιση project (π.χ. βασικό branch). Ρύθμιση τώρα;"
     completion:
       title: Ρύθμιση Αυτόματης Συμπλήρωσης Shell
       prompt: Εντοπίσαμε ότι χρησιμοποιείτε '%shell%'. Θα θέλατε να ρυθμίσετε την αυτόματη συμπλήρωση shell;
@@ -68,6 +71,30 @@ config:
     status_ok: "OK"
     status_fail: "Αποτυχία"
     status_skipped: "Παραλείφθηκε"
+  project_init:
+    section_title: "Ρύθμιση έργου"
+    not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."
+    unknown_keys: "Άγνωστα κλειδιά στο JSON του agent: %keys%. Δείτε stud config:project-init και stud help --agent."
+    reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
+    invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
+    invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
+    base_branch_error: "%message%"
+    interactive_title: "Ρύθμιση stud έργου"
+    interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
+    prompt_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης· προαιρετικό)"
+    prompt_jira_default_project: "Προεπιλεγμένο κλειδί έργου Jira για items:create (προαιρετικό)"
+    prompt_confluence_default_space: "Προεπιλεγμένο κλειδί χώρου Confluence (προαιρετικό)"
+    prompt_transition_id: "Αποθηκευμένο ID μετάβασης Jira (προαιρετικό, μόνο ψηφία)"
+    prompt_base_branch: "Όνομα βασικού κλάδου"
+    prompt_git_provider: "Πάροχος Git για αυτό το αποθετήριο"
+    prompt_gitlab_instance_url: "URL εγκατάστασης GitLab (προαιρετικό, self-hosted)"
+    prompt_github_token_hint: "Διακριτικό GitHub: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
+    prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
+    prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
+    prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
+    status_updated: "Η ρύθμιση έργου ενημερώθηκε (.git/stud.config)."
+    status_unchanged: "Δεν εγγράφηκαν αλλαγές (η ρύθμιση παρέμεινε ίδια)."
+    failed: "Η ενημέρωση ρύθμισης έργου απέτυχε."
   error:
     not_found: 'Το αρχείο ρύθμισης δεν βρέθηκε στο: %path%
 
@@ -264,6 +291,11 @@ please:
 
     Για την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε "stud submit".'
   warning_force: ⚠️  Εξαναγκασμός με lease...
+push:
+  pushing: "Ωθώντας κλάδο %branch%..."
+  success: "✅ Ο κλάδος ωθήθηκε στο origin."
+  error_push: "Το push απέτυχε. Ο κλάδος σας μπορεί να έχει αποκλίνει από το remote.\nΣυγχρονίστε ή εκτελέστε 'stud please' για force-push με lease."
+  confirm_please: "Το κανονικό push απέτυχε. Εκτέλεση 'stud please' (force-with-lease) τώρα;"
 commit_undo:
   error_not_repo: Δεν βρίσκεστε σε git repository.
   error_no_commit: Δεν υπάρχει commit προς ακύρωση.
@@ -565,6 +597,10 @@ help:
   command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
   command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
+  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Χρησιμοποιήστε σημαίες CLI, stud config:project-init --agent με JSON, ή διαδραστικά χωρίς σημαίες. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
+  option_config_project_init_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης με transition-id)"
+  option_config_project_init_base_branch: "Βασικός κλάδος· ελέγχεται η ύπαρξη στο origin εκτός αν έχει οριστεί --skip-base-branch-remote-check"
+  option_config_project_init_skip_base: "Να μην ελέγχεται αν ο βασικός κλάδος υπάρχει στο origin"
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).
@@ -580,10 +616,11 @@ help:
   command_branch_rename: Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option.
   command_commit: Σας καθοδηγεί στη δημιουργία ενός συμβατικού commit.
   command_commit_undo: "Αφαιρεί το τελευταίο commit και αφήνει τις αλλαγές unstaged. Προειδοποιεί ή ζητά επιβεβαίωση αν έχει ήδη γίνει push· χρησιμοποιήστε 'stud please' για force-push μετά."
+  command_push: "Όπως το stud commit, μετά ωθεί το HEAD στο origin (ίδιο μη εξαναγκαστικό push με το preflight του stud submit). Μετά από αποτυχημένο push εκτελεί ή προσφέρει stud please εκτός αν απενεργοποιηθεί. CLI: --no-please. JSON agent: μόνο pleaseFallback (προεπιλογή true· false = χωρίς stud please). stud push --agent --no-please = pleaseFallback false."
   command_please: Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease).
   command_flatten: Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους.
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
-  command_submit: Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request.
+  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request. JSON agent: προαιρετικό stageAll — όταν true, εκτελεί πρώτα stud push (προαιρετικά isNew, message, pleaseFallback· όπως stud push --agent)."
   command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
   command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου.
   command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".
@@ -601,6 +638,7 @@ help:
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)
+  option_push_no_please: "Μετά από αποτυχημένο κανονικό push, να μην εκτελείται ή να προσφέρεται το stud please"
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
   option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση
@@ -609,8 +647,8 @@ help:
   option_release_patch: Αύξηση έκδοσης patch (X.Y.Z). Αυτή είναι η προεπιλογή εάν δεν παρέχονται σημαίες
   option_release_publish: Δημοσίευση του κλάδου release στον απομακρυσμένο αποθετήριο
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Λίστα τοπικών/απομακρυσμένων κλάδων με κατάσταση (συγχωνευμένος, ξεπερασμένος, ενεργό PR)
-  command_branches_clean: Διαδραστικός καθαρισμός συγχωνευμένων/ξεπερασμένων κλάδων
+  command_branches_list: Λίστα κλάδων με κατάσταση και συντηρητική auto-clean επιλεξιμότητα
+  command_branches_clean: Καθαρισμός κλάδων με συντηρητική auto-clean επιλεξιμότητα
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -650,6 +688,7 @@ branches:
     column:
       branch: Κλάδος
       status: Κατάσταση
+      auto_clean: Auto clean
       remote: Απομακρυσμένος
       pr: PR
     status:
@@ -657,6 +696,10 @@ branches:
       stale: ξεπερασμένος
       active_pr: ενεργό-pr
       active: ενεργός
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Λήψη τοπικών κλάδων...
     fetching_remote: Λήψη απομακρυσμένων κλάδων για %count% τοπικούς κλάδους...
     note_origin: 'Σημείωση: Ελέγχεται μόνο ο απομακρυσμένος αποθετήριος ''origin''. Άλλοι αποθετήριοι αγνοούνται.'
@@ -685,3 +728,17 @@ branches:
     remote_kept_quiet: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (χρησιμοποιήστε τη διαδραστική λειτουργία για διαγραφή απομακρυσμένων κλάδων)
     pruning_refs: Καθαρισμός παλιών αναφορών απομακρυσμένων παρακολούθησης...
     force_delete_warning: Χρήση αναγκαστικής διαγραφής για τον κλάδο %branch% (ο απομακρυσμένος κλάδος διαγράφηκε)
+    base_branch_prompt: Η βάση κλάδου δεν επιλύθηκε. Εισάγετε όνομα βάσης κλάδου
+    manual_confirm: "Χειροκίνητη απόφαση για '%branch%' (%reason%). Διαγραφή αυτού του κλάδου; (ν/N)"
+    manual_report_header: 'Χειροκίνητοι κλάδοι που παραλείφθηκαν σε μη διαδραστική λειτουργία (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Εκτελέστε ξανά το 'stud branches:clean' χωρίς --quiet για να ελέγξετε τους χειροκίνητους κλάδους."
+    reason:
+      protected_branch: προστατευμένος κλάδος
+      current_branch: τρέχων κλάδος
+      open_pull_request: ανοιχτό pull request
+      base_branch_unresolved: μη επιλυμένη βάση κλάδου
+      merge_check_failed: αποτυχία ελέγχου merge
+      closed_pull_request_unmerged: κλειστό pull request χωρίς επιβεβαίωση συγχώνευσης
+      provider_unavailable: μη διαθέσιμα δεδομένα provider
+      not_merged: μη συγχωνευμένος

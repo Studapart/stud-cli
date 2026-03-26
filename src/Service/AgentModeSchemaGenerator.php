@@ -111,6 +111,22 @@ class AgentModeSchemaGenerator
                 'content' => ['type' => 'string', 'optional' => true, 'default' => ''],
             ] + $inputProperties;
         }
+
+        if ($taskName === 'push') {
+            unset($inputProperties['noPlease']);
+            $inputProperties = [
+                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
+            ] + $inputProperties;
+        }
+
+        if ($taskName === 'submit') {
+            $inputProperties = [
+                'stageAll' => ['type' => 'bool', 'optional' => true, 'default' => false],
+                'isNew' => ['type' => 'bool', 'optional' => true, 'default' => false],
+                'message' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+                'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
+            ] + $inputProperties;
+        }
     }
 
     /**

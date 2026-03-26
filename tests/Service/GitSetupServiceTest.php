@@ -300,6 +300,43 @@ class GitSetupServiceTest extends TestCase
         $this->gitSetupService->ensureBaseBranchConfigured($io, true);
     }
 
+    public function testValidateBaseBranchOnRemoteChecksBareNameWhenGivenOriginPrefix(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('remoteBranchExists')
+            ->with('origin', 'main')
+            ->willReturn(true);
+
+        $this->gitSetupService->validateBaseBranchOnRemote('origin/main');
+    }
+
+    public function testValidateBaseBranchOnRemoteThrowsWhenBranchMissingOnRemote(): void
+    {
+        $this->gitRepository->method('remoteBranchExists')->willReturn(false);
+
+        $this->expectException(\RuntimeException::class);
+
+        $this->gitSetupService->validateBaseBranchOnRemote('missing-branch');
+    }
+
+    public function testValidateBaseBranchOnRemoteThrowsWhenStrippedBranchNameIsEmpty(): void
+    {
+        $this->gitRepository->expects($this->never())->method('remoteBranchExists');
+
+        $this->expectException(\RuntimeException::class);
+
+        $this->gitSetupService->validateBaseBranchOnRemote('origin/');
+    }
+
+    public function testDetectDefaultBaseBranchNameDelegatesToRemoteCandidates(): void
+    {
+        $this->gitBranchService->method('getAllRemoteBranches')
+            ->with('origin')
+            ->willReturn(['release', 'main']);
+
+        $this->assertSame('main', $this->gitSetupService->detectDefaultBaseBranchName());
+    }
+
     // ── ensureGitProviderConfigured ─────────────────────────────────────
 
     public function testEnsureGitProviderConfiguredReturnsConfiguredProvider(): void

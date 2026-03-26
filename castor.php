@@ -34,6 +34,8 @@ use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
+use App\Handler\ConfigProjectInitHandler;
+use App\Handler\ConfigProjectInitPromptCollector;
 use App\Handler\ConfigShowHandler;
 use App\Handler\ConfigValidateHandler;
 use App\Handler\ConfluencePushHandler;
@@ -54,6 +56,7 @@ use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
+use App\Handler\PushHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
 use App\Handler\StatusHandler;
@@ -62,6 +65,7 @@ use App\Handler\SyncHandler;
 use App\Handler\UpdateHandler;
 use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
+use App\Responder\ConfigProjectInitResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
 use App\Responder\ConfluencePushResponder;
@@ -86,11 +90,13 @@ use App\Service\GitBranchService;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
+use App\Service\InitProjectConfigFollowUpService;
 use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
 use App\Service\ProcessFactory;
+use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ThemeDetector;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
@@ -100,6 +106,7 @@ use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 
+use function Castor\input;
 use function Castor\io;
 
 use Symfony\Component\Console\ConsoleEvents;
@@ -345,6 +352,29 @@ function _get_git_setup_service(): GitSetupService
     );
 }
 
+function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUpService
+{
+    $gitRepository = _get_git_repository();
+    $gitSetup = _get_git_setup_service();
+    $promptCollector = new ConfigProjectInitPromptCollector(
+        $gitRepository,
+        $gitSetup,
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver()
+    );
+    $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+
+    return new InitProjectConfigFollowUpService(
+        $gitRepository,
+        new ProjectStudConfigAdequacyChecker(),
+        $projectInitHandler,
+        new ConfigProjectInitResponder(_get_responder_helper(), _get_logger()),
+        _get_translation_service(),
+        _get_logger(),
+    );
+}
+
 /**
  * Gets the appropriate Git provider based on configuration.
  * Reads provider from project config, tokens from project config (with global fallback).
@@ -545,6 +575,25 @@ function _get_base_branch(bool $quiet = false): string
     }
 
     return $baseBranchByQuiet[$quiet];
+}
+
+/**
+ * Gets configured base branch from project config without prompting.
+ */
+function _get_configured_base_branch_or_null(): ?string
+{
+    try {
+        $config = _get_git_repository()->readProjectConfig();
+    } catch (\Exception) {
+        return null;
+    }
+
+    $configured = $config['baseBranch'] ?? null;
+    if (! is_string($configured) || trim($configured) === '') {
+        return null;
+    }
+
+    return str_starts_with($configured, 'origin/') ? $configured : 'origin/' . trim($configured);
 }
 
 /**
@@ -749,6 +798,8 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     $whitelistedCommands = [
         'config:init',
         'config:show',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -815,6 +866,8 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     // Whitelist: Commands that should work without extensions (user needs to see help/init)
     $whitelistedCommands = [
         'config:init',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -898,6 +951,8 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
     $whitelistedCommands = [
         'config:init',
         'config:show',
+        'config:project-init',
+        'cpi', // alias
         'init', // alias
         'help',
         'main', // default command
@@ -1089,8 +1144,15 @@ function config_init(
             return;
         }
     }
-    $handler = new InitHandler(_get_file_system(), _get_config_path(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $handler = new InitHandler(
+        _get_file_system(),
+        _get_config_path(),
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver(),
+        _get_init_project_config_follow_up_service()
+    );
+    $handler->handle(io(), $agent, input()->isInteractive());
     if ($format === OutputFormat::Json) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondSuccess('Configuration initialized'));
@@ -1177,6 +1239,24 @@ function _read_agent_input(?string $inputFile): ?array
 }
 
 /**
+ * Agent-only: when submit JSON has stageAll true, run the same commit + origin push path as stud push before PR creation.
+ *
+ * @param array<string, mixed> $input Agent JSON (uses isNew, message, pleaseFallback when present)
+ */
+function _agent_submit_run_push_phase(\Symfony\Component\Console\Style\SymfonyStyle $io, array $input): int
+{
+    $isNew = (bool) ($input['isNew'] ?? false);
+    $message = isset($input['message']) && is_string($input['message']) ? $input['message'] : null;
+    $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
+    $gitRepository = _get_git_repository();
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
+    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+
+    return $pushHandler->handle($io, $isNew, $message, true, true, false, true, $pleaseFallback);
+}
+
+/**
  * Write an AgentJsonResponse to stdout and exit.
  */
 function _agent_respond(AgentJsonResponse $agentResponse): void
@@ -1232,6 +1312,105 @@ function config_validate(
     $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
     $response = $handler->handle();
     $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'config:project-init', aliases: ['cpi'], description: 'Create or merge project stud config (.git/stud.config); flags, agent JSON, or interactive when no values are given')]
+#[AgentOutput(responseClass: \App\Response\ConfigProjectInitResponse::class, description: 'Merged project configuration (redacted) and whether the file was updated')]
+function config_project_init(
+    #[AsOption(name: 'project-key', description: 'Jira project key (transition cache)')]
+    ?string $projectKey = null,
+    #[AsOption(name: 'transition-id', description: 'Jira transition ID to cache')]
+    ?int $transitionId = null,
+    #[AsOption(name: 'base-branch', description: 'Repository base branch (validated on origin unless skipped)')]
+    ?string $baseBranch = null,
+    #[AsOption(name: 'git-provider', description: 'github or gitlab')]
+    ?string $gitProvider = null,
+    #[AsOption(name: 'github-token', description: 'GitHub PAT for this repository')]
+    ?string $githubToken = null,
+    #[AsOption(name: 'gitlab-token', description: 'GitLab PAT for this repository')]
+    ?string $gitlabToken = null,
+    #[AsOption(name: 'gitlab-instance-url', description: 'Self-hosted GitLab instance URL')]
+    ?string $gitlabInstanceUrl = null,
+    #[AsOption(name: 'jira-default-project', description: 'Default Jira project for stud items:create')]
+    ?string $jiraDefaultProject = null,
+    #[AsOption(name: 'confluence-default-space', description: 'Default Confluence space key')]
+    ?string $confluenceDefaultSpace = null,
+    #[AsOption(name: 'skip-base-branch-remote-check', description: 'Skip verifying base-branch on origin')]
+    bool $skipBaseBranchRemoteCheck = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $rawAgentInput = [];
+    $skipRemote = $skipBaseBranchRemoteCheck;
+
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $rawAgentInput = $input;
+        $skipRemote = (bool) ($input['skipBaseBranchRemoteCheck'] ?? false);
+    }
+
+    $cliPatches = [];
+    if (! $agent) {
+        if ($projectKey !== null && trim($projectKey) !== '') {
+            $cliPatches['projectKey'] = trim($projectKey);
+        }
+        if ($transitionId !== null) {
+            $cliPatches['transitionId'] = $transitionId;
+        }
+        if ($baseBranch !== null && trim($baseBranch) !== '') {
+            $cliPatches['baseBranch'] = trim($baseBranch);
+        }
+        if ($gitProvider !== null && trim($gitProvider) !== '') {
+            $cliPatches['gitProvider'] = strtolower(trim($gitProvider));
+        }
+        if ($githubToken !== null && trim($githubToken) !== '') {
+            $cliPatches['githubToken'] = trim($githubToken);
+        }
+        if ($gitlabToken !== null && trim($gitlabToken) !== '') {
+            $cliPatches['gitlabToken'] = trim($gitlabToken);
+        }
+        if ($gitlabInstanceUrl !== null && trim($gitlabInstanceUrl) !== '') {
+            $cliPatches['gitlabInstanceUrl'] = trim($gitlabInstanceUrl);
+        }
+        if ($jiraDefaultProject !== null && trim($jiraDefaultProject) !== '') {
+            $cliPatches['jiraDefaultProject'] = trim($jiraDefaultProject);
+        }
+        if ($confluenceDefaultSpace !== null && trim($confluenceDefaultSpace) !== '') {
+            $cliPatches['confluenceDefaultSpace'] = trim($confluenceDefaultSpace);
+        }
+    }
+
+    $hasExplicitCli = $cliPatches !== [] || ($skipBaseBranchRemoteCheck && ! $agent);
+    $interactive = ! $agent && ! $hasExplicitCli;
+
+    $gitRepository = _get_git_repository();
+    $gitSetup = _get_git_setup_service();
+    $promptCollector = new ConfigProjectInitPromptCollector(
+        $gitRepository,
+        $gitSetup,
+        _get_translation_service(),
+        _get_logger(),
+        new \App\Service\GitTokenPromptResolver()
+    );
+    $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
+    $response = $handler->handle($rawAgentInput, $cliPatches, $skipRemote, $interactive, $agent);
+    $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1750,7 +1929,7 @@ function branch_rename(
     exit($exitCode);
 }
 
-#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
+#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List branches with status and auto-clean eligibility')]
 #[AgentOutput(responseClass: \App\Response\BranchListResponse::class, description: 'List of branches with status')]
 function branches_list(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -1762,8 +1941,10 @@ function branches_list(
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
 
     $gitRepository = _get_git_repository();
+    $gitBranchService = _get_git_branch_service();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service());
+    $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
+    $handler = new BranchListHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service());
     $response = $handler->handle();
     $responder = new BranchListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -1776,7 +1957,7 @@ function branches_list(
     return 0;
 }
 
-#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
+#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Clean branches with conservative auto-clean eligibility')]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Cleanup result')]
 function branches_clean(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
@@ -1791,9 +1972,10 @@ function branches_clean(
         $quiet = true;
     }
     $gitRepository = _get_git_repository();
+    $gitBranchService = _get_git_branch_service();
     $gitProvider = _get_git_provider();
-    $baseBranch = _get_base_branch();
-    $handler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
+    $handler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -1845,6 +2027,63 @@ function commit(
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit created', 'Commit failed'));
+
+        return;
+    }
+}
+
+#[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Push result')]
+function push(
+    #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
+    bool $isNew = false,
+    #[AsOption(name: 'message', shortcut: 'm', description: 'Provide a commit message to bypass the prompter')]
+    ?string $message = null,
+    #[AsOption(name: 'all', shortcut: 'a', description: 'Stage all changes before committing')]
+    bool $stageAll = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: no prompts; failed push runs stud please unless --no-please')]
+    bool $quiet = false,
+    #[AsOption(name: 'no-please', description: 'After a failed normal push, do not run or prompt for stud please')]
+    bool $noPlease = false,
+    #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
+    bool $help = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $pleaseFallback = true;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $isNew = (bool) ($input['isNew'] ?? false);
+        $message = $input['message'] ?? null;
+        $stageAll = (bool) ($input['stageAll'] ?? false);
+        $quiet = true;
+        $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
+        // CLI --no-please with --agent maps to pleaseFallback false (agent JSON uses pleaseFallback only).
+        if ($noPlease) {
+            $pleaseFallback = false;
+        }
+    }
+    if (! $agent && $help) {
+        $helpService = new \App\Service\HelpService(_get_translation_service(), _get_file_system());
+        $helpService->displayCommandHelp(_get_logger(), 'push');
+
+        return;
+    }
+    $gitRepository = _get_git_repository();
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
+    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+    $noPleaseForHandler = $agent ? false : $noPlease;
+    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
+    if ($agent) {
+        $cmdResponder = new AgentCommandResponder();
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed'));
 
         return;
     }
@@ -1969,6 +2208,8 @@ function submit(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    /** @var array<string, mixed>|null $agentSubmitInput when set, stageAll was true and push phase must run first */
+    $agentSubmitInput = null;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -1977,6 +2218,9 @@ function submit(
         $draft = (bool) ($input['draft'] ?? false);
         $labels = $input['labels'] ?? null;
         $quiet = true;
+        if (($input['stageAll'] ?? false) === true) {
+            $agentSubmitInput = $input;
+        }
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider($quiet);
@@ -2007,6 +2251,16 @@ function submit(
             'Please check your configuration file and ensure GIT_PROVIDER is set to "github" or "gitlab".',
         ]);
         exit(1);
+    }
+
+    if ($agent && $agentSubmitInput !== null) {
+        $pushExit = _agent_submit_run_push_phase(io(), $agentSubmitInput);
+        if ($pushExit !== 0) {
+            $cmdResponder = new AgentCommandResponder();
+            _agent_respond($cmdResponder->respondFromExitCode($pushExit, 'Pull request created', 'Commit or push before submit failed'));
+
+            return;
+        }
     }
 
     $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());
@@ -2335,6 +2589,7 @@ function help(
         // Map aliases to command names
         $aliasMap = [
             'init' => 'config:init',
+            'cpi' => 'config:project-init',
             'pj' => 'projects:list',
             'ls' => 'items:list',
             'search' => 'items:search',
@@ -2348,6 +2603,7 @@ function help(
             'rn' => 'branch:rename',
             'co' => 'commit',
             'undo' => 'commit:undo',
+            'ps' => 'push',
             'pl' => 'please',
             'su' => 'submit',
             'pc' => 'pr:comment',
@@ -2421,6 +2677,11 @@ function help(
             [
                 'name' => 'config:validate',
                 'description' => $translator->trans('help.command_config_validate'),
+            ],
+            [
+                'name' => 'config:project-init',
+                'alias' => 'cpi',
+                'description' => $translator->trans('help.command_config_project_init'),
             ],
             [
                 'name' => 'completion',
@@ -2532,6 +2793,11 @@ function help(
                 'name' => 'commit:undo',
                 'alias' => 'undo',
                 'description' => $translator->trans('help.command_commit_undo'),
+            ],
+            [
+                'name' => 'push',
+                'alias' => 'ps',
+                'description' => $translator->trans('help.command_push'),
             ],
             [
                 'name' => 'please',
@@ -2718,8 +2984,10 @@ function deploy(
 
     if ($clean) {
         $gitRepository = _get_git_repository();
+        $gitBranchService = _get_git_branch_service();
         $githubProvider = _get_github_provider();
-        $cleanHandler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+        $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
+        $cleanHandler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
         $cleanHandler->handle(io(), true);
     }
     if ($agent) {

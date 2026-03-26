@@ -128,7 +128,7 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
 
         // Create handler with the IO that has the input stream
         $logger = new Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, 'config.yml', $this->translationService, $logger);
+        $handler = new InitHandler($this->fileSystem, 'config.yml', $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
 
         // Execute handler
         $handler->handle($io);

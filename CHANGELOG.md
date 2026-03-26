@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-03-26
+
+### Fixed
+
+- **GitHub Actions Jira label sync (SCI-86):** `.github/workflows/jira-label-sync.yml` no longer replaces the entire Jira `labels` field with only mapped labels (which removed unmanaged Jira labels). The job runs **`stud items:show --agent`** to read current labels, merges managed targets from **`STUD_JIRA_LABEL_MAP`** with PR labels (grouping multiple GitHub labels per Jira value), preserves labels that are not map values, skips **`items:update`** when nothing changes, and still runs when the PR has no mapped labels so removals apply. Documented in `documentation/github-actions.md`.
+
+### Added
+
+- **`config:init` (SCI-83):** After saving global config, interactive `stud config:init` suggests project setup when appropriate: users not in a Git repo see a note to run `stud config:project-init` from a project folder; users in a repo without a non-empty `baseBranch` in `.git/stud.config` get an optional prompt to run the same logic as `stud config:project-init`. Agent mode skips this follow-up. README and all locales updated.
+
+- **`stud submit --agent`:** Optional JSON `stageAll` (with optional `isNew`, `message`, `pleaseFallback`) runs the same commit + origin push path as `stud push` before PR creation. Agent schema updated. Documented in README, `AI.md`, and `.cursor/rules/stud-cli-workflow.mdc`.
+
+### Changed
+
+- **branches:list / branches:clean (SCI-87):** Added a shared conservative `BranchDeletionEligibilityResolver` used by both commands to compute tri-state auto-clean decisions (`Yes`, `No`, `Manual`) with reason codes. `branches:list` now keeps `Status` and adds an `Auto clean` column; `branches:clean` now deletes only `Yes` in quiet/agent mode, never auto-deletes `Manual`, reports skipped manual branches with reasons, and prompts per-manual-branch in interactive mode. Base branch resolution for this flow uses configured base first, then `develop`/`main`/`master`, with unresolved base handled as manual in non-interactive mode.
+- **Agent JSON for `push` / `submit` (stageAll path):** Removed redundant `noPlease` from the generated agent schema; use `pleaseFallback: false` only. CLI `--no-please` on `stud push` still works and, with `--agent`, is applied as `pleaseFallback: false` before the handler runs.
+
+- **`stud push` / `stud ps` (SCI-83):** Commit (same behavior and flags as `stud commit`) then non-force `origin` push shared with `stud submit` preflight via `GitRepository::pushHeadToOrigin()`. On rejected push: quiet and agent (default) run `stud please` unless disabled via CLI `--no-please` or agent JSON `pleaseFallback: false` (agent schema documents `pleaseFallback` only, not `noPlease`). Interactive mode prompts first. Help, CommandMap, eight locales, README, and tests added.
+- **Config (SCI-82 new Jira):** `stud config:project-init` (alias `stud cpi`) creates or merges `.git/stud.config` with explicit keys only; preserves unset values and `migration_version`. Supports CLI flags, `--agent` JSON (unknown keys rejected), interactive mode when no flags are given, and optional `skipBaseBranchRemoteCheck` when validating `baseBranch` on `origin` is not possible. README, help schema, CommandMap, and translations updated. `CONFLUENCE_DEFAULT_SPACE` is whitelisted for `stud config:show --key`.
+
+- **GitHub Actions (SCI-82):** Composite action `.github/actions/stud-cli-setup` installs stud (pinned `setup-stud.sh` ref, PHP 8.2+), writes global (and optional project) config without printing secrets, and runs `stud config:validate --agent`. Documentation in `documentation/github-actions.md` (secrets, `skipGit`, fork safety, `pull_request_target` warning). Workflow `.github/workflows/jira-label-sync.yml` syncs PR labels to Jira using repository variable **`STUD_JIRA_LABEL_MAP`** (JSON object) instead of a committed map file. `setup-stud.sh` supports `--skip-init` for non-interactive installs without relying on `--force` alone.
+- **Config (SCI-82 new Jira):** `stud config:project-init` (alias `stud cpi`) creates or merges `.git/stud.config` with explicit keys only; preserves unset values and `migration_version`. Supports CLI flags, `--agent` JSON (unknown keys rejected), interactive mode when no flags are given, and optional `skipBaseBranchRemoteCheck` when validating `baseBranch` on `origin` is not possible. README, help schema, CommandMap, and translations updated. `CONFLUENCE_DEFAULT_SPACE` is whitelisted for `stud config:show --key`.
+
 ## [3.12.1] - 2026-03-19
 
 ### Changed

@@ -63,6 +63,7 @@ class HelpServiceTest extends TestCase
     {
         $commands = [
             'config:init',
+            'config:project-init',
             'completion',
             'projects:list',
             'items:list',
@@ -72,6 +73,7 @@ class HelpServiceTest extends TestCase
             'items:transition',
             'branch:rename',
             'commit',
+            'push',
             'please',
             'status',
             'submit',

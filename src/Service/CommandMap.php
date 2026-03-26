@@ -53,6 +53,16 @@ class CommandMap
                 ],
                 'arguments' => [],
             ],
+            'config:project-init' => [
+                'alias' => 'cpi',
+                'description_key' => 'help.command_config_project_init',
+                'options' => [
+                    ['name' => '--project-key', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_project_key', 'argument' => '<key>'],
+                    ['name' => '--base-branch', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_base_branch', 'argument' => '<branch>'],
+                    ['name' => '--skip-base-branch-remote-check', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_skip_base', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
         ];
     }
 
@@ -239,6 +249,18 @@ class CommandMap
                 'description_key' => 'help.command_commit_undo',
                 'options' => [
                     ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                ],
+                'arguments' => [],
+            ],
+            'push' => [
+                'alias' => 'ps',
+                'description_key' => 'help.command_push',
+                'options' => [
+                    ['name' => '--new', 'shortcut' => null, 'description_key' => 'help.option_commit_new', 'argument' => null],
+                    ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
+                    ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                    ['name' => '--no-please', 'shortcut' => null, 'description_key' => 'help.option_push_no_please', 'argument' => null],
                 ],
                 'arguments' => [],
             ],

@@ -2,13 +2,17 @@
 # setup-stud.sh - Install or reinstall stud-cli from the latest GitHub release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
 #        curl -fsSL ... | bash -s -- --force
+#        curl -fsSL ... | bash -s -- --skip-init
+#        curl -fsSL ... | bash -s -- --skip-init   # CI: skip interactive stud init (no need for --force)
 
 set -e
 
 FORCE=false
+SKIP_INIT=false
 for arg in "$@"; do
     case "$arg" in
         --force) FORCE=true ;;
+        --skip-init) SKIP_INIT=true ;;
     esac
 done
 
@@ -225,9 +229,9 @@ if [ -x "$STUD_BIN" ]; then
     "$STUD_BIN" --version || true
 fi
 
-# Offer first-time setup (skip if --force)
+# Offer first-time setup (skip with --skip-init for CI, or with --force to match previous behavior)
 RUN_INIT=true
-if [ "$FORCE" = true ]; then
+if [ "$FORCE" = true ] || [ "$SKIP_INIT" = true ]; then
     RUN_INIT=false
 fi
 if [ "$RUN_INIT" = true ]; then

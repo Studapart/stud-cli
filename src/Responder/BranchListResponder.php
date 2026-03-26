@@ -53,6 +53,7 @@ class BranchListResponder
                     new TableBlock([
                         new Column('branch', 'branches.list.column.branch', fn ($row) => $row->branch),
                         new Column('status', 'branches.list.column.status', fn ($row) => $row->status),
+                        new Column('autoClean', 'branches.list.column.auto_clean', fn ($row) => $row->autoClean),
                         new Column('remote', 'branches.list.column.remote', fn ($row) => $row->remote),
                         new Column('pr', 'branches.list.column.pr', fn ($row) => $row->pr),
                     ]),
