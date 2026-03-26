@@ -13,7 +13,7 @@ class BranchListResponseTest extends TestCase
     public function testSuccessFactoryMethodCreatesSuccessfulResponse(): void
     {
         $rows = [
-            new BranchListRow('feat/PROJ-123', 'Active', '✓', '✗'),
+            new BranchListRow('feat/PROJ-123', 'Active', 'No', '✓', '✗'),
         ];
 
         $response = BranchListResponse::success($rows);

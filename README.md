@@ -805,7 +805,7 @@ These commands integrate directly with your local Git repository to streamline y
         -   Suggests creating PR if none exists after rename.
 
 -   **`stud branches:list`** (Alias: `stud bl`)
-    -   **Description:** Lists all local branches with their status (merged, stale, active PR, or active). Shows whether each branch exists on remote and has an associated Pull Request.
+    -   **Description:** Lists all local branches with `Status` and `Auto clean` values computed from one shared conservative eligibility flow. Also shows whether each branch exists on remote and has an associated Pull Request.
     -   **Usage:**
         ```bash
         stud branches:list
@@ -814,11 +814,15 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Status Definitions:**
         -   **merged**: Branch is merged into develop and exists on remote
         -   **stale**: Branch is merged into develop but doesn't exist on remote
-        -   **active-pr**: Branch has an associated Pull Request (open or closed)
+        -   **active-pr**: Branch has an open associated Pull Request
         -   **active**: Branch is not merged and has commits
+    -   **Auto clean Definitions:**
+        -   **Yes**: Safe to auto-delete (merged by git or provider-confirmed merged PR, with no blockers)
+        -   **No**: Do not delete automatically (protected/current/open PR/not merged)
+        -   **Manual**: Ambiguous or unresolved signals; requires explicit review
 
 -   **`stud branches:clean`** (Alias: `stud bc`)
-    -   **Description:** Interactive cleanup of merged/stale branches. Identifies branches that are merged into develop and don't exist on remote, then prompts for confirmation before deletion. Protected branches (develop, main, master) are never deleted.
+    -   **Description:** Cleanup using the same conservative eligibility resolver as `branches:list`.
     -   **Options:**
         -   `--quiet` or `-q`: Remove all matching branches without prompting (non-interactive mode).
     -   **Usage:**
@@ -831,32 +835,17 @@ These commands integrate directly with your local Git repository to streamline y
         stud branches:clean --quiet
         stud bc -q
         ```
-    -   **Branch Deletion Decision Matrix:**
-        
-        The command evaluates each local branch against the following criteria to determine if it should be deleted:
-        
-        | Protected? | Current Branch? | Merged into develop? | Has Open PR? | Exists on Remote? | Action |
-        |------------|-----------------|----------------------|--------------|-------------------|--------|
-        | ✅ Yes | - | - | - | - | ❌ **SKIP** (never deleted) |
-        | ❌ No | ✅ Yes | - | - | - | ⚠️ **SKIP** (notify user, switch branch first) |
-        | ❌ No | ❌ No | ❌ No | - | - | ❌ **SKIP** (not merged) |
-        | ❌ No | ❌ No | ✅ Yes | ✅ Yes | - | ❌ **SKIP** (has open PR) |
-        | ❌ No | ❌ No | ✅ Yes | ❌ No | ✅ Yes | ✅ **CANDIDATE** (prompt for local + remote deletion) |
-        | ❌ No | ❌ No | ✅ Yes | ❌ No | ❌ No | ✅ **CANDIDATE** (delete local only) |
-        
-        **Notes:**
-        - **Protected branches:** `develop`, `main`, `master` are always skipped
-        - **Current branch:** Cannot be deleted (you must switch branches first)
-        - **Merge check:** Uses `git branch --merged develop` to determine if branch is merged
-        - **PR check:** If GitHub provider is available, checks for open PRs (closed PRs don't prevent deletion)
-        - **Remote branches:** In interactive mode, you'll be prompted separately to delete remote branches
-        - **Quiet mode:** Only deletes local branches, never prompts for remote deletion
-        - **Error handling:** If merge check or PR check fails, the branch is skipped (safe default)
+    -   **Eligibility Summary:**
+        -   **No:** Protected branch, current branch, or open PR.
+        -   **Yes:** Merged into resolved base branch by git, or provider confirms merged PR (including squash/rebase merge paths).
+        -   **Manual:** Ambiguous or unavailable signals (e.g. unresolved base in non-interactive mode, provider unavailable, closed-but-unconfirmed PR).
+        -   **Base branch resolution order:** configured base branch, then `develop`, `main`, `master`.
+        -   If no base branch can be resolved: interactive mode asks for one; quiet/agent mode marks such branches as `Manual`.
         
     -   **Behavior:**
-        -   Scans for branches merged into develop that don't exist on remote
-        -   Never deletes protected branches (develop, main, master)
-        -   In interactive mode, displays list of branches to be deleted and prompts for confirmation
+        -   Quiet/agent mode deletes only `Yes` branches
+        -   Quiet/agent mode never auto-deletes `Manual` branches and reports reasons at the end
+        -   Interactive mode asks explicit confirmation for each `Manual` branch
         -   In quiet mode, deletes all matching branches without prompting
         -   Handles deletion errors gracefully (logs warning and continues with other branches)
         -   For branches that exist on remote, prompts separately to delete the remote branch as well

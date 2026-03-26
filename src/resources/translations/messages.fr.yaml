@@ -647,8 +647,8 @@ help:
   option_release_patch: Incrémenter la version de correctif (X.Y.Z). C'est la valeur par défaut si aucun drapeau n'est fourni
   option_release_publish: Publier la branche de release sur le dépôt distant
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Liste les branches locales/distantes avec statut (fusionnée, obsolète, PR active)
-  command_branches_clean: Nettoyage interactif des branches fusionnées/obsolètes
+  command_branches_list: Liste les branches avec statut et éligibilité auto-clean conservatrice
+  command_branches_clean: Nettoyage des branches avec éligibilité auto-clean conservatrice
   option_quiet: "Non-interactif : utiliser les valeurs par défaut, pas de questions"
   option_items_create_project: "Clé projet Jira (ou JIRA_DEFAULT_PROJECT dans .git/stud.config)"
   option_items_create_type: "Type de ticket (défaut : Story)"
@@ -688,6 +688,7 @@ branches:
     column:
       branch: Branche
       status: Statut
+      auto_clean: Auto clean
       remote: Distant
       pr: PR
     status:
@@ -695,6 +696,10 @@ branches:
       stale: obsolète
       active_pr: pr-active
       active: active
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Récupération des branches locales...
     fetching_remote: Récupération des branches distantes pour %count% branches locales...
     note_origin: 'Note: Seul le dépôt distant ''origin'' est vérifié. Les autres dépôts distants sont ignorés.'
@@ -723,3 +728,17 @@ branches:
     remote_kept_quiet: Branche distante 'origin/%branch%' conservée (utilisez le mode interactif pour supprimer les branches distantes)
     pruning_refs: Nettoyage des références de suivi distantes obsolètes...
     force_delete_warning: Utilisation de la suppression forcée pour la branche %branch% (la branche distante a été supprimée)
+    base_branch_prompt: La branche de base est introuvable. Entrez le nom de la branche de base
+    manual_confirm: "Décision manuelle pour '%branch%' (%reason%). Supprimer cette branche ? (o/N)"
+    manual_report_header: 'Branches manuelles ignorées en mode non-interactif (%count%) :'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Relancez 'stud branches:clean' sans --quiet pour examiner les branches manuelles."
+    reason:
+      protected_branch: branche protégée
+      current_branch: branche courante
+      open_pull_request: pull request ouverte
+      base_branch_unresolved: branche de base non résolue
+      merge_check_failed: vérification de fusion échouée
+      closed_pull_request_unmerged: pull request fermée non confirmée comme fusionnée
+      provider_unavailable: données provider indisponibles
+      not_merged: non fusionnée

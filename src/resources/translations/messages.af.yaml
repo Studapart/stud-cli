@@ -647,8 +647,8 @@ help:
   option_release_patch: Verhoog patch weergawe (X.Y.Z). Dit is die verstek as geen vlae verskaf word nie
   option_release_publish: Publiseer die vrystelling tak na die afgeleë repository
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Lys plaaslike/afstand takke met status (saamgevoeg, verouderd, aktiewe PR)
-  command_branches_clean: Interaktiewe skoonmaak van saamgevoegde/verouderde takke
+  command_branches_list: Lys takke met status en konserwatiewe auto-clean geskiktheid
+  command_branches_clean: Maak takke skoon met konserwatiewe auto-clean geskiktheid
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -688,6 +688,7 @@ branches:
     column:
       branch: Tak
       status: Status
+      auto_clean: Auto clean
       remote: Afstand
       pr: PR
     status:
@@ -695,6 +696,10 @@ branches:
       stale: verouderd
       active_pr: aktiewe-pr
       active: aktief
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Kry plaaslike takke...
     fetching_remote: Kry afstand takke vir %count% plaaslike takke...
     note_origin: 'Let wel: Slegs ''origin'' afstand word gekontroleer. Ander afstande word geïgnoreer.'
@@ -723,3 +728,17 @@ branches:
     remote_kept_quiet: Afstand tak 'origin/%branch%' behou (gebruik interaktiewe modus om afstand takke te verwyder)
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: Basis tak kon nie opgelos word nie. Voer basis taknaam in
+    manual_confirm: "Handmatige besluit vir '%branch%' (%reason%). Verwyder hierdie tak? (j/N)"
+    manual_report_header: 'Handmatige takke in nie-interaktiewe modus oorgeslaan (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Herlaai 'stud branches:clean' sonder --quiet om handmatige takke te hersien."
+    reason:
+      protected_branch: beskermde tak
+      current_branch: huidige tak
+      open_pull_request: oop pull request
+      base_branch_unresolved: basis tak nie opgelos nie
+      merge_check_failed: merge-kontrole het misluk
+      closed_pull_request_unmerged: geslote pull request nie as saamgevoeg bevestig nie
+      provider_unavailable: provider-data nie beskikbaar nie
+      not_merged: nie saamgevoeg nie

@@ -647,8 +647,8 @@ help:
   option_release_patch: Incrementar versión de parche (X.Y.Z). Este es el valor por defecto si no se proporcionan banderas
   option_release_publish: Publicar la rama de release en el repositorio remoto
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Lista ramas locales/remotas con estado (fusionado, obsoleto, PR activa)
-  command_branches_clean: Limpieza interactiva de ramas fusionadas/obsoletas
+  command_branches_list: Lista ramas con estado y elegibilidad auto-clean conservadora
+  command_branches_clean: Limpia ramas con elegibilidad auto-clean conservadora
   option_items_create_project: Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -688,6 +688,7 @@ branches:
     column:
       branch: Rama
       status: Estado
+      auto_clean: Auto clean
       remote: Remoto
       pr: PR
     status:
@@ -695,6 +696,10 @@ branches:
       stale: obsoleto
       active_pr: pr-activa
       active: activo
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Obteniendo ramas locales...
     fetching_remote: Obteniendo ramas remotas para %count% ramas locales...
     note_origin: 'Nota: Solo se verifica el remoto ''origin''. Se ignoran otros remotos.'
@@ -723,3 +728,17 @@ branches:
     remote_kept_quiet: Rama remota 'origin/%branch%' conservada (use el modo interactivo para eliminar ramas remotas)
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: No se pudo resolver la rama base. Introduzca el nombre de la rama base
+    manual_confirm: "Decisión manual para '%branch%' (%reason%). ¿Eliminar esta rama? (s/N)"
+    manual_report_header: 'Ramas manuales omitidas en modo no interactivo (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Ejecute 'stud branches:clean' sin --quiet para revisar ramas manuales."
+    reason:
+      protected_branch: rama protegida
+      current_branch: rama actual
+      open_pull_request: pull request abierta
+      base_branch_unresolved: rama base no resuelta
+      merge_check_failed: comprobación de merge fallida
+      closed_pull_request_unmerged: pull request cerrada no confirmada como fusionada
+      provider_unavailable: datos del proveedor no disponibles
+      not_merged: no fusionada
