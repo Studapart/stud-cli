@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **branches:list / branches:clean (SCI-87):** Added a shared conservative `BranchDeletionEligibilityResolver` used by both commands to compute tri-state auto-clean decisions (`Yes`, `No`, `Manual`) with reason codes. `branches:list` now keeps `Status` and adds an `Auto clean` column; `branches:clean` now deletes only `Yes` in quiet/agent mode, never auto-deletes `Manual`, reports skipped manual branches with reasons, and prompts per-manual-branch in interactive mode. Base branch resolution for this flow uses configured base first, then `develop`/`main`/`master`, with unresolved base handled as manual in non-interactive mode.
 - **Agent JSON for `push` / `submit` (stageAll path):** Removed redundant `noPlease` from the generated agent schema; use `pleaseFallback: false` only. CLI `--no-please` on `stud push` still works and, with `--agent`, is applied as `pleaseFallback: false` before the handler runs.
 
 - **`stud push` / `stud ps` (SCI-83):** Commit (same behavior and flags as `stud commit`) then non-force `origin` push shared with `stud submit` preflight via `GitRepository::pushHeadToOrigin()`. On rejected push: quiet and agent (default) run `stud please` unless disabled via CLI `--no-please` or agent JSON `pleaseFallback: false` (agent schema documents `pleaseFallback` only, not `noPlease`). Interactive mode prompts first. Help, CommandMap, eight locales, README, and tests added.

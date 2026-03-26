@@ -647,8 +647,8 @@ help:
   option_release_patch: Αύξηση έκδοσης patch (X.Y.Z). Αυτή είναι η προεπιλογή εάν δεν παρέχονται σημαίες
   option_release_publish: Δημοσίευση του κλάδου release στον απομακρυσμένο αποθετήριο
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Λίστα τοπικών/απομακρυσμένων κλάδων με κατάσταση (συγχωνευμένος, ξεπερασμένος, ενεργό PR)
-  command_branches_clean: Διαδραστικός καθαρισμός συγχωνευμένων/ξεπερασμένων κλάδων
+  command_branches_list: Λίστα κλάδων με κατάσταση και συντηρητική auto-clean επιλεξιμότητα
+  command_branches_clean: Καθαρισμός κλάδων με συντηρητική auto-clean επιλεξιμότητα
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -688,6 +688,7 @@ branches:
     column:
       branch: Κλάδος
       status: Κατάσταση
+      auto_clean: Auto clean
       remote: Απομακρυσμένος
       pr: PR
     status:
@@ -695,6 +696,10 @@ branches:
       stale: ξεπερασμένος
       active_pr: ενεργό-pr
       active: ενεργός
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Λήψη τοπικών κλάδων...
     fetching_remote: Λήψη απομακρυσμένων κλάδων για %count% τοπικούς κλάδους...
     note_origin: 'Σημείωση: Ελέγχεται μόνο ο απομακρυσμένος αποθετήριος ''origin''. Άλλοι αποθετήριοι αγνοούνται.'
@@ -723,3 +728,17 @@ branches:
     remote_kept_quiet: Ο απομακρυσμένος κλάδος 'origin/%branch%' διατηρήθηκε (χρησιμοποιήστε τη διαδραστική λειτουργία για διαγραφή απομακρυσμένων κλάδων)
     pruning_refs: Καθαρισμός παλιών αναφορών απομακρυσμένων παρακολούθησης...
     force_delete_warning: Χρήση αναγκαστικής διαγραφής για τον κλάδο %branch% (ο απομακρυσμένος κλάδος διαγράφηκε)
+    base_branch_prompt: Η βάση κλάδου δεν επιλύθηκε. Εισάγετε όνομα βάσης κλάδου
+    manual_confirm: "Χειροκίνητη απόφαση για '%branch%' (%reason%). Διαγραφή αυτού του κλάδου; (ν/N)"
+    manual_report_header: 'Χειροκίνητοι κλάδοι που παραλείφθηκαν σε μη διαδραστική λειτουργία (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Εκτελέστε ξανά το 'stud branches:clean' χωρίς --quiet για να ελέγξετε τους χειροκίνητους κλάδους."
+    reason:
+      protected_branch: προστατευμένος κλάδος
+      current_branch: τρέχων κλάδος
+      open_pull_request: ανοιχτό pull request
+      base_branch_unresolved: μη επιλυμένη βάση κλάδου
+      merge_check_failed: αποτυχία ελέγχου merge
+      closed_pull_request_unmerged: κλειστό pull request χωρίς επιβεβαίωση συγχώνευσης
+      provider_unavailable: μη διαθέσιμα δεδομένα provider
+      not_merged: μη συγχωνευμένος

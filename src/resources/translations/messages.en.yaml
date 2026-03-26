@@ -545,6 +545,7 @@ branches:
     column:
       branch: "Branch"
       status: "Status"
+      auto_clean: "Auto clean"
       remote: "Remote"
       pr: "PR"
     status:
@@ -552,6 +553,10 @@ branches:
       stale: "stale"
       active_pr: "active-pr"
       active: "active"
+    auto_clean:
+      yes: "Yes"
+      no: "No"
+      manual: "Manual"
   clean:
     section: "Branch Cleanup"
     note_origin: "Note: Only checking 'origin' remote. Other remotes are ignored."
@@ -577,6 +582,20 @@ branches:
     remote_kept_quiet: "Remote branch 'origin/%branch%' kept (use interactive mode to delete remote branches)"
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: "Base branch could not be resolved. Enter base branch name"
+    manual_confirm: "Manual decision for '%branch%' (%reason%). Delete this branch? (y/N)"
+    manual_report_header: "Manual branches skipped in non-interactive mode (%count%):"
+    manual_report_row: "- %branch% (%reason%)"
+    manual_report_hint: "Re-run 'stud branches:clean' without --quiet to review manual branches."
+    reason:
+      protected_branch: "protected branch"
+      current_branch: "current branch"
+      open_pull_request: "open pull request"
+      base_branch_unresolved: "base branch unresolved"
+      merge_check_failed: "merge check failed"
+      closed_pull_request_unmerged: "closed pull request not confirmed as merged"
+      provider_unavailable: "provider data unavailable"
+      not_merged: "not merged"
 
 # Table Headers
 table:
@@ -639,8 +658,8 @@ help:
   command_status: "A quick \"where am I?\" dashboard."
   command_release: "Creates a new release branch and bumps the version."
   command_deploy: "Deploys the current release branch."
-  command_branches_list: "List local/remote branches with status (merged, stale, active PR)"
-  command_branches_clean: "Interactive cleanup of merged/stale branches"
+  command_branches_list: "List local branches with status and conservative auto-clean eligibility"
+  command_branches_clean: "Clean branches using conservative auto-clean eligibility"
   command_update: "Checks for and installs new versions of the tool."
   universal_help_note: "Tip: Use --help (or -h) with any command to see detailed help. For example: stud commit --help"
   command_specific_help_note: "Tip: Run 'stud help <command>' to see detailed help for a specific command. For example: stud help commit"

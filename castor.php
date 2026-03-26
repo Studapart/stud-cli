@@ -578,6 +578,25 @@ function _get_base_branch(bool $quiet = false): string
 }
 
 /**
+ * Gets configured base branch from project config without prompting.
+ */
+function _get_configured_base_branch_or_null(): ?string
+{
+    try {
+        $config = _get_git_repository()->readProjectConfig();
+    } catch (\Exception) {
+        return null;
+    }
+
+    $configured = $config['baseBranch'] ?? null;
+    if (! is_string($configured) || trim($configured) === '') {
+        return null;
+    }
+
+    return str_starts_with($configured, 'origin/') ? $configured : 'origin/' . trim($configured);
+}
+
+/**
  * Gets the ErrorResponder instance.
  */
 function _get_error_responder(): ErrorResponder
@@ -1910,7 +1929,7 @@ function branch_rename(
     exit($exitCode);
 }
 
-#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List local/remote branches with status (merged, stale, active PR)')]
+#[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List branches with status and auto-clean eligibility')]
 #[AgentOutput(responseClass: \App\Response\BranchListResponse::class, description: 'List of branches with status')]
 function branches_list(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -1922,8 +1941,10 @@ function branches_list(
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
 
     $gitRepository = _get_git_repository();
+    $gitBranchService = _get_git_branch_service();
     $githubProvider = _get_github_provider();
-    $handler = new BranchListHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service());
+    $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
+    $handler = new BranchListHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service());
     $response = $handler->handle();
     $responder = new BranchListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -1936,7 +1957,7 @@ function branches_list(
     return 0;
 }
 
-#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Interactive cleanup of merged/stale branches')]
+#[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Clean branches with conservative auto-clean eligibility')]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Cleanup result')]
 function branches_clean(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
@@ -1951,9 +1972,10 @@ function branches_clean(
         $quiet = true;
     }
     $gitRepository = _get_git_repository();
+    $gitBranchService = _get_git_branch_service();
     $gitProvider = _get_git_provider();
-    $baseBranch = _get_base_branch();
-    $handler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $gitProvider, $baseBranch, _get_translation_service(), _get_logger());
+    $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
+    $handler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -2962,8 +2984,10 @@ function deploy(
 
     if ($clean) {
         $gitRepository = _get_git_repository();
+        $gitBranchService = _get_git_branch_service();
         $githubProvider = _get_github_provider();
-        $cleanHandler = new BranchCleanHandler($gitRepository, _get_git_branch_service(), $githubProvider, _get_base_branch(), _get_translation_service(), _get_logger());
+        $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
+        $cleanHandler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
         $cleanHandler->handle(io(), true);
     }
     if ($agent) {

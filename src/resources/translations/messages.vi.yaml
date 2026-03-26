@@ -647,8 +647,8 @@ help:
   option_release_patch: Tăng phiên bản bản vá (X.Y.Z). Đây là mặc định nếu không có cờ nào được cung cấp
   option_release_publish: Xuất bản nhánh phát hành đến kho lưu trữ từ xa
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Liệt kê các nhánh local/remote với trạng thái (đã hợp nhất, lỗi thời, PR đang hoạt động)
-  command_branches_clean: Dọn dẹp tương tác các nhánh đã hợp nhất/lỗi thời
+  command_branches_list: Liệt kê nhánh với trạng thái và auto-clean bảo thủ
+  command_branches_clean: Dọn dẹp nhánh bằng auto-clean bảo thủ
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
   option_items_create_summary: Issue summary/title
@@ -688,6 +688,7 @@ branches:
     column:
       branch: Nhánh
       status: Trạng thái
+      auto_clean: Auto clean
       remote: Remote
       pr: PR
     status:
@@ -695,6 +696,10 @@ branches:
       stale: lỗi thời
       active_pr: pr-đang hoạt động
       active: đang hoạt động
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Đang lấy các nhánh local...
     fetching_remote: Đang lấy các nhánh remote cho %count% nhánh local...
     note_origin: 'Lưu ý: Chỉ kiểm tra remote ''origin''. Các remote khác bị bỏ qua.'
@@ -723,3 +728,17 @@ branches:
     remote_kept_quiet: Giữ lại nhánh remote 'origin/%branch%' (sử dụng chế độ tương tác để xóa nhánh remote)
     pruning_refs: "Pruning stale remote-tracking references..."
     force_delete_warning: "Using force delete for branch %branch% (remote branch was deleted)"
+    base_branch_prompt: Không xác định được nhánh base. Nhập tên nhánh base
+    manual_confirm: "Quyết định thủ công cho '%branch%' (%reason%). Xóa nhánh này? (y/N)"
+    manual_report_header: 'Nhánh thủ công bị bỏ qua ở chế độ không tương tác (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Chạy lại 'stud branches:clean' không có --quiet để xem nhánh thủ công."
+    reason:
+      protected_branch: nhánh được bảo vệ
+      current_branch: nhánh hiện tại
+      open_pull_request: pull request đang mở
+      base_branch_unresolved: chưa xác định nhánh base
+      merge_check_failed: kiểm tra merge thất bại
+      closed_pull_request_unmerged: pull request đã đóng nhưng chưa xác nhận merged
+      provider_unavailable: dữ liệu provider không khả dụng
+      not_merged: chưa merge

@@ -575,6 +575,7 @@ branches:
     column:
       branch: Branch
       status: Status
+      auto_clean: Auto clean
       remote: Remote
       pr: PR
     status:
@@ -582,6 +583,10 @@ branches:
       stale: verouderd
       active_pr: actieve-pr
       active: actief
+    auto_clean:
+      yes: Yes
+      no: No
+      manual: Manual
     fetching_local: Lokale branches ophalen...
     fetching_remote: Remote branches ophalen voor %count% lokale branches...
     note_origin: 'Opmerking: Alleen ''origin'' remote wordt gecontroleerd. Andere remotes worden genegeerd.'
@@ -610,6 +615,20 @@ branches:
     remote_kept_quiet: Remote branch 'origin/%branch%' behouden (gebruik interactieve modus om remote branches te verwijderen)
     pruning_refs: Verwijderen van verouderde remote-tracking referenties...
     force_delete_warning: Force delete gebruiken voor branch %branch% (remote branch is verwijderd)
+    base_branch_prompt: Basisbranch kon niet worden bepaald. Voer de basisbranchnaam in
+    manual_confirm: "Handmatige beslissing voor '%branch%' (%reason%). Deze branch verwijderen? (j/N)"
+    manual_report_header: 'Handmatige branches overgeslagen in niet-interactieve modus (%count%):'
+    manual_report_row: '- %branch% (%reason%)'
+    manual_report_hint: "Voer 'stud branches:clean' zonder --quiet uit om handmatige branches te beoordelen."
+    reason:
+      protected_branch: beschermde branch
+      current_branch: huidige branch
+      open_pull_request: open pull request
+      base_branch_unresolved: basisbranch niet opgelost
+      merge_check_failed: mergecontrole mislukt
+      closed_pull_request_unmerged: gesloten pull request niet bevestigd als gemerged
+      provider_unavailable: providergegevens niet beschikbaar
+      not_merged: niet gemerged
 table:
   key: Sleutel
   status: Status
@@ -689,8 +708,8 @@ help:
   option_release_patch: Verhoog patch versie (X.Y.Z). Dit is de standaard als geen vlaggen worden opgegeven
   option_release_publish: Publiceer de release tak naar de remote repository
   option_branch_rename_name: Explicit new branch name (no prefix will be added). This option takes precedence over the key argument
-  command_branches_list: Lijst lokale/remote branches met status (samengevoegd, verouderd, actieve PR)
-  command_branches_clean: Interactieve opruiming van samengevoegde/verouderde branches
+  command_branches_list: Lijst branches met status en conservatieve auto-clean geschiktheid
+  command_branches_clean: Ruim branches op met conservatieve auto-clean geschiktheid
   option_quiet: "Niet-interactief: standaardwaarden gebruiken, geen prompts"
   option_items_create_project: Jira project key (or JIRA_DEFAULT_PROJECT in .git/stud.config)
   option_items_create_type: Issue type (default Story)
