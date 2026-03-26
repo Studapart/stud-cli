@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-03-26
+
 ### Fixed
 
 - **GitHub Actions Jira label sync (SCI-86):** `.github/workflows/jira-label-sync.yml` no longer replaces the entire Jira `labels` field with only mapped labels (which removed unmanaged Jira labels). The job runs **`stud items:show --agent`** to read current labels, merges managed targets from **`STUD_JIRA_LABEL_MAP`** with PR labels (grouping multiple GitHub labels per Jira value), preserves labels that are not map values, skips **`items:update`** when nothing changes, and still runs when the PR has no mapped labels so removals apply. Documented in `documentation/github-actions.md`.
