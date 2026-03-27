@@ -18,10 +18,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Integration test for InitHandler array_filter functionality.
+ * Integration test for InitHandler array_filter and required Jira URL re-prompt.
  *
- * This test verifies that empty strings are filtered out from the config
- * while preserving null values. This covers the array_filter callback in InitHandler.
+ * Verifies that empty strings are filtered out from the config while preserving null values,
+ * and that a Jira URL that normalizes to empty (e.g. "/") triggers a re-prompt until a valid URL is given.
  */
 #[Group('integration')]
 class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
@@ -75,13 +75,13 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
 
     public function testInitHandlerFiltersOutEmptyStringsFromConfig(): void
     {
-        // This test verifies that when a JIRA_URL becomes empty after rtrim('/'),
-        // it gets filtered out by array_filter. This covers line 115-117 in InitHandler.
+        // "/" normalizes to empty: first init must re-prompt; second answer is a valid base URL.
 
         // Create input stream with responses
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "English (en)\n"); // Language choice
-        fwrite($inputStream, "/\n"); // JIRA_URL that will become empty string after rtrim('/')
+        fwrite($inputStream, "/\n"); // Invalid: empty after normalization — re-prompt
+        fwrite($inputStream, "https://jira.example.com/\n"); // Valid URL (trailing slash stripped on save)
         fwrite($inputStream, "email@example.com\n");
         fwrite($inputStream, "token\n");
         fwrite($inputStream, "github_token\n");
@@ -114,11 +114,10 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         // Verify required fields are present
         $this->assertArrayHasKey('LANGUAGE', $config);
         $this->assertArrayHasKey('JIRA_EMAIL', $config);
+        $this->assertArrayHasKey('JIRA_URL', $config);
+        $this->assertSame('https://jira.example.com', $config['JIRA_URL']);
 
         // migration_version may or may not be present depending on migrations discovered
         // The important part is that empty strings are filtered out
-
-        // Verify JIRA_URL is not present (it was empty and filtered out)
-        $this->assertArrayNotHasKey('JIRA_URL', $config, 'Empty JIRA_URL should be filtered out');
     }
 }
