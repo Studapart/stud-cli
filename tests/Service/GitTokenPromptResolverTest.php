@@ -25,6 +25,20 @@ class GitTokenPromptResolverTest extends TestCase
         $this->assertSame('abc', $this->resolver->tokenFromUserInput('  abc  '));
     }
 
+    public function testTokenFromUserInputRejectsPromptLabelWhenGuardProvided(): void
+    {
+        $guard = 'Enter your GitHub PAT (leave blank to keep existing or skip)';
+        $this->assertNull($this->resolver->tokenFromUserInput($guard, $guard));
+        $this->assertSame('real-token', $this->resolver->tokenFromUserInput('real-token', $guard));
+    }
+
+    public function testResolveForGlobalInitTreatsPromptLabelAsEmptyInputWhenGuardProvided(): void
+    {
+        $guard = 'Enter your GitHub PAT (leave blank to keep existing or skip)';
+        $result = $this->resolver->resolveForGlobalInit($guard, 'GITHUB_TOKEN', [], $guard);
+        $this->assertNull($result);
+    }
+
     public function testResolveForGlobalInitUsesUserInputWhenNonEmpty(): void
     {
         $result = $this->resolver->resolveForGlobalInit(

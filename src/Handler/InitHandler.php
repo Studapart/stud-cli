@@ -65,9 +65,23 @@ class InitHandler
 
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.token_help'));
-        $jiraUrl = $this->logger->ask($this->translator->trans('config.init.jira.url_prompt'), $existingConfig['JIRA_URL'] ?? null);
-        $jiraEmail = $this->logger->ask($this->translator->trans('config.init.jira.email_prompt'), $existingConfig['JIRA_EMAIL'] ?? null);
-        $jiraToken = $this->logger->askHidden($this->translator->trans('config.init.jira.token_prompt'));
+        $jiraUrlPrompt = $this->translator->trans('config.init.jira.url_prompt');
+        $jiraEmailPrompt = $this->translator->trans('config.init.jira.email_prompt');
+        $jiraTokenPrompt = $this->translator->trans('config.init.jira.token_prompt');
+        $githubTokenPrompt = $this->translator->trans('config.init.git.github_token_prompt');
+        $gitlabTokenPrompt = $this->translator->trans('config.init.git.gitlab_token_prompt');
+
+        $jiraUrl = $this->promptRequiredVisible(
+            $jiraUrlPrompt,
+            $existingConfig['JIRA_URL'] ?? null,
+            fn (string $s): string => $this->normalizeJiraUrl($s),
+        );
+        $jiraEmail = $this->promptRequiredVisible(
+            $jiraEmailPrompt,
+            $existingConfig['JIRA_EMAIL'] ?? null,
+            static fn (string $s): string => $s,
+        );
+        $jiraToken = $this->promptRequiredJiraApiToken($jiraTokenPrompt, $existingConfig['JIRA_API_TOKEN'] ?? null);
 
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.git.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, [
@@ -75,8 +89,8 @@ class InitHandler
             $this->translator->trans('config.init.git.token_help'),
             $this->translator->trans('config.init.git.multiple_tokens_note'),
         ]);
-        $githubToken = $this->logger->askHidden($this->translator->trans('config.init.git.github_token_prompt'));
-        $gitlabToken = $this->logger->askHidden($this->translator->trans('config.init.git.gitlab_token_prompt'));
+        $githubToken = $this->logger->askHidden($githubTokenPrompt);
+        $gitlabToken = $this->logger->askHidden($gitlabTokenPrompt);
 
         $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.title'));
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.description'));
@@ -87,13 +101,106 @@ class InitHandler
 
         return [
             'LANGUAGE' => $languageChoice,
-            'JIRA_URL' => rtrim($jiraUrl, '/'),
+            'JIRA_URL' => $jiraUrl,
             'JIRA_EMAIL' => $jiraEmail,
-            'JIRA_API_TOKEN' => $jiraToken ?: ($existingConfig['JIRA_API_TOKEN'] ?? null),
-            'GITHUB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($githubToken, 'GITHUB_TOKEN', $existingConfig),
-            'GITLAB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig),
+            'JIRA_API_TOKEN' => $jiraToken,
+            'GITHUB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($githubToken, 'GITHUB_TOKEN', $existingConfig, $githubTokenPrompt),
+            'GITLAB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig, $gitlabTokenPrompt),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
+    }
+
+    /**
+     * Trims stored config values; null or whitespace-only becomes null (no stored value).
+     */
+    protected function nonEmptyStoredString(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * Null, empty string, or whitespace-only counts as skip (same as empty input after trim).
+     */
+    protected function isSkippedInput(?string $value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+
+        return trim($value) === '';
+    }
+
+    protected function normalizeJiraUrl(string $url): string
+    {
+        return rtrim($url, '/');
+    }
+
+    /**
+     * Required visible field: skip preserves existing non-empty stored value; first-time skip re-prompts.
+     * A value equal to the prompt question text is rejected. Normalizer may yield empty (e.g. URL "/").
+     *
+     * @param callable(string): string $normalizeValue
+     */
+    protected function promptRequiredVisible(string $question, ?string $existingStored, callable $normalizeValue): string
+    {
+        $existing = $this->nonEmptyStoredString($existingStored);
+        while (true) {
+            $answer = $this->logger->ask($question, $existing);
+            if ($this->isSkippedInput($answer)) {
+                if ($existing !== null) {
+                    return $normalizeValue($existing);
+                }
+
+                continue;
+            }
+
+            $trimmed = trim((string) $answer);
+            if ($trimmed === $question) {
+                continue;
+            }
+
+            $normalized = $normalizeValue($trimmed);
+            if ($normalized === '') {
+                if ($existing !== null) {
+                    return $normalizeValue($existing);
+                }
+
+                continue;
+            }
+
+            return $normalized;
+        }
+    }
+
+    /**
+     * Required hidden token: skip preserves existing; no existing value re-prompts. Prompt text never accepted as value.
+     */
+    protected function promptRequiredJiraApiToken(string $question, ?string $existingStored): string
+    {
+        $existing = $this->nonEmptyStoredString($existingStored);
+        while (true) {
+            $answer = $this->logger->askHidden($question);
+            if ($this->isSkippedInput($answer)) {
+                if ($existing !== null) {
+                    return $existing;
+                }
+
+                continue;
+            }
+
+            $trimmed = trim((string) $answer);
+            if ($trimmed === $question) {
+                continue;
+            }
+
+            return $trimmed;
+        }
     }
 
     /**

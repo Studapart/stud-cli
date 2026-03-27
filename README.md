@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.0/stud-3.13.0.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.1/stud-3.13.1.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.0/stud-3.13.0.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.1/stud-3.13.1.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -362,6 +362,8 @@ Before using `stud-cli` for the first time, you need to configure your Jira conn
 #### `stud config:init` (Alias: `stud init`)
 
 **Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
+
+Pressing Enter without typing (or only whitespace) on a prompt is treated as **skip**: optional fields stay unset or keep an existing value; required Jira fields re-prompt until you enter a non-empty value when nothing is stored yet. The wizard never saves the prompt question text as a secret or URL.
 
 For detailed instructions on creating tokens and required permissions/scopes, see the [Token Setup Guide](#token-setup-guide) above.
 
