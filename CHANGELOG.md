@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`config:init` (SCI-88):** Global setup wizard now treats empty/skip input consistently: required Jira URL, email, and API token re-prompt when there is no stored value; skip preserves existing on-disk values; `rtrim()` is never called on null (no crash on optional hidden prompts). Git tokens reject values equal to the translated prompt text. PHPUnit coverage extended for skip, re-prompt, and resolver behavior.
+
 ## [3.13.0] - 2026-03-26
 
 ### Fixed

@@ -363,6 +363,8 @@ Before using `stud-cli` for the first time, you need to configure your Jira conn
 
 **Description:** A first-time setup wizard that interactively prompts for your language preference, Jira URL, email, and API token. It provides a link to generate an Atlassian API token and saves these values to `~/.config/stud/config.yml`. The language setting controls the display language for all user-facing messages (defaults to English).
 
+Pressing Enter without typing (or only whitespace) on a prompt is treated as **skip**: optional fields stay unset or keep an existing value; required Jira fields re-prompt until you enter a non-empty value when nothing is stored yet. The wizard never saves the prompt question text as a secret or URL.
+
 For detailed instructions on creating tokens and required permissions/scopes, see the [Token Setup Guide](#token-setup-guide) above.
 
 At the end of the setup, the wizard will detect your shell (bash or zsh) and offer to set up shell auto-completion. If you choose to set it up, you'll receive instructions on how to complete the installation.
