@@ -329,7 +329,7 @@ cache:
     error_delete: Lỗi khi xóa tệp cache.
 submit:
   section: Gửi Pull Request
-  error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi gửi.
+  note_dirty_working: "Bạn có thay đổi chưa commit. Push và pull request chỉ dùng các commit đã có trên nhánh này; tệp chưa commit không được đưa vào."
   error_base_branch: Không thể tạo Pull Request từ nhánh cơ sở.
   pushing: Đang push nhánh %branch%...
   error_push: 'Push thất bại. Nhánh của bạn có thể đã viết lại lịch sử.
@@ -620,7 +620,7 @@ help:
   command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
   command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
-  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
+  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. Thay đổi cục bộ chưa commit không chặn submit; có thông báo rằng push/PR dùng các commit trên nhánh. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
   command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
