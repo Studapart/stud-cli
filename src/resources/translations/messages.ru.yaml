@@ -329,7 +329,7 @@ cache:
     error_delete: Ошибка при удалении файла кэша.
 submit:
   section: Отправка Pull Request
-  error_dirty_working: Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед отправкой.
+  note_dirty_working: "У вас есть незакоммиченные изменения. Push и pull request используют только коммиты, уже находящиеся в этой ветке; незакоммиченные файлы не включаются."
   error_base_branch: Невозможно создать Pull Request из базовой ветки.
   pushing: Отправка ветки %branch%...
   error_push: 'Отправка не удалась. Ваша ветка могла переписать историю.
@@ -620,7 +620,7 @@ help:
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
-  command_submit: "Отправляет текущую ветку и создаёт Pull Request. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
+  command_submit: "Отправляет текущую ветку и создаёт Pull Request. Незакоммиченные локальные изменения не блокируют submit; показывается информационное сообщение, что push и PR используют коммиты на ветке. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
   command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
   command_status: Быстрая панель управления "где я?".

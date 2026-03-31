@@ -329,7 +329,7 @@ cache:
     error_delete: Échec de la suppression du fichier de cache.
 submit:
   section: Soumission de Pull Request
-  error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant de soumettre.
+  note_dirty_working: "Vous avez des modifications non commitées. Le push et la pull request utilisent uniquement les commits déjà sur cette branche ; les fichiers non commités ne sont pas inclus."
   error_base_branch: Impossible de créer une Pull Request depuis la branche de base.
   pushing: Push de la branche %branch%...
   error_push: 'Échec du push. Votre branche a peut-être réécrit l''historique.
@@ -620,7 +620,7 @@ help:
   command_please: Un force-push sûr pour utilisateur avancé (force-with-lease).
   command_flatten: Fusionner automatiquement tous les commits fixup! dans leurs commits cibles.
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
-  command_submit: "Pousse la branche actuelle et crée une Pull Request. JSON agent : stageAll optionnel — si true, exécute stud push d'abord (isNew, message, pleaseFallback optionnels ; comme stud push --agent)."
+  command_submit: "Pousse la branche actuelle et crée une Pull Request. Les modifications locales non commitées ne bloquent pas la soumission ; un message indique que le push et la PR utilisent les commits sur la branche. JSON agent : stageAll optionnel — si true, exécute stud push d'abord (isNew, message, pleaseFallback optionnels ; comme stud push --agent)."
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
   command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
   command_status: Un tableau de bord rapide "où suis-je ?".

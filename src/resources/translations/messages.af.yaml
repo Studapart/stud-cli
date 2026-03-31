@@ -329,7 +329,7 @@ cache:
     error_delete: Fout by verwydering van kas lêer.
 submit:
   section: Dien Pull Request in
-  error_dirty_working: Jou werk gids is nie skoon nie. Commit asseblief jou veranderinge met 'stud commit' voor indiening.
+  note_dirty_working: "Jy het ongecommitte veranderinge. Push en die pull request gebruik slegs commits wat reeds op hierdie tak is; ongecommitte lêers word nie ingesluit nie."
   error_base_branch: Kan nie 'n Pull Request van die basis tak skep nie.
   pushing: Push tak %branch%...
   error_push: 'Push het misluk. Jou tak het moontlik geskiedenis herskryf.
@@ -620,7 +620,7 @@ help:
   command_please: '''n Veilige force-push vir gevorderde gebruikers (force-with-lease).'
   command_flatten: Voeg outomaties alle fixup! commits saam in hul teiken commits.
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.
-  command_submit: "Stuur die huidige tak en skep 'n Pull Request. Agent-JSON: opsioneel stageAll — indien true word stud push eers uitgevoer (opsioneel isNew, message, pleaseFallback; soos stud push --agent)."
+  command_submit: "Stuur die huidige tak en skep 'n Pull Request. Ongecommitte plaaslike veranderinge blokkeer nie indien nie; jy kry 'n inligtingsboodskap dat push/PR commits op die tak gebruik. Agent-JSON: opsioneel stageAll — indien true word stud push eers uitgevoer (opsioneel isNew, message, pleaseFallback; soos stud push --agent)."
   command_pr_comment: Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument.
   command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit.
   command_status: '''n Vinnige "waar is ek?" dashboard.'

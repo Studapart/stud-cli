@@ -329,7 +329,7 @@ cache:
     error_delete: Fout bij verwijderen van cache bestand.
 submit:
   section: Pull Request indienen
-  error_dirty_working: Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u indient.
+  note_dirty_working: "U heeft niet-gecommitte wijzigingen. Push en de pull request gebruiken alleen commits die al op deze branch staan; niet-gecommitte bestanden worden niet meegenomen."
   error_base_branch: Kan geen Pull Request maken vanaf de basisbranch.
   pushing: Branch %branch% pushen...
   error_push: 'Push mislukt. Uw branch heeft mogelijk geschiedenis herschreven.
@@ -681,7 +681,7 @@ help:
   command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
   command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
-  command_submit: "Pusht de huidige tak en maakt een Pull Request. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
+  command_submit: "Pusht de huidige tak en maakt een Pull Request. Niet-gecommitte lokale wijzigingen blokkeren indienen niet; je krijgt een informatieve melding dat push/PR commits op de branch gebruiken. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
   command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
   command_status: Een snelle "waar ben ik?" dashboard.

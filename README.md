@@ -931,12 +931,12 @@ These commands integrate directly with your local Git repository to streamline y
         ```
 
 -   **`stud submit`** (Alias: `stud su`)
-    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub.
+    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub. A **non-empty working tree** (uncommitted or unstaged changes) does **not** block submit: you see an informational note that the push and PR reflect **commits already on the branch**; uncommitted files are not included. Draft PRs are only created when you pass `--draft`, not because the tree is dirty.
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
-    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (clean tree, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when the working tree is already clean and committed.
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
     -   **Usage:**
         ```bash
         stud submit

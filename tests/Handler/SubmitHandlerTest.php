@@ -150,16 +150,60 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testHandleWithDirtyWorkingDirectory(): void
+    public function testHandleWithDirtyWorkingDirectoryLogsNoteAndSucceeds(): void
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php");
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->expects($this->once())
+            ->method('toMarkdown')
+            ->with('My rendered description')
+            ->willReturn('My rendered description');
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $this->logger->expects($this->once())
+            ->method('note')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->translationService->trans('submit.note_dirty_working')
+            );
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('gitWriteln');
+        $this->logger->method('jiraWriteln');
+        $this->logger->method('success');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertSame(0, $result);
     }
 
     public function testHandleOnBaseBranch(): void

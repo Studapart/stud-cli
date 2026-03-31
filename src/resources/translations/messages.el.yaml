@@ -329,7 +329,7 @@ cache:
     error_delete: Σφάλμα κατά τη διαγραφή του αρχείου cache.
 submit:
   section: Υποβολή Pull Request
-  error_dirty_working: Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την υποβολή.
+  note_dirty_working: "Έχετε μη committed αλλαγές. Το push και το pull request χρησιμοποιούν μόνο commits που βρίσκονται ήδη σε αυτόν τον κλάδο· τα μη committed αρχεία δεν συμπεριλαμβάνονται."
   error_base_branch: Δεν μπορεί να δημιουργηθεί Pull Request από τον βασικό κλάδο.
   pushing: Push του κλάδου %branch%...
   error_push: 'Η push απέτυχε. Ο κλάδος σας μπορεί να έχει ξαναγράψει το ιστορικό.
@@ -620,7 +620,7 @@ help:
   command_please: Ένα ασφαλές force-push για προχωρημένους χρήστες (force-with-lease).
   command_flatten: Συγχώνευση αυτόματα όλων των fixup! commits στα commits στόχους τους.
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
-  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request. JSON agent: προαιρετικό stageAll — όταν true, εκτελεί πρώτα stud push (προαιρετικά isNew, message, pleaseFallback· όπως stud push --agent)."
+  command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request. Οι μη committed τοπικές αλλαγές δεν μπλοκάρουν το submit· εμφανίζεται ενημερωτικό μήνυμα ότι το push/PR χρησιμοποιούν commits στον κλάδο. JSON agent: προαιρετικό stageAll — όταν true, εκτελεί πρώτα stud push (προαιρετικά isNew, message, pleaseFallback· όπως stud push --agent)."
   command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
   command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου.
   command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".

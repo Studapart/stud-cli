@@ -349,7 +349,7 @@ cache:
 # Submit Handler
 submit:
   section: "Submitting Pull Request"
-  error_dirty_working: "Your working directory is not clean. Please commit your changes with 'stud commit' before submitting."
+  note_dirty_working: "You have uncommitted changes. Push and the pull request use commits already on this branch; uncommitted files are not included."
   error_base_branch: "Cannot create a Pull Request from the base branch."
   pushing: "Pushing branch %branch%..."
   error_push: "Push failed. Your branch may have rewritten history.\nTry running 'stud please' to force-push."
@@ -652,7 +652,7 @@ help:
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
-  command_submit: "Pushes the current branch and creates a Pull Request. Agent JSON: optional stageAll — when true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
+  command_submit: "Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Agent JSON: optional stageAll — when true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."

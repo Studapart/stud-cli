@@ -329,7 +329,7 @@ cache:
     error_delete: Error al eliminar el archivo de caché.
 submit:
   section: Enviando Pull Request
-  error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de enviar.
+  note_dirty_working: "Tiene cambios sin confirmar. El push y la pull request usan solo los commits ya presentes en esta rama; los archivos sin confirmar no se incluyen."
   error_base_branch: No se puede crear una Pull Request desde la rama base.
   pushing: Haciendo push de la rama %branch%...
   error_push: 'Error en el push. Su rama puede haber reescrito el historial.
@@ -620,7 +620,7 @@ help:
   command_please: Un force-push seguro para usuario avanzado (force-with-lease).
   command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
-  command_submit: "Envía la rama actual y crea una Pull Request. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
+  command_submit: "Envía la rama actual y crea una Pull Request. Los cambios locales sin confirmar no bloquean el envío; verás un aviso de que el push y la PR usan los commits de la rama. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
   command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
   command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual.
   command_status: Un panel de control rápido "¿dónde estoy?".
