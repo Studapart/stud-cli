@@ -212,7 +212,16 @@ item:
     label_labels: Etikette
     label_description: Beskrywing
     label_link: Skakel
+    label_attachments: Aanhegsels
     label_none: Geen
+  download:
+    section: "Afgelaaide aanhegsels"
+    none: "Geen aanhegsels op hierdie item nie."
+    col_filename: "Lêernaam"
+    col_path: "Pad"
+    error_key_or_url: "Gee 'n Jira-itemsleutel of --url met 'n Jira-aanhegsel-inhoud-URL."
+    error_path_traversal: "Pad mag ouermappe (..) nie bevat nie."
+    error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
     prompt_project: Project key
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Toon gedetailleerde inligting vir een werkitem.
+  command_items_download: "Laai Jira-aanhegsels vir 'n item af of een lêer vanaf 'n aanhegsel-URL. Met sleutel word alles gestoor (--url word geignoreer). Sonder sleutel is --url verpligtend. Dieselfde Jira-magtiging. Verstekvouer .cursor/stud-downloads. Agent JSON issueKey of key, opsioneel url en path."
   command_items_search: Soek issues met JQL.
   command_items_transition: Gaan 'n Jira werkitem oor na 'n ander status. As sleutel nie verskaf word nie, probeer om vanaf huidige tak te detecteer.
   command_filters_list: Lys alle beskikbare Jira-filters.
@@ -635,6 +645,8 @@ help:
   option_all: Lys items vir alle gebruikers (oorskry standaard toekenning filter)
   option_project: Filter items volgens 'n spesifieke projek sleutel (bv., PROJ)
   option_items_list_sort: Sorteer resultate volgens Key of Status (gebruik --sort of -s)
+  option_items_download_url: "Jira REST-aanhegsel-inhoud-URL (verplig sonder itemsleutel); geignoreer wanneer sleutel gegee is"
+  option_items_download_path: "Teikenmap relatief tot cwd (geskep indien nodig); verstek .cursor/stud-downloads"
   option_commit_new: Skep 'n nuwe logiese commit in plaas van 'n fixup
   option_commit_message: Omseil die interaktiewe prompter en gebruik die verskafde boodskap vir die commit
   option_commit_all: Stage alle veranderinge voordat u commit (herstel die ou gedrag)

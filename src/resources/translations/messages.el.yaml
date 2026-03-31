@@ -212,7 +212,16 @@ item:
     label_labels: Ετικέτες
     label_description: Περιγραφή
     label_link: Σύνδεσμος
+    label_attachments: Συνημμένα
     label_none: Κανένα
+  download:
+    section: "Ληφθέντα συνημμένα"
+    none: "Δεν υπάρχουν συνημμένα σε αυτό το θέμα."
+    col_filename: "Όνομα αρχείου"
+    col_path: "Διαδρομή"
+    error_key_or_url: "Δώστε κλειδί θέματος Jira ή --url με URL περιεχομένου συνημμένου Jira."
+    error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
+    error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
     prompt_project: Project key
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας.
+  command_items_download: "Λήψη συνημμένων Jira για ένα θέμα ή ενός αρχείου από URL συνημμένου. Με κλειδί αποθηκεύονται όλα (--url αγνοείται). Χωρίς κλειδί απαιτείται --url. Ίδια ταυτοποίηση Jira. Προεπιλεγμένος φάκελος .cursor/stud-downloads. Agent JSON issueKey ή key, προαιρετικά url και path."
   command_items_search: Αναζήτηση issues με JQL.
   command_items_transition: Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο.
   command_filters_list: Λίστα όλων των διαθέσιμων φίλτρων Jira.
@@ -635,6 +645,8 @@ help:
   option_all: Λίστα στοιχείων για όλους τους χρήστες (παρακάμπτει το προεπιλεγμένο φίλτρο αναθέτη)
   option_project: Φιλτράρισμα στοιχείων με συγκεκριμένο κλειδί έργου (π.χ., PROJ)
   option_items_list_sort: Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)
+  option_items_download_url: "URL περιεχομένου συνημμένου Jira REST (υποχρεωτικό χωρίς κλειδί θέματος)· αγνοείται όταν υπάρχει κλειδί"
+  option_items_download_path: "Κατάλογος προορισμού σχετικός με το cwd (δημιουργείται αν λείπει)· προεπιλογή .cursor/stud-downloads"
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)

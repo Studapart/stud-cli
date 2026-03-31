@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`stud items:show` / `stud sh`:** Jira fetch now requests the **`attachment`** field when loading an issue; **`WorkItem`** carries **`IssueAttachment`** metadata (`id`, `filename`, `size`, `contentUrl`, `mimeType`). CLI shows an **Attachments** row; **`stud items:show --agent`** exposes **`data.issue.attachments`** for agent workflows.
+
+- **`stud items:download` (SCI-90):** Downloads all attachments for a Jira issue (`[<key>]`) or a single file from `--url` when no key is given; authenticated Jira HTTP client only; default directory `.cursor/stud-downloads`; `--path` must stay under cwd without `..`. Alias `idl`. Handler + responder, `JiraAttachmentService`, agent JSON (`issueKey`/`key`, `url`, `path`) with `files` and `errors`. README, help, CommandMap, and all locales updated.
+
 ### Changed
 
 - **`stud submit` (SCI-91):** A non-empty working tree no longer fails preflight. Push and PR creation proceed from commits already on the branch; the user sees an informational note (`submit.note_dirty_working`) instead of an error. Draft PRs remain explicit via `--draft` only. README, help (`command_submit`), and all locales updated; `SubmitHandlerTest` covers dirty-tree success with `note` logging.

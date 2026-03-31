@@ -212,7 +212,16 @@ item:
     label_labels: Etiquetas
     label_description: Descripción
     label_link: Enlace
+    label_attachments: Adjuntos
     label_none: Ninguno
+  download:
+    section: "Adjuntos descargados"
+    none: "No hay adjuntos en este ticket."
+    col_filename: "Archivo"
+    col_path: "Ruta"
+    error_key_or_url: "Indica una clave de issue de Jira o --url con una URL de contenido de adjunto de Jira."
+    error_path_traversal: "La ruta no puede contener segmentos de directorio padre (..)."
+    error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
     prompt_project: Project key
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Muestra información detallada para un elemento de trabajo.
+  command_items_download: "Descarga adjuntos de Jira para un ticket o un archivo desde una URL de adjunto. Con clave guarda todos los adjuntos (--url ignorado). Sin clave, --url es obligatorio. Misma autenticación Jira. Directorio por defecto .cursor/stud-downloads. Agente JSON issueKey o key, url y path opcionales."
   command_items_search: Buscar issues usando JQL.
   command_items_transition: Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual.
   command_filters_list: Lista todos los filtros de Jira disponibles.
@@ -635,6 +645,8 @@ help:
   option_all: Listar elementos para todos los usuarios (anula el filtro de asignado por defecto)
   option_project: Filtrar elementos por una clave de proyecto específica (por ej., PROJ)
   option_items_list_sort: Ordenar resultados por Key o Status (use --sort o -s)
+  option_items_download_url: "URL REST de contenido de adjunto Jira (obligatoria sin clave de issue); se ignora si hay clave"
+  option_items_download_path: "Directorio destino relativo al cwd (creado si falta); por defecto .cursor/stud-downloads"
   option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
   option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
   option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)
