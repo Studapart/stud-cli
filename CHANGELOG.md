@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **AI development protocol (SCI-89):** `AI.md` Phase 1 (Ingest & Verify) now describes when and how to pull Confluence page markdown via `stud csh --agent` when issue text contains wiki URLs, including URL heuristics, `./.cursor/tmp/` usage and cleanup, and fail-soft handling for errors, permissions, ADF-only links, multiple URLs, and rate limits.
+- **AI development protocol (SCI-89):** `AI.md` Phase 1 (Ingest & Verify) now describes when and how to pull Confluence page markdown via `stud csh --agent` when issue text contains wiki URLs: **host + path** checks so only real Confluence links use stud; other HTTP(S) links use agent fetch tools (`curl`, MCP, browser, etc.), not `stud csh`. Includes `./.cursor/tmp/` usage and cleanup, and fail-soft handling for errors, permissions, ADF-only links, multiple URLs, and rate limits.
 
 ## [3.13.1] - 2026-03-27
 
