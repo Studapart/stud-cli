@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-04-02
+
 ### Added
 
 - **`stud items:show` / `stud sh`:** Jira fetch now requests the **`attachment`** field when loading an issue; **`WorkItem`** carries **`IssueAttachment`** metadata (`id`, `filename`, `size`, `contentUrl`, `mimeType`). CLI shows an **Attachments** row; **`stud items:show --agent`** exposes **`data.issue.attachments`** for agent workflows.
