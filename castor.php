@@ -27,6 +27,7 @@ use App\DTO\ConfluencePushInput;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
 use App\DTO\ItemUpdateInput;
+use App\DTO\ItemUploadInput;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
@@ -53,6 +54,7 @@ use App\Handler\ItemStartHandler;
 use App\Handler\ItemTakeoverHandler;
 use App\Handler\ItemTransitionHandler;
 use App\Handler\ItemUpdateHandler;
+use App\Handler\ItemUploadHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
@@ -79,6 +81,7 @@ use App\Responder\ItemDownloadResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\ItemUpdateResponder;
+use App\Responder\ItemUploadResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
@@ -116,6 +119,7 @@ use function Castor\io;
 use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\Console\Event\ConsoleCommandEvent;
 use Symfony\Component\Console\Event\ConsoleTerminateEvent;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Yaml\Yaml;
@@ -1683,6 +1687,74 @@ function items_download(
     $handler = new ItemDownloadHandler(_get_file_system(), _get_jira_attachment_service(), _get_translation_service());
     $response = $handler->handle($key, $url, $path);
     $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+/**
+ * @param list<string> $files
+ */
+#[AsTask(name: 'items:upload', aliases: ['iup'], description: 'Uploads local files as attachments on a Jira issue')]
+#[AgentOutput(responseClass: \App\Response\ItemUploadResponse::class, description: 'Uploaded attachment paths (filename, path) and per-file errors')]
+function items_upload(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'file', shortcut: 'f', mode: InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, description: 'Local file path relative to cwd (repeat for multiple files)')]
+    array $files = [],
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $translator = _get_translation_service();
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) ? (string) $input['key'] : $key;
+        $files = [];
+        $rawFiles = $input['files'] ?? null;
+        if (is_array($rawFiles)) {
+            foreach ($rawFiles as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    $files[] = trim($item);
+                }
+            }
+        }
+    }
+    if ($key === null || trim($key) === '') {
+        if ($format === OutputFormat::Json) {
+            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.upload.error_no_key')));
+
+            return;
+        }
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.upload.error_no_key'));
+        exit(1);
+    }
+    if ($files === []) {
+        if ($format === OutputFormat::Json) {
+            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.upload.error_no_files')));
+
+            return;
+        }
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.upload.error_no_files'));
+        exit(1);
+    }
+    $handler = new ItemUploadHandler(_get_file_system(), _get_jira_attachment_service(), $translator);
+    $inputDto = new ItemUploadInput(trim($key), $files);
+    $response = $handler->handle($inputDto);
+    $responder = new ItemUploadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

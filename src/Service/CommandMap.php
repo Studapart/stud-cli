@@ -132,6 +132,14 @@ class CommandMap
                 ],
                 'arguments' => ['[<key>]'],
             ],
+            'items:upload' => [
+                'alias' => 'iup',
+                'description_key' => 'help.command_items_upload',
+                'options' => [
+                    ['name' => '--file', 'shortcut' => '-f', 'description_key' => 'help.option_items_upload_file', 'argument' => '<path>'],
+                ],
+                'arguments' => ['<key>'],
+            ],
         ];
     }
 

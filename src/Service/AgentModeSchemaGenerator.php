@@ -133,6 +133,12 @@ class AgentModeSchemaGenerator
                 'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
             ] + $inputProperties;
         }
+
+        if ($taskName === 'items:upload') {
+            $inputProperties = [
+                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            ] + $inputProperties;
+        }
     }
 
     /**

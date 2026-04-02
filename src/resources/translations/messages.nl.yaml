@@ -222,6 +222,18 @@ item:
     error_key_or_url: "Geef een Jira-ticketsleutel of --url met een Jira-bijlage-inhouds-URL."
     error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
     error_partial: "%filename%: %message%"
+  upload:
+    section: "Geüploade bijlagen"
+    none: "Geen bestanden succesvol geüpload."
+    col_filename: "Bestandsnaam"
+    col_path: "Pad"
+    error_no_key: "Ticketsleutel is verplicht. Geef deze als eerste argument (bijv. stud iup SCI-71 -f bestand.txt)."
+    error_no_files: "Minstens één bestand is verplicht. Gebruik --file/-f (herhaalbaar) of een JSON-array files met --agent."
+    error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
+    error_not_found: "Bestand niet gevonden."
+    error_not_file: "Pad is geen leesbaar bestand."
+    error_cwd: "Kan de huidige werkmap niet bepalen."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -676,6 +688,7 @@ help:
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
   command_items_download: "Downloadt Jira-bijlagen voor een ticket of één bestand vanaf een Jira-bijlage-URL. Met sleutel worden alle bijlagen opgeslagen (--url genegeerd). Zonder sleutel is --url verplicht. Zelfde Jira-auth als andere commando's. Standaardmap .cursor/stud-downloads. Agent JSON issueKey of key, optioneel url en path."
+  command_items_upload: "Uploadt één of meer lokale bestanden als Jira-bijlagen (REST multipart). Paden relatief aan cwd; bovenliggende segmenten (..) worden geweigerd. Zelfde Jira-auth. Agent JSON: key (verplicht), files (array van paden). Optioneel inputFile met --agent (zoals items:update). Geen --quiet; gebruik --agent voor automatisering."
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_search: Zoek issues met JQL.
@@ -708,6 +721,7 @@ help:
   option_items_list_sort: Sorteer resultaten op Key of Status (gebruik --sort of -s)
   option_items_download_url: "Jira REST-URL voor bijlage-inhoud (verplicht zonder ticketsleutel); genegeerd als er een sleutel is"
   option_items_download_path: "Doelmap relatief aan cwd (aangemaakt indien nodig); standaard .cursor/stud-downloads"
+  option_items_upload_file: "Lokaal bestandspad relatief aan cwd; herhaal -f/--file voor meerdere bestanden"
   option_commit_new: Maak een nieuwe logische commit in plaats van een fixup
   option_commit_message: Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit
   option_commit_all: Stage alle wijzigingen voordat u commit (herstelt het oude gedrag)

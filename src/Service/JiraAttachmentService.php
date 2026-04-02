@@ -199,4 +199,47 @@ class JiraAttachmentService
 
         return sprintf('HTTP %d: %s', $statusCode, $responseBody);
     }
+
+    /**
+     * Uploads one local file as an attachment on the issue (Jira Cloud REST: multipart POST).
+     *
+     * @throws ApiException On HTTP errors or when the file cannot be read
+     */
+    public function uploadFileToIssue(string $issueKey, string $absolutePath): void
+    {
+        if ($absolutePath === '' || ! is_readable($absolutePath) || ! is_file($absolutePath)) {
+            throw new ApiException('Cannot read local file for upload.', '', 400);
+        }
+
+        $key = rawurlencode($issueKey);
+        $handle = fopen($absolutePath, 'rb');
+        // @codeCoverageIgnoreStart
+        if ($handle === false) {
+            throw new ApiException('Cannot read local file for upload.', '', 400);
+        }
+        // @codeCoverageIgnoreEnd
+
+        try {
+            $response = $this->client->request('POST', "/rest/api/3/issue/{$key}/attachments", [
+                'headers' => [
+                    'X-Atlassian-Token' => 'no-check',
+                ],
+                'body' => [
+                    'file' => $handle,
+                ],
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                throw new ApiException(
+                    'Attachment upload failed.',
+                    $this->extractTechnicalDetails($response),
+                    $response->getStatusCode()
+                );
+            }
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+        }
+    }
 }

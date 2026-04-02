@@ -222,6 +222,18 @@ item:
     error_key_or_url: "Δώστε κλειδί θέματος Jira ή --url με URL περιεχομένου συνημμένου Jira."
     error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
     error_partial: "%filename%: %message%"
+  upload:
+    section: "Ανεβασμένα συνημμένα"
+    none: "Κανένα αρχείο δεν ανέβηκε επιτυχώς."
+    col_filename: "Όνομα αρχείου"
+    col_path: "Διαδρομή"
+    error_no_key: "Απαιτείται κλειδί θέματος. Δώστε το ως πρώτο όρισμα (π.χ. stud iup SCI-71 -f file.txt)."
+    error_no_files: "Απαιτείται τουλάχιστον ένα αρχείο. Χρησιμοποιήστε --file/-f (επανάληψη) ή πίνακα files σε JSON με --agent."
+    error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
+    error_not_found: "Το αρχείο δεν βρέθηκε."
+    error_not_file: "Η διαδρομή δεν είναι αναγνώσιμο αρχείο."
+    error_cwd: "Δεν ήταν δυνατός ο προσδιορισμός του τρέχοντος καταλόγου εργασίας."
+    error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
     prompt_project: Project key
@@ -617,6 +629,7 @@ help:
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Εμφάνιση λεπτομερών πληροφοριών για ένα στοιχείο εργασίας.
   command_items_download: "Λήψη συνημμένων Jira για ένα θέμα ή ενός αρχείου από URL συνημμένου. Με κλειδί αποθηκεύονται όλα (--url αγνοείται). Χωρίς κλειδί απαιτείται --url. Ίδια ταυτοποίηση Jira. Προεπιλεγμένος φάκελος .cursor/stud-downloads. Agent JSON issueKey ή key, προαιρετικά url και path."
+  command_items_upload: "Ανεβάζει ένα ή περισσότερα τοπικά αρχεία ως συνημμένα Jira (REST multipart). Διαδρομές σχετικές με cwd· απορρίπτονται τμήματα (..). Ίδια ταυτοποίηση Jira. Agent JSON: key (υποχρεωτικό), files (πίνακας διαδρομών). Προαιρετικό inputFile με --agent (όπως items:update). Χωρίς --quiet· χρησιμοποιήστε --agent για αυτοματισμό."
   command_items_search: Αναζήτηση issues με JQL.
   command_items_transition: Μεταφέρει ένα θέμα Jira σε διαφορετική κατάσταση. Εάν δεν παρέχεται κλειδί, επιχειρεί να το εντοπίσει από τον τρέχοντα κλάδο.
   command_filters_list: Λίστα όλων των διαθέσιμων φίλτρων Jira.
@@ -647,6 +660,7 @@ help:
   option_items_list_sort: Ταξινόμηση αποτελεσμάτων κατά Key ή Status (χρησιμοποιήστε --sort ή -s)
   option_items_download_url: "URL περιεχομένου συνημμένου Jira REST (υποχρεωτικό χωρίς κλειδί θέματος)· αγνοείται όταν υπάρχει κλειδί"
   option_items_download_path: "Κατάλογος προορισμού σχετικός με το cwd (δημιουργείται αν λείπει)· προεπιλογή .cursor/stud-downloads"
+  option_items_upload_file: "Τοπική διαδρομή αρχείου σχετική με το cwd· επαναλάβετε -f/--file για πολλά αρχεία"
   option_commit_new: Δημιουργία νέου λογικού commit αντί για fixup
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)

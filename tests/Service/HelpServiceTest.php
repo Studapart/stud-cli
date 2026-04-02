@@ -70,6 +70,7 @@ class HelpServiceTest extends TestCase
             'items:search',
             'items:show',
             'items:download',
+            'items:upload',
             'items:start',
             'items:transition',
             'branch:rename',
