@@ -609,6 +609,17 @@ These commands help you browse, view, and create Jira work items.
         stud items:download --agent <<< '{"issueKey":"PROJ-123","path":".cursor/stud-downloads"}'
         ```
 
+-   **`stud items:upload <key>`** (Alias: `stud iup <key>`)
+    -   **Description:** Uploads one or more local files as attachments on a Jira issue using the REST multipart attachment API (`X-Atlassian-Token: no-check`, same authenticated Jira HTTP client as other commands). Paths are relative to the current working directory and must not contain `..` segments. With **--agent**, JSON input accepts **key** (required) and **files** (array of path strings); optional **inputFile** with **--agent** (same stdin vs. file rules as **stud items:update**). Successful JSON includes **data.files** (`filename`, `path`) and **data.errors** (per-file failures). No **--quiet**; use **--agent** for automation.
+    -   **Options:** `-f`/`--file <path>` (repeat for multiple files).
+    -   **Argument:** `<key>` (Jira issue key).
+    -   **Usage:**
+        ```bash
+        stud items:upload PROJ-123 -f ./logs/build.txt
+        stud iup PROJ-123 -f ./a.txt -f ./b.png
+        stud items:upload --agent <<< '{"key":"PROJ-123","files":["README.md"]}'
+        ```
+
 -   **`stud items:create`** (Alias: `stud ic`)
     -   **Description:** Creates a Jira issue in a project. Uses options for project, issue type, summary, and description; missing values are prompted in interactive mode. Description is read from STDIN first, then from `--description`/`-d` (same precedence as `stud pr:comment`). Default project is read from project config only (e.g. `JIRA_DEFAULT_PROJECT` in `.git/stud.config`) when `--project` is not set; no global default. Use `--description-format markdown` to interpret description as Markdown (headings, **bold**, *emphasis*, `code`, lists), which is converted to Jira ADF. Use `--parent <key>` to create a sub-task under an existing issue. Use `-F`/`--fields` to pass arbitrary fields in `key=value;key=value,value` format (e.g. `--fields "labels=Bug,DX;priority=High;timeoriginalestimate=2h;assignee=<accountId>"`). When reporter is required, it is set to the current user. When the assignee field is available and not set via `--fields`, the current user is assigned by default. If the project/issue type has required custom fields beyond project, issuetype, summary, description, reporter, and assignee, the command does not create with CLI-only input and in non-interactive runs fails with a message to run interactively. Unmatched `--fields` entries are reported as a note; the create still succeeds for matched fields.
     -   **Options:** `-p`/`--project` (project key), `-t`/`--type` (issue type, default: Story), `-m`/`--summary` (title), `-d`/`--description` (description; optional), `--description-format` (plain or markdown; default: plain), `--parent` (parent issue key for sub-tasks), `-F`/`--fields` (arbitrary fields, e.g. `"labels=Bug,DX;priority=High;timeoriginalestimate=2h"`). All optional from CLI; missing values trigger prompts in interactive mode.

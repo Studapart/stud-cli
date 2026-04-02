@@ -222,6 +222,18 @@ item:
     error_key_or_url: "Cung cấp mã issue Jira hoặc --url với URL nội dung tệp đính kèm Jira."
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
     error_partial: "%filename%: %message%"
+  upload:
+    section: "Đã tải lên tệp đính kèm"
+    none: "Không có tệp nào được tải lên thành công."
+    col_filename: "Tên tệp"
+    col_path: "Đường dẫn"
+    error_no_key: "Cần mã issue. Truyền làm tham số đầu tiên (vd. stud iup SCI-71 -f file.txt)."
+    error_no_files: "Cần ít nhất một tệp. Dùng --file/-f (lặp lại) hoặc mảng files trong JSON với --agent."
+    error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
+    error_not_found: "Không tìm thấy tệp."
+    error_not_file: "Đường dẫn không phải tệp có thể đọc."
+    error_cwd: "Không xác định được thư mục làm việc hiện tại."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -617,6 +629,7 @@ help:
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Hiển thị thông tin chi tiết cho một mục công việc.
   command_items_download: "Tải xuống tệp đính kèm Jira cho một issue hoặc một tệp từ URL đính kèm. Có khóa thì lưu tất cả tệp (bỏ qua --url). Không có khóa thì bắt buộc --url. Xác thực Jira giống các lệnh khác. Thư mục mặc định .cursor/stud-downloads. Agent JSON issueKey hoặc key, url và path tùy chọn."
+  command_items_upload: "Tải lên một hoặc nhiều tệp cục bộ làm tệp đính kèm Jira (REST multipart). Đường dẫn tương đối cwd; từ chối phân đoạn (..). Cùng xác thực Jira. Agent JSON: key (bắt buộc), files (mảng đường dẫn). inputFile tùy chọn với --agent (như items:update). Không có --quiet; dùng --agent để tự động hóa."
   command_items_search: Tìm kiếm các issue bằng JQL.
   command_items_transition: Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại.
   command_filters_list: Liệt kê tất cả các bộ lọc Jira có sẵn.
@@ -647,6 +660,7 @@ help:
   option_items_list_sort: Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)
   option_items_download_url: "URL nội dung REST của tệp đính kèm Jira (bắt buộc khi không có khóa issue); bị bỏ qua nếu có khóa"
   option_items_download_path: "Thư mục đích tương đối với cwd (tự tạo nếu cần); mặc định .cursor/stud-downloads"
+  option_items_upload_file: "Đường dẫn tệp cục bộ tương đối cwd; lặp -f/--file cho nhiều tệp"
   option_commit_new: Tạo một commit logic mới thay vì fixup
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)

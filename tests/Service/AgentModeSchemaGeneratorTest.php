@@ -309,6 +309,24 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertSame('string', $props['content']['type'] ?? null);
     }
 
+    public function testItemsUploadSchemaIncludesIssueKeyAndFilesProperties(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+        $this->assertArrayHasKey('items:upload', $schemaByName);
+        $cmd = $schemaByName['items:upload'];
+        $this->assertContains('iup', $cmd['aliases'] ?? []);
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('issueKey', $props);
+        $this->assertArrayHasKey('key', $props);
+        $this->assertArrayHasKey('files', $props);
+        $out = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('files', $out);
+        $this->assertArrayHasKey('errors', $out);
+    }
+
     public function testConfluenceShowInSchemaWithExpectedOutput(): void
     {
         $schemaByName = [];

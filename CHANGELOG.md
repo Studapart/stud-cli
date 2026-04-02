@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`stud items:upload` / `stud iup` (SCI-92):** Uploads local files as Jira issue attachments via REST multipart (`X-Atlassian-Token: no-check`). CLI: `<key>` and repeatable `-f`/`--file`. Agent JSON: `key`, `files` (string array), optional `inputFile` (same as `items:update`). Output mirrors `items:download` (`files`, `errors`). `JiraAttachmentService`, `ItemUploadHandler` / `ItemUploadResponder`, path rules (no `..`), all locales, README, CommandMap, tests.
+
 ## [3.14.0] - 2026-04-02
 
 ### Added

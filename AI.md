@@ -57,7 +57,7 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 **Steps**:
 
-1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error. You must carefully read the ticket's description, acceptance criteria, and any linked documentation. **Requirements vs conventions**: Interpret requirements so the delivered outcome satisfies the ticket while conforming to CONVENTIONS and ADRs. If the ticket suggests an approach that conflicts (e.g. "show X on the CLI" without specifying how), choose an implementation that meets the acceptance criteria and adheres to the compliance gate (§2); do not default to the quickest code path if it violates Responder/PageViewConfig/Logger or other rules.
+1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error. You must carefully read the ticket's description, acceptance criteria, any linked documentation, and—when relevant—**file attachments** on the issue (see **Issue attachments** below). **Requirements vs conventions**: Interpret requirements so the delivered outcome satisfies the ticket while conforming to CONVENTIONS and ADRs. If the ticket suggests an approach that conflicts (e.g. "show X on the CLI" without specifying how), choose an implementation that meets the acceptance criteria and adheres to the compliance gate (§2); do not default to the quickest code path if it violates Responder/PageViewConfig/Logger or other rules.
 
     **Supplementary URLs in the issue (optional):** After reviewing the issue, scan the description (and any other plain-text fields you rely on for requirements) for `http`/`https` links that add context. Route them by **kind**:
 
@@ -75,6 +75,18 @@ You must always prefer stud cli commands over equivalent git manual commands. On
     - **Storage and cleanup:** On success, write `data.body` (markdown) to a file under `./.cursor/tmp/` (unique name per URL or run), use it as supplementary requirements context for the rest of the task, then delete those files when the task completes—same temporary-file rules as in Core Directives.
     - **Failure modes (fail-soft; optional context only):** Missing Confluence URL, agent validation errors, Confluence API errors, rate limiting, or missing permission must **not** block the protocol. Note the failure in your plan or working notes and continue using the Jira text and codebase only.
     - **Edge cases:** Descriptions may use ADF; links might not appear as plain URLs (manual copy or follow-up may be needed). Multiple Confluence URLs: fetch each distinct one via stud. If rate limits are a concern, serialize `stud csh` calls or backoff between them.
+
+    **Issue attachments (optional):** Some tickets include files (specs, diagrams, exports, screenshots) that are not fully represented in the description. Use stud to **discover** and **download** them with the same Jira authentication as other commands—**never** use unauthenticated HTTP (`curl`, generic MCP fetch, etc.) against Jira attachment **content** URLs; those requests will fail or bypass your configured Jira credentials.
+
+    - **Discovery:** With **`stud items:show <key> --agent`** (or after reviewing CLI output), inspect **`data.issue.attachments`**: each entry includes **`id`**, **`filename`**, **`size`**, **`contentUrl`**, and optional **`mimeType`**. Use this list to decide which files matter for the task.
+
+    - **Download (stud only):** Use **`stud items:download`** (alias **`stud idl`**) with **`--agent`**. JSON input: **`issueKey`** or **`key`** (the work item key), and **`path`**: a target directory **under `./.cursor/tmp/`** (e.g. `.cursor/tmp/SCI-92/`—create the parent tree as needed). Successful JSON includes **`data.files`** (`filename`, `path` relative to cwd) and **`data.errors`** for any per-file failures. Read the saved files with your normal tools (text, markdown, images, etc.) as supplementary requirements context.
+
+    - **Storage and cleanup:** Treat downloaded attachments as **temporary**: keep them under **`./.cursor/tmp/`**, and **delete** the per-issue folder (or files) when the task that used them is complete—same rules as §2 Core Directives for temporary files.
+
+    - **Failure modes (fail-soft; optional context only):** No attachments, download errors, unsupported formats, or oversized binaries must **not** block the protocol. Note the limitation in your plan and continue from the description, Confluence links, and codebase.
+
+    - **When to skip:** If filenames alone are enough, or the ticket text is sufficient, you do not need to download. **`stud items:upload`** (alias **`stud iup`**) exists for attaching local files **to** an issue when the task requires it; see `echo '{}' | stud help --agent` for schema.
 
 2.  **Branch Management**: Check which branch you are currently on using `git branch --show-current`. If you are not on a feature branch for this ticket, use `stud start <JiraWorkItemKey>` to create the feature branch. If you already are on the right branch, proceed to the next step.
 

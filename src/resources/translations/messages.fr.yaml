@@ -222,6 +222,18 @@ item:
     error_key_or_url: "Indiquez une clé de ticket Jira ou --url avec une URL de contenu de pièce jointe Jira."
     error_path_traversal: "Le chemin ne peut pas contenir de segments parent (..)."
     error_partial: "%filename% : %message%"
+  upload:
+    section: "Pièces jointes envoyées"
+    none: "Aucun fichier n'a été envoyé avec succès."
+    col_filename: "Fichier"
+    col_path: "Chemin"
+    error_no_key: "La clé du ticket est requise. Passez-la en premier argument (ex. stud iup SCI-71 -f fichier.txt)."
+    error_no_files: "Au moins un fichier est requis. Utilisez --file/-f (répétable) ou un tableau JSON files avec --agent."
+    error_path_traversal: "Le chemin ne peut pas contenir de segments parent (..)."
+    error_not_found: "Fichier introuvable."
+    error_not_file: "Le chemin n'est pas un fichier lisible."
+    error_cwd: "Impossible de déterminer le répertoire de travail actuel."
+    error_partial: "%filename% : %message%"
   create:
     section: "Création d'un ticket Jira"
     prompt_project: "Clé projet"
@@ -615,6 +627,7 @@ help:
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
   command_items_download: "Télécharge les pièces jointes Jira pour un ticket ou un fichier depuis une URL de pièce jointe. Avec une clé, toutes les pièces sont enregistrées (--url ignoré). Sans clé, --url est obligatoire. Même authentification Jira que les autres commandes. Dossier par défaut : .cursor/stud-downloads. Agent JSON : issueKey ou key, url et path optionnels."
+  command_items_upload: "Envoie un ou plusieurs fichiers locaux comme pièces jointes Jira (REST multipart). Chemins relatifs au cwd ; les segments (..) sont refusés. Même authentification Jira. Agent JSON : key (requis), files (tableau de chemins). inputFile optionnel avec --agent (comme items:update). Pas de --quiet ; utilisez --agent pour l'automatisation."
   command_items_create: "Crée un ticket Jira. Options -p/--project, -t/--type (défaut Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sous-tâche), -F/--fields pour champs arbitraires. Projet par défaut depuis JIRA_DEFAULT_PROJECT dans .git/stud.config. Description : STDIN puis -d. Champs obligatoires personnalisés : exécuter en mode interactif."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_search: Rechercher des issues avec JQL.
@@ -647,6 +660,7 @@ help:
   option_items_list_sort: Trier les résultats par Key ou Status (utilisez --sort ou -s)
   option_items_download_url: "URL de contenu REST de pièce jointe Jira (requis sans clé de ticket) ; ignorée si une clé est fournie"
   option_items_download_path: "Répertoire cible relatif au cwd (créé si besoin) ; défaut .cursor/stud-downloads"
+  option_items_upload_file: "Chemin de fichier local relatif au cwd ; répétez -f/--file pour plusieurs fichiers"
   option_commit_new: Créer un nouveau commit logique au lieu d'un fixup
   option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
   option_commit_all: Mettre en staging toutes les modifications avant de committer (restaure l'ancien comportement)

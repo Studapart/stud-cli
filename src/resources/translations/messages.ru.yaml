@@ -222,6 +222,18 @@ item:
     error_key_or_url: "Укажите ключ задачи Jira или --url с URL содержимого вложения Jira."
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
     error_partial: "%filename%: %message%"
+  upload:
+    section: "Загруженные вложения"
+    none: "Ни один файл не был успешно загружен."
+    col_filename: "Имя файла"
+    col_path: "Путь"
+    error_no_key: "Требуется ключ задачи. Укажите его первым аргументом (например stud iup SCI-71 -f file.txt)."
+    error_no_files: "Нужен хотя бы один файл. Используйте --file/-f (повтор) или массив files в JSON с --agent."
+    error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
+    error_not_found: "Файл не найден."
+    error_not_file: "Путь не является читаемым файлом."
+    error_cwd: "Не удалось определить текущий рабочий каталог."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -617,6 +629,7 @@ help:
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Показать подробную информацию об одном элементе работы.
   command_items_download: "Скачивает вложения Jira для задачи или один файл по URL вложения. С ключом сохраняются все вложения (--url игнорируется). Без ключа требуется --url. Та же авторизация Jira. Каталог по умолчанию .cursor/stud-downloads. Agent JSON: issueKey или key, необязательно url и path."
+  command_items_upload: "Загружает один или несколько локальных файлов как вложения Jira (REST multipart). Пути относительно cwd; сегменты (..) запрещены. Та же авторизация Jira. Agent JSON: key (обязательно), files (массив путей). Опционально inputFile с --agent (как items:update). Без --quiet; для автоматизации используйте --agent."
   command_items_search: Поиск issues с помощью JQL.
   command_items_transition: Переводит задачу Jira в другой статус. Если ключ не указан, пытается определить из текущей ветки.
   command_filters_list: Список всех доступных фильтров Jira.
@@ -647,6 +660,7 @@ help:
   option_items_list_sort: Сортировать результаты по Key или Status (используйте --sort или -s)
   option_items_download_url: "URL содержимого вложения Jira REST (обязателен без ключа задачи); игнорируется при наличии ключа"
   option_items_download_path: "Целевой каталог относительно cwd (создаётся при необходимости); по умолчанию .cursor/stud-downloads"
+  option_items_upload_file: "Локальный путь к файлу относительно cwd; повторите -f/--file для нескольких файлов"
   option_commit_new: Создать новый логический коммит вместо fixup
   option_commit_message: Обойти интерактивный промптер и использовать предоставленное сообщение для коммита
   option_commit_all: Подготовить все изменения перед коммитом (восстанавливает старое поведение)
