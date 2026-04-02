@@ -127,6 +127,12 @@ class AgentModeSchemaGenerator
                 'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
             ] + $inputProperties;
         }
+
+        if ($taskName === 'items:download') {
+            $inputProperties = [
+                'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            ] + $inputProperties;
+        }
     }
 
     /**

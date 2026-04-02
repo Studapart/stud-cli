@@ -60,7 +60,7 @@ class SubmitHandler
     }
 
     /**
-     * Run preflight checks: clean dir, branch, push, first commit, Jira key.
+     * Run preflight checks: optional dirty-tree note, branch, push, first commit, Jira key.
      *
      * @return array{exitCode: int, branch?: string, jiraKey?: string, prTitle?: string}
      */
@@ -68,9 +68,7 @@ class SubmitHandler
     {
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.error_dirty_working'));
-
-            return ['exitCode' => 1];
+            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.note_dirty_working'));
         }
 
         $branch = $this->gitRepository->getCurrentBranchName();

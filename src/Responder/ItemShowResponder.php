@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\IssueAttachment;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemShowResponse;
@@ -112,6 +113,12 @@ class ItemShowResponder
                 new DefinitionItem(
                     'item.show.label_link',
                     fn ($dto, $ctx) => $ctx['jiraConfig']['JIRA_URL'] . '/browse/' . $dto->key
+                ),
+                new DefinitionItem(
+                    'item.show.label_attachments',
+                    fn ($dto, $ctx) => $dto->attachments === []
+                        ? $ctx['translator']->trans('item.show.label_none')
+                        : implode(', ', array_map(static fn (IssueAttachment $a): string => $a->filename, $dto->attachments))
                 ),
             ]
         );

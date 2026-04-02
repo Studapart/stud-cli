@@ -7,8 +7,9 @@ namespace App\DTO;
 class WorkItem
 {
     /**
-     * @param array<string> $labels
-     * @param array<string> $components
+     * @param array<string>                $labels
+     * @param array<string>                $components
+     * @param list<IssueAttachment> $attachments
      */
     public function __construct(
         public readonly string $id,
@@ -22,6 +23,7 @@ class WorkItem
         public array $components = [],
         public ?string $priority = null,
         public ?string $renderedDescription = null,
+        public array $attachments = [],
     ) {
     }
 }

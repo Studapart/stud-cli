@@ -212,7 +212,16 @@ item:
     label_labels: Etiquetas
     label_description: Descripción
     label_link: Enlace
+    label_attachments: Adjuntos
     label_none: Ninguno
+  download:
+    section: "Adjuntos descargados"
+    none: "No hay adjuntos en este ticket."
+    col_filename: "Archivo"
+    col_path: "Ruta"
+    error_key_or_url: "Indica una clave de issue de Jira o --url con una URL de contenido de adjunto de Jira."
+    error_path_traversal: "La ruta no puede contener segmentos de directorio padre (..)."
+    error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
     prompt_project: Project key
@@ -329,7 +338,7 @@ cache:
     error_delete: Error al eliminar el archivo de caché.
 submit:
   section: Enviando Pull Request
-  error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de enviar.
+  note_dirty_working: "Tiene cambios sin confirmar. El push y la pull request usan solo los commits ya presentes en esta rama; los archivos sin confirmar no se incluyen."
   error_base_branch: No se puede crear una Pull Request desde la rama base.
   pushing: Haciendo push de la rama %branch%...
   error_push: 'Error en el push. Su rama puede haber reescrito el historial.
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Muestra información detallada para un elemento de trabajo.
+  command_items_download: "Descarga adjuntos de Jira para un ticket o un archivo desde una URL de adjunto. Con clave guarda todos los adjuntos (--url ignorado). Sin clave, --url es obligatorio. Misma autenticación Jira. Directorio por defecto .cursor/stud-downloads. Agente JSON issueKey o key, url y path opcionales."
   command_items_search: Buscar issues usando JQL.
   command_items_transition: Transita un ticket Jira a un estado diferente. Si no se proporciona la clave, intenta detectarla desde la rama actual.
   command_filters_list: Lista todos los filtros de Jira disponibles.
@@ -620,7 +630,7 @@ help:
   command_please: Un force-push seguro para usuario avanzado (force-with-lease).
   command_flatten: Fusionar automáticamente todos los commits fixup! en sus commits objetivo.
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
-  command_submit: "Envía la rama actual y crea una Pull Request. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
+  command_submit: "Envía la rama actual y crea una Pull Request. Los cambios locales sin confirmar no bloquean el envío; verás un aviso de que el push y la PR usan los commits de la rama. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
   command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
   command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual.
   command_status: Un panel de control rápido "¿dónde estoy?".
@@ -635,6 +645,8 @@ help:
   option_all: Listar elementos para todos los usuarios (anula el filtro de asignado por defecto)
   option_project: Filtrar elementos por una clave de proyecto específica (por ej., PROJ)
   option_items_list_sort: Ordenar resultados por Key o Status (use --sort o -s)
+  option_items_download_url: "URL REST de contenido de adjunto Jira (obligatoria sin clave de issue); se ignora si hay clave"
+  option_items_download_path: "Directorio destino relativo al cwd (creado si falta); por defecto .cursor/stud-downloads"
   option_commit_new: Crear un nuevo commit lógico en lugar de un fixup
   option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
   option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)

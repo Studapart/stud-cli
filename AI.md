@@ -59,6 +59,23 @@ You must always prefer stud cli commands over equivalent git manual commands. On
 
 1.  **Ingest & Verify**: Use `stud sh <JiraWorkItemKey>` to verify the ticket exists and to understand its requirements. If the ticket cannot be found, halt the process and report an error. You must carefully read the ticket's description, acceptance criteria, and any linked documentation. **Requirements vs conventions**: Interpret requirements so the delivered outcome satisfies the ticket while conforming to CONVENTIONS and ADRs. If the ticket suggests an approach that conflicts (e.g. "show X on the CLI" without specifying how), choose an implementation that meets the acceptance criteria and adheres to the compliance gate (§2); do not default to the quickest code path if it violates Responder/PageViewConfig/Logger or other rules.
 
+    **Supplementary URLs in the issue (optional):** After reviewing the issue, scan the description (and any other plain-text fields you rely on for requirements) for `http`/`https` links that add context. Route them by **kind**:
+
+    - **Confluence wiki pages (stud only):** Use **`stud confluence:show`** (alias **`stud csh`**) with `--agent` JSON—**never** use generic HTTP tools (e.g. `curl`, MCP fetch, headless browser) to pull Atlassian Confluence page content. Those tools bypass stud’s Confluence auth and config; Confluence links must go through the CLI. Success payloads include markdown in `data.body` (see `echo '{}' | stud help --agent` for `confluence:show` input: `url`, `page`, `confluenceUrl`).
+    - **Everything else (not stud):** For non-Confluence URLs (GitHub, docs sites, Google Docs, internal HTTP pages without Confluence, etc.), fetch or open them with **whatever the agent environment provides**—HTTP client, MCP resources, browser tools, terminal `curl`, and so on. **Do not** use `stud csh` for URLs that are not Confluence; stud is not a general-purpose URL fetcher.
+
+    **When a link counts as Confluence (use `stud csh`):** Parse the string as a URL. It must satisfy **both**:
+
+    1. **Host:** The host is plausibly your Confluence instance—e.g. Atlassian Cloud hosts ending in **`.atlassian.net`**, **or** the scheme + host matches the **Confluence base URL** from stud configuration (see `stud config:show --agent` / project config: same origin as the configured Confluence base `stud` uses). If you have no config in context, default to the `.atlassian.net` rule for Cloud; for self-hosted or custom domains, rely on configured base URL matching.
+    2. **Path:** The path looks like a wiki page link, typically including **`/wiki/`** and **`/pages/`** (e.g. `/wiki/spaces/SPACE/pages/123456/...`).
+
+    If a link fails the host check, treat it as a non-Confluence URL and use agent fetch tools instead. Deduplicate: run `stud csh` at most once per distinct Confluence URL. If no Confluence URLs appear, skip the stud step (you may still fetch other URLs by other means).
+
+    - **Fetch (agent, Confluence only):** For each distinct Confluence URL, run `echo '{"url":"<url>"}' | stud csh --agent` with proper JSON escaping in the shell or a here-doc. If the Confluence base URL differs from your configured default, use the `confluenceUrl` property in the agent JSON as needed (same schema as above).
+    - **Storage and cleanup:** On success, write `data.body` (markdown) to a file under `./.cursor/tmp/` (unique name per URL or run), use it as supplementary requirements context for the rest of the task, then delete those files when the task completes—same temporary-file rules as in Core Directives.
+    - **Failure modes (fail-soft; optional context only):** Missing Confluence URL, agent validation errors, Confluence API errors, rate limiting, or missing permission must **not** block the protocol. Note the failure in your plan or working notes and continue using the Jira text and codebase only.
+    - **Edge cases:** Descriptions may use ADF; links might not appear as plain URLs (manual copy or follow-up may be needed). Multiple Confluence URLs: fetch each distinct one via stud. If rate limits are a concern, serialize `stud csh` calls or backoff between them.
+
 2.  **Branch Management**: Check which branch you are currently on using `git branch --show-current`. If you are not on a feature branch for this ticket, use `stud start <JiraWorkItemKey>` to create the feature branch. If you already are on the right branch, proceed to the next step.
 
 3.  **Codebase Analysis**: 

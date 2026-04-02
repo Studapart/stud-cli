@@ -212,7 +212,16 @@ item:
     label_labels: Nhãn
     label_description: Mô tả
     label_link: Liên kết
+    label_attachments: Đính kèm
     label_none: Không có
+  download:
+    section: "Đã tải xuống tệp đính kèm"
+    none: "Issue này không có tệp đính kèm."
+    col_filename: "Tên tệp"
+    col_path: "Đường dẫn"
+    error_key_or_url: "Cung cấp mã issue Jira hoặc --url với URL nội dung tệp đính kèm Jira."
+    error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -329,7 +338,7 @@ cache:
     error_delete: Lỗi khi xóa tệp cache.
 submit:
   section: Gửi Pull Request
-  error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi gửi.
+  note_dirty_working: "Bạn có thay đổi chưa commit. Push và pull request chỉ dùng các commit đã có trên nhánh này; tệp chưa commit không được đưa vào."
   error_base_branch: Không thể tạo Pull Request từ nhánh cơ sở.
   pushing: Đang push nhánh %branch%...
   error_push: 'Push thất bại. Nhánh của bạn có thể đã viết lại lịch sử.
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Hiển thị thông tin chi tiết cho một mục công việc.
+  command_items_download: "Tải xuống tệp đính kèm Jira cho một issue hoặc một tệp từ URL đính kèm. Có khóa thì lưu tất cả tệp (bỏ qua --url). Không có khóa thì bắt buộc --url. Xác thực Jira giống các lệnh khác. Thư mục mặc định .cursor/stud-downloads. Agent JSON issueKey hoặc key, url và path tùy chọn."
   command_items_search: Tìm kiếm các issue bằng JQL.
   command_items_transition: Chuyển đổi issue Jira sang trạng thái khác. Nếu không cung cấp khóa, sẽ cố gắng phát hiện từ nhánh hiện tại.
   command_filters_list: Liệt kê tất cả các bộ lọc Jira có sẵn.
@@ -620,7 +630,7 @@ help:
   command_please: Lệnh force-push an toàn cho người dùng nâng cao (force-with-lease).
   command_flatten: Tự động gộp tất cả các commit fixup! vào các commit mục tiêu của chúng.
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
-  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
+  command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. Thay đổi cục bộ chưa commit không chặn submit; có thông báo rằng push/PR dùng các commit trên nhánh. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
   command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
@@ -635,6 +645,8 @@ help:
   option_all: Liệt kê các mục cho tất cả người dùng (ghi đè bộ lọc người được gán mặc định)
   option_project: 'Lọc các mục theo khóa dự án cụ thể (ví dụ: PROJ)'
   option_items_list_sort: Sắp xếp kết quả theo Key hoặc Status (sử dụng --sort hoặc -s)
+  option_items_download_url: "URL nội dung REST của tệp đính kèm Jira (bắt buộc khi không có khóa issue); bị bỏ qua nếu có khóa"
+  option_items_download_path: "Thư mục đích tương đối với cwd (tự tạo nếu cần); mặc định .cursor/stud-downloads"
   option_commit_new: Tạo một commit logic mới thay vì fixup
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)

@@ -24,6 +24,24 @@ class CommandMap
     }
 
     /**
+     * Short CLI alias => canonical command name. Used by `stud help <alias>` so routing matches Castor task aliases.
+     *
+     * @return array<string, string>
+     */
+    public static function aliasLookupMap(): array
+    {
+        $map = [];
+        foreach (self::all() as $name => $meta) {
+            $alias = $meta['alias'] ?? null;
+            if (is_string($alias) && $alias !== '') {
+                $map[$alias] = $name;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * @return array<string, array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>}>
      */
     private static function configCommands(): array
@@ -104,6 +122,15 @@ class CommandMap
                 'description_key' => 'help.command_items_show',
                 'options' => [],
                 'arguments' => ['<key>'],
+            ],
+            'items:download' => [
+                'alias' => 'idl',
+                'description_key' => 'help.command_items_download',
+                'options' => [
+                    ['name' => '--url', 'shortcut' => null, 'description_key' => 'help.option_items_download_url', 'argument' => '<url>'],
+                    ['name' => '--path', 'shortcut' => null, 'description_key' => 'help.option_items_download_path', 'argument' => '<dir>'],
+                ],
+                'arguments' => ['[<key>]'],
             ],
         ];
     }

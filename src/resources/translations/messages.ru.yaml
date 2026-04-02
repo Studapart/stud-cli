@@ -212,7 +212,16 @@ item:
     label_labels: Метки
     label_description: Описание
     label_link: Ссылка
+    label_attachments: Вложения
     label_none: Нет
+  download:
+    section: "Скачанные вложения"
+    none: "У этой задачи нет вложений."
+    col_filename: "Имя файла"
+    col_path: "Путь"
+    error_key_or_url: "Укажите ключ задачи Jira или --url с URL содержимого вложения Jira."
+    error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -329,7 +338,7 @@ cache:
     error_delete: Ошибка при удалении файла кэша.
 submit:
   section: Отправка Pull Request
-  error_dirty_working: Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед отправкой.
+  note_dirty_working: "У вас есть незакоммиченные изменения. Push и pull request используют только коммиты, уже находящиеся в этой ветке; незакоммиченные файлы не включаются."
   error_base_branch: Невозможно создать Pull Request из базовой ветки.
   pushing: Отправка ветки %branch%...
   error_push: 'Отправка не удалась. Ваша ветка могла переписать историю.
@@ -607,6 +616,7 @@ help:
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_show: Показать подробную информацию об одном элементе работы.
+  command_items_download: "Скачивает вложения Jira для задачи или один файл по URL вложения. С ключом сохраняются все вложения (--url игнорируется). Без ключа требуется --url. Та же авторизация Jira. Каталог по умолчанию .cursor/stud-downloads. Agent JSON: issueKey или key, необязательно url и path."
   command_items_search: Поиск issues с помощью JQL.
   command_items_transition: Переводит задачу Jira в другой статус. Если ключ не указан, пытается определить из текущей ветки.
   command_filters_list: Список всех доступных фильтров Jira.
@@ -620,7 +630,7 @@ help:
   command_please: Безопасный force-push для опытных пользователей (force-with-lease).
   command_flatten: Автоматически объединить все fixup! коммиты в их целевые коммиты.
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
-  command_submit: "Отправляет текущую ветку и создаёт Pull Request. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
+  command_submit: "Отправляет текущую ветку и создаёт Pull Request. Незакоммиченные локальные изменения не блокируют submit; показывается информационное сообщение, что push и PR используют коммиты на ветке. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
   command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
   command_status: Быстрая панель управления "где я?".
@@ -635,6 +645,8 @@ help:
   option_all: Список элементов для всех пользователей (переопределяет фильтр назначенного по умолчанию)
   option_project: Фильтровать элементы по конкретному ключу проекта (например, PROJ)
   option_items_list_sort: Сортировать результаты по Key или Status (используйте --sort или -s)
+  option_items_download_url: "URL содержимого вложения Jira REST (обязателен без ключа задачи); игнорируется при наличии ключа"
+  option_items_download_path: "Целевой каталог относительно cwd (создаётся при необходимости); по умолчанию .cursor/stud-downloads"
   option_commit_new: Создать новый логический коммит вместо fixup
   option_commit_message: Обойти интерактивный промптер и использовать предоставленное сообщение для коммита
   option_commit_all: Подготовить все изменения перед коммитом (восстанавливает старое поведение)

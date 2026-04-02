@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.1/stud-3.13.1.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.14.0/stud-3.14.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.13.1/stud-3.13.1.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.14.0/stud-3.14.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -590,12 +590,23 @@ These commands help you browse, view, and create Jira work items.
         ```
 
 -   **`stud items:show <key>`** (Alias: `stud sh <key>`)
-    -   **Description:** Shows detailed information for a specific Jira work item.
+    -   **Description:** Shows detailed information for a specific Jira work item (rendered description plain text, attachment list in the CLI definition block). With **`--agent`**, successful JSON includes **`data.issue.attachments`**: each entry has **`id`**, **`filename`**, **`size`**, **`contentUrl`**, and optional **`mimeType`** so tools can discover files before downloading (e.g. with **`stud items:download`**).
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
         stud items:show PROJ-123
         stud sh BUG-456
+        ```
+
+-   **`stud items:download [<key>]`** (Alias: `stud idl`)
+    -   **Description:** Downloads Jira issue attachments using the same authenticated Jira HTTP client as other commands (not unauthenticated `GET`). With an issue key, fetches attachment metadata via the REST API and saves every attachment into the target directory (the `--url` option is ignored). Without a key, `--url` must be a Jira attachment content URL (path must include `/rest/api/3/attachment/content/` on the configured Jira host). Filenames are sanitized; collisions get numeric suffixes (`file_1.ext`). In `--agent` mode, JSON input accepts `issueKey` or `key`, optional `url`, optional `path`; output includes `files` (`filename`, `path`) and `errors` (per-file messages when a download fails).
+    -   **Arguments / options:** Optional `<key>` (issue key). `--url <url>` (required when no key). `--path <dir>`: directory relative to the current working directory (created if missing); default **`.cursor/stud-downloads`** to avoid cluttering the repo root. Paths must not contain `..` segments.
+    -   **Usage:**
+        ```bash
+        stud items:download PROJ-123
+        stud idl PROJ-123 --path .cursor/tmp
+        stud items:download --url "https://your-domain.atlassian.net/rest/api/3/attachment/content/10000"
+        stud items:download --agent <<< '{"issueKey":"PROJ-123","path":".cursor/stud-downloads"}'
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)
@@ -931,12 +942,12 @@ These commands integrate directly with your local Git repository to streamline y
         ```
 
 -   **`stud submit`** (Alias: `stud su`)
-    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub.
+    -   **Description:** Submits your work as a pull request. Pushes the current branch to the remote repository and creates a pull request on GitHub. The PR description is automatically converted from Jira's HTML format to Markdown for better readability on GitHub. A **non-empty working tree** (uncommitted or unstaged changes) does **not** block submit: you see an informational note that the push and PR reflect **commits already on the branch**; uncommitted files are not included. Draft PRs are only created when you pass `--draft`, not because the tree is dirty.
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
-    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (clean tree, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when the working tree is already clean and committed.
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
     -   **Usage:**
         ```bash
         stud submit

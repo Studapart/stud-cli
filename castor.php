@@ -46,6 +46,7 @@ use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
 use App\Handler\ItemCreateHandler;
+use App\Handler\ItemDownloadHandler;
 use App\Handler\ItemListHandler;
 use App\Handler\ItemShowHandler;
 use App\Handler\ItemStartHandler;
@@ -74,6 +75,7 @@ use App\Responder\ErrorResponder;
 use App\Responder\FilterListResponder;
 use App\Responder\FilterShowResponder;
 use App\Responder\ItemCreateResponder;
+use App\Responder\ItemDownloadResponder;
 use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\ItemUpdateResponder;
@@ -83,6 +85,7 @@ use App\Responder\SearchResponder;
 use App\Response\AgentJsonResponse;
 use App\Service\AgentModeHelper;
 use App\Service\ChangelogParser;
+use App\Service\CommandMap;
 use App\Service\ConfigValidator;
 use App\Service\ConfluenceService;
 use App\Service\FileSystem;
@@ -91,6 +94,7 @@ use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\InitProjectConfigFollowUpService;
+use App\Service\JiraAttachmentService;
 use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
@@ -243,16 +247,12 @@ function _get_html_converter(): \App\Service\JiraHtmlConverter
     return new \App\Service\JiraHtmlConverter(null, _get_logger());
 }
 
-function _get_jira_service(): JiraService
+function _get_jira_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterface
 {
-    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraService) {
-        return \App\Tests\TestKernel::$jiraService;
-    }
-
     $config = _get_jira_config();
     $auth = base64_encode($config['JIRA_EMAIL'] . ':' . $config['JIRA_API_TOKEN']);
 
-    $client = HttpClient::createForBaseUri($config['JIRA_URL'], [
+    return HttpClient::createForBaseUri($config['JIRA_URL'], [
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => 'Basic ' . $auth,
@@ -260,8 +260,29 @@ function _get_jira_service(): JiraService
             'Content-Type' => 'application/json',
         ],
     ]);
+}
 
-    return new JiraService($client, _get_html_converter());
+function _get_jira_service(): JiraService
+{
+    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraService) {
+        return \App\Tests\TestKernel::$jiraService;
+    }
+
+    return new JiraService(_get_jira_http_client(), _get_html_converter());
+}
+
+function _get_jira_attachment_service(): JiraAttachmentService
+{
+    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraAttachmentService !== null) {
+        return \App\Tests\TestKernel::$jiraAttachmentService;
+    }
+
+    $config = _get_jira_config();
+
+    return new JiraAttachmentService(
+        _get_jira_http_client(),
+        rtrim((string) $config['JIRA_URL'], '/'),
+    );
 }
 
 /**
@@ -1633,6 +1654,47 @@ function items_show(
     }
 }
 
+#[AsTask(name: 'items:download', aliases: ['idl'], description: 'Downloads Jira issue attachments or a single attachment URL')]
+#[AgentOutput(responseClass: \App\Response\ItemDownloadResponse::class, description: 'Downloaded attachment paths (filename, path) and per-file errors')]
+function items_download(
+    #[AsArgument(name: 'key', description: 'Jira issue key (optional if --url); downloads all attachments and ignores --url when set (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'url', description: 'Jira attachment content URL when no issue key is given')]
+    ?string $url = null,
+    #[AsOption(name: 'path', description: 'Target directory under cwd (created if missing; default: .cursor/stud-downloads)')]
+    ?string $path = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $issueKey = (string) ($input['issueKey'] ?? $input['key'] ?? '');
+        $key = $issueKey !== '' ? $issueKey : null;
+        $urlRaw = $input['url'] ?? null;
+        $url = is_string($urlRaw) ? $urlRaw : null;
+        $pathRaw = $input['path'] ?? null;
+        $path = is_string($pathRaw) ? $pathRaw : null;
+    }
+    $handler = new ItemDownloadHandler(_get_file_system(), _get_jira_attachment_service(), _get_translation_service());
+    $response = $handler->handle($key, $url, $path);
+    $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
 /**
  * Normalizes summary for items:create: trim cast, and fallback to argv when option value is missing (e.g. Castor binding).
  *
@@ -2586,35 +2648,7 @@ function help(
     if ($commandName !== null) {
         $helpService = new \App\Service\HelpService($translator, _get_file_system());
 
-        // Map aliases to command names
-        $aliasMap = [
-            'init' => 'config:init',
-            'cpi' => 'config:project-init',
-            'pj' => 'projects:list',
-            'ls' => 'items:list',
-            'search' => 'items:search',
-            'fl' => 'filters:list',
-            'fs' => 'filters:show',
-            'sh' => 'items:show',
-            'ic' => 'items:create',
-            'tx' => 'items:transition',
-            'start' => 'items:start',
-            'to' => 'items:takeover',
-            'rn' => 'branch:rename',
-            'co' => 'commit',
-            'undo' => 'commit:undo',
-            'ps' => 'push',
-            'pl' => 'please',
-            'su' => 'submit',
-            'pc' => 'pr:comment',
-            'pcs' => 'pr:comments',
-            'cpu' => 'confluence:push',
-            'csh' => 'confluence:show',
-            'ss' => 'status',
-            'rl' => 'release',
-            'mep' => 'deploy',
-        ];
-
+        $aliasMap = CommandMap::aliasLookupMap();
         $mappedCommandName = $aliasMap[$commandName] ?? $commandName;
         $helpService->displayCommandHelp(_get_logger(), $mappedCommandName);
 

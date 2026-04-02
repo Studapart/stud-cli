@@ -212,7 +212,16 @@ item:
     label_labels: Labels
     label_description: Beschrijving
     label_link: Link
+    label_attachments: Bijlagen
     label_none: Geen
+  download:
+    section: "Gedownloade bijlagen"
+    none: "Geen bijlagen op dit ticket."
+    col_filename: "Bestandsnaam"
+    col_path: "Pad"
+    error_key_or_url: "Geef een Jira-ticketsleutel of --url met een Jira-bijlage-inhouds-URL."
+    error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
+    error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
     prompt_project: "Project key"
@@ -329,7 +338,7 @@ cache:
     error_delete: Fout bij verwijderen van cache bestand.
 submit:
   section: Pull Request indienen
-  error_dirty_working: Uw werkdirectory is niet schoon. Commit alstublieft uw wijzigingen met 'stud commit' voordat u indient.
+  note_dirty_working: "U heeft niet-gecommitte wijzigingen. Push en de pull request gebruiken alleen commits die al op deze branch staan; niet-gecommitte bestanden worden niet meegenomen."
   error_base_branch: Kan geen Pull Request maken vanaf de basisbranch.
   pushing: Branch %branch% pushen...
   error_push: 'Push mislukt. Uw branch heeft mogelijk geschiedenis herschreven.
@@ -666,6 +675,7 @@ help:
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
+  command_items_download: "Downloadt Jira-bijlagen voor een ticket of één bestand vanaf een Jira-bijlage-URL. Met sleutel worden alle bijlagen opgeslagen (--url genegeerd). Zonder sleutel is --url verplicht. Zelfde Jira-auth als andere commando's. Standaardmap .cursor/stud-downloads. Agent JSON issueKey of key, optioneel url en path."
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
   command_items_search: Zoek issues met JQL.
@@ -681,7 +691,7 @@ help:
   command_please: Een veilige force-push voor gevorderde gebruikers (force-with-lease).
   command_flatten: Automatisch alle fixup! commits samenvoegen in hun doelcommits.
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
-  command_submit: "Pusht de huidige tak en maakt een Pull Request. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
+  command_submit: "Pusht de huidige tak en maakt een Pull Request. Niet-gecommitte lokale wijzigingen blokkeren indienen niet; je krijgt een informatieve melding dat push/PR commits op de branch gebruiken. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
   command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
   command_status: Een snelle "waar ben ik?" dashboard.
@@ -696,6 +706,8 @@ help:
   option_all: Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)
   option_project: Filter items op een specifieke projectcode (bijv. PROJ)
   option_items_list_sort: Sorteer resultaten op Key of Status (gebruik --sort of -s)
+  option_items_download_url: "Jira REST-URL voor bijlage-inhoud (verplicht zonder ticketsleutel); genegeerd als er een sleutel is"
+  option_items_download_path: "Doelmap relatief aan cwd (aangemaakt indien nodig); standaard .cursor/stud-downloads"
   option_commit_new: Maak een nieuwe logische commit in plaats van een fixup
   option_commit_message: Omzeil de interactieve prompt en gebruik het opgegeven bericht voor de commit
   option_commit_all: Stage alle wijzigingen voordat u commit (herstelt het oude gedrag)
