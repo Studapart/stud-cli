@@ -590,12 +590,23 @@ These commands help you browse, view, and create Jira work items.
         ```
 
 -   **`stud items:show <key>`** (Alias: `stud sh <key>`)
-    -   **Description:** Shows detailed information for a specific Jira work item.
+    -   **Description:** Shows detailed information for a specific Jira work item (rendered description plain text, attachment list in the CLI definition block). With **`--agent`**, successful JSON includes **`data.issue.attachments`**: each entry has **`id`**, **`filename`**, **`size`**, **`contentUrl`**, and optional **`mimeType`** so tools can discover files before downloading (e.g. with **`stud items:download`**).
     -   **Argument:** `<key>` (e.g., `PROJ-123`)
     -   **Usage:**
         ```bash
         stud items:show PROJ-123
         stud sh BUG-456
+        ```
+
+-   **`stud items:download [<key>]`** (Alias: `stud idl`)
+    -   **Description:** Downloads Jira issue attachments using the same authenticated Jira HTTP client as other commands (not unauthenticated `GET`). With an issue key, fetches attachment metadata via the REST API and saves every attachment into the target directory (the `--url` option is ignored). Without a key, `--url` must be a Jira attachment content URL (path must include `/rest/api/3/attachment/content/` on the configured Jira host). Filenames are sanitized; collisions get numeric suffixes (`file_1.ext`). In `--agent` mode, JSON input accepts `issueKey` or `key`, optional `url`, optional `path`; output includes `files` (`filename`, `path`) and `errors` (per-file messages when a download fails).
+    -   **Arguments / options:** Optional `<key>` (issue key). `--url <url>` (required when no key). `--path <dir>`: directory relative to the current working directory (created if missing); default **`.cursor/stud-downloads`** to avoid cluttering the repo root. Paths must not contain `..` segments.
+    -   **Usage:**
+        ```bash
+        stud items:download PROJ-123
+        stud idl PROJ-123 --path .cursor/tmp
+        stud items:download --url "https://your-domain.atlassian.net/rest/api/3/attachment/content/10000"
+        stud items:download --agent <<< '{"issueKey":"PROJ-123","path":".cursor/stud-downloads"}'
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)

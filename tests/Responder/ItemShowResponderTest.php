@@ -2,6 +2,7 @@
 
 namespace App\Tests\Responder;
 
+use App\DTO\IssueAttachment;
 use App\DTO\WorkItem;
 use App\Enum\OutputFormat;
 use App\Responder\ItemShowResponder;
@@ -96,6 +97,9 @@ class ItemShowResponderTest extends CommandTestCase
                 }),
                 $this->callback(function ($arg) {
                     return is_array($arg) && in_array('https://your-company.atlassian.net/browse/TPW-35', $arg, true);
+                }),
+                $this->callback(function ($arg) {
+                    return is_array($arg) && in_array('item.show.label_none', $arg, true);
                 })
             );
         $this->io->expects($this->never())
@@ -260,7 +264,10 @@ class ItemShowResponderTest extends CommandTestCase
                     // Should contain translated "none" label
                     return is_array($arg) && ! empty($arg);
                 }),
-                $this->anything()
+                $this->anything(),
+                $this->callback(function ($arg) {
+                    return is_array($arg) && in_array('item.show.label_none', $arg, true);
+                })
             );
 
         $this->responder->respond($this->io, $response, 'TPW-35');
@@ -631,15 +638,35 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedIssue(): void
     {
-        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
+        $attachments = [
+            new IssueAttachment('100', 'doc.pdf', 99, 'https://jira/rest/attachment/content/100', 'application/pdf'),
+        ];
+        $issue = new WorkItem(
+            '1',
+            'PROJ-1',
+            'Test',
+            'Open',
+            'user',
+            '',
+            [],
+            'Story',
+            [],
+            null,
+            null,
+            $attachments
+        );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
         $this->assertSame('PROJ-1', $result->data['issue']['key']);
+        $this->assertCount(1, $result->data['issue']['attachments']);
+        $this->assertSame('doc.pdf', $result->data['issue']['attachments'][0]['filename']);
+        $this->assertSame(99, $result->data['issue']['attachments'][0]['size']);
+        $this->assertSame('https://jira/rest/attachment/content/100', $result->data['issue']['attachments'][0]['contentUrl']);
+        $this->assertSame('application/pdf', $result->data['issue']['attachments'][0]['mimeType']);
     }
 
     public function testRespondJsonReturnsErrorWhenNotSuccess(): void

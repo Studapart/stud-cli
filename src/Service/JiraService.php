@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\Filter;
+use App\DTO\IssueAttachment;
 use App\DTO\Project;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
@@ -12,6 +13,14 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JiraService
 {
+    /**
+     * Explicit field ids when requesting rendered HTML plus attachment metadata for {@see getIssue()} (renderFields=true).
+     *
+     * @internal
+     */
+    private const ISSUE_DETAIL_WITH_RENDERED_FIELDS =
+        'summary,status,assignee,description,labels,issuetype,components,priority,attachment';
+
     private ?string $currentUserAccountId = null;
 
     public function __construct(
@@ -24,7 +33,7 @@ class JiraService
     {
         $url = "/rest/api/3/issue/{$key}";
         if ($renderFields) {
-            $url .= '?expand=renderedFields';
+            $url .= '?expand=renderedFields&fields=' . self::ISSUE_DETAIL_WITH_RENDERED_FIELDS;
         }
         $response = $this->client->request('GET', $url);
 
@@ -203,6 +212,62 @@ class JiraService
             components: $components,
             priority: $priority,
             renderedDescription: $renderedDescription,
+            attachments: $this->mapIssueAttachments($fields),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     *
+     * @return list<IssueAttachment>
+     */
+    protected function mapIssueAttachments(array $fields): array
+    {
+        $raw = $fields['attachment'] ?? null;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($raw as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $entry = $this->normalizeAttachmentRow($row);
+            if ($entry !== null) {
+                $out[] = $entry;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    protected function normalizeAttachmentRow(array $row): ?IssueAttachment
+    {
+        $id = isset($row['id']) ? (string) $row['id'] : '';
+        $filename = isset($row['filename']) && is_string($row['filename']) ? $row['filename'] : '';
+        $content = $row['content'] ?? null;
+        if ($id === '' || $filename === '' || ! is_string($content) || $content === '') {
+            return null;
+        }
+
+        $sizeRaw = $row['size'] ?? 0;
+        $size = is_int($sizeRaw) ? $sizeRaw : (is_numeric($sizeRaw) ? (int) $sizeRaw : 0);
+
+        $mimeType = null;
+        if (isset($row['mimeType']) && is_string($row['mimeType']) && $row['mimeType'] !== '') {
+            $mimeType = $row['mimeType'];
+        }
+
+        return new IssueAttachment(
+            id: $id,
+            filename: $filename,
+            size: $size,
+            contentUrl: $content,
+            mimeType: $mimeType,
         );
     }
 

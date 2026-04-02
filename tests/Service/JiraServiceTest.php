@@ -62,6 +62,7 @@ class JiraServiceTest extends TestCase
         $this->assertSame('Bug', $workItem->issueType);
         $this->assertSame(['Component A'], $workItem->components);
         $this->assertSame('No description provided.', $workItem->description);
+        $this->assertSame([], $workItem->attachments);
     }
 
     public function testGetIssueWithRenderedFields(): void
@@ -81,11 +82,30 @@ class JiraServiceTest extends TestCase
                 'labels' => [],
                 'issuetype' => ['name' => 'Bug'],
                 'components' => [],
+                'attachment' => [
+                    [
+                        'id' => '10000',
+                        'filename' => 'screenshot.png',
+                        'size' => 2048,
+                        'content' => 'https://example.atlassian.net/rest/api/3/attachment/content/10000',
+                        'mimeType' => 'image/png',
+                    ],
+                    ['filename' => 'bad-no-id'],
+                    'not-an-array',
+                    [
+                        'id' => '10001',
+                        'filename' => 'notes.txt',
+                        'size' => '42',
+                        'content' => 'https://example.atlassian.net/rest/api/3/attachment/content/10001',
+                    ],
+                ],
             ],
             'renderedFields' => [
                 'description' => $mockHtmlDescription,
             ],
         ];
+
+        $expectedUrl = '/rest/api/3/issue/' . $key . '?expand=renderedFields&fields=summary,status,assignee,description,labels,issuetype,components,priority,attachment';
 
         $responseMock = $this->createMock(ResponseInterface::class);
         $responseMock->method('getStatusCode')->willReturn(200);
@@ -93,7 +113,7 @@ class JiraServiceTest extends TestCase
 
         $this->httpClientMock->expects($this->once())
             ->method('request')
-            ->with('GET', "/rest/api/3/issue/{$key}?expand=renderedFields")
+            ->with('GET', $expectedUrl)
             ->willReturn($responseMock);
 
         $this->htmlConverterMock->expects($this->once())
@@ -106,6 +126,15 @@ class JiraServiceTest extends TestCase
         $this->assertInstanceOf(WorkItem::class, $workItem);
         $this->assertSame($expectedPlainText, $workItem->description); // Assert against description, not renderedDescription
         $this->assertSame($mockHtmlDescription, $workItem->renderedDescription); // renderedDescription still holds raw HTML
+
+        $this->assertCount(2, $workItem->attachments);
+        $this->assertSame('screenshot.png', $workItem->attachments[0]->filename);
+        $this->assertSame(2048, $workItem->attachments[0]->size);
+        $this->assertSame('https://example.atlassian.net/rest/api/3/attachment/content/10000', $workItem->attachments[0]->contentUrl);
+        $this->assertSame('image/png', $workItem->attachments[0]->mimeType);
+        $this->assertSame('notes.txt', $workItem->attachments[1]->filename);
+        $this->assertSame(42, $workItem->attachments[1]->size);
+        $this->assertNull($workItem->attachments[1]->mimeType);
     }
 
     public function testGetIssueNotFound(): void
