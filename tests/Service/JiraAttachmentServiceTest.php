@@ -173,4 +173,81 @@ class JiraAttachmentServiceTest extends TestCase
         $this->expectExceptionMessage('Invalid Jira base URL configuration.');
         $service->downloadAttachmentContent('https://acme.atlassian.net/rest/api/3/attachment/content/1');
     }
+
+    public function testUploadSendsPostAndSucceedsOn200(): void
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'studjup');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, 'payload');
+
+        try {
+            $client = new MockHttpClient(function (string $method, string $url, array $options = []): MockResponse {
+                if ($method === 'POST' && str_contains($url, '/rest/api/3/issue/K-9/attachments')) {
+                    $this->assertArrayHasKey('headers', $options);
+                    $headers = $options['headers'];
+                    $this->assertIsArray($headers);
+                    $flat = '';
+                    foreach ($headers as $k => $v) {
+                        $flat .= strtolower((string) $k) . ':' . (is_array($v) ? implode(',', $v) : (string) $v);
+                    }
+                    $this->assertStringContainsStringIgnoringCase('x-atlassian-token', $flat);
+
+                    return new MockResponse('[]', ['http_code' => 200]);
+                }
+
+                return new MockResponse('', ['http_code' => 404]);
+            });
+            $service = new JiraAttachmentService($client, 'https://acme.atlassian.net');
+            $service->uploadFileToIssue('K-9', $tmp);
+        } finally {
+            unlink($tmp);
+        }
+    }
+
+    public function testUploadNon200Throws(): void
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'studjup');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, 'x');
+
+        try {
+            $client = new MockHttpClient([
+                new MockResponse('bad', ['http_code' => 400]),
+            ]);
+            $service = new JiraAttachmentService($client, 'https://acme.atlassian.net');
+
+            $this->expectException(ApiException::class);
+            $service->uploadFileToIssue('K-1', $tmp);
+        } finally {
+            unlink($tmp);
+        }
+    }
+
+    public function testUploadRejectsEmptyAbsolutePath(): void
+    {
+        $client = new MockHttpClient([]);
+        $service = new JiraAttachmentService($client, 'https://acme.atlassian.net');
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Cannot read local file for upload.');
+        $service->uploadFileToIssue('K-1', '');
+    }
+
+    public function testUploadRejectsMissingFile(): void
+    {
+        $client = new MockHttpClient([]);
+        $service = new JiraAttachmentService($client, 'https://acme.atlassian.net');
+
+        $this->expectException(ApiException::class);
+        $service->uploadFileToIssue('K-1', '/nonexistent/stud-upload-test-file.bin');
+    }
+
+    public function testUploadRejectsDirectoryPath(): void
+    {
+        $client = new MockHttpClient([]);
+        $service = new JiraAttachmentService($client, 'https://acme.atlassian.net');
+
+        $this->expectException(ApiException::class);
+        $service->uploadFileToIssue('K-1', sys_get_temp_dir());
+    }
 }

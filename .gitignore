@@ -67,3 +67,5 @@ tmp/stud-*
 .cursor/reports/*
 .cursor/tmp/*
 .cursor/prompts/*
+.cursor/specs/*
+.cursor/downloads/*

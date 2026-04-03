@@ -26,6 +26,7 @@ class CommandMapTest extends TestCase
     {
         $lookup = CommandMap::aliasLookupMap();
         $this->assertSame('items:download', $lookup['idl']);
+        $this->assertSame('items:upload', $lookup['iup']);
         $this->assertSame('items:update', $lookup['iu']);
         $this->assertSame('branches:list', $lookup['bl']);
         $this->assertSame('branches:clean', $lookup['bc']);

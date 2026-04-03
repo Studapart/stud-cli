@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.14.0/stud-3.14.0.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.15.0/stud-3.15.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.14.0/stud-3.14.0.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.15.0/stud-3.15.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -607,6 +607,17 @@ These commands help you browse, view, and create Jira work items.
         stud idl PROJ-123 --path .cursor/tmp
         stud items:download --url "https://your-domain.atlassian.net/rest/api/3/attachment/content/10000"
         stud items:download --agent <<< '{"issueKey":"PROJ-123","path":".cursor/stud-downloads"}'
+        ```
+
+-   **`stud items:upload <key>`** (Alias: `stud iup <key>`)
+    -   **Description:** Uploads one or more local files as attachments on a Jira issue using the REST multipart attachment API (`X-Atlassian-Token: no-check`, same authenticated Jira HTTP client as other commands). Paths are relative to the current working directory and must not contain `..` segments. With **--agent**, JSON input accepts **key** (required) and **files** (array of path strings); optional **inputFile** with **--agent** (same stdin vs. file rules as **stud items:update**). Successful JSON includes **data.files** (`filename`, `path`) and **data.errors** (per-file failures). No **--quiet**; use **--agent** for automation.
+    -   **Options:** `-f`/`--file <path>` (repeat for multiple files).
+    -   **Argument:** `<key>` (Jira issue key).
+    -   **Usage:**
+        ```bash
+        stud items:upload PROJ-123 -f ./logs/build.txt
+        stud iup PROJ-123 -f ./a.txt -f ./b.png
+        stud items:upload --agent <<< '{"key":"PROJ-123","files":["README.md"]}'
         ```
 
 -   **`stud items:create`** (Alias: `stud ic`)
