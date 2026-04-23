@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`stud submit` (SCI-93):** PR title is now derived from the **first non-empty line** of the first logical commit message (trimmed) instead of the full `git log -1 --pretty=%B` output. This prevents multiline commit bodies from leaking into provider PR titles while preserving Jira key resolution against the full commit message. `SubmitHandlerTest` covers a multiline commit message and Jira-key-from-commit-body fallback.
+
 ## [3.15.0] - 2026-04-02
 
 ### Added

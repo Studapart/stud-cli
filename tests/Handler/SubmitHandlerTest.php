@@ -98,6 +98,130 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
+    public function testHandleDerivesPrTitleFromFirstLineOfMultilineCommit(): void
+    {
+        $multilineMessage = "feat(my-scope): My feature [TPW-35]\n\n"
+            . "Additional body paragraph describing the change.\n"
+            . "It may span several lines and should not leak into the PR title.";
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn($multilineMessage);
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature [TPW-35]'
+                    && ! str_contains($prData->title, "\n")
+                    && ! str_contains($prData->title, 'Additional body paragraph');
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testExtractPrTitleFromCommitMessageReturnsEmptyForBlankInput(): void
+    {
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('extractPrTitleFromCommitMessage');
+        $method->setAccessible(true);
+
+        $this->assertSame('', $method->invoke($this->handler, ''));
+        $this->assertSame('', $method->invoke($this->handler, "\n\n  \n\t\n"));
+    }
+
+    public function testExtractPrTitleFromCommitMessageTrimsFirstLine(): void
+    {
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('extractPrTitleFromCommitMessage');
+        $method->setAccessible(true);
+
+        $this->assertSame('subject', $method->invoke($this->handler, "  subject  \n\nbody"));
+        $this->assertSame('subject', $method->invoke($this->handler, "\r\nsubject\r\nbody"));
+    }
+
+    public function testHandleResolvesJiraKeyFromCommitBodyWhenBranchHasNone(): void
+    {
+        $multilineMessage = "feat(my-scope): My feature\n\n"
+            . "Body paragraph referencing ticket [TPW-77].";
+
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn($multilineMessage);
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-77',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->jiraService->method('getIssue')->willReturn($workItem);
+
+        $this->htmlConverter->method('toMarkdown')
+            ->willReturnCallback(fn ($html) => $html);
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->title === 'feat(my-scope): My feature'
+                    && str_contains($prData->body, 'TPW-77');
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io);
+
+        $this->assertSame(0, $result);
+    }
+
     public function testHandleSuccessWithDraft(): void
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
