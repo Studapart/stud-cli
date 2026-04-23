@@ -108,8 +108,25 @@ class SubmitHandler
             'exitCode' => 0,
             'branch' => $branch,
             'jiraKey' => $jiraKey,
-            'prTitle' => $firstLogicalMessage,
+            'prTitle' => $this->extractPrTitleFromCommitMessage($firstLogicalMessage),
         ];
+    }
+
+    /**
+     * Derive a single-line PR title from a (possibly multiline) commit message.
+     * Returns the first non-empty line, trimmed; falls back to the trimmed message.
+     */
+    protected function extractPrTitleFromCommitMessage(string $commitMessage): string
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $commitMessage) ?: [];
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                return $trimmed;
+            }
+        }
+
+        return trim($commitMessage);
     }
 
     private function resolveJiraKey(string $commitMessage): ?string
