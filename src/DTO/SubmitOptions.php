@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\DTO;
 
-class PullRequestData
+final class SubmitOptions
 {
     public function __construct(
-        public readonly string $title,
-        public readonly string $head,
-        public readonly string $base,
-        public readonly string $body,
         public readonly bool $draft = false,
+        public readonly ?string $labels = null,
+        public readonly bool $quiet = false,
         public readonly bool $assignToAuthor = false,
     ) {
     }

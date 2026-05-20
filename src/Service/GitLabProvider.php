@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\Exception\ApiException;
+use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -81,10 +82,83 @@ class GitLabProvider implements GitProviderInterface
             'description' => $prData->body,
             'work_in_progress' => $prData->draft,
         ];
+        $assigneeId = null;
+        if ($prData->assignToAuthor) {
+            $assigneeId = $this->getAuthenticatedUserId();
+            $payload['assignee_ids'] = [$assigneeId];
+        }
 
-        return $this->normalizeMergeRequestData(
-            $this->apiRequest('POST', $apiUrl, 'Failed to create merge request.', ['json' => $payload])->toArray()
-        );
+        $mergeRequest = $this->apiRequest('POST', $apiUrl, 'Failed to create merge request.', ['json' => $payload])->toArray();
+        if ($assigneeId !== null && ! $this->hasAssignedGitLabUser($mergeRequest, $assigneeId)) {
+            throw new PullRequestAssignmentException(
+                "GitLab did not confirm user '{$assigneeId}' as an assignee for the created merge request.",
+                (string) ($mergeRequest['web_url'] ?? '')
+            );
+        }
+
+        return $this->normalizeMergeRequestData($mergeRequest);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array
+    {
+        return $this->apiRequest('GET', '/user', 'Failed to identify authenticated GitLab user.')->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $prData
+     */
+    public function assignPullRequestToAuthor(array $prData): void
+    {
+        $number = isset($prData['number']) ? (int) $prData['number'] : 0;
+        if ($number <= 0) {
+            throw new \RuntimeException('Cannot assign merge request because its number is missing.');
+        }
+
+        $userId = $this->getAuthenticatedUserId();
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$number}";
+        $updatedMergeRequest = $this->apiRequest(
+            'PUT',
+            $apiUrl,
+            "Failed to assign merge request #{$number} to authenticated user.",
+            ['json' => ['assignee_ids' => [$userId]]]
+        )->toArray();
+
+        if (! $this->hasAssignedGitLabUser($updatedMergeRequest, $userId)) {
+            throw new \RuntimeException("GitLab did not confirm user '{$userId}' as an assignee for merge request #{$number}.");
+        }
+    }
+
+    protected function getAuthenticatedUserId(): int
+    {
+        $user = $this->getAuthenticatedUser();
+        $id = isset($user['id']) ? (int) $user['id'] : 0;
+        if ($id <= 0) {
+            throw new \RuntimeException('Cannot assign merge request because the authenticated GitLab user id is missing.');
+        }
+
+        return $id;
+    }
+
+    /**
+     * @param array<string, mixed> $mergeRequestData
+     */
+    protected function hasAssignedGitLabUser(array $mergeRequestData, int $userId): bool
+    {
+        $assignees = $mergeRequestData['assignees'] ?? [];
+        if (! is_array($assignees)) {
+            return false;
+        }
+
+        foreach ($assignees as $assignee) {
+            if (is_array($assignee) && (int) ($assignee['id'] ?? 0) === $userId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

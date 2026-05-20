@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\SubmitOptions;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitBranchService;
 use App\Service\GitProviderInterface;
@@ -239,7 +240,7 @@ class BranchRenameHandler
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.creating_new_pr'));
 
         $submitHandler = $this->createSubmitHandler();
-        $submitResult = $submitHandler->handle($io, false, null);
+        $submitResult = $submitHandler->handle($io, new SubmitOptions());
         if ($submitResult !== 0) {
             $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branch.rename.pr_creation_failed'));
 

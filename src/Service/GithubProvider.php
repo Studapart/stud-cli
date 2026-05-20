@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\Exception\ApiException;
+use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -76,7 +77,71 @@ class GithubProvider implements GitProviderInterface
             'draft' => $prData->draft,
         ];
 
-        return $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
+        $createdPullRequest = $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
+        if ($prData->assignToAuthor) {
+            try {
+                $this->assignPullRequestToAuthor($createdPullRequest);
+            } catch (\Throwable $e) {
+                throw new PullRequestAssignmentException(
+                    $e->getMessage(),
+                    (string) ($createdPullRequest['html_url'] ?? ''),
+                    $e
+                );
+            }
+        }
+
+        return $createdPullRequest;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array
+    {
+        return $this->apiRequest('GET', '/user', 'Failed to identify authenticated GitHub user.')->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $prData
+     */
+    public function assignPullRequestToAuthor(array $prData): void
+    {
+        $number = isset($prData['number']) ? (int) $prData['number'] : 0;
+        if ($number <= 0) {
+            throw new \RuntimeException('Cannot assign pull request because its number is missing.');
+        }
+
+        $user = $this->getAuthenticatedUser();
+        $login = isset($user['login']) ? (string) $user['login'] : '';
+        if ($login === '') {
+            throw new \RuntimeException('Cannot assign pull request because the authenticated GitHub login is missing.');
+        }
+
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$number}/assignees";
+        $assignedUsers = $this->apiRequest(
+            'POST',
+            $apiUrl,
+            "Failed to assign pull request #{$number} to {$login}.",
+            ['json' => ['assignees' => [$login]]]
+        )->toArray();
+
+        if (! $this->hasAssignedGithubUser($assignedUsers, $login)) {
+            throw new \RuntimeException("GitHub did not confirm '{$login}' as an assignee for pull request #{$number}.");
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>|array<string, mixed> $assignedUsers
+     */
+    protected function hasAssignedGithubUser(array $assignedUsers, string $login): bool
+    {
+        foreach ($assignedUsers as $assignedUser) {
+            if (is_array($assignedUser) && ($assignedUser['login'] ?? null) === $login) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

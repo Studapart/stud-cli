@@ -28,6 +28,7 @@ use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
 use App\DTO\ItemUpdateInput;
 use App\DTO\ItemUploadInput;
+use App\DTO\SubmitOptions;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
@@ -2334,6 +2335,8 @@ function submit(
     bool $draft = false,
     #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')]
     ?string $labels = null,
+    #[AsOption(name: 'assign-to-author', description: 'Assign the created Pull Request to the authenticated provider user')]
+    bool $assignToAuthor = false,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2351,6 +2354,7 @@ function submit(
         }
         $draft = (bool) ($input['draft'] ?? false);
         $labels = $input['labels'] ?? null;
+        $assignToAuthor = (bool) ($input['assignToAuthor'] ?? false);
         $quiet = true;
         if (($input['stageAll'] ?? false) === true) {
             $agentSubmitInput = $input;
@@ -2398,7 +2402,7 @@ function submit(
     }
 
     $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());
-    $exitCode = $handler->handle(io(), $draft, $labels, $quiet);
+    $exitCode = $handler->handle(io(), new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Pull request created', 'Submit failed'));

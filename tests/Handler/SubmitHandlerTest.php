@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\DTO\PullRequestData;
+use App\DTO\SubmitOptions;
 use App\DTO\WorkItem;
 use App\Handler\SubmitHandler;
 use App\Service\CanConvertToMarkdownInterface;
@@ -86,7 +87,8 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->head === 'studapart:feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
                     && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
-                    && $prData->draft === false;
+                    && $prData->draft === false
+                    && $prData->assignToAuthor === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -96,6 +98,99 @@ class SubmitHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io);
 
         $this->assertSame(0, $result);
+    }
+
+    public function testHandlePassesAssignToAuthorIntentWhenRequested(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        ));
+        $this->htmlConverter->method('toMarkdown')->willReturn('My rendered description');
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(fn ($prData): bool => $prData instanceof PullRequestData && $prData->assignToAuthor === true))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleReportsAssignmentFailureAfterPullRequestCreation(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        ));
+        $this->htmlConverter->method('toMarkdown')->willReturn('My rendered description');
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(new \App\Exception\PullRequestAssignmentException(
+                'GitHub did not confirm assignment.',
+                'https://github.com/my-owner/my-repo/pull/1'
+            ));
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
+            );
+        $this->logger->method('section');
+        $this->logger->method('text');
+        $this->logger->method('gitWriteln');
+        $this->logger->method('jiraWriteln');
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+
+        $this->assertSame(1, $result);
     }
 
     public function testHandleDerivesPrTitleFromFirstLineOfMultilineCommit(): void
@@ -269,7 +364,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle($io, new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -1025,6 +1120,29 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame([], $result);
     }
 
+    public function testValidateAndProcessLabelsRequiresGitProvider(): void
+    {
+        $handler = new SubmitHandler(
+            $this->gitRepository,
+            $this->jiraService,
+            null,
+            $this->jiraConfig,
+            'origin/develop',
+            $this->translationService,
+            $this->logger,
+            $this->htmlConverter
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $method = $reflection->getMethod('validateAndProcessLabels');
+        $method->setAccessible(true);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('A Git provider is required to resolve submit labels.');
+
+        $method->invoke($handler, 'bug');
+    }
+
     public function testValidateAndProcessLabelsCaseInsensitive(): void
     {
         $remoteLabels = [
@@ -1116,7 +1234,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug,enhancement');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1164,7 +1282,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
 
         $this->assertSame(1, $result);
     }
@@ -1224,7 +1342,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
 
         $this->assertSame(1, $result);
     }
@@ -1548,7 +1666,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
 
         // Adding labels failure causes the whole operation to fail
         $this->assertSame(1, $result);
@@ -1602,7 +1720,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Labels should be ignored when no provider is configured
-        $result = $this->handler->handle($io, false, 'bug,enhancement');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1684,7 +1802,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug,enhancement');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1750,7 +1868,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle($io, new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -1837,7 +1955,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
 
         $this->assertSame(0, $result);
     }
@@ -1902,7 +2020,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle($io, new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -1962,7 +2080,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, false, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if finding PR fails
         $this->assertSame(0, $result);
@@ -2042,7 +2160,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, false, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if adding labels fails
         $this->assertSame(0, $result);
@@ -2107,7 +2225,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle($io, new SubmitOptions(true));
 
         // Should still succeed even if updating draft fails
         $this->assertSame(0, $result);
@@ -2161,7 +2279,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Should handle gracefully when no provider (labels/draft ignored)
-        $result = $this->handler->handle($io, true, 'bug');
+        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
 
         $this->assertSame(0, $result);
     }
@@ -2251,6 +2369,114 @@ class SubmitHandlerTest extends CommandTestCase
         $this->logger->expects($this->once())->method('note');
         $this->logger->expects($this->once())->method('success');
 
-        $this->callPrivateMethod($handler, 'handleExistingPr', ['feat/TPW-35', false, []]);
+        $result = $this->callPrivateMethod($handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(), []]);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleExistingPrAssignsAuthorWhenRequested(): void
+    {
+        $existingPr = [
+            'number' => 123,
+            'draft' => false,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/123',
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('feat/TPW-35')
+            ->willReturn($existingPr);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('assignPullRequestToAuthor')
+            ->with($existingPr);
+        $this->logger->expects($this->once())->method('success');
+
+        $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleExistingPrReportsAuthorAssignmentFailure(): void
+    {
+        $existingPr = [
+            'number' => 123,
+            'draft' => false,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/123',
+        ];
+
+        $this->githubProvider
+            ->method('findPullRequestByBranch')
+            ->willReturn($existingPr);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('assignPullRequestToAuthor')
+            ->with($existingPr)
+            ->willThrowException(new \RuntimeException('Assignment failed'));
+        $this->logger
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                \App\Service\Logger::VERBOSITY_NORMAL,
+                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
+            );
+
+        $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testHandleAssignsExistingPullRequestAuthorWhenCreateReportsAlreadyExists(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        ));
+        $this->htmlConverter->method('toMarkdown')->willReturn('My rendered description');
+
+        $existingPr = [
+            'number' => 123,
+            'draft' => false,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/123',
+        ];
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willThrowException(new \App\Exception\ApiException('Failed to create pull request.', 'pull request already exists', 422));
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->willReturn($existingPr);
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('assignPullRequestToAuthor')
+            ->with($existingPr);
+
+        $output = new BufferedOutput();
+        $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+
+        $this->assertSame(0, $result);
     }
 }
