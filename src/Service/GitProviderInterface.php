@@ -23,6 +23,20 @@ interface GitProviderInterface
     public function createPullRequest(PullRequestData $prData): array;
 
     /**
+     * Returns the authenticated provider user used by this token.
+     *
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array;
+
+    /**
+     * Assigns a pull request or merge request to the authenticated provider user.
+     *
+     * @param array<string, mixed> $prData Normalized PR/MR data returned by create/find.
+     */
+    public function assignPullRequestToAuthor(array $prData): void;
+
+    /**
      * Finds a pull request by branch head.
      *
      * @param string $head The branch head in format "owner:branch" or just "branch"

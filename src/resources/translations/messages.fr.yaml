@@ -391,6 +391,7 @@ submit:
     Erreur : %error%'
   adding_labels: Ajout des labels à la Pull Request...
   updating_to_draft: Mise à jour de la Pull Request en statut brouillon...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Échec de la mise à jour du statut brouillon de la Pull Request.
 
     Erreur : %error%'
@@ -667,6 +668,7 @@ help:
   option_push_no_please: "Après un push normal échoué, ne pas exécuter ni proposer stud please"
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour
   option_release_major: Incrémenter la version majeure (X.0.0)
   option_release_minor: Incrémenter la version mineure (X.Y.0)

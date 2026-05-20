@@ -277,9 +277,11 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
         $this->assertArrayHasKey('submit', $schemaByName);
         $props = $schemaByName['submit']['input']['properties'] ?? [];
-        foreach (['stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
+        foreach (['assignToAuthor', 'stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
             $this->assertArrayHasKey($key, $props, 'submit agent input must include "' . $key . '" property');
         }
+        $this->assertSame('bool', $props['assignToAuthor']['type'] ?? null);
+        $this->assertFalse($props['assignToAuthor']['default'] ?? true);
         $this->assertArrayNotHasKey('noPlease', $props, 'submit agent input must not include redundant noPlease; use pleaseFallback');
     }
 

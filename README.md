@@ -957,8 +957,9 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
+        -   `--assign-to-author`: Assign the newly created Pull Request or Merge Request to the authenticated Git provider user.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
-    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`assignToAuthor`: `true`** to assign the newly created PR/MR to the authenticated Git provider user. You may also set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
     -   **Usage:**
         ```bash
         stud submit
@@ -967,8 +968,9 @@ These commands integrate directly with your local Git repository to streamline y
         stud su -d
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
+        stud submit --assign-to-author
         stud submit -q
-        echo '{"labels":"AI-Generated,RFR","stageAll":true}' | stud submit --agent
+        echo '{"labels":"AI-Generated,RFR","assignToAuthor":true,"stageAll":true}' | stud submit --agent
         ```
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
@@ -1080,6 +1082,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 | `stud commit:undo` | `--quiet` / `-q` | Proceed with undo even when HEAD is pushed (no confirm) |
 | `stud submit` | `--draft` / `-d` | Create a draft Pull Request |
 | `stud submit` | `--labels "…"` | Add labels without being prompted |
+| `stud submit` | `--assign-to-author` | Assign the newly created PR/MR to the authenticated provider user |
 | `stud submit` | `--quiet` / `-q` | Use default base branch/provider; unknown labels ignored; fail if token missing |
 | `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
 | `stud branch:rename` | `--quiet` / `-q` | Use default for all confirmations (rename, remote only, rebase, create PR) |
@@ -1097,7 +1100,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 - For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
 - For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
 - For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
-- For `submit`, agent JSON may include `stageAll` (and optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
+- For `submit`, agent JSON may include `assignToAuthor` to assign a newly created PR/MR to the authenticated provider user, and `stageAll` (with optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
 
 **Example snippets:**
 
@@ -1106,6 +1109,7 @@ stud commit -m "feat: add feature X"
 stud commit -q --all                    # use Jira-derived message, no prompts
 stud submit --draft
 stud submit --draft --labels "bug,ui"
+stud submit --assign-to-author
 stud submit -q                           # use default base branch and provider
 stud branches:clean --quiet
 stud to PROJ-123 -q                      # switch to first branch found, no prompts

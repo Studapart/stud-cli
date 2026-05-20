@@ -391,6 +391,7 @@ submit:
     Error: %error%'
   adding_labels: Agregando etiquetas a la Pull Request...
   updating_to_draft: Actualizando Pull Request a estado borrador...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Error al actualizar el estado borrador de la Pull Request.
 
     Error: %error%'
@@ -667,6 +668,7 @@ help:
   option_push_no_please: "Tras un push normal fallido, no ejecutar ni ofrecer stud please"
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
   option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar
   option_release_major: Incrementar versión mayor (X.0.0)
   option_release_minor: Incrementar versión menor (X.Y.0)

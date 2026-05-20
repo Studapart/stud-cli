@@ -391,6 +391,7 @@ submit:
     Fout: %error%'
   adding_labels: Labels toevoegen aan Pull Request...
   updating_to_draft: Pull Request bijwerken naar conceptstatus...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Fout bij bijwerken van conceptstatus van Pull Request.
 
     Fout: %error%'
@@ -728,6 +729,7 @@ help:
   option_push_no_please: "Na een mislukte normale push stud please niet uitvoeren of aanbieden"
   option_submit_draft: Maak een Draft Pull Request (gemarkeerd als "Draft" op GitHub)
   option_submit_labels: Komma-gescheiden lijst van labels om toe te passen op de Pull Request. Als een label niet bestaat, wordt u gevraagd deze te maken, te negeren of opnieuw te proberen met een gecorrigeerde lijst
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
   option_update_info: Bekijk het changelog van de nieuwste beschikbare versie zonder te downloaden of te installeren. Handig voor het controleren van breaking changes voordat u update
   option_release_major: Verhoog major versie (X.0.0)
   option_release_minor: Verhoog minor versie (X.Y.0)

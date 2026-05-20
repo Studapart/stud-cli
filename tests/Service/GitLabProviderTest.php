@@ -118,6 +118,162 @@ class GitLabProviderTest extends TestCase
         $this->assertTrue($result['draft']);
     }
 
+    public function testCreatePullRequestAssignsToAuthenticatedAuthorWhenRequested(): void
+    {
+        $title = 'Assigned MR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'Assigned merge request.';
+        $gitlabResponse = [
+            'iid' => 1,
+            'id' => 123,
+            'title' => $title,
+            'source_branch' => $head,
+            'target_branch' => $base,
+            'description' => $body,
+            'work_in_progress' => false,
+            'state' => 'opened',
+            'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/1',
+            'assignees' => [['id' => 42, 'username' => 'alice']],
+        ];
+
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn($gitlabResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($userResponse, $createResponse) {
+                if ($method === 'GET' && $url === '/user') {
+                    return $userResponse;
+                }
+                if ($method === 'POST' && $url === '/projects/' . self::PROJECT_PATH . '/merge_requests') {
+                    $this->assertSame([42], $options['json']['assignee_ids']);
+
+                    return $createResponse;
+                }
+
+                throw new \RuntimeException("Unexpected request {$method} {$url}");
+            });
+
+        $prData = new PullRequestData($title, $head, $base, $body, false, true);
+        $result = $this->gitlabProvider->createPullRequest($prData);
+
+        $this->assertSame(1, $result['number']);
+        $this->assertSame($title, $result['title']);
+    }
+
+    public function testCreatePullRequestAssignmentFailsWhenGitLabDoesNotConfirmAssignee(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42]);
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/1',
+            'assignees' => [],
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($userResponse, $createResponse);
+
+        $this->expectException(\App\Exception\PullRequestAssignmentException::class);
+        $this->expectExceptionMessage("GitLab did not confirm user '42'");
+
+        $this->gitlabProvider->createPullRequest(new PullRequestData('Title', 'feature/test', 'develop', 'Body', false, true));
+    }
+
+    public function testAssignPullRequestToAuthorAssignsAuthenticatedUser(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(200);
+        $assignResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'assignees' => [['id' => 42]],
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($userResponse, $assignResponse) {
+                if ($method === 'GET' && $url === '/user') {
+                    return $userResponse;
+                }
+                if ($method === 'PUT' && $url === '/projects/' . self::PROJECT_PATH . '/merge_requests/1') {
+                    $this->assertSame(['assignee_ids' => [42]], $options['json']);
+
+                    return $assignResponse;
+                }
+
+                throw new \RuntimeException("Unexpected request {$method} {$url}");
+            });
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAssignPullRequestToAuthorRequiresMergeRequestNumber(): void
+    {
+        $this->httpClientMock->expects($this->never())->method('request');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign merge request because its number is missing.');
+
+        $this->gitlabProvider->assignPullRequestToAuthor([]);
+    }
+
+    public function testAssignPullRequestToAuthorRequiresAuthenticatedUserId(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['username' => 'alice']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/user')
+            ->willReturn($userResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign merge request because the authenticated GitLab user id is missing.');
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
+    }
+
+    public function testAssignPullRequestToAuthorFailsWhenGitLabDoesNotConfirmAssignee(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42]);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(200);
+        $assignResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'assignees' => 'alice',
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($userResponse, $assignResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("GitLab did not confirm user '42'");
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
+    }
+
     public function testCreatePullRequestFailure(): void
     {
         $title = 'Test MR';

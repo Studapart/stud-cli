@@ -99,6 +99,124 @@ class GithubProviderTest extends TestCase
         $this->assertSame($expectedResponse, $result);
     }
 
+    public function testCreatePullRequestAssignsToAuthenticatedAuthorWhenRequested(): void
+    {
+        $createdPullRequest = [
+            'number' => 123,
+            'html_url' => 'https://github.com/test_owner/test_repo/pull/123',
+        ];
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn($createdPullRequest);
+
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['login' => 'octocat', 'id' => 1]);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(201);
+        $assignResponse->method('toArray')->willReturn([['login' => 'octocat']]);
+
+        $this->httpClientMock->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($createResponse, $userResponse, $assignResponse) {
+                if ($method === 'POST' && $url === '/repos/test_owner/test_repo/pulls') {
+                    return $createResponse;
+                }
+                if ($method === 'GET' && $url === '/user') {
+                    return $userResponse;
+                }
+                if ($method === 'POST' && $url === '/repos/test_owner/test_repo/issues/123/assignees') {
+                    $this->assertSame(['assignees' => ['octocat']], $options['json']);
+
+                    return $assignResponse;
+                }
+
+                throw new \RuntimeException("Unexpected request {$method} {$url}");
+            });
+
+        $prData = new PullRequestData('Title', 'feature/test', 'develop', 'Body', false, true);
+
+        $this->assertSame($createdPullRequest, $this->githubProvider->createPullRequest($prData));
+    }
+
+    public function testAssignPullRequestToAuthorFailsWhenGithubDoesNotConfirmAssignee(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['login' => 'octocat']);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(201);
+        $assignResponse->method('toArray')->willReturn([]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($userResponse, $assignResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("GitHub did not confirm 'octocat' as an assignee");
+
+        $this->githubProvider->assignPullRequestToAuthor(['number' => 123]);
+    }
+
+    public function testCreatePullRequestWrapsAssignmentFailureWithPullRequestUrl(): void
+    {
+        $createdPullRequest = [
+            'number' => 123,
+            'html_url' => 'https://github.com/test_owner/test_repo/pull/123',
+        ];
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn($createdPullRequest);
+
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['login' => 'octocat']);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(201);
+        $assignResponse->method('toArray')->willReturn([]);
+
+        $this->httpClientMock->expects($this->exactly(3))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($createResponse, $userResponse, $assignResponse);
+
+        $this->expectException(\App\Exception\PullRequestAssignmentException::class);
+        $this->expectExceptionMessage("GitHub did not confirm 'octocat' as an assignee");
+
+        $this->githubProvider->createPullRequest(new PullRequestData('Title', 'feature/test', 'develop', 'Body', false, true));
+    }
+
+    public function testAssignPullRequestToAuthorRequiresPullRequestNumber(): void
+    {
+        $this->httpClientMock->expects($this->never())->method('request');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign pull request because its number is missing.');
+
+        $this->githubProvider->assignPullRequestToAuthor([]);
+    }
+
+    public function testAssignPullRequestToAuthorRequiresAuthenticatedLogin(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 1]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/user')
+            ->willReturn($userResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign pull request because the authenticated GitHub login is missing.');
+
+        $this->githubProvider->assignPullRequestToAuthor(['number' => 123]);
+    }
+
     public function testCreatePullRequestFailure(): void
     {
         $title = 'Test PR';

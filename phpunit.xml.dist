@@ -36,5 +36,6 @@
     </source>
     <php>
         <env name="APP_ENV" value="test"/>
+        <env name="CASTOR_DISABLE_VERSION_CHECK" value="1"/>
     </php>
 </phpunit>

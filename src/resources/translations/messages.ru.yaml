@@ -391,6 +391,7 @@ submit:
     Ошибка: %error%'
   adding_labels: Добавление меток к Pull Request...
   updating_to_draft: Обновление Pull Request до статуса черновика...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Ошибка при обновлении статуса черновика Pull Request.
 
     Ошибка: %error%'
@@ -667,6 +668,7 @@ help:
   option_push_no_please: "После неудачного обычного push не запускать и не предлагать stud please"
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
   option_update_info: Предварительный просмотр changelog последней доступной версии без загрузки или установки. Полезно для проверки критических изменений перед обновлением
   option_release_major: Увеличить мажорную версию (X.0.0)
   option_release_minor: Увеличить минорную версию (X.Y.0)

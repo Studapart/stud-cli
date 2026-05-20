@@ -744,6 +744,7 @@ class HelpServiceTest extends TestCase
         // Verify second option appears in usage examples
         $this->assertStringContainsString('--labels', $result);
         $this->assertStringContainsString('"bug,enhancement"', $result);
+        $this->assertStringContainsString('--assign-to-author', $result);
     }
 
     public function testFormatCommandHelpFromTranslationWithCommitSecondOptionMessage(): void

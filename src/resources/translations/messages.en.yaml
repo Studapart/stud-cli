@@ -400,6 +400,7 @@ submit:
   adding_labels: "Adding labels to Pull Request..."
   updating_to_draft: "Updating Pull Request to draft status..."
   error_update_draft: "Failed to update Pull Request draft status.\nError: %error%"
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
 
 # Branch Rename Handler
 branch:
@@ -675,7 +676,7 @@ help:
   command_please: "A power-user, safe force-push (force-with-lease)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
-  command_submit: "Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Agent JSON: optional stageAll — when true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
+  command_submit: "Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Use --assign-to-author to assign a newly created PR/MR to the authenticated provider user. Agent JSON: optional assignToAuthor and stageAll — when stageAll is true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
   command_pr_comment: "Posts a comment to the active Pull Request. Supports piping from STDIN or direct argument."
   command_pr_comments: "Fetches and displays issue and review comments for the current branch's PR/MR."
   command_status: "A quick \"where am I?\" dashboard."
@@ -701,6 +702,7 @@ help:
   option_push_no_please: "After a failed normal push, do not run or prompt for stud please"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
   option_update_info: "Preview the changelog of the latest available version without downloading or installing. Useful for checking breaking changes before updating"
   option_release_major: "Increment major version (X.0.0)"
   option_release_minor: "Increment minor version (X.Y.0)"
