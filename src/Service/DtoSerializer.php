@@ -40,7 +40,7 @@ class DtoSerializer
             return $this->serialize($value);
         }
         if (is_array($value)) {
-            return array_map(fn (mixed $v): mixed => is_object($v) ? $this->serialize($v) : $v, $value);
+            return array_map(fn (mixed $v): mixed => $this->serializeValue($v), $value);
         }
 
         return $value;

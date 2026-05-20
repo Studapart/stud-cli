@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackConversation;
 
 /**
  * Interface for Git hosting provider implementations (GitHub, GitLab, etc.).
@@ -128,4 +129,11 @@ interface GitProviderInterface
      * @return PullRequestComment[]
      */
     public function getPullRequestReviews(int $pullNumber): array;
+
+    /**
+     * Fetches PR/MR feedback as grouped conversations with provider action identifiers.
+     *
+     * @return PullRequestFeedbackConversation[]
+     */
+    public function getPullRequestFeedbackConversations(int $pullNumber): array;
 }

@@ -2441,8 +2441,16 @@ function pr_comment(
 }
 
 #[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
-#[AgentOutput(responseClass: \App\Response\PrCommentsResponse::class, description: 'Pull request comments and reviews')]
+#[AgentOutput(
+    properties: [
+        'default' => 'flat shape: issueComments, reviewComments, reviews, pullNumber',
+        'threaded' => 'when threaded=true: mode, pullNumber, conversations',
+    ],
+    description: 'Pull request comments and reviews. Default agent output is flat; threaded=true returns grouped conversations.'
+)]
 function pr_comments(
+    #[AsOption(name: 'threaded', description: 'Render feedback as threaded conversations with action metadata')]
+    bool $threaded = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -2450,13 +2458,20 @@ function pr_comments(
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $threaded = (bool) ($input['threaded'] ?? $threaded);
+    }
 
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
     $handler = new PrCommentsHandler($gitRepository, $gitProvider, _get_translation_service());
-    $response = $handler->handle();
+    $response = $handler->handle($threaded);
     $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser(), _get_logger());
-    $agentResponse = $responder->respond(io(), $response, $format);
+    $agentResponse = $responder->respond(io(), $response, $format, $threaded);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
 

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`stud pr:comments` (SCI-94):** Added opt-in `--threaded` / agent JSON `threaded=true` mode that returns PR/MR feedback as grouped conversations with provider identifiers, resolution/visibility state, and available action metadata while preserving the flat default output.
+
 - **`stud submit` (SCI-95):** Added opt-in `--assign-to-author` / agent JSON `assignToAuthor` support to assign newly created GitHub PRs or GitLab MRs to the authenticated provider user.
 
 ### Fixed

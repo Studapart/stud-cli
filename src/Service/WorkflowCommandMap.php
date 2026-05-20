@@ -133,7 +133,9 @@ class WorkflowCommandMap
             'pr:comments' => [
                 'alias' => 'pcs',
                 'description_key' => 'help.command_pr_comments',
-                'options' => [],
+                'options' => [
+                    ['name' => '--threaded', 'shortcut' => null, 'description_key' => 'help.option_pr_comments_threaded', 'argument' => null],
+                ],
                 'arguments' => [],
             ],
         ];

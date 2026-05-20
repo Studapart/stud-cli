@@ -252,6 +252,25 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('redactedProjectConfig', $out);
     }
 
+    public function testPrCommentsSchemaDocumentsThreadedMode(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $cmd = $schemaByName['pr:comments'];
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('threaded', $props);
+        $this->assertSame('bool', $props['threaded']['type']);
+        $this->assertFalse($props['threaded']['default']);
+
+        $output = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('default', $output);
+        $this->assertArrayHasKey('threaded', $output);
+        $this->assertStringContainsString('flat', $cmd['output']['description']);
+    }
+
     public function testOutputSchemaHasErrorStructure(): void
     {
         foreach ($this->schema['commands'] as $cmd) {

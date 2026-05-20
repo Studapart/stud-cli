@@ -107,4 +107,21 @@ class DtoSerializerTest extends TestCase
         $result = $this->serializer->serialize($dto);
         $this->assertSame(['tags' => ['php', 'cli']], $result);
     }
+
+    public function testSerializeWithNestedArrayOfObjects(): void
+    {
+        $child = new class () {
+            public string $id = 'child';
+        };
+        $dto = new class ([['item' => $child]]) {
+            /** @param array<int, array<string, object>> $groups */
+            public function __construct(public readonly array $groups)
+            {
+            }
+        };
+
+        $result = $this->serializer->serialize($dto);
+
+        $this->assertSame([['item' => ['id' => 'child']]], $result['groups']);
+    }
 }

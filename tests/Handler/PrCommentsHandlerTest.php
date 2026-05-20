@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\PullRequestComment;
+use App\DTO\PullRequestFeedbackActions;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
+use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentsHandler;
 use App\Response\PrCommentsResponse;
 use App\Service\GitProviderInterface;
@@ -62,6 +66,39 @@ class PrCommentsHandlerTest extends CommandTestCase
         $this->assertSame([], $response->reviews);
         $this->assertSame($issueComment, $response->issueComments[0]);
         $this->assertSame($reviewComment, $response->reviewComments[0]);
+    }
+
+    public function testHandleReturnsThreadedConversationsWhenRequested(): void
+    {
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-94');
+        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $conversation = new PullRequestFeedbackConversation(
+            new PullRequestFeedbackIds('github', 'pr_comment', id: '1'),
+            'pr_comment',
+            new PullRequestFeedbackState(),
+            [],
+            new PullRequestFeedbackActions(canReply: true),
+        );
+
+        $this->gitProvider->expects($this->once())
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/SCI-94')
+            ->willReturn(['number' => 94]);
+        $this->gitProvider->expects($this->never())->method('getPullRequestComments');
+        $this->gitProvider->expects($this->never())->method('getPullRequestReviewComments');
+        $this->gitProvider->expects($this->never())->method('getPullRequestReviews');
+        $this->gitProvider->expects($this->once())
+            ->method('getPullRequestFeedbackConversations')
+            ->with(94)
+            ->willReturn([$conversation]);
+
+        $handler = new PrCommentsHandler($this->gitRepository, $this->gitProvider, $this->translationService);
+        $response = $handler->handle(true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->threaded);
+        $this->assertSame([$conversation], $response->conversations);
+        $this->assertSame([], $response->issueComments);
     }
 
     public function testHandleReturnsErrorWhenNoProvider(): void

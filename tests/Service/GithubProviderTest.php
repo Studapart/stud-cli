@@ -1503,6 +1503,114 @@ class GithubProviderTest extends TestCase
         $this->assertCount(50, $result);
     }
 
+    public function testGetPullRequestFeedbackConversationsReturnsThreadedMetadata(): void
+    {
+        $issueResponse = $this->createGithubGraphqlResponse('comments', [[
+            'id' => 'issue-node',
+            'databaseId' => 10,
+            'author' => ['login' => 'alice'],
+            'body' => 'Top level',
+            'createdAt' => '2025-01-15T10:00:00Z',
+            'isMinimized' => false,
+            'viewerCanMinimize' => true,
+        ]]);
+        $reviewResponse = $this->createGithubGraphqlResponse('reviews', [[
+            'id' => 'review-node',
+            'databaseId' => 20,
+            'author' => ['login' => 'reviewer'],
+            'body' => 'Review body',
+            'state' => 'CHANGES_REQUESTED',
+            'submittedAt' => '2025-01-15T11:00:00Z',
+            'isMinimized' => false,
+        ], [
+            'id' => 'empty-review-node',
+            'databaseId' => 21,
+            'author' => ['login' => 'reviewer'],
+            'body' => ' ',
+            'state' => 'COMMENTED',
+            'submittedAt' => '2025-01-15T11:30:00Z',
+        ]]);
+        $threadResponse = $this->createGithubGraphqlResponse('reviewThreads', [[
+            'id' => 'thread-node',
+            'isResolved' => false,
+            'isOutdated' => true,
+            'path' => 'src/File.php',
+            'line' => 12,
+            'viewerCanResolve' => true,
+            'comments' => [
+                'pageInfo' => ['hasNextPage' => false, 'endCursor' => null],
+                'nodes' => [[
+                    'id' => 'comment-node',
+                    'databaseId' => 30,
+                    'author' => ['login' => 'bob'],
+                    'body' => 'Inline',
+                    'createdAt' => '2025-01-15T12:00:00Z',
+                    'path' => 'src/File.php',
+                    'line' => 12,
+                    'pullRequestReview' => [
+                        'id' => 'review-node',
+                        'databaseId' => 20,
+                        'author' => ['login' => 'reviewer'],
+                        'body' => 'Review body',
+                        'state' => 'COMMENTED',
+                        'submittedAt' => '2025-01-15T11:00:00Z',
+                    ],
+                ]],
+            ],
+        ], [
+            'id' => 'thread-without-review',
+            'isResolved' => true,
+            'isOutdated' => false,
+            'viewerCanUnresolve' => true,
+            'comments' => [
+                'pageInfo' => ['hasNextPage' => true, 'endCursor' => 'cursor'],
+                'nodes' => [[
+                    'id' => 'comment-without-review',
+                    'databaseId' => 31,
+                    'author' => null,
+                    'body' => 'Inline without review',
+                    'createdAt' => '2025-01-15T13:00:00Z',
+                    'isMinimized' => true,
+                    'viewerCanMinimize' => true,
+                ]],
+            ],
+        ]]);
+
+        $this->httpClientMock->expects($this->exactly(3))
+            ->method('request')
+            ->with('POST', '/graphql', $this->anything())
+            ->willReturnOnConsecutiveCalls($issueResponse, $reviewResponse, $threadResponse);
+
+        $result = $this->githubProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertCount(4, $result);
+        $this->assertSame('pr_comment', $result[0]->type);
+        $this->assertSame('review', $result[1]->type);
+        $this->assertSame('review_thread', $result[2]->type);
+        $this->assertSame('thread-node', $result[2]->ids->threadId);
+        $this->assertTrue($result[2]->actions->canResolve);
+        $this->assertSame('src/File.php', $result[2]->location?->path);
+        $this->assertTrue($result[3]->truncated);
+        $this->assertNull($result[3]->location);
+    }
+
+    public function testGetPullRequestFeedbackConversationsThrowsOnGraphqlErrors(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn(['errors' => [['message' => 'Bad query']]]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/graphql', $this->anything())
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Bad query');
+
+        $this->githubProvider->getPullRequestFeedbackConversations(123);
+    }
+
     public function testGetPullRequestCommentsFailure(): void
     {
         $issueNumber = 123;
@@ -1612,5 +1720,28 @@ class GithubProviderTest extends TestCase
         $this->assertStringContainsString('Owner: test_owner', $result);
         $this->assertStringContainsString('Repo: test_repo', $result);
         $this->assertStringContainsString('Full URL: https://api.github.com/repos/test_owner/test_repo/pulls', $result);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $nodes
+     */
+    private function createGithubGraphqlResponse(string $connection, array $nodes): ResponseInterface
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn([
+            'data' => [
+                'repository' => [
+                    'pullRequest' => [
+                        $connection => [
+                            'nodes' => $nodes,
+                            'pageInfo' => ['hasNextPage' => false, 'endCursor' => null],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        return $responseMock;
     }
 }

@@ -425,6 +425,23 @@ pr:
     issue_comments: Issuecommentaren
     reviews: Beoordelingen
     review_comments: Beoordelingscommentaren
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Geen commentaren
     table:
       author: Auteur
@@ -707,7 +724,7 @@ help:
   command_cache_clear: Wis de update controle cache om een versiecontrole af te dwingen bij de volgende opdracht.
   command_submit: "Pusht de huidige tak en maakt een Pull Request. Niet-gecommitte lokale wijzigingen blokkeren indienen niet; je krijgt een informatieve melding dat push/PR commits op de branch gebruiken. Agent-JSON: optioneel stageAll — bij true eerst stud push (optioneel isNew, message, pleaseFallback; zoals stud push --agent)."
   command_pr_comment: Plaatst een opmerking op de actieve Pull Request. Ondersteunt piping vanuit STDIN of een direct argument.
-  command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze.
+  command_pr_comments: Haalt issue- en beoordelingscommentaren op voor de PR/MR van de huidige branch en toont deze. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Een snelle "waar ben ik?" dashboard.
   command_release: Maakt een nieuwe release tak en verhoogt de versie.
   command_deploy: Deployt de huidige release tak.
@@ -730,6 +747,7 @@ help:
   option_submit_draft: Maak een Draft Pull Request (gemarkeerd als "Draft" op GitHub)
   option_submit_labels: Komma-gescheiden lijst van labels om toe te passen op de Pull Request. Als een label niet bestaat, wordt u gevraagd deze te maken, te negeren of opnieuw te proberen met een gecorrigeerde lijst
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Bekijk het changelog van de nieuwste beschikbare versie zonder te downloaden of te installeren. Handig voor het controleren van breaking changes voordat u update
   option_release_major: Verhoog major versie (X.0.0)
   option_release_minor: Verhoog minor versie (X.Y.0)
