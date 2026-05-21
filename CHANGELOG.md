@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.0] - 2026-05-21
+
 ### Added
 
 - **`stud pr:comments` (SCI-94):** Added opt-in `--threaded` / agent JSON `threaded=true` mode that returns PR/MR feedback as grouped conversations with provider identifiers, resolution/visibility state, and available action metadata while preserving the flat default output.
