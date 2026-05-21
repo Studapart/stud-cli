@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackIds;
 use App\Service\GitLabProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -448,6 +449,65 @@ class GitLabProviderTest extends TestCase
         $result = $this->gitlabProvider->createComment($issueNumber, $body);
 
         $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testReplyToPullRequestFeedbackPostsDiscussionNote(): void
+    {
+        $body = 'Thanks';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn(['id' => 456, 'body' => $body]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions/discussion-id/notes',
+                ['json' => ['body' => $body]]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread', discussionId: 'discussion-id'),
+            $body
+        );
+
+        $this->assertSame(456, $result['id']);
+    }
+
+    public function testResolvePullRequestFeedbackUpdatesDiscussion(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn(['id' => 'discussion-id', 'resolved' => true]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'PUT',
+                '/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions/discussion-id',
+                ['json' => ['resolved' => true]]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->resolvePullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread', discussionId: 'discussion-id')
+        );
+
+        $this->assertTrue($result['resolved']);
+    }
+
+    public function testReplyToPullRequestFeedbackRejectsMissingDiscussionId(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $this->gitlabProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread'),
+            'Thanks'
+        );
     }
 
     public function testUpdatePullRequestToDraft(): void
@@ -1008,6 +1068,7 @@ class GitLabProviderTest extends TestCase
         $this->assertCount(1, $result);
         $this->assertSame('review_thread', $result[0]->type);
         $this->assertSame('discussion-1', $result[0]->ids->discussionId);
+        $this->assertSame('gitlab:review_thread:discussion-1', $result[0]->ids->target);
         $this->assertSame('99', $result[0]->comments[0]->ids->noteId);
         $this->assertTrue($result[0]->actions->canResolve);
         $this->assertSame('src/File.php', $result[0]->location?->path);

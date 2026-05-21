@@ -410,9 +410,16 @@ pr:
     error_post: 'Error al publicar comentario en Pull Request.
 
       Error: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Buscando Pull Request para la rama: %branch%'
     posting: 'Publicando comentario en Pull Request #%number%...'
     success: '✅ Comentario publicado exitosamente en Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Leyendo comentario desde STDIN...
     using_argument: Usando comentario desde argumento...
   comments:
@@ -436,6 +443,7 @@ pr:
     threaded_state_outdated: "outdated"
     threaded_state_truncated: "truncated"
     threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
     threaded_location: "location: %location%"
     threaded_actions: "actions: %actions%"
     threaded_actions_unsupported: "unsupported"
@@ -686,6 +694,8 @@ help:
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
   option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar
   option_release_major: Incrementar versión mayor (X.0.0)

@@ -34,6 +34,7 @@ final class GithubConversationProvider
         private readonly string $owner,
         private readonly string $repo,
         private readonly \Closure $apiRequest,
+        private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {
     }
 
@@ -215,7 +216,12 @@ final class GithubConversationProvider
         );
         $comments = $this->mapGithubThreadComments($node, $threadId, $location);
         $review = $comments !== [] ? $this->mapGithubThreadReview($node, $comments[0]) : null;
-        $ids = new PullRequestFeedbackIds(self::PROVIDER_GITHUB, self::KIND_REVIEW_THREAD, threadId: $threadId);
+        $ids = new PullRequestFeedbackIds(
+            self::PROVIDER_GITHUB,
+            self::KIND_REVIEW_THREAD,
+            threadId: $threadId,
+            target: $this->targetResolver->targetFor(self::PROVIDER_GITHUB, self::KIND_REVIEW_THREAD, $threadId)
+        );
         $commentPage = is_array($node['comments'] ?? null) ? $node['comments'] : [];
         $pageInfo = is_array($commentPage['pageInfo'] ?? null) ? $commentPage['pageInfo'] : [];
 

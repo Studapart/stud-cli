@@ -410,9 +410,16 @@ pr:
     error_post: 'Ошибка при публикации комментария в Pull Request.
 
       Ошибка: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Поиск Pull Request для ветки: %branch%'
     posting: 'Публикация комментария в Pull Request #%number%...'
     success: '✅ Комментарий успешно опубликован в Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Чтение комментария из STDIN...
     using_argument: Использование комментария из аргумента...
   comments:
@@ -436,6 +443,7 @@ pr:
     threaded_state_outdated: "outdated"
     threaded_state_truncated: "truncated"
     threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
     threaded_location: "location: %location%"
     threaded_actions: "actions: %actions%"
     threaded_actions_unsupported: "unsupported"
@@ -686,6 +694,8 @@ help:
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
   option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Предварительный просмотр changelog последней доступной версии без загрузки или установки. Полезно для проверки критических изменений перед обновлением
   option_release_major: Увеличить мажорную версию (X.0.0)

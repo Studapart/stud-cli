@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
@@ -17,6 +18,8 @@ class GithubProvider implements GitProviderInterface
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;
+    private const PROVIDER_GITHUB = 'github';
+    private const UNKNOWN_GRAPHQL_ERROR = 'Unknown GraphQL error';
 
     public function __construct(
         private readonly string $token,
@@ -336,6 +339,42 @@ class GithubProvider implements GitProviderInterface
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array
+    {
+        $threadId = $this->githubThreadId($targetIds, 'reply');
+
+        return $this->graphqlRequest(
+            'mutation ReplyToReviewThread($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+    comment { id databaseId body createdAt }
+  }
+}',
+            ['threadId' => $threadId, 'body' => $body],
+            "Failed to reply to review thread on pull request #{$pullNumber}."
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array
+    {
+        $threadId = $this->githubThreadId($targetIds, 'resolve');
+
+        return $this->graphqlRequest(
+            'mutation ResolveReviewThread($threadId: ID!) {
+  resolveReviewThread(input: { threadId: $threadId }) {
+    thread { id isResolved }
+  }
+}',
+            ['threadId' => $threadId],
+            "Failed to resolve review thread on pull request #{$pullNumber}."
+        );
+    }
+
+    /**
      * Attempts to update the head branch of a pull request.
      *
      * @param int $pullNumber The pull request number
@@ -451,6 +490,34 @@ class GithubProvider implements GitProviderInterface
             $this->repo,
             \Closure::fromCallable([$this, 'apiRequest'])
         ))->getPullRequestFeedbackConversations($pullNumber);
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     * @return array<string, mixed>
+     */
+    protected function graphqlRequest(string $query, array $variables, string $errorMessage): array
+    {
+        $payload = $this->apiRequest('POST', '/graphql', $errorMessage, [
+            'json' => ['query' => $query, 'variables' => $variables],
+        ])->toArray(false);
+
+        if (isset($payload['errors']) && is_array($payload['errors']) && $payload['errors'] !== []) {
+            $message = isset($payload['errors'][0]['message']) ? (string) $payload['errors'][0]['message'] : self::UNKNOWN_GRAPHQL_ERROR;
+
+            throw new \RuntimeException($errorMessage . ' ' . $message);
+        }
+
+        return $payload;
+    }
+
+    protected function githubThreadId(PullRequestFeedbackIds $targetIds, string $action): string
+    {
+        if ($targetIds->provider !== self::PROVIDER_GITHUB || $targetIds->threadId === null) {
+            throw new \RuntimeException("Cannot {$action} this feedback target on GitHub because its review thread id is missing.");
+        }
+
+        return $targetIds->threadId;
     }
 
     /**

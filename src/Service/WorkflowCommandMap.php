@@ -127,7 +127,10 @@ class WorkflowCommandMap
             'pr:comment' => [
                 'alias' => 'pc',
                 'description_key' => 'help.command_pr_comment',
-                'options' => [],
+                'options' => [
+                    ['name' => '--reply-to', 'shortcut' => null, 'description_key' => 'help.option_pr_comment_reply_to', 'argument' => '<target>'],
+                    ['name' => '--resolve', 'shortcut' => null, 'description_key' => 'help.option_pr_comment_resolve', 'argument' => null],
+                ],
                 'arguments' => ['<message>'],
             ],
             'pr:comments' => [

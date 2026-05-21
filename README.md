@@ -975,8 +975,9 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
 -   **`stud pr:comment`** (Alias: `stud pc`)
-    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.
+    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation), providing a direct message argument, replying to a threaded feedback target, and optionally resolving that thread after a successful reply.
     -   **Argument:** `<message>` (optional): The comment message. If not provided, content will be read from STDIN.
+    -   **Options:** `--reply-to <target>` replies to a copyable target from `stud pr:comments --threaded`; `--resolve` resolves the target after the reply succeeds when the provider marks it resolvable.
     -   **Usage:**
         ```bash
         # Piped input (preferred for automation/AI workflows)
@@ -989,8 +990,15 @@ These commands integrate directly with your local Git repository to streamline y
         
         # Using alias with piped input
         echo "Comment text" | stud pc
+
+        # Reply to threaded feedback and optionally resolve it
+        stud pr:comment --reply-to github:review_thread:THREAD_ID "Fixed, thanks"
+        stud pr:comment --reply-to gitlab:review_thread:DISCUSSION_ID --resolve "Fixed, thanks"
+
+        # Agent mode
+        echo '{"message":"Fixed, thanks","replyTo":"github:review_thread:THREAD_ID","resolve":true}' | stud pr:comment --agent
         ```
-    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
+    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found, no input is provided, the target cannot be found, or the requested action is unsupported, the command fails clearly and does not fall back to a top-level comment. Reply and resolve actions target one threaded conversation per command call; automation that addresses multiple review threads should iterate over the actionable targets returned by `stud pr:comments --threaded`.
 
 -   **`stud pr:comments`** (Alias: `stud pcs`)
     -   **Description:** Fetches and displays issue comments and review (inline) comments for the active Pull Request or Merge Request on the current branch. Complements `stud pr:comment` (which posts a comment) by letting you read all PR/MR feedback in the terminal.

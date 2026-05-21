@@ -4,171 +4,150 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\PrCommentRequest;
+use App\DTO\PullRequestFeedbackConversation;
+use App\Response\PrCommentResponse;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
-use App\Service\Logger;
 use App\Service\MarkdownHelper;
+use App\Service\PullRequestFeedbackTargetResolver;
 use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class PrCommentHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly ?GitProviderInterface $githubProvider,
+        private readonly ?GitProviderInterface $gitProvider,
         private readonly TranslationService $translator,
-        private readonly Logger $logger
+        private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {
     }
 
-    public function handle(SymfonyStyle $io, ?string $message = null): int
+    public function handle(PrCommentRequest $request): PrCommentResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.section'));
-
-        // Check if GitHub provider is available
-        if (! $this->githubProvider) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_provider'));
-
-            return 1;
+        if (! $this->gitProvider) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_provider'));
         }
 
-        // Get comment body with precedence: STDIN first, then argument
-        $commentBody = $this->getCommentBody($message);
-        if ($commentBody !== null) {
-            $commentBody = MarkdownHelper::unescapeCheckboxMarkdown($commentBody);
+        $commentBody = $this->prepareCommentBody($request->message);
+
+        if ($commentBody === null) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_input'));
         }
 
-        if (empty($commentBody)) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_input'));
-
-            return 1;
-        }
-
-        // Find the active PR for the current branch
         $prNumber = $this->findActivePullRequest();
         if ($prNumber === null) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.error_no_pr'));
-
-            return 1;
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_pr'));
         }
 
-        // Post the comment
         try {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.posting', ['number' => $prNumber])}</>");
-            $this->githubProvider->createComment($prNumber, $commentBody);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('pr.comment.success', ['number' => $prNumber]));
-        } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()])));
-
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
-     * Gets comment body with precedence: STDIN first, then argument.
-     * Returns null if neither is available.
-     */
-    protected function getCommentBody(?string $message): ?string
-    {
-        // 1st priority: Check for STDIN input (piped content)
-        $stdinContent = $this->readStdin();
-        if (! empty($stdinContent)) {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.using_stdin')}</>");
-
-            return $stdinContent;
-        }
-
-        // 2nd priority: Use direct argument if provided
-        if ($message !== null && ! empty(trim($message))) {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('pr.comment.using_argument')}</>");
-
-            return trim($message);
-        }
-
-        return null;
-    }
-
-    /**
-     * Reads content from STDIN if available (non-blocking).
-     * Returns empty string if STDIN is a TTY (interactive terminal) or if no content is available.
-     */
-    protected function readStdin(): string
-    {
-        // Check if STDIN is a TTY (interactive terminal)
-        // If it is, there's no piped input
-        // This path is only reachable when STDIN is actually a TTY, which cannot be simulated in unit tests
-        // @codeCoverageIgnoreStart
-        if (function_exists('posix_isatty') && posix_isatty(STDIN)) {
-            return '';
-        }
-        // @codeCoverageIgnoreEnd
-
-        // Try to read from STDIN non-blocking
-        // Use stream_set_blocking to make it non-blocking
-        // Reading from STDIN when it's a resource with actual piped content requires process execution
-        // This path is tested via integration tests when the command is executed with piped input
-        // @codeCoverageIgnoreStart
-        if (is_resource(STDIN)) {
-            $metaData = stream_get_meta_data(STDIN);
-            $wasBlocking = $metaData['blocked'];
-            stream_set_blocking(STDIN, false);
-            $content = stream_get_contents(STDIN);
-            stream_set_blocking(STDIN, $wasBlocking);
-
-            if ($content === false) {
-                return '';
+            if ($request->isReply()) {
+                return $this->replyToFeedback($prNumber, $request, $commentBody);
             }
 
-            return trim($content);
+            $this->gitProvider->createComment($prNumber, $commentBody);
+
+            return PrCommentResponse::posted(
+                $this->translator->trans('pr.comment.success', ['number' => $prNumber]),
+                $prNumber
+            );
+        } catch (\Exception $e) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()]));
         }
-        // @codeCoverageIgnoreEnd
+    }
 
-        // Fallback: try file_get_contents on php://stdin
-        // NOTE: This is not a filesystem operation - we're reading from stdin stream
-        // Reading from php://stdin in unit tests is not feasible as it requires actual process execution
-        // @codeCoverageIgnoreStart
-        if (! function_exists('posix_isatty') || ! posix_isatty(STDIN)) {
-            $content = @file_get_contents('php://stdin');
-
-            return $content !== false ? trim($content) : '';
+    /**
+     * Returns the normalized comment body, or null when no message was provided.
+     */
+    protected function prepareCommentBody(?string $message): ?string
+    {
+        if ($message === null || trim($message) === '') {
+            return null;
         }
-        // @codeCoverageIgnoreEnd
 
-        // Final fallback return - only reached when STDIN is not a TTY, not a resource, and posix_isatty handling fails
-        // This edge case cannot be easily simulated in unit tests
-        // @codeCoverageIgnoreStart
-        return '';
-        // @codeCoverageIgnoreEnd
+        return MarkdownHelper::unescapeCheckboxMarkdown(trim($message));
     }
 
     /**
      * Finds the active Pull Request number for the current branch.
-     * Returns null if no PR is found.
      */
     protected function findActivePullRequest(): ?int
     {
         $branch = $this->gitRepository->getCurrentBranchName();
-
-        // Format the head parameter for GitHub API
-        // GitHub requires "owner:branch" format when creating PR from a fork
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$branch}" : $branch;
 
-        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('pr.comment.finding_pr', ['branch' => $branch])}");
-
         try {
-            $pr = $this->githubProvider->findPullRequestByBranch($headBranch);
-            if ($pr && isset($pr['number'])) {
-                return $pr['number'];
-            }
-        } catch (\Exception $e) {
-            // @codeCoverageIgnoreStart
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>Error finding PR: {$e->getMessage()}</>");
-            // @codeCoverageIgnoreEnd
+            $pr = $this->gitProvider?->findPullRequestByBranch($headBranch);
+
+            return is_array($pr) && isset($pr['number']) ? (int) $pr['number'] : null;
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    protected function replyToFeedback(int $prNumber, PrCommentRequest $request, string $commentBody): PrCommentResponse
+    {
+        $target = trim((string) $request->replyTo);
+        $conversation = $this->findTargetConversation($prNumber, $target);
+        if ($conversation === null) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_invalid_target', ['target' => $target]));
         }
 
-        return null;
+        if (! $conversation->actions->canReply) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_reply_unsupported', ['target' => $target]));
+        }
+
+        if ($request->resolve && ! $conversation->actions->canResolve) {
+            return PrCommentResponse::error($this->resolveUnsupportedError($conversation, $target));
+        }
+
+        $this->gitProvider?->replyToPullRequestFeedback($prNumber, $conversation->ids, $commentBody);
+        if ($request->resolve) {
+            return $this->resolveAfterReply($prNumber, $conversation, $target);
+        }
+
+        return PrCommentResponse::replied(
+            $this->translator->trans('pr.comment.reply_success', ['number' => $prNumber]),
+            $prNumber,
+            $target,
+            false
+        );
+    }
+
+    protected function findTargetConversation(int $prNumber, string $target): ?PullRequestFeedbackConversation
+    {
+        return $this->targetResolver->findConversation(
+            $target,
+            $this->gitProvider?->getPullRequestFeedbackConversations($prNumber) ?? []
+        );
+    }
+
+    protected function resolveUnsupportedError(PullRequestFeedbackConversation $conversation, string $target): string
+    {
+        $key = $conversation->state->resolved === true
+            ? 'pr.comment.error_already_resolved'
+            : 'pr.comment.error_resolve_unsupported';
+
+        return $this->translator->trans($key, ['target' => $target]);
+    }
+
+    protected function resolveAfterReply(
+        int $prNumber,
+        PullRequestFeedbackConversation $conversation,
+        string $target,
+    ): PrCommentResponse {
+        try {
+            $this->gitProvider?->resolvePullRequestFeedback($prNumber, $conversation->ids);
+        } catch (\Exception $e) {
+            return PrCommentResponse::error($this->translator->trans('pr.comment.error_resolve_after_reply', ['error' => $e->getMessage()]));
+        }
+
+        return PrCommentResponse::replied(
+            $this->translator->trans('pr.comment.reply_resolve_success', ['number' => $prNumber]),
+            $prNumber,
+            $target,
+            true
+        );
     }
 }

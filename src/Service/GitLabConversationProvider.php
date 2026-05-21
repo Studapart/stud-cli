@@ -27,6 +27,7 @@ final class GitLabConversationProvider
     public function __construct(
         private readonly string $projectPath,
         private readonly \Closure $apiRequest,
+        private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {
     }
 
@@ -85,7 +86,13 @@ final class GitLabConversationProvider
             canResolve: (bool) ($firstState->resolvable && $firstState->resolved === false),
             canReopen: (bool) ($firstState->resolvable && $firstState->resolved === true),
         );
-        $ids = new PullRequestFeedbackIds(self::PROVIDER_GITLAB, $type, discussionId: $discussionId, threadId: $discussionId);
+        $ids = new PullRequestFeedbackIds(
+            self::PROVIDER_GITLAB,
+            $type,
+            discussionId: $discussionId,
+            threadId: $discussionId,
+            target: $this->targetResolver->targetFor(self::PROVIDER_GITLAB, $type, $discussionId)
+        );
 
         return new PullRequestFeedbackConversation($ids, $type, $firstState, $comments, $actions, location: $location);
     }

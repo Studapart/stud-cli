@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackIds;
 use App\Service\GithubProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -823,6 +824,99 @@ class GithubProviderTest extends TestCase
         $this->githubProvider->createComment($issueNumber, $body);
     }
 
+    public function testReplyToPullRequestFeedbackUsesGraphqlMutation(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->with(false)->willReturn([
+            'data' => ['addPullRequestReviewThreadReply' => ['comment' => ['id' => 'reply-id']]],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/graphql',
+                $this->callback(function (array $options): bool {
+                    $variables = $options['json']['variables'] ?? [];
+
+                    return str_contains((string) ($options['json']['query'] ?? ''), 'addPullRequestReviewThreadReply')
+                        && $variables === ['threadId' => 'thread-id', 'body' => 'Thanks'];
+                })
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-id'),
+            'Thanks'
+        );
+
+        $this->assertArrayHasKey('data', $result);
+    }
+
+    public function testResolvePullRequestFeedbackUsesGraphqlMutation(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->with(false)->willReturn([
+            'data' => ['resolveReviewThread' => ['thread' => ['id' => 'thread-id', 'isResolved' => true]]],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/graphql',
+                $this->callback(function (array $options): bool {
+                    $variables = $options['json']['variables'] ?? [];
+
+                    return str_contains((string) ($options['json']['query'] ?? ''), 'resolveReviewThread')
+                        && $variables === ['threadId' => 'thread-id'];
+                })
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->githubProvider->resolvePullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-id')
+        );
+
+        $this->assertArrayHasKey('data', $result);
+    }
+
+    public function testReplyToPullRequestFeedbackRejectsMissingThreadId(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $this->githubProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('github', 'review_thread'),
+            'Thanks'
+        );
+    }
+
+    public function testResolvePullRequestFeedbackReportsGraphqlErrors(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->with(false)->willReturn([
+            'errors' => [['message' => 'Cannot resolve']],
+        ]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->willReturn($responseMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot resolve');
+
+        $this->githubProvider->resolvePullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-id')
+        );
+    }
+
     public function testUpdatePullRequestHeadSuccess(): void
     {
         $pullNumber = 123;
@@ -1588,6 +1682,7 @@ class GithubProviderTest extends TestCase
         $this->assertSame('review', $result[1]->type);
         $this->assertSame('review_thread', $result[2]->type);
         $this->assertSame('thread-node', $result[2]->ids->threadId);
+        $this->assertSame('github:review_thread:thread-node', $result[2]->ids->target);
         $this->assertTrue($result[2]->actions->canResolve);
         $this->assertSame('src/File.php', $result[2]->location?->path);
         $this->assertTrue($result[3]->truncated);
