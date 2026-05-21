@@ -425,6 +425,23 @@ pr:
     issue_comments: Bình luận issue
     reviews: Đánh giá
     review_comments: Bình luận đánh giá
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Không có bình luận
     table:
       author: Tác giả
@@ -646,7 +663,7 @@ help:
   command_cache_clear: Xóa bộ nhớ cache kiểm tra cập nhật để buộc kiểm tra phiên bản ở lệnh tiếp theo.
   command_submit: "Đẩy nhánh hiện tại và tạo Pull Request. Thay đổi cục bộ chưa commit không chặn submit; có thông báo rằng push/PR dùng các commit trên nhánh. JSON agent: stageAll tùy chọn — true thì chạy stud push trước (tùy chọn isNew, message, pleaseFallback; như stud push --agent)."
   command_pr_comment: Đăng bình luận trên Pull Request đang hoạt động. Hỗ trợ piping từ STDIN hoặc đối số trực tiếp.
-  command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại.
+  command_pr_comments: Lấy và hiển thị bình luận (issue và đánh giá) cho PR/MR của nhánh hiện tại. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Bảng điều khiển "tôi đang ở đâu?" nhanh.
   command_release: Tạo nhánh phát hành mới và tăng phiên bản.
   command_deploy: Triển khai nhánh phát hành hiện tại.
@@ -669,6 +686,7 @@ help:
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật
   option_release_major: Tăng phiên bản chính (X.0.0)
   option_release_minor: Tăng phiên bản phụ (X.Y.0)

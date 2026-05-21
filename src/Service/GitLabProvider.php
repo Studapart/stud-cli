@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackConversation;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
@@ -442,6 +443,17 @@ class GitLabProvider implements GitProviderInterface
         $body = isset($row['body']) ? (string) $row['body'] : '';
 
         return new PullRequestComment($author, $createdAt, $body, $path, $line);
+    }
+
+    /**
+     * @return PullRequestFeedbackConversation[]
+     */
+    public function getPullRequestFeedbackConversations(int $pullNumber): array
+    {
+        return (new GitLabConversationProvider(
+            $this->projectPath,
+            \Closure::fromCallable([$this, 'apiRequest'])
+        ))->getPullRequestFeedbackConversations($pullNumber);
     }
 
     /**

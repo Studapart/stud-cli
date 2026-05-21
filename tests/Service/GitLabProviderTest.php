@@ -973,6 +973,121 @@ class GitLabProviderTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    public function testGetPullRequestFeedbackConversationsPreservesDiscussions(): void
+    {
+        $apiResponse = [[
+            'id' => 'discussion-1',
+            'individual_note' => false,
+            'position' => [
+                'new_path' => 'src/File.php',
+                'new_line' => 10,
+                'position_type' => 'text',
+            ],
+            'notes' => [[
+                'id' => 99,
+                'author' => ['username' => 'alice'],
+                'body' => 'Inline discussion',
+                'created_at' => '2025-01-15T10:00:00Z',
+                'resolved' => false,
+                'resolvable' => true,
+                'type' => 'DiffNote',
+            ]],
+        ]];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+        $responseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains('/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions'))
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('review_thread', $result[0]->type);
+        $this->assertSame('discussion-1', $result[0]->ids->discussionId);
+        $this->assertSame('99', $result[0]->comments[0]->ids->noteId);
+        $this->assertTrue($result[0]->actions->canResolve);
+        $this->assertSame('src/File.php', $result[0]->location?->path);
+    }
+
+    public function testGetPullRequestFeedbackConversationsPaginatesAndSorts(): void
+    {
+        $firstResponse = $this->createMock(ResponseInterface::class);
+        $firstResponse->method('getStatusCode')->willReturn(200);
+        $firstResponse->method('toArray')->willReturn([[
+            'id' => 'later',
+            'notes' => [[
+                'id' => 2,
+                'author' => ['username' => 'bob'],
+                'body' => 'Later',
+                'created_at' => '2025-01-15T12:00:00Z',
+            ]],
+        ]]);
+        $firstResponse->method('getHeaders')->willReturn(['x-next-page' => ['2']]);
+
+        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse->method('getStatusCode')->willReturn(200);
+        $secondResponse->method('toArray')->willReturn([[
+            'id' => 'earlier',
+            'notes' => [[
+                'id' => 1,
+                'author' => ['username' => 'alice'],
+                'body' => 'Earlier',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ]],
+        ]]);
+        $secondResponse->method('getHeaders')->willReturn(['x-next-page' => ['']]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($firstResponse, $secondResponse);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertSame('earlier', $result[0]->ids->discussionId);
+        $this->assertSame('later', $result[1]->ids->discussionId);
+    }
+
+    public function testGetPullRequestFeedbackConversationsPaginatesWithTotalPagesHeader(): void
+    {
+        $firstResponse = $this->createMock(ResponseInterface::class);
+        $firstResponse->method('getStatusCode')->willReturn(200);
+        $firstResponse->method('toArray')->willReturn([[
+            'id' => 'first',
+            'notes' => [[
+                'id' => 1,
+                'author' => ['username' => 'alice'],
+                'body' => 'First',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ]],
+        ]]);
+        $firstResponse->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
+
+        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse->method('getStatusCode')->willReturn(200);
+        $secondResponse->method('toArray')->willReturn([[
+            'id' => 'second',
+            'notes' => [[
+                'id' => 2,
+                'author' => ['username' => 'bob'],
+                'body' => 'Second',
+                'created_at' => '2025-01-15T11:00:00Z',
+            ]],
+        ]]);
+        $secondResponse->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($firstResponse, $secondResponse);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertCount(2, $result);
+    }
+
     public function testGetPullRequestCommentsFailure(): void
     {
         $issueNumber = 123;

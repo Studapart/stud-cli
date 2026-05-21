@@ -5,7 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\PullRequestComment;
+use App\DTO\PullRequestFeedbackActions;
+use App\DTO\PullRequestFeedbackComment;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
+use App\DTO\PullRequestFeedbackLocation;
+use App\DTO\PullRequestFeedbackState;
 use App\Enum\OutputFormat;
+use App\Responder\PrCommentBodyRenderer;
 use App\Responder\PrCommentsResponder;
 use App\Response\PrCommentsResponse;
 use App\Service\ColorHelper;
@@ -193,18 +200,18 @@ class PrCommentsResponderTest extends CommandTestCase
     {
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->never())->method('text');
-        $responder = new PrCommentsResponder(new ResponderHelper($this->translationService), new CommentBodyParser(), $logger);
+        $renderer = new PrCommentBodyRenderer(new ResponderHelper($this->translationService), new CommentBodyParser(), $logger);
 
-        $this->callPrivateMethod($responder, 'renderTextSegment', [['content' => '']]);
+        $this->callPrivateMethod($renderer, 'renderTextSegment', [['content' => '']]);
     }
 
     public function testRenderListSegmentWithEmptyItemsDoesNotCallListing(): void
     {
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->never())->method('listing');
-        $responder = new PrCommentsResponder(new ResponderHelper($this->translationService), new CommentBodyParser(), $logger);
+        $renderer = new PrCommentBodyRenderer(new ResponderHelper($this->translationService), new CommentBodyParser(), $logger);
 
-        $this->callPrivateMethod($responder, 'renderListSegment', [['items' => []]]);
+        $this->callPrivateMethod($renderer, 'renderListSegment', [['items' => []]]);
     }
 
     public function testRespondJsonReturnsSerializedComments(): void
@@ -218,6 +225,52 @@ class PrCommentsResponderTest extends CommandTestCase
         $this->assertTrue($result->success);
         $this->assertSame(42, $result->data['pullNumber']);
         $this->assertCount(1, $result->data['issueComments']);
+        $this->assertArrayNotHasKey('conversations', $result->data);
+    }
+
+    public function testRespondJsonReturnsThreadedConversationsWhenRequested(): void
+    {
+        $conversation = $this->createFeedbackConversation();
+        $response = PrCommentsResponse::success([], [], [], 42, [$conversation], true);
+
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('threaded', $result->data['mode']);
+        $this->assertSame(42, $result->data['pullNumber']);
+        $this->assertSame('thread-1', $result->data['conversations'][0]['ids']['threadId']);
+        $this->assertSame('alice', $result->data['conversations'][0]['comments'][0]['author']);
+    }
+
+    public function testRespondRendersThreadedConversationSections(): void
+    {
+        $conversation = $this->createFeedbackConversation();
+        $truncated = new PullRequestFeedbackConversation(
+            new PullRequestFeedbackIds('github', 'pr_comment'),
+            'pr_comment',
+            new PullRequestFeedbackState(resolved: true, outdated: true),
+            [],
+            new PullRequestFeedbackActions(),
+            truncated: true,
+        );
+        $response = PrCommentsResponse::success([], [], [], 42, [$conversation, $truncated], true);
+
+        $this->io->expects($this->atLeast(2))->method('section')->with($this->anything());
+        $this->io->expects($this->atLeastOnce())->method('listing')->with($this->anything());
+        $this->io->expects($this->atLeastOnce())->method('text')->with($this->anything());
+
+        $this->responder->respond($this->io, $response, OutputFormat::Cli, true);
+    }
+
+    public function testRespondRendersNoteForEmptyThreadedConversations(): void
+    {
+        $response = PrCommentsResponse::success([], [], [], 42, [], true);
+
+        $this->io->expects($this->exactly(2))->method('section')->with($this->anything());
+        $this->io->expects($this->once())->method('note')->with($this->anything());
+
+        $this->responder->respond($this->io, $response, OutputFormat::Cli, true);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void
@@ -229,5 +282,24 @@ class PrCommentsResponderTest extends CommandTestCase
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
+    }
+
+    private function createFeedbackConversation(): PullRequestFeedbackConversation
+    {
+        $ids = new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-1');
+        $state = new PullRequestFeedbackState(resolved: false, resolvable: true, outdated: false);
+        $location = new PullRequestFeedbackLocation('src/File.php', 12);
+        $actions = new PullRequestFeedbackActions(canReply: true, canResolve: true);
+        $comment = new PullRequestFeedbackComment(
+            new PullRequestFeedbackIds('github', 'review_comment', id: '1', threadId: 'thread-1'),
+            'alice',
+            new \DateTimeImmutable('2025-01-15T10:00:00Z'),
+            'Thread body',
+            $state,
+            $location,
+            $actions,
+        );
+
+        return new PullRequestFeedbackConversation($ids, 'review_thread', $state, [$comment], $actions, location: $location);
     }
 }

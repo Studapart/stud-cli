@@ -425,6 +425,23 @@ pr:
     issue_comments: Comentarios de la issue
     reviews: Revisiones
     review_comments: Comentarios de revisión
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Sin comentarios
     table:
       author: Autor
@@ -646,7 +663,7 @@ help:
   command_cache_clear: Limpiar el caché de verificación de actualización para forzar una verificación de versión en el próximo comando.
   command_submit: "Envía la rama actual y crea una Pull Request. Los cambios locales sin confirmar no bloquean el envío; verás un aviso de que el push y la PR usan los commits de la rama. JSON del agente: stageAll opcional — si es true, ejecuta stud push primero (isNew, message, pleaseFallback opcionales; como stud push --agent)."
   command_pr_comment: Publica un comentario en la Pull Request activa. Admite piping desde STDIN o un argumento directo.
-  command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual.
+  command_pr_comments: Obtiene y muestra los comentarios (issue y revisión) de la PR/MR de la rama actual. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Un panel de control rápido "¿dónde estoy?".
   command_release: Crea una nueva rama de release y aumenta la versión.
   command_deploy: Despliega la rama de release actual.
@@ -669,6 +686,7 @@ help:
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Vista previa del changelog de la última versión disponible sin descargar o instalar. Útil para verificar cambios importantes antes de actualizar
   option_release_major: Incrementar versión mayor (X.0.0)
   option_release_minor: Incrementar versión menor (X.Y.0)

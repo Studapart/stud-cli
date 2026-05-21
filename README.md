@@ -994,12 +994,17 @@ These commands integrate directly with your local Git repository to streamline y
 
 -   **`stud pr:comments`** (Alias: `stud pcs`)
     -   **Description:** Fetches and displays issue comments and review (inline) comments for the active Pull Request or Merge Request on the current branch. Complements `stud pr:comment` (which posts a comment) by letting you read all PR/MR feedback in the terminal.
+    -   **Options:**
+        -   `--threaded`: Show PR/MR feedback as grouped conversations with provider identifiers, resolution state, visibility state, and available follow-up actions.
     -   **Usage:**
         ```bash
         stud pr:comments
         stud pcs
+        stud pr:comments --threaded
+        echo '{"threaded": true}' | stud pr:comments --agent
         ```
-    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits.
+    -   **Agent output:** The default `--agent` output remains the compatibility shape with `issueComments`, `reviewComments`, `reviews`, and `pullNumber`. With `{"threaded": true}`, output switches to `mode: "threaded"`, `pullNumber`, and `conversations`.
+    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Default flat results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits; threaded mode paginates provider conversation APIs and marks oversized nested threads as truncated.
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.

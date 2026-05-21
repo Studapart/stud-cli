@@ -22,7 +22,7 @@ class PrCommentsHandler
     ) {
     }
 
-    public function handle(): PrCommentsResponse
+    public function handle(bool $threaded = false): PrCommentsResponse
     {
         if (! $this->gitProvider) {
             return PrCommentsResponse::error($this->translator->trans('pr.comments.error_no_provider'));
@@ -39,6 +39,12 @@ class PrCommentsHandler
         }
 
         try {
+            if ($threaded) {
+                $conversations = $this->gitProvider->getPullRequestFeedbackConversations($prNumber);
+
+                return PrCommentsResponse::success([], [], [], $prNumber, $conversations, true);
+            }
+
             $issueComments = $this->gitProvider->getPullRequestComments($prNumber);
             $reviewComments = $this->gitProvider->getPullRequestReviewComments($prNumber);
             $reviews = $this->gitProvider->getPullRequestReviews($prNumber);

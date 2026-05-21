@@ -425,6 +425,23 @@ pr:
     issue_comments: Комментарии к issue
     reviews: Ревью
     review_comments: Комментарии ревью
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Нет комментариев
     table:
       author: Автор
@@ -646,7 +663,7 @@ help:
   command_cache_clear: Очистить кэш проверки обновлений для принудительной проверки версии при следующей команде.
   command_submit: "Отправляет текущую ветку и создаёт Pull Request. Незакоммиченные локальные изменения не блокируют submit; показывается информационное сообщение, что push и PR используют коммиты на ветке. JSON агента: необязательный stageAll — при true сначала stud push (необязательно isNew, message, pleaseFallback; как stud push --agent)."
   command_pr_comment: Публикует комментарий в активном Pull Request. Поддерживает piping из STDIN или прямой аргумент.
-  command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки.
+  command_pr_comments: Получает и отображает комментарии (issue и ревью) для PR/MR текущей ветки. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Быстрая панель управления "где я?".
   command_release: Создает новую ветку релиза и увеличивает версию.
   command_deploy: Развертывает текущую ветку релиза.
@@ -669,6 +686,7 @@ help:
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Предварительный просмотр changelog последней доступной версии без загрузки или установки. Полезно для проверки критических изменений перед обновлением
   option_release_major: Увеличить мажорную версию (X.0.0)
   option_release_minor: Увеличить минорную версию (X.Y.0)
