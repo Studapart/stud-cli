@@ -410,9 +410,16 @@ pr:
     error_post: 'Αποτυχία δημοσίευσης σχολίου στο Pull Request.
 
       Σφάλμα: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Εύρεση Pull Request για τον κλάδο: %branch%'
     posting: 'Δημοσίευση σχολίου στο Pull Request #%number%...'
     success: '✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Ανάγνωση σχολίου από STDIN...
     using_argument: Χρήση σχολίου από όρισμα...
   comments:
@@ -436,6 +443,7 @@ pr:
     threaded_state_outdated: "outdated"
     threaded_state_truncated: "truncated"
     threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
     threaded_location: "location: %location%"
     threaded_actions: "actions: %actions%"
     threaded_actions_unsupported: "unsupported"
@@ -686,6 +694,8 @@ help:
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
   option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση
   option_release_major: Αύξηση κύριας έκδοσης (X.0.0)

@@ -410,9 +410,16 @@ pr:
     error_post: 'Échec de la publication du commentaire sur la Pull Request.
 
       Erreur : %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Recherche de la Pull Request pour la branche : %branch%'
     posting: 'Publication du commentaire sur la Pull Request #%number%...'
     success: '✅ Commentaire publié avec succès sur la Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Lecture du commentaire depuis STDIN...
     using_argument: Utilisation du commentaire depuis l'argument...
   comments:
@@ -436,6 +443,7 @@ pr:
     threaded_state_outdated: "outdated"
     threaded_state_truncated: "truncated"
     threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
     threaded_location: "location: %location%"
     threaded_actions: "actions: %actions%"
     threaded_actions_unsupported: "unsupported"
@@ -686,6 +694,8 @@ help:
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
   option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour
   option_release_major: Incrémenter la version majeure (X.0.0)

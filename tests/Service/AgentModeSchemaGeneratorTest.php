@@ -271,6 +271,27 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertStringContainsString('flat', $cmd['output']['description']);
     }
 
+    public function testPrCommentSchemaDocumentsReplyAndResolve(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $cmd = $schemaByName['pr:comment'];
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('message', $props);
+        $this->assertArrayHasKey('replyTo', $props);
+        $this->assertArrayHasKey('resolve', $props);
+        $this->assertSame('bool', $props['resolve']['type']);
+        $this->assertFalse($props['resolve']['default']);
+
+        $output = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('action', $output);
+        $this->assertArrayHasKey('resolved', $output);
+        $this->assertArrayHasKey('target', $output);
+    }
+
     public function testOutputSchemaHasErrorStructure(): void
     {
         foreach ($this->schema['commands'] as $cmd) {

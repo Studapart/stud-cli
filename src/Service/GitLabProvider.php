@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
@@ -17,6 +18,7 @@ class GitLabProvider implements GitProviderInterface
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;
+    private const PROVIDER_GITLAB = 'gitlab';
 
     private readonly string $baseUrl;
     private readonly string $projectPath;
@@ -227,6 +229,32 @@ class GitLabProvider implements GitProviderInterface
 
         return $this->apiRequest('POST', $apiUrl, "Failed to create comment on merge request #{$issueNumber}.", [
             'json' => ['body' => $body],
+        ])->toArray();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array
+    {
+        $discussionId = $this->gitLabDiscussionId($targetIds, 'reply');
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}/discussions/{$discussionId}/notes";
+
+        return $this->apiRequest('POST', $apiUrl, "Failed to reply to discussion on merge request #{$pullNumber}.", [
+            'json' => ['body' => $body],
+        ])->toArray();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array
+    {
+        $discussionId = $this->gitLabDiscussionId($targetIds, 'resolve');
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}/discussions/{$discussionId}";
+
+        return $this->apiRequest('PUT', $apiUrl, "Failed to resolve discussion on merge request #{$pullNumber}.", [
+            'json' => ['resolved' => true],
         ])->toArray();
     }
 
@@ -454,6 +482,15 @@ class GitLabProvider implements GitProviderInterface
             $this->projectPath,
             \Closure::fromCallable([$this, 'apiRequest'])
         ))->getPullRequestFeedbackConversations($pullNumber);
+    }
+
+    protected function gitLabDiscussionId(PullRequestFeedbackIds $targetIds, string $action): string
+    {
+        if ($targetIds->provider !== self::PROVIDER_GITLAB || $targetIds->discussionId === null) {
+            throw new \RuntimeException("Cannot {$action} this feedback target on GitLab because its discussion id is missing.");
+        }
+
+        return rawurlencode($targetIds->discussionId);
     }
 
     /**

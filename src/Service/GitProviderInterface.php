@@ -7,6 +7,7 @@ namespace App\Service;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 
 /**
  * Interface for Git hosting provider implementations (GitHub, GitLab, etc.).
@@ -71,6 +72,20 @@ interface GitProviderInterface
      * @return array<string, mixed> The created comment data
      */
     public function createComment(int $issueNumber, string $body): array;
+
+    /**
+     * Replies to a threaded PR/MR feedback target.
+     *
+     * @return array<string, mixed> The created reply data
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array;
+
+    /**
+     * Resolves a threaded PR/MR feedback target.
+     *
+     * @return array<string, mixed> The resolved target data
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array;
 
     /**
      * Updates a pull request (e.g., draft/WIP status).

@@ -410,9 +410,16 @@ pr:
     error_post: 'Không thể đăng bình luận trên Pull Request.
 
       Lỗi: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Đang tìm Pull Request cho nhánh: %branch%'
     posting: 'Đang đăng bình luận trên Pull Request #%number%...'
     success: '✅ Bình luận đã được đăng thành công trên Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Đang đọc bình luận từ STDIN...
     using_argument: Đang sử dụng bình luận từ đối số...
   comments:
@@ -436,6 +443,7 @@ pr:
     threaded_state_outdated: "outdated"
     threaded_state_truncated: "truncated"
     threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
     threaded_location: "location: %location%"
     threaded_actions: "actions: %actions%"
     threaded_actions_unsupported: "unsupported"
@@ -686,6 +694,8 @@ help:
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
   option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Xem trước changelog của phiên bản mới nhất có sẵn mà không cần tải xuống hoặc cài đặt. Hữu ích để kiểm tra các thay đổi quan trọng trước khi cập nhật
   option_release_major: Tăng phiên bản chính (X.0.0)

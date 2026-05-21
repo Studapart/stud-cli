@@ -15,6 +15,7 @@ final class PullRequestFeedbackIds
         public readonly ?string $reviewId = null,
         public readonly ?string $discussionId = null,
         public readonly ?string $noteId = null,
+        public readonly ?string $target = null,
     ) {
     }
 }

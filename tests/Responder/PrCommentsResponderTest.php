@@ -286,7 +286,7 @@ class PrCommentsResponderTest extends CommandTestCase
 
     private function createFeedbackConversation(): PullRequestFeedbackConversation
     {
-        $ids = new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-1');
+        $ids = new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-1', target: 'github:review_thread:thread-1');
         $state = new PullRequestFeedbackState(resolved: false, resolvable: true, outdated: false);
         $location = new PullRequestFeedbackLocation('src/File.php', 12);
         $actions = new PullRequestFeedbackActions(canReply: true, canResolve: true);

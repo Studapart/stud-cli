@@ -83,6 +83,7 @@ use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\ItemUpdateResponder;
 use App\Responder\ItemUploadResponder;
+use App\Responder\PrCommentResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
@@ -103,6 +104,7 @@ use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
+use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ThemeDetector;
@@ -2412,32 +2414,43 @@ function submit(
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Comment post result')]
+#[AgentOutput(responseClass: \App\Response\PrCommentResponse::class, description: 'Comment post result')]
 function pr_comment(
     #[AsArgument(name: 'message', description: 'The comment message (or inputFile when --agent; optional if piping from STDIN)')]
     ?string $message = null,
+    #[AsOption(name: 'reply-to', description: 'Threaded feedback target returned by pr:comments --threaded')]
+    ?string $replyTo = null,
+    #[AsOption(name: 'resolve', description: 'Resolve the targeted review thread after posting the reply')]
+    bool $resolve = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
 ): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     if ($agent) {
         $input = _read_agent_input($message);
         if ($input === null) {
             return;
         }
         $message = $input['message'] ?? null;
+        $replyTo = isset($input['replyTo']) && $input['replyTo'] !== '' ? (string) $input['replyTo'] : $replyTo;
+        $resolve = (bool) ($input['resolve'] ?? $resolve);
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io(), $message);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Comment posted', 'Comment failed'));
+    $request = (new PrCommentInputResolver())->resolve(is_string($message) ? $message : null, $replyTo, $resolve);
+    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service());
+    $response = $handler->handle($request);
+    $responder = new PrCommentResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
 
         return;
     }
-    exit($exitCode);
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
 }
 
 #[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]

@@ -92,6 +92,7 @@ class PrThreadedConversationRenderer
     {
         return array_values(array_filter([
             $this->formatConversationId($conversation),
+            $this->formatConversationTarget($conversation),
             $this->formatConversationLocation($conversation),
             $this->formatConversationActions($conversation),
         ]));
@@ -102,6 +103,13 @@ class PrThreadedConversationRenderer
         $id = $conversation->ids->threadId ?? $conversation->ids->discussionId ?? $conversation->ids->id;
 
         return $id !== null ? $this->helper->translator->trans('pr.comments.threaded_id', ['id' => $id]) : null;
+    }
+
+    protected function formatConversationTarget(PullRequestFeedbackConversation $conversation): ?string
+    {
+        return $conversation->ids->target !== null
+            ? $this->helper->translator->trans('pr.comments.threaded_target', ['target' => $conversation->ids->target])
+            : null;
     }
 
     protected function formatConversationLocation(PullRequestFeedbackConversation $conversation): ?string
