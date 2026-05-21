@@ -6,6 +6,8 @@ namespace App\Service;
 
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 
 /**
  * Interface for Git hosting provider implementations (GitHub, GitLab, etc.).
@@ -21,6 +23,20 @@ interface GitProviderInterface
      * @return array<string, mixed> The created PR/MR data
      */
     public function createPullRequest(PullRequestData $prData): array;
+
+    /**
+     * Returns the authenticated provider user used by this token.
+     *
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array;
+
+    /**
+     * Assigns a pull request or merge request to the authenticated provider user.
+     *
+     * @param array<string, mixed> $prData Normalized PR/MR data returned by create/find.
+     */
+    public function assignPullRequestToAuthor(array $prData): void;
 
     /**
      * Finds a pull request by branch head.
@@ -56,6 +72,20 @@ interface GitProviderInterface
      * @return array<string, mixed> The created comment data
      */
     public function createComment(int $issueNumber, string $body): array;
+
+    /**
+     * Replies to a threaded PR/MR feedback target.
+     *
+     * @return array<string, mixed> The created reply data
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array;
+
+    /**
+     * Resolves a threaded PR/MR feedback target.
+     *
+     * @return array<string, mixed> The resolved target data
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array;
 
     /**
      * Updates a pull request (e.g., draft/WIP status).
@@ -114,4 +144,11 @@ interface GitProviderInterface
      * @return PullRequestComment[]
      */
     public function getPullRequestReviews(int $pullNumber): array;
+
+    /**
+     * Fetches PR/MR feedback as grouped conversations with provider action identifiers.
+     *
+     * @return PullRequestFeedbackConversation[]
+     */
+    public function getPullRequestFeedbackConversations(int $pullNumber): array;
 }

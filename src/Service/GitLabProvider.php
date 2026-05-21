@@ -6,7 +6,10 @@ namespace App\Service;
 
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 use App\Exception\ApiException;
+use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -15,6 +18,7 @@ class GitLabProvider implements GitProviderInterface
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;
+    private const PROVIDER_GITLAB = 'gitlab';
 
     private readonly string $baseUrl;
     private readonly string $projectPath;
@@ -81,10 +85,83 @@ class GitLabProvider implements GitProviderInterface
             'description' => $prData->body,
             'work_in_progress' => $prData->draft,
         ];
+        $assigneeId = null;
+        if ($prData->assignToAuthor) {
+            $assigneeId = $this->getAuthenticatedUserId();
+            $payload['assignee_ids'] = [$assigneeId];
+        }
 
-        return $this->normalizeMergeRequestData(
-            $this->apiRequest('POST', $apiUrl, 'Failed to create merge request.', ['json' => $payload])->toArray()
-        );
+        $mergeRequest = $this->apiRequest('POST', $apiUrl, 'Failed to create merge request.', ['json' => $payload])->toArray();
+        if ($assigneeId !== null && ! $this->hasAssignedGitLabUser($mergeRequest, $assigneeId)) {
+            throw new PullRequestAssignmentException(
+                "GitLab did not confirm user '{$assigneeId}' as an assignee for the created merge request.",
+                (string) ($mergeRequest['web_url'] ?? '')
+            );
+        }
+
+        return $this->normalizeMergeRequestData($mergeRequest);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array
+    {
+        return $this->apiRequest('GET', '/user', 'Failed to identify authenticated GitLab user.')->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $prData
+     */
+    public function assignPullRequestToAuthor(array $prData): void
+    {
+        $number = isset($prData['number']) ? (int) $prData['number'] : 0;
+        if ($number <= 0) {
+            throw new \RuntimeException('Cannot assign merge request because its number is missing.');
+        }
+
+        $userId = $this->getAuthenticatedUserId();
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$number}";
+        $updatedMergeRequest = $this->apiRequest(
+            'PUT',
+            $apiUrl,
+            "Failed to assign merge request #{$number} to authenticated user.",
+            ['json' => ['assignee_ids' => [$userId]]]
+        )->toArray();
+
+        if (! $this->hasAssignedGitLabUser($updatedMergeRequest, $userId)) {
+            throw new \RuntimeException("GitLab did not confirm user '{$userId}' as an assignee for merge request #{$number}.");
+        }
+    }
+
+    protected function getAuthenticatedUserId(): int
+    {
+        $user = $this->getAuthenticatedUser();
+        $id = isset($user['id']) ? (int) $user['id'] : 0;
+        if ($id <= 0) {
+            throw new \RuntimeException('Cannot assign merge request because the authenticated GitLab user id is missing.');
+        }
+
+        return $id;
+    }
+
+    /**
+     * @param array<string, mixed> $mergeRequestData
+     */
+    protected function hasAssignedGitLabUser(array $mergeRequestData, int $userId): bool
+    {
+        $assignees = $mergeRequestData['assignees'] ?? [];
+        if (! is_array($assignees)) {
+            return false;
+        }
+
+        foreach ($assignees as $assignee) {
+            if (is_array($assignee) && (int) ($assignee['id'] ?? 0) === $userId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -152,6 +229,32 @@ class GitLabProvider implements GitProviderInterface
 
         return $this->apiRequest('POST', $apiUrl, "Failed to create comment on merge request #{$issueNumber}.", [
             'json' => ['body' => $body],
+        ])->toArray();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array
+    {
+        $discussionId = $this->gitLabDiscussionId($targetIds, 'reply');
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}/discussions/{$discussionId}/notes";
+
+        return $this->apiRequest('POST', $apiUrl, "Failed to reply to discussion on merge request #{$pullNumber}.", [
+            'json' => ['body' => $body],
+        ])->toArray();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array
+    {
+        $discussionId = $this->gitLabDiscussionId($targetIds, 'resolve');
+        $apiUrl = "/projects/{$this->projectPath}/merge_requests/{$pullNumber}/discussions/{$discussionId}";
+
+        return $this->apiRequest('PUT', $apiUrl, "Failed to resolve discussion on merge request #{$pullNumber}.", [
+            'json' => ['resolved' => true],
         ])->toArray();
     }
 
@@ -368,6 +471,26 @@ class GitLabProvider implements GitProviderInterface
         $body = isset($row['body']) ? (string) $row['body'] : '';
 
         return new PullRequestComment($author, $createdAt, $body, $path, $line);
+    }
+
+    /**
+     * @return PullRequestFeedbackConversation[]
+     */
+    public function getPullRequestFeedbackConversations(int $pullNumber): array
+    {
+        return (new GitLabConversationProvider(
+            $this->projectPath,
+            \Closure::fromCallable([$this, 'apiRequest'])
+        ))->getPullRequestFeedbackConversations($pullNumber);
+    }
+
+    protected function gitLabDiscussionId(PullRequestFeedbackIds $targetIds, string $action): string
+    {
+        if ($targetIds->provider !== self::PROVIDER_GITLAB || $targetIds->discussionId === null) {
+            throw new \RuntimeException("Cannot {$action} this feedback target on GitLab because its discussion id is missing.");
+        }
+
+        return rawurlencode($targetIds->discussionId);
     }
 
     /**

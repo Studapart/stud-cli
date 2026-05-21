@@ -1,536 +1,292 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Handler;
 
+use App\DTO\PrCommentRequest;
+use App\DTO\PullRequestFeedbackActions;
+use App\DTO\PullRequestFeedbackComment;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
+use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentHandler;
-use App\Service\GithubProvider;
-use App\Service\Logger;
+use App\Service\GitProviderInterface;
+use App\Service\PullRequestFeedbackTargetResolver;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class PrCommentHandlerTest extends CommandTestCase
 {
     private PrCommentHandler $handler;
-    private ?GithubProvider $githubProvider;
+    private GitProviderInterface $gitProvider;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->githubProvider = $this->createMock(GithubProvider::class);
+        $this->gitProvider = $this->createMock(GitProviderInterface::class);
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
-        $logger = $this->createMock(Logger::class);
         $this->handler = new PrCommentHandler(
             $this->gitRepository,
-            $this->githubProvider,
+            $this->gitProvider,
             $this->translationService,
-            $logger
         );
     }
 
-    public function testHandleSuccessWithArgument(): void
+    public function testHandlePostsTopLevelComment(): void
     {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->mockActivePullRequest(123);
 
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $this->githubProvider
+        $this->gitProvider
             ->expects($this->once())
             ->method('createComment')
             ->with(123, 'My comment message')
             ->willReturn(['id' => 456]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle(new PrCommentRequest('My comment message'));
 
-        $result = $this->handler->handle($io, 'My comment message');
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('posted', $response->action);
+        $this->assertSame(123, $response->pullNumber);
+        $this->assertNull($response->target);
+        $this->assertFalse($response->resolved);
     }
 
     public function testHandleUnescapesCheckboxMarkdownBeforePosting(): void
     {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->mockActivePullRequest(123);
 
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $bodyWithEscapedCheckboxes = "- \\[ \\] Unchecked\n- \\[x\\] Checked";
-        $expectedBody = "- [ ] Unchecked\n- [x] Checked";
-
-        $this->githubProvider
+        $this->gitProvider
             ->expects($this->once())
             ->method('createComment')
-            ->with(123, $expectedBody)
+            ->with(123, "- [ ] Unchecked\n- [x] Checked")
             ->willReturn(['id' => 456]);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle(new PrCommentRequest("- \\[ \\] Unchecked\n- \\[x\\] Checked"));
 
-        $result = $this->handler->handle($io, $bodyWithEscapedCheckboxes);
-
-        $this->assertSame(0, $result);
+        $this->assertTrue($response->isSuccess());
     }
 
-    public function testHandleWithEmptyArgumentAndNoStdin(): void
+    public function testHandleFailsWhenProviderIsMissing(): void
     {
-        // When message is null and STDIN is empty (TTY), should fail early
-        // No need to mock PR finding since it fails before that
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $handler = new PrCommentHandler($this->gitRepository, null, $this->translationService);
 
-        $result = $this->handler->handle($io, null);
+        $response = $handler->handle(new PrCommentRequest('My comment'));
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($response->isSuccess());
     }
 
-    public function testHandleWithNoProvider(): void
+    public function testHandleFailsWhenInputIsEmpty(): void
     {
-        $logger = $this->createMock(Logger::class);
-        $handler = new PrCommentHandler(
-            $this->gitRepository,
-            null,
-            $this->translationService,
-            $logger
+        $this->gitProvider->expects($this->never())->method('findPullRequestByBranch');
+
+        $response = $this->handler->handle(new PrCommentRequest('   '));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenNoPullRequestIsFound(): void
+    {
+        $this->mockActivePullRequest(null);
+        $this->gitProvider->expects($this->never())->method('createComment');
+
+        $response = $this->handler->handle(new PrCommentRequest('My comment'));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenTopLevelCommentPostFails(): void
+    {
+        $this->mockActivePullRequest(123);
+
+        $this->gitProvider
+            ->expects($this->once())
+            ->method('createComment')
+            ->willThrowException(new \RuntimeException('API Error'));
+
+        $response = $this->handler->handle(new PrCommentRequest('My comment'));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleRepliesToFeedbackTarget(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: true);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+        $this->gitProvider
+            ->expects($this->once())
+            ->method('replyToPullRequestFeedback')
+            ->with(123, $conversation->ids, 'Thanks, fixed')
+            ->willReturn(['id' => 'reply']);
+        $this->gitProvider->expects($this->never())->method('resolvePullRequestFeedback');
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks, fixed', $conversation->ids->target));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('replied', $response->action);
+        $this->assertSame($conversation->ids->target, $response->target);
+        $this->assertFalse($response->resolved);
+    }
+
+    public function testHandleRepliesThenResolvesTarget(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: true);
+        $calls = [];
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+        $this->gitProvider->method('replyToPullRequestFeedback')->willReturnCallback(function () use (&$calls): array {
+            $calls[] = 'reply';
+
+            return ['id' => 'reply'];
+        });
+        $this->gitProvider->method('resolvePullRequestFeedback')->willReturnCallback(function () use (&$calls): array {
+            $calls[] = 'resolve';
+
+            return ['id' => 'thread', 'isResolved' => true];
+        });
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks, fixed', $conversation->ids->target, true));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->resolved);
+        $this->assertSame(['reply', 'resolve'], $calls);
+    }
+
+    public function testHandleDoesNotResolveWhenReplyFails(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: true);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+        $this->gitProvider->method('replyToPullRequestFeedback')->willThrowException(new \RuntimeException('reply failed'));
+        $this->gitProvider->expects($this->never())->method('resolvePullRequestFeedback');
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks, fixed', $conversation->ids->target, true));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleReportsResolveFailureAfterReply(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: true);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+        $this->gitProvider->method('replyToPullRequestFeedback')->willReturn(['id' => 'reply']);
+        $this->gitProvider->method('resolvePullRequestFeedback')->willThrowException(new \RuntimeException('resolve failed'));
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks, fixed', $conversation->ids->target, true));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenTargetIsInvalid(): void
+    {
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([]);
+        $this->gitProvider->expects($this->never())->method('replyToPullRequestFeedback');
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks', 'invalid-target'));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenTargetCannotReply(): void
+    {
+        $conversation = $this->replyableConversation(canReply: false);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks', $conversation->ids->target));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenTargetCannotResolve(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: false);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks', $conversation->ids->target, true));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testHandleFailsWhenTargetIsAlreadyResolved(): void
+    {
+        $conversation = $this->replyableConversation(canResolve: false, resolved: true);
+        $this->mockActivePullRequest(123);
+        $this->gitProvider->method('getPullRequestFeedbackConversations')->willReturn([$conversation]);
+
+        $response = $this->handler->handle(new PrCommentRequest('Thanks', $conversation->ids->target, true));
+
+        $this->assertFalse($response->isSuccess());
+    }
+
+    public function testPrepareCommentBodyReturnsNullForEmptyInput(): void
+    {
+        $result = $this->callPrivateMethod($this->handler, 'prepareCommentBody', ['']);
+
+        $this->assertNull($result);
+    }
+
+    public function testFindActivePullRequestHandlesMissingNumber(): void
+    {
+        $this->mockActivePullRequest(['id' => 123]);
+
+        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', []);
+
+        $this->assertNull($result);
+    }
+
+    public function testFindActivePullRequestHandlesProviderException(): void
+    {
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-96');
+        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitProvider->method('findPullRequestByBranch')->willThrowException(new \RuntimeException('API error'));
+
+        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', []);
+
+        $this->assertNull($result);
+    }
+
+    private function mockActivePullRequest(null|int|array $pullRequest): void
+    {
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-96');
+        $this->gitRepository->method('getRepositoryOwner')->with('origin')->willReturn('studapart');
+        $this->gitProvider
+            ->method('findPullRequestByBranch')
+            ->with('studapart:feat/SCI-96')
+            ->willReturn(is_int($pullRequest) ? ['number' => $pullRequest] : $pullRequest);
+    }
+
+    private function replyableConversation(
+        bool $canReply = true,
+        bool $canResolve = false,
+        bool $resolved = false,
+    ): PullRequestFeedbackConversation {
+        $baseIds = new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-1');
+        $target = (new PullRequestFeedbackTargetResolver())->targetForIds($baseIds);
+        $ids = new PullRequestFeedbackIds('github', 'review_thread', threadId: 'thread-1', target: $target);
+
+        return new PullRequestFeedbackConversation(
+            $ids,
+            'review_thread',
+            new PullRequestFeedbackState(resolved: $resolved, resolvable: true),
+            [
+                new PullRequestFeedbackComment(
+                    new PullRequestFeedbackIds('github', 'review_comment', threadId: 'thread-1'),
+                    'alice',
+                    new \DateTimeImmutable('2026-01-01T00:00:00Z'),
+                    'Please fix this',
+                    new PullRequestFeedbackState(),
+                    null,
+                    new PullRequestFeedbackActions(canReply: $canReply),
+                ),
+            ],
+            new PullRequestFeedbackActions(canReply: $canReply, canResolve: $canResolve),
         );
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $handler->handle($io, 'My comment');
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testHandleWithNoInput(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        // No argument and no STDIN (simulated by null)
-        $result = $this->handler->handle($io, null);
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testHandleWithNoPrFound(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(null);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, 'My comment');
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testHandleWithApiError(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('createComment')
-            ->with(123, 'My comment')
-            ->willThrowException(new \RuntimeException('API Error'));
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, 'My comment');
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testGetCommentBodyWithArgument(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
-
-        $this->assertSame('My message', $result);
-    }
-
-    public function testGetCommentBodyWithEmptyArgument(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        // When argument is empty and STDIN is TTY, should return null
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ '']);
-
-        $this->assertNull($result);
-    }
-
-    public function testGetCommentBodyWithNullArgument(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        // When argument is null and STDIN is TTY, should return null
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ null]);
-
-        $this->assertNull($result);
-    }
-
-    public function testReadStdinWithTty(): void
-    {
-        // When STDIN is a TTY (interactive terminal), readStdin should return empty string
-        // This tests line 94: return ''; when posix_isatty(STDIN) returns true
-        $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-
-        // In test environment, STDIN is typically a TTY, so result should be empty
-        // This should execute line 94 if posix_isatty exists and STDIN is a TTY
-        $this->assertIsString($result);
-        $this->assertEmpty($result);
-    }
-
-    public function testFindActivePullRequestSuccess(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertSame(123, $result);
-    }
-
-    public function testFindActivePullRequestWithNoOwner(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn(null);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertSame(123, $result);
-    }
-
-    public function testFindActivePullRequestNotFound(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(null);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertNull($result);
-    }
-
-    public function testFindActivePullRequestWithException(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willThrowException(new \RuntimeException('API Error'));
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertNull($result);
-    }
-
-    public function testHandleSuccessWithVerboseOutput(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('createComment')
-            ->with(123, 'My comment message')
-            ->willReturn(['id' => 456]);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        $result = $this->handler->handle($io, 'My comment message');
-
-        $this->assertSame(0, $result);
-    }
-
-    public function testGetCommentBodyWithVerboseOutput(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
-
-        $this->assertSame('My message', $result);
-    }
-
-    public function testFindActivePullRequestWithVerboseOutput(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['number' => 123]);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertSame(123, $result);
-    }
-
-    public function testFindActivePullRequestWithExceptionAndVerbose(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willThrowException(new \RuntimeException('API Error'));
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertNull($result);
-    }
-
-    public function testHandleWithEmptyStringArgument(): void
-    {
-        // Empty string should be treated as no input
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, '');
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testHandleWithWhitespaceOnlyArgument(): void
-    {
-        // Whitespace-only string should be treated as no input (trimmed to empty)
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, '   ');
-
-        $this->assertSame(1, $result);
-    }
-
-    public function testFindActivePullRequestWithPrMissingNumberKey(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn(['id' => 123]); // Missing 'number' key
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertNull($result);
-    }
-
-    public function testFindActivePullRequestWithEmptyPrArray(): void
-    {
-        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-
-        $this->githubProvider
-            ->expects($this->once())
-            ->method('findPullRequestByBranch')
-            ->with('studapart:feat/TPW-35-my-feature')
-            ->willReturn([]); // Empty array
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($this->handler, 'findActivePullRequest', [$io]);
-
-        $this->assertNull($result);
-    }
-
-    public function testGetCommentBodyWithVerboseAndStdin(): void
-    {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        // Test verbose output path when using argument (STDIN is empty in test env)
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
-
-        $this->assertSame('My message', $result);
-    }
-
-    public function testReadStdinWhenNotResource(): void
-    {
-        // This tests the fallback path when STDIN is not a resource
-        // In normal execution, STDIN is always a resource, but we test the code path
-        $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-
-        // Should return empty string when STDIN is TTY or not available
-        $this->assertIsString($result);
-        $this->assertEmpty($result);
-    }
-
-    public function testReadStdinFallbackPath(): void
-    {
-        // Test the fallback path when posix_isatty doesn't exist
-        // This is hard to test directly, but we can verify the method handles it
-        $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-
-        // Should return empty string in test environment (TTY check returns early)
-        $this->assertIsString($result);
-        $this->assertEmpty($result);
-    }
-
-    public function testReadStdinReturnsEmptyWhenTty(): void
-    {
-        // Test that readStdin returns empty when STDIN is a TTY
-        // In test environment, STDIN is typically a TTY
-        $result = $this->callPrivateMethod($this->handler, 'readStdin', []);
-
-        $this->assertSame('', $result);
-    }
-
-    public function testGetCommentBodyWithStdinAndVerbose(): void
-    {
-        // Test verbose output when STDIN has content
-        // Since STDIN reading with actual content requires process execution,
-        // this path is covered by integration tests
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-
-        // In test environment, STDIN is TTY, so argument is used
-        $result = $this->callPrivateMethod($this->handler, 'getCommentBody', [ 'My message']);
-
-        $this->assertSame('My message', $result);
-    }
-
-    public function testGetCommentBodyWithStdinContent(): void
-    {
-        // Test that STDIN content takes precedence over argument
-        // We create a test handler that overrides readStdin to simulate STDIN input
-        $logger = $this->createMock(Logger::class);
-        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService, $logger) extends PrCommentHandler {
-            protected function readStdin(): string
-            {
-                return 'STDIN content';
-            }
-        };
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', ['Argument message']);
-
-        // STDIN should take precedence
-        $this->assertSame('STDIN content', $result);
-    }
-
-    public function testGetCommentBodyWithStdinContentAndVerbose(): void
-    {
-        // Test verbose output path when STDIN has content
-        $io = $this->createMock(SymfonyStyle::class);
-        $io->method('isVerbose')->willReturn(true);
-        $io->method('isQuiet')->willReturn(false);
-        $io->method('isDebug')->willReturn(false);
-        $io->method('isVeryVerbose')->willReturn(false);
-
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('writeln')
-            ->with(Logger::VERBOSITY_VERBOSE, $this->callback(function ($message) {
-                return is_string($message) && (str_contains($message, 'STDIN') || str_contains($message, 'stdin'));
-            }));
-
-        $testHandler = new class ($this->gitRepository, $this->githubProvider, $this->translationService, $logger) extends PrCommentHandler {
-            protected function readStdin(): string
-            {
-                return 'STDIN content';
-            }
-        };
-
-        $result = $this->callPrivateMethod($testHandler, 'getCommentBody', ['Argument message']);
-
-        $this->assertSame('STDIN content', $result);
     }
 }

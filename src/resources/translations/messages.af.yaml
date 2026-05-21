@@ -391,6 +391,7 @@ submit:
     Fout: %error%'
   adding_labels: Voeg etikette by Pull Request...
   updating_to_draft: Werk Pull Request op na konsepstatus...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Kon nie konsepstatus van Pull Request opdateer nie.
 
     Fout: %error%'
@@ -409,9 +410,16 @@ pr:
     error_post: 'Kon nie kommentaar op Pull Request plaas nie.
 
       Fout: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Soek Pull Request vir tak: %branch%'
     posting: 'Plaas kommentaar op Pull Request #%number%...'
     success: '✅ Kommentaar suksesvol geplaas op Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Lees kommentaar van STDIN...
     using_argument: Gebruik kommentaar van argument...
   comments:
@@ -424,6 +432,24 @@ pr:
     issue_comments: Issue-kommentare
     reviews: Oorsigte
     review_comments: Oorsigkommentare
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Geen kommentare
     table:
       author: Outeur
@@ -645,7 +671,7 @@ help:
   command_cache_clear: Maak die opdatering kontrole kas skoon om 'n weergawe kontrole by die volgende opdrag af te dwing.
   command_submit: "Stuur die huidige tak en skep 'n Pull Request. Ongecommitte plaaslike veranderinge blokkeer nie indien nie; jy kry 'n inligtingsboodskap dat push/PR commits op die tak gebruik. Agent-JSON: opsioneel stageAll — indien true word stud push eers uitgevoer (opsioneel isNew, message, pleaseFallback; soos stud push --agent)."
   command_pr_comment: Plaas 'n opmerking op die aktiewe Pull Request. Ondersteun piping vanaf STDIN of 'n direkte argument.
-  command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit.
+  command_pr_comments: Haal issue- en oorsigkommentare op vir die PR/MR van die huidige tak en vertoon dit. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: '''n Vinnige "waar is ek?" dashboard.'
   command_release: Skep 'n nuwe vrystelling tak en verhoog die weergawe.
   command_deploy: Deploy die huidige vrystelling tak.
@@ -667,6 +693,10 @@ help:
   option_push_no_please: "Na 'n mislukte normale stoot, moenie stud please uitvoer of aanbied nie"
   option_submit_draft: Skep 'n Draft Pull Request (gemerk as "Draft" op GitHub)
   option_submit_labels: Komma-geskeide lys van etikette om toe te pas op die Pull Request. As 'n etiket nie bestaan nie, sal u gevra word om dit te skep, te ignoreer of weer te probeer met 'n gekorrigeerde lys
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Voorskou die changelog van die nuutste beskikbare weergawe sonder om te laai of te installeer. Nuttig om breaking changes te kontroleer voordat u opdateer
   option_release_major: Verhoog hoof weergawe (X.0.0)
   option_release_minor: Verhoog klein weergawe (X.Y.0)

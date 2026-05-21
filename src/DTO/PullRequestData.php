@@ -12,6 +12,7 @@ class PullRequestData
         public readonly string $base,
         public readonly string $body,
         public readonly bool $draft = false,
+        public readonly bool $assignToAuthor = false,
     ) {
     }
 }

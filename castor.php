@@ -28,6 +28,7 @@ use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
 use App\DTO\ItemUpdateInput;
 use App\DTO\ItemUploadInput;
+use App\DTO\SubmitOptions;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
@@ -82,6 +83,7 @@ use App\Responder\ItemListResponder;
 use App\Responder\ItemShowResponder;
 use App\Responder\ItemUpdateResponder;
 use App\Responder\ItemUploadResponder;
+use App\Responder\PrCommentResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
@@ -102,6 +104,7 @@ use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
+use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ThemeDetector;
@@ -2334,6 +2337,8 @@ function submit(
     bool $draft = false,
     #[AsOption(name: 'labels', description: 'Comma-separated list of labels to apply to the Pull Request')]
     ?string $labels = null,
+    #[AsOption(name: 'assign-to-author', description: 'Assign the created Pull Request to the authenticated provider user')]
+    bool $assignToAuthor = false,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2351,6 +2356,7 @@ function submit(
         }
         $draft = (bool) ($input['draft'] ?? false);
         $labels = $input['labels'] ?? null;
+        $assignToAuthor = (bool) ($input['assignToAuthor'] ?? false);
         $quiet = true;
         if (($input['stageAll'] ?? false) === true) {
             $agentSubmitInput = $input;
@@ -2398,7 +2404,7 @@ function submit(
     }
 
     $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());
-    $exitCode = $handler->handle(io(), $draft, $labels, $quiet);
+    $exitCode = $handler->handle(io(), new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
         _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Pull request created', 'Submit failed'));
@@ -2408,37 +2414,56 @@ function submit(
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Comment post result')]
+#[AgentOutput(responseClass: \App\Response\PrCommentResponse::class, description: 'Comment post result')]
 function pr_comment(
     #[AsArgument(name: 'message', description: 'The comment message (or inputFile when --agent; optional if piping from STDIN)')]
     ?string $message = null,
+    #[AsOption(name: 'reply-to', description: 'Threaded feedback target returned by pr:comments --threaded')]
+    ?string $replyTo = null,
+    #[AsOption(name: 'resolve', description: 'Resolve the targeted review thread after posting the reply')]
+    bool $resolve = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
 ): void {
     _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     if ($agent) {
         $input = _read_agent_input($message);
         if ($input === null) {
             return;
         }
         $message = $input['message'] ?? null;
+        $replyTo = isset($input['replyTo']) && $input['replyTo'] !== '' ? (string) $input['replyTo'] : $replyTo;
+        $resolve = (bool) ($input['resolve'] ?? $resolve);
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io(), $message);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Comment posted', 'Comment failed'));
+    $request = (new PrCommentInputResolver())->resolve(is_string($message) ? $message : null, $replyTo, $resolve);
+    $handler = new PrCommentHandler($gitRepository, $gitProvider, _get_translation_service());
+    $response = $handler->handle($request);
+    $responder = new PrCommentResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
 
         return;
     }
-    exit($exitCode);
+    if (! $response->isSuccess()) {
+        exit(1);
+    }
 }
 
 #[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
-#[AgentOutput(responseClass: \App\Response\PrCommentsResponse::class, description: 'Pull request comments and reviews')]
+#[AgentOutput(
+    properties: [
+        'default' => 'flat shape: issueComments, reviewComments, reviews, pullNumber',
+        'threaded' => 'when threaded=true: mode, pullNumber, conversations',
+    ],
+    description: 'Pull request comments and reviews. Default agent output is flat; threaded=true returns grouped conversations.'
+)]
 function pr_comments(
+    #[AsOption(name: 'threaded', description: 'Render feedback as threaded conversations with action metadata')]
+    bool $threaded = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -2446,13 +2471,20 @@ function pr_comments(
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $threaded = (bool) ($input['threaded'] ?? $threaded);
+    }
 
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
     $handler = new PrCommentsHandler($gitRepository, $gitProvider, _get_translation_service());
-    $response = $handler->handle();
+    $response = $handler->handle($threaded);
     $responder = new PrCommentsResponder(_get_responder_helper(), _get_comment_body_parser(), _get_logger());
-    $agentResponse = $responder->respond(io(), $response, $format);
+    $agentResponse = $responder->respond(io(), $response, $format, $threaded);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
 

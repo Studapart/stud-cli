@@ -252,6 +252,46 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('redactedProjectConfig', $out);
     }
 
+    public function testPrCommentsSchemaDocumentsThreadedMode(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $cmd = $schemaByName['pr:comments'];
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('threaded', $props);
+        $this->assertSame('bool', $props['threaded']['type']);
+        $this->assertFalse($props['threaded']['default']);
+
+        $output = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('default', $output);
+        $this->assertArrayHasKey('threaded', $output);
+        $this->assertStringContainsString('flat', $cmd['output']['description']);
+    }
+
+    public function testPrCommentSchemaDocumentsReplyAndResolve(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $cmd = $schemaByName['pr:comment'];
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('message', $props);
+        $this->assertArrayHasKey('replyTo', $props);
+        $this->assertArrayHasKey('resolve', $props);
+        $this->assertSame('bool', $props['resolve']['type']);
+        $this->assertFalse($props['resolve']['default']);
+
+        $output = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('action', $output);
+        $this->assertArrayHasKey('resolved', $output);
+        $this->assertArrayHasKey('target', $output);
+    }
+
     public function testOutputSchemaHasErrorStructure(): void
     {
         foreach ($this->schema['commands'] as $cmd) {
@@ -277,9 +317,11 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
         $this->assertArrayHasKey('submit', $schemaByName);
         $props = $schemaByName['submit']['input']['properties'] ?? [];
-        foreach (['stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
+        foreach (['assignToAuthor', 'stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
             $this->assertArrayHasKey($key, $props, 'submit agent input must include "' . $key . '" property');
         }
+        $this->assertSame('bool', $props['assignToAuthor']['type'] ?? null);
+        $this->assertFalse($props['assignToAuthor']['default'] ?? true);
         $this->assertArrayNotHasKey('noPlease', $props, 'submit agent input must not include redundant noPlease; use pleaseFallback');
     }
 

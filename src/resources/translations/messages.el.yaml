@@ -391,6 +391,7 @@ submit:
     Σφάλμα: %error%'
   adding_labels: Προσθήκη ετικετών στο Pull Request...
   updating_to_draft: Ενημέρωση Pull Request σε κατάσταση προσχεδίου...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Αποτυχία ενημέρωσης κατάστασης προσχεδίου Pull Request.
 
     Σφάλμα: %error%'
@@ -409,9 +410,16 @@ pr:
     error_post: 'Αποτυχία δημοσίευσης σχολίου στο Pull Request.
 
       Σφάλμα: %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Εύρεση Pull Request για τον κλάδο: %branch%'
     posting: 'Δημοσίευση σχολίου στο Pull Request #%number%...'
     success: '✅ Το σχόλιο δημοσιεύτηκε επιτυχώς στο Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Ανάγνωση σχολίου από STDIN...
     using_argument: Χρήση σχολίου από όρισμα...
   comments:
@@ -424,6 +432,24 @@ pr:
     issue_comments: Σχόλια issue
     reviews: Αξιολογήσεις
     review_comments: Σχόλια αξιολόγησης
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Χωρίς σχόλια
     table:
       author: Συγγραφέας
@@ -645,7 +671,7 @@ help:
   command_cache_clear: Εκκαθάριση cache ελέγχου ενημέρωσης για εξαναγκασμό ελέγχου έκδοσης στην επόμενη εντολή.
   command_submit: "Στέλνει τον τρέχοντα κλάδο και δημιουργεί Pull Request. Οι μη committed τοπικές αλλαγές δεν μπλοκάρουν το submit· εμφανίζεται ενημερωτικό μήνυμα ότι το push/PR χρησιμοποιούν commits στον κλάδο. JSON agent: προαιρετικό stageAll — όταν true, εκτελεί πρώτα stud push (προαιρετικά isNew, message, pleaseFallback· όπως stud push --agent)."
   command_pr_comment: Δημοσιεύει ένα σχόλιο στο ενεργό Pull Request. Υποστηρίζει piping από STDIN ή άμεσο όρισμα.
-  command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου.
+  command_pr_comments: Ανακτά και εμφανίζει σχόλια (issue και αξιολόγησης) για το PR/MR του τρέχοντος κλάδου. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Ένας γρήγορος πίνακας ελέγχου "πού είμαι;".
   command_release: Δημιουργεί έναν νέο κλάδο release και αυξάνει την έκδοση.
   command_deploy: Αναπτύσσει τον τρέχοντα κλάδο release.
@@ -667,6 +693,10 @@ help:
   option_push_no_please: "Μετά από αποτυχημένο κανονικό push, να μην εκτελείται ή να προσφέρεται το stud please"
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Προεπισκόπηση του changelog της τελευταίας διαθέσιμης έκδοσης χωρίς λήψη ή εγκατάσταση. Χρήσιμο για έλεγχο breaking changes πριν από την ενημέρωση
   option_release_major: Αύξηση κύριας έκδοσης (X.0.0)
   option_release_minor: Αύξηση δευτερεύουσας έκδοσης (X.Y.0)

@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackIds;
 use App\Service\GitLabProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -116,6 +117,162 @@ class GitLabProviderTest extends TestCase
         $result = $this->gitlabProvider->createPullRequest($prData);
 
         $this->assertTrue($result['draft']);
+    }
+
+    public function testCreatePullRequestAssignsToAuthenticatedAuthorWhenRequested(): void
+    {
+        $title = 'Assigned MR';
+        $head = 'feature/test';
+        $base = 'develop';
+        $body = 'Assigned merge request.';
+        $gitlabResponse = [
+            'iid' => 1,
+            'id' => 123,
+            'title' => $title,
+            'source_branch' => $head,
+            'target_branch' => $base,
+            'description' => $body,
+            'work_in_progress' => false,
+            'state' => 'opened',
+            'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/1',
+            'assignees' => [['id' => 42, 'username' => 'alice']],
+        ];
+
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn($gitlabResponse);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($userResponse, $createResponse) {
+                if ($method === 'GET' && $url === '/user') {
+                    return $userResponse;
+                }
+                if ($method === 'POST' && $url === '/projects/' . self::PROJECT_PATH . '/merge_requests') {
+                    $this->assertSame([42], $options['json']['assignee_ids']);
+
+                    return $createResponse;
+                }
+
+                throw new \RuntimeException("Unexpected request {$method} {$url}");
+            });
+
+        $prData = new PullRequestData($title, $head, $base, $body, false, true);
+        $result = $this->gitlabProvider->createPullRequest($prData);
+
+        $this->assertSame(1, $result['number']);
+        $this->assertSame($title, $result['title']);
+    }
+
+    public function testCreatePullRequestAssignmentFailsWhenGitLabDoesNotConfirmAssignee(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42]);
+
+        $createResponse = $this->createMock(ResponseInterface::class);
+        $createResponse->method('getStatusCode')->willReturn(201);
+        $createResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'web_url' => 'https://gitlab.com/test_owner/test_repo/-/merge_requests/1',
+            'assignees' => [],
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($userResponse, $createResponse);
+
+        $this->expectException(\App\Exception\PullRequestAssignmentException::class);
+        $this->expectExceptionMessage("GitLab did not confirm user '42'");
+
+        $this->gitlabProvider->createPullRequest(new PullRequestData('Title', 'feature/test', 'develop', 'Body', false, true));
+    }
+
+    public function testAssignPullRequestToAuthorAssignsAuthenticatedUser(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42, 'username' => 'alice']);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(200);
+        $assignResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'assignees' => [['id' => 42]],
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function ($method, $url, $options = []) use ($userResponse, $assignResponse) {
+                if ($method === 'GET' && $url === '/user') {
+                    return $userResponse;
+                }
+                if ($method === 'PUT' && $url === '/projects/' . self::PROJECT_PATH . '/merge_requests/1') {
+                    $this->assertSame(['assignee_ids' => [42]], $options['json']);
+
+                    return $assignResponse;
+                }
+
+                throw new \RuntimeException("Unexpected request {$method} {$url}");
+            });
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAssignPullRequestToAuthorRequiresMergeRequestNumber(): void
+    {
+        $this->httpClientMock->expects($this->never())->method('request');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign merge request because its number is missing.');
+
+        $this->gitlabProvider->assignPullRequestToAuthor([]);
+    }
+
+    public function testAssignPullRequestToAuthorRequiresAuthenticatedUserId(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['username' => 'alice']);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', '/user')
+            ->willReturn($userResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot assign merge request because the authenticated GitLab user id is missing.');
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
+    }
+
+    public function testAssignPullRequestToAuthorFailsWhenGitLabDoesNotConfirmAssignee(): void
+    {
+        $userResponse = $this->createMock(ResponseInterface::class);
+        $userResponse->method('getStatusCode')->willReturn(200);
+        $userResponse->method('toArray')->willReturn(['id' => 42]);
+
+        $assignResponse = $this->createMock(ResponseInterface::class);
+        $assignResponse->method('getStatusCode')->willReturn(200);
+        $assignResponse->method('toArray')->willReturn([
+            'iid' => 1,
+            'assignees' => 'alice',
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($userResponse, $assignResponse);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("GitLab did not confirm user '42'");
+
+        $this->gitlabProvider->assignPullRequestToAuthor(['number' => 1]);
     }
 
     public function testCreatePullRequestFailure(): void
@@ -292,6 +449,65 @@ class GitLabProviderTest extends TestCase
         $result = $this->gitlabProvider->createComment($issueNumber, $body);
 
         $this->assertSame($expectedResponse, $result);
+    }
+
+    public function testReplyToPullRequestFeedbackPostsDiscussionNote(): void
+    {
+        $body = 'Thanks';
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(201);
+        $responseMock->method('toArray')->willReturn(['id' => 456, 'body' => $body]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'POST',
+                '/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions/discussion-id/notes',
+                ['json' => ['body' => $body]]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread', discussionId: 'discussion-id'),
+            $body
+        );
+
+        $this->assertSame(456, $result['id']);
+    }
+
+    public function testResolvePullRequestFeedbackUpdatesDiscussion(): void
+    {
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn(['id' => 'discussion-id', 'resolved' => true]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with(
+                'PUT',
+                '/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions/discussion-id',
+                ['json' => ['resolved' => true]]
+            )
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->resolvePullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread', discussionId: 'discussion-id')
+        );
+
+        $this->assertTrue($result['resolved']);
+    }
+
+    public function testReplyToPullRequestFeedbackRejectsMissingDiscussionId(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $this->gitlabProvider->replyToPullRequestFeedback(
+            123,
+            new PullRequestFeedbackIds('gitlab', 'review_thread'),
+            'Thanks'
+        );
     }
 
     public function testUpdatePullRequestToDraft(): void
@@ -815,6 +1031,122 @@ class GitLabProviderTest extends TestCase
         $result = $this->gitlabProvider->getPullRequestReviews($pullNumber);
 
         $this->assertSame([], $result);
+    }
+
+    public function testGetPullRequestFeedbackConversationsPreservesDiscussions(): void
+    {
+        $apiResponse = [[
+            'id' => 'discussion-1',
+            'individual_note' => false,
+            'position' => [
+                'new_path' => 'src/File.php',
+                'new_line' => 10,
+                'position_type' => 'text',
+            ],
+            'notes' => [[
+                'id' => 99,
+                'author' => ['username' => 'alice'],
+                'body' => 'Inline discussion',
+                'created_at' => '2025-01-15T10:00:00Z',
+                'resolved' => false,
+                'resolvable' => true,
+                'type' => 'DiffNote',
+            ]],
+        ]];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(200);
+        $responseMock->method('toArray')->willReturn($apiResponse);
+        $responseMock->method('getHeaders')->willReturn([]);
+
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains('/projects/' . self::PROJECT_PATH . '/merge_requests/123/discussions'))
+            ->willReturn($responseMock);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('review_thread', $result[0]->type);
+        $this->assertSame('discussion-1', $result[0]->ids->discussionId);
+        $this->assertSame('gitlab:review_thread:discussion-1', $result[0]->ids->target);
+        $this->assertSame('99', $result[0]->comments[0]->ids->noteId);
+        $this->assertTrue($result[0]->actions->canResolve);
+        $this->assertSame('src/File.php', $result[0]->location?->path);
+    }
+
+    public function testGetPullRequestFeedbackConversationsPaginatesAndSorts(): void
+    {
+        $firstResponse = $this->createMock(ResponseInterface::class);
+        $firstResponse->method('getStatusCode')->willReturn(200);
+        $firstResponse->method('toArray')->willReturn([[
+            'id' => 'later',
+            'notes' => [[
+                'id' => 2,
+                'author' => ['username' => 'bob'],
+                'body' => 'Later',
+                'created_at' => '2025-01-15T12:00:00Z',
+            ]],
+        ]]);
+        $firstResponse->method('getHeaders')->willReturn(['x-next-page' => ['2']]);
+
+        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse->method('getStatusCode')->willReturn(200);
+        $secondResponse->method('toArray')->willReturn([[
+            'id' => 'earlier',
+            'notes' => [[
+                'id' => 1,
+                'author' => ['username' => 'alice'],
+                'body' => 'Earlier',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ]],
+        ]]);
+        $secondResponse->method('getHeaders')->willReturn(['x-next-page' => ['']]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($firstResponse, $secondResponse);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertSame('earlier', $result[0]->ids->discussionId);
+        $this->assertSame('later', $result[1]->ids->discussionId);
+    }
+
+    public function testGetPullRequestFeedbackConversationsPaginatesWithTotalPagesHeader(): void
+    {
+        $firstResponse = $this->createMock(ResponseInterface::class);
+        $firstResponse->method('getStatusCode')->willReturn(200);
+        $firstResponse->method('toArray')->willReturn([[
+            'id' => 'first',
+            'notes' => [[
+                'id' => 1,
+                'author' => ['username' => 'alice'],
+                'body' => 'First',
+                'created_at' => '2025-01-15T10:00:00Z',
+            ]],
+        ]]);
+        $firstResponse->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
+
+        $secondResponse = $this->createMock(ResponseInterface::class);
+        $secondResponse->method('getStatusCode')->willReturn(200);
+        $secondResponse->method('toArray')->willReturn([[
+            'id' => 'second',
+            'notes' => [[
+                'id' => 2,
+                'author' => ['username' => 'bob'],
+                'body' => 'Second',
+                'created_at' => '2025-01-15T11:00:00Z',
+            ]],
+        ]]);
+        $secondResponse->method('getHeaders')->willReturn(['x-total-pages' => ['2']]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnOnConsecutiveCalls($firstResponse, $secondResponse);
+
+        $result = $this->gitlabProvider->getPullRequestFeedbackConversations(123);
+
+        $this->assertCount(2, $result);
     }
 
     public function testGetPullRequestCommentsFailure(): void

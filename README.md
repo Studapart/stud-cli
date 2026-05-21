@@ -313,7 +313,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.15.0/stud-3.15.0.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.16.0/stud-3.16.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +326,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.15.0/stud-3.15.0.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.16.0/stud-3.16.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -957,8 +957,9 @@ These commands integrate directly with your local Git repository to streamline y
     -   **Options:**
         -   `--draft` or `-d`: Create a Draft Pull Request (marked as "Draft" on GitHub).
         -   `--labels <labels>`: Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list.
+        -   `--assign-to-author`: Assign the newly created Pull Request or Merge Request to the authenticated Git provider user.
         -   `--quiet` or `-q`: Non-interactive: use default base branch and provider; unknown labels ignored; fail if token missing.
-    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
+    -   **`--agent` JSON:** Besides `draft` and `labels`, you may set **`assignToAuthor`: `true`** to assign the newly created PR/MR to the authenticated Git provider user. You may also set **`stageAll`: `true`** to run the same **commit + `origin` push** path as **`stud push`** *before* the normal submit preflight (branch check, push, create PR). When `stageAll` is true, optional **`isNew`**, **`message`**, and **`pleaseFallback`** match **`stud push --agent`**. Omit `stageAll` when you do not need that commit step (for example, changes are already committed, or you only want to push existing commits and open/update the PR without staging).
     -   **Usage:**
         ```bash
         stud submit
@@ -967,14 +968,16 @@ These commands integrate directly with your local Git repository to streamline y
         stud su -d
         stud submit --labels "bug,enhancement"
         stud submit --draft --labels "bug,ui"
+        stud submit --assign-to-author
         stud submit -q
-        echo '{"labels":"AI-Generated,RFR","stageAll":true}' | stud submit --agent
+        echo '{"labels":"AI-Generated,RFR","assignToAuthor":true,"stageAll":true}' | stud submit --agent
         ```
     -   **Note:** PR descriptions are automatically converted from Jira's HTML format to Markdown. This improves readability on GitHub by removing Jira-specific HTML artifacts and formatting issues. If conversion fails, the original HTML is used as a fallback.
 
 -   **`stud pr:comment`** (Alias: `stud pc`)
-    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation) or providing a direct message argument.
+    -   **Description:** Posts a comment to the active Pull Request associated with the current branch. Supports piping content from STDIN (preferred for automation), providing a direct message argument, replying to a threaded feedback target, and optionally resolving that thread after a successful reply.
     -   **Argument:** `<message>` (optional): The comment message. If not provided, content will be read from STDIN.
+    -   **Options:** `--reply-to <target>` replies to a copyable target from `stud pr:comments --threaded`; `--resolve` resolves the target after the reply succeeds when the provider marks it resolvable.
     -   **Usage:**
         ```bash
         # Piped input (preferred for automation/AI workflows)
@@ -987,17 +990,29 @@ These commands integrate directly with your local Git repository to streamline y
         
         # Using alias with piped input
         echo "Comment text" | stud pc
+
+        # Reply to threaded feedback and optionally resolve it
+        stud pr:comment --reply-to github:review_thread:THREAD_ID "Fixed, thanks"
+        stud pr:comment --reply-to gitlab:review_thread:DISCUSSION_ID --resolve "Fixed, thanks"
+
+        # Agent mode
+        echo '{"message":"Fixed, thanks","replyTo":"github:review_thread:THREAD_ID","resolve":true}' | stud pr:comment --agent
         ```
-    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found or no input is provided, the command will fail with a clear error message.
+    -   **Note:** The command automatically finds the active Pull Request for the current branch. If no PR is found, no input is provided, the target cannot be found, or the requested action is unsupported, the command fails clearly and does not fall back to a top-level comment. Reply and resolve actions target one threaded conversation per command call; automation that addresses multiple review threads should iterate over the actionable targets returned by `stud pr:comments --threaded`.
 
 -   **`stud pr:comments`** (Alias: `stud pcs`)
     -   **Description:** Fetches and displays issue comments and review (inline) comments for the active Pull Request or Merge Request on the current branch. Complements `stud pr:comment` (which posts a comment) by letting you read all PR/MR feedback in the terminal.
+    -   **Options:**
+        -   `--threaded`: Show PR/MR feedback as grouped conversations with provider identifiers, resolution state, visibility state, and available follow-up actions.
     -   **Usage:**
         ```bash
         stud pr:comments
         stud pcs
+        stud pr:comments --threaded
+        echo '{"threaded": true}' | stud pr:comments --agent
         ```
-    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits.
+    -   **Agent output:** The default `--agent` output remains the compatibility shape with `issueComments`, `reviewComments`, `reviews`, and `pullNumber`. With `{"threaded": true}`, output switches to `mode: "threaded"`, `pullNumber`, and `conversations`.
+    -   **Note:** Requires a configured Git provider (GitHub or GitLab). If no PR/MR is found for the current branch or the provider is not configured, the command exits with a clear error. Default flat results are capped (e.g. last 50 comments per type) to limit output and respect API rate limits; threaded mode paginates provider conversation APIs and marks oversized nested threads as truncated.
 
 -   **`stud update`** (Alias: `stud up`)
     -   **Description:** Checks for and installs new versions of the tool. Automatically detects the repository from your git remote and downloads the latest release from GitHub.
@@ -1080,6 +1095,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 | `stud commit:undo` | `--quiet` / `-q` | Proceed with undo even when HEAD is pushed (no confirm) |
 | `stud submit` | `--draft` / `-d` | Create a draft Pull Request |
 | `stud submit` | `--labels "…"` | Add labels without being prompted |
+| `stud submit` | `--assign-to-author` | Assign the newly created PR/MR to the authenticated provider user |
 | `stud submit` | `--quiet` / `-q` | Use default base branch/provider; unknown labels ignored; fail if token missing |
 | `stud branches:clean` | `--quiet` / `-q` | Remove matching branches without confirmation prompts |
 | `stud branch:rename` | `--quiet` / `-q` | Use default for all confirmations (rename, remote only, rebase, create PR) |
@@ -1097,7 +1113,7 @@ When running `stud-cli` in scripts, CI pipelines, or automation, use non-interac
 - For `config:show`, `quiet` in JSON requests raw-value-only output when a single key is shown.
 - For `items:create` and `items:update`, the `fields` property can be an object (e.g. `{"labels": ["A","B"]}`) or a string (e.g. `"labels=A;B;priority=High"`), matching CLI `-F`.
 - For `help`, use `commandName` in JSON (or `command` for backward compatibility) to request the schema for a single command.
-- For `submit`, agent JSON may include `stageAll` (and optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
+- For `submit`, agent JSON may include `assignToAuthor` to assign a newly created PR/MR to the authenticated provider user, and `stageAll` (with optional `isNew`, `message`, `pleaseFallback`) to chain the same commit + push behavior as `stud push` before creating the PR; see the `stud submit` section above.
 
 **Example snippets:**
 
@@ -1106,6 +1122,7 @@ stud commit -m "feat: add feature X"
 stud commit -q --all                    # use Jira-derived message, no prompts
 stud submit --draft
 stud submit --draft --labels "bug,ui"
+stud submit --assign-to-author
 stud submit -q                           # use default base branch and provider
 stud branches:clean --quiet
 stud to PROJ-123 -q                      # switch to first branch found, no prompts

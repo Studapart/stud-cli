@@ -6,7 +6,10 @@ namespace App\Service;
 
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
+use App\DTO\PullRequestFeedbackConversation;
+use App\DTO\PullRequestFeedbackIds;
 use App\Exception\ApiException;
+use App\Exception\PullRequestAssignmentException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -15,6 +18,8 @@ class GithubProvider implements GitProviderInterface
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;
+    private const PROVIDER_GITHUB = 'github';
+    private const UNKNOWN_GRAPHQL_ERROR = 'Unknown GraphQL error';
 
     public function __construct(
         private readonly string $token,
@@ -76,7 +81,71 @@ class GithubProvider implements GitProviderInterface
             'draft' => $prData->draft,
         ];
 
-        return $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
+        $createdPullRequest = $this->apiRequest('POST', $apiUrl, 'Failed to create pull request.', ['json' => $payload])->toArray();
+        if ($prData->assignToAuthor) {
+            try {
+                $this->assignPullRequestToAuthor($createdPullRequest);
+            } catch (\Throwable $e) {
+                throw new PullRequestAssignmentException(
+                    $e->getMessage(),
+                    (string) ($createdPullRequest['html_url'] ?? ''),
+                    $e
+                );
+            }
+        }
+
+        return $createdPullRequest;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getAuthenticatedUser(): array
+    {
+        return $this->apiRequest('GET', '/user', 'Failed to identify authenticated GitHub user.')->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $prData
+     */
+    public function assignPullRequestToAuthor(array $prData): void
+    {
+        $number = isset($prData['number']) ? (int) $prData['number'] : 0;
+        if ($number <= 0) {
+            throw new \RuntimeException('Cannot assign pull request because its number is missing.');
+        }
+
+        $user = $this->getAuthenticatedUser();
+        $login = isset($user['login']) ? (string) $user['login'] : '';
+        if ($login === '') {
+            throw new \RuntimeException('Cannot assign pull request because the authenticated GitHub login is missing.');
+        }
+
+        $apiUrl = "/repos/{$this->owner}/{$this->repo}/issues/{$number}/assignees";
+        $assignedUsers = $this->apiRequest(
+            'POST',
+            $apiUrl,
+            "Failed to assign pull request #{$number} to {$login}.",
+            ['json' => ['assignees' => [$login]]]
+        )->toArray();
+
+        if (! $this->hasAssignedGithubUser($assignedUsers, $login)) {
+            throw new \RuntimeException("GitHub did not confirm '{$login}' as an assignee for pull request #{$number}.");
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>|array<string, mixed> $assignedUsers
+     */
+    protected function hasAssignedGithubUser(array $assignedUsers, string $login): bool
+    {
+        foreach ($assignedUsers as $assignedUser) {
+            if (is_array($assignedUser) && ($assignedUser['login'] ?? null) === $login) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -270,6 +339,42 @@ class GithubProvider implements GitProviderInterface
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function replyToPullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds, string $body): array
+    {
+        $threadId = $this->githubThreadId($targetIds, 'reply');
+
+        return $this->graphqlRequest(
+            'mutation ReplyToReviewThread($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+    comment { id databaseId body createdAt }
+  }
+}',
+            ['threadId' => $threadId, 'body' => $body],
+            "Failed to reply to review thread on pull request #{$pullNumber}."
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resolvePullRequestFeedback(int $pullNumber, PullRequestFeedbackIds $targetIds): array
+    {
+        $threadId = $this->githubThreadId($targetIds, 'resolve');
+
+        return $this->graphqlRequest(
+            'mutation ResolveReviewThread($threadId: ID!) {
+  resolveReviewThread(input: { threadId: $threadId }) {
+    thread { id isResolved }
+  }
+}',
+            ['threadId' => $threadId],
+            "Failed to resolve review thread on pull request #{$pullNumber}."
+        );
+    }
+
+    /**
      * Attempts to update the head branch of a pull request.
      *
      * @param int $pullNumber The pull request number
@@ -373,6 +478,46 @@ class GithubProvider implements GitProviderInterface
         $line = isset($row['line']) ? (int) $row['line'] : null;
 
         return new PullRequestComment($author, $createdAt, $body, $path, $line);
+    }
+
+    /**
+     * @return PullRequestFeedbackConversation[]
+     */
+    public function getPullRequestFeedbackConversations(int $pullNumber): array
+    {
+        return (new GithubConversationProvider(
+            $this->owner,
+            $this->repo,
+            \Closure::fromCallable([$this, 'apiRequest'])
+        ))->getPullRequestFeedbackConversations($pullNumber);
+    }
+
+    /**
+     * @param array<string, mixed> $variables
+     * @return array<string, mixed>
+     */
+    protected function graphqlRequest(string $query, array $variables, string $errorMessage): array
+    {
+        $payload = $this->apiRequest('POST', '/graphql', $errorMessage, [
+            'json' => ['query' => $query, 'variables' => $variables],
+        ])->toArray(false);
+
+        if (isset($payload['errors']) && is_array($payload['errors']) && $payload['errors'] !== []) {
+            $message = isset($payload['errors'][0]['message']) ? (string) $payload['errors'][0]['message'] : self::UNKNOWN_GRAPHQL_ERROR;
+
+            throw new \RuntimeException($errorMessage . ' ' . $message);
+        }
+
+        return $payload;
+    }
+
+    protected function githubThreadId(PullRequestFeedbackIds $targetIds, string $action): string
+    {
+        if ($targetIds->provider !== self::PROVIDER_GITHUB || $targetIds->threadId === null) {
+            throw new \RuntimeException("Cannot {$action} this feedback target on GitHub because its review thread id is missing.");
+        }
+
+        return $targetIds->threadId;
     }
 
     /**

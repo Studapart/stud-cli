@@ -391,6 +391,7 @@ submit:
     Erreur : %error%'
   adding_labels: Ajout des labels à la Pull Request...
   updating_to_draft: Mise à jour de la Pull Request en statut brouillon...
+  error_assign_author: "Pull Request created but assignment to the authenticated provider user failed: %url%\nError: %error%"
   error_update_draft: 'Échec de la mise à jour du statut brouillon de la Pull Request.
 
     Erreur : %error%'
@@ -409,9 +410,16 @@ pr:
     error_post: 'Échec de la publication du commentaire sur la Pull Request.
 
       Erreur : %error%'
+    error_invalid_target: "Could not find threaded feedback target \"%target%\" on this PR/MR."
+    error_reply_unsupported: "Threaded feedback target \"%target%\" does not support replies."
+    error_resolve_unsupported: "Threaded feedback target \"%target%\" cannot be resolved."
+    error_already_resolved: "Threaded feedback target \"%target%\" is already resolved."
+    error_resolve_after_reply: "Reply was posted, but resolving the thread failed.\nError: %error%"
     finding_pr: 'Recherche de la Pull Request pour la branche : %branch%'
     posting: 'Publication du commentaire sur la Pull Request #%number%...'
     success: '✅ Commentaire publié avec succès sur la Pull Request #%number%'
+    reply_success: "✅ Reply posted successfully to Pull Request #%number%"
+    reply_resolve_success: "✅ Reply posted and thread resolved successfully on Pull Request #%number%"
     using_stdin: Lecture du commentaire depuis STDIN...
     using_argument: Utilisation du commentaire depuis l'argument...
   comments:
@@ -424,6 +432,24 @@ pr:
     issue_comments: Commentaires sur la PR
     reviews: Revues
     review_comments: Commentaires de revue
+    threaded_conversations: "Threaded conversations"
+    threaded_comment_meta: "%author% at %date%"
+    threaded_date_format: "Y-m-d H:i"
+    threaded_type_pr_comment: "PR comment"
+    threaded_type_review: "Review"
+    threaded_type_review_thread: "Review thread"
+    threaded_state_resolved: "resolved"
+    threaded_state_unresolved: "unresolved"
+    threaded_state_outdated: "outdated"
+    threaded_state_truncated: "truncated"
+    threaded_id: "id: %id%"
+    threaded_target: "target: %target%"
+    threaded_location: "location: %location%"
+    threaded_actions: "actions: %actions%"
+    threaded_actions_unsupported: "unsupported"
+    threaded_action_reply: "Reply"
+    threaded_action_resolve: "Resolve"
+    threaded_action_reopen: "Reopen"
     no_comments: Aucun commentaire
     table:
       author: Auteur
@@ -645,7 +671,7 @@ help:
   command_cache_clear: Effacer le cache de vérification de mise à jour pour forcer une vérification de version à la prochaine commande.
   command_submit: "Pousse la branche actuelle et crée une Pull Request. Les modifications locales non commitées ne bloquent pas la soumission ; un message indique que le push et la PR utilisent les commits sur la branche. JSON agent : stageAll optionnel — si true, exécute stud push d'abord (isNew, message, pleaseFallback optionnels ; comme stud push --agent)."
   command_pr_comment: Publie un commentaire sur la Pull Request active. Prend en charge le piping depuis STDIN ou un argument direct.
-  command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle.
+  command_pr_comments: Récupère et affiche les commentaires (issue et revue) de la PR/MR de la branche actuelle. Use --threaded or agent JSON threaded=true for grouped conversations with action metadata.
   command_status: Un tableau de bord rapide "où suis-je ?".
   command_release: Crée une nouvelle branche de release et incrémente la version.
   command_deploy: Déploie la branche de release actuelle.
@@ -667,6 +693,10 @@ help:
   option_push_no_please: "Après un push normal échoué, ne pas exécuter ni proposer stud please"
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
+  option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
+  option_pr_comment_reply_to: "Reply to a threaded feedback target returned by pr:comments --threaded"
+  option_pr_comment_resolve: "Resolve the targeted review thread or discussion after the reply succeeds"
+  option_pr_comments_threaded: "Show PR/MR feedback as threaded conversations with action identifiers and resolution state"
   option_update_info: Aperçu du changelog de la dernière version disponible sans télécharger ou installer. Utile pour vérifier les changements majeurs avant la mise à jour
   option_release_major: Incrémenter la version majeure (X.0.0)
   option_release_minor: Incrémenter la version mineure (X.Y.0)

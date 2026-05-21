@@ -67,6 +67,16 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 **See also:** [ADR-008: Visibility and Testability Conventions](documentation/adr-008-visibility-and-testability-conventions.md) for detailed rationale and examples.
 
+### Constants, Enums, and Literals
+
+Domain, protocol, provider, configuration, and workflow values must not be hidden as repeated inline literals. Use class constants or enums for values that represent stable concepts, external API keywords, provider states, action names, connection names, output modes, or any value that is used in more than one place.
+
+Inline literals are acceptable when they are local, self-explanatory, and not part of a stable contract. Examples include one-off array keys in a small local transformation, short punctuation separators, or test data that is meaningful only inside a single test. Do not extract literals into constants if the constant name only repeats the value without adding domain meaning.
+
+User-facing text must use translation keys instead of hardcoded display strings. Date/time formats and other locale-sensitive display values must also be configurable through translations or configuration rather than embedded directly in rendering code.
+
+Prefer enums when the set of values is closed and shared across multiple classes. Prefer class constants when values are private to one class or model provider-specific protocol terms.
+
 ### Responder Pattern and ViewConfig
 
 All features that display structured data to the console **must** follow the Action–Domain–Responder flow with ViewConfig:
