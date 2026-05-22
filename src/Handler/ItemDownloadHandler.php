@@ -131,7 +131,7 @@ class ItemDownloadHandler
         $files = $this->pullOneAttachment($filename, $url, $targetDir, $files, $errors);
 
         if ($files === [] && $errors !== []) {
-            $first = $errors[0]['message'] ?? 'Download failed.';
+            $first = $errors[0]['message'];
 
             return ItemDownloadResponse::fatal((string) $first);
         }

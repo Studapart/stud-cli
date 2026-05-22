@@ -64,7 +64,7 @@
         "phpunit/phpunit": "^11.0",
         "phpspec/prophecy-phpunit": "^2.4",
         "friendsofphp/php-cs-fixer": "^3.0",
-        "phpstan/phpstan": "^1.10",
+        "phpstan/phpstan": "^2.0",
         "league/flysystem-memory": "^3.31"
     },
     "scripts": {

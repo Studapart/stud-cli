@@ -6,8 +6,8 @@ parameters:
     excludePaths:
         - vendor
         - tests
-        - coverage-html
-        - bin
+        - coverage-html (?)
+        - bin (?)
         - scripts
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:

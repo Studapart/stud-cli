@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Tooling (SCI-97):** Upgraded PHPStan to 2.x while keeping analysis at Level 7, updated optional excluded paths for PHPStan 2 compatibility, and resolved the stricter analyzer findings surfaced by the upgrade.
+
 ## [3.16.0] - 2026-05-21
 
 ### Added

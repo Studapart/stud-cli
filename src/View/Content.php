@@ -6,9 +6,6 @@ namespace App\View;
 
 final class Content
 {
-    /**
-     * @param callable(mixed, array<string, mixed>): (string|array<int, string>) $contentExtractor
-     */
     public function __construct(
         public readonly mixed $contentExtractor,
         public readonly ?string $formatter = null
