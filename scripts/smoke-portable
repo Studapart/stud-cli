@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/smoke-portable --binary <path-to-portable-stud>
+  scripts/smoke-portable --binary <path-to-portable-stud> [--platform <platform>] [--verbose]
 
 Runs safe smoke checks against a portable stud executable.
 USAGE
@@ -16,12 +16,22 @@ die() {
 }
 
 binary_path=""
+platform=""
+verbose=false
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --binary)
             binary_path="${2:-}"
             shift 2
+            ;;
+        --platform)
+            platform="${2:-}"
+            shift 2
+            ;;
+        --verbose)
+            verbose=true
+            shift
             ;;
         -h|--help)
             usage
@@ -36,8 +46,82 @@ done
 [ -n "$binary_path" ] || die "--binary is required"
 [ -x "$binary_path" ] || die "Binary must be executable: $binary_path"
 
-"$binary_path" --version >/dev/null
-printf '{}\n' | "$binary_path" help --agent >/dev/null
-printf '{"skipJira":true,"skipGit":true}\n' | "$binary_path" config:validate --agent >/dev/null
+command -v python3 >/dev/null 2>&1 || die "python3 is required for JSON validation"
+
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/stud-smoke.XXXXXX")
+cleanup() {
+    rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
+
+print_failure_context() {
+    local description="$1"
+    local stdout_file="$2"
+    local stderr_file="$3"
+
+    echo "Smoke check failed: $description" >&2
+    echo "--- stdout ---" >&2
+    sed -n '1,120p' "$stdout_file" >&2 || true
+    echo "--- stderr ---" >&2
+    sed -n '1,120p' "$stderr_file" >&2 || true
+}
+
+run_plain_check() {
+    local description="$1"
+    shift
+
+    local stdout_file="$tmp_dir/plain-stdout"
+    local stderr_file="$tmp_dir/plain-stderr"
+
+    if ! "$@" >"$stdout_file" 2>"$stderr_file"; then
+        print_failure_context "$description" "$stdout_file" "$stderr_file"
+        return 1
+    fi
+
+    if [ "$verbose" = true ]; then
+        echo "OK: $description"
+    fi
+}
+
+run_agent_json_check() {
+    local description="$1"
+    local payload="$2"
+    shift 2
+
+    local stdout_file="$tmp_dir/json-stdout"
+    local stderr_file="$tmp_dir/json-stderr"
+
+    if ! printf '%s\n' "$payload" | "$@" >"$stdout_file" 2>"$stderr_file"; then
+        print_failure_context "$description" "$stdout_file" "$stderr_file"
+        return 1
+    fi
+
+    if ! python3 - "$stdout_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+if "success" not in payload or not isinstance(payload["success"], bool):
+    raise SystemExit("JSON response must contain boolean 'success'")
+PY
+    then
+        print_failure_context "$description JSON validation" "$stdout_file" "$stderr_file"
+        return 1
+    fi
+
+    if [ "$verbose" = true ]; then
+        echo "OK: $description"
+    fi
+}
+
+if [ -n "$platform" ] && [ "$verbose" = true ]; then
+    echo "Running portable smoke checks for $platform"
+fi
+
+run_plain_check "version command" "$binary_path" --version
+run_agent_json_check "agent schema command" '{}' "$binary_path" help --agent
+run_agent_json_check "config validation command" '{"skipJira":true,"skipGit":true}' "$binary_path" config:validate --agent
 
 echo "Portable smoke checks passed for $binary_path"
