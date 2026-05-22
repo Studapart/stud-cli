@@ -1,6 +1,6 @@
-# stud-portable Prototype
+# stud-portable Packaging
 
-`scripts/build-portable` creates a portable `stud` directory for `linux-amd64` from an existing PHAR and a platform PHP runtime. `scripts/prototype-portable` remains as a compatibility wrapper for the original spike command shape.
+`scripts/build-portable` creates a portable `stud` directory for `linux-amd64` from an existing PHAR and a platform PHP runtime.
 
 The prototype follows the SCI-100 recommendation: keep `stud-<version>.phar` as the canonical application artifact and package it beside a runtime launcher. It does not rebuild application source.
 
@@ -78,7 +78,7 @@ scripts/create-release-checksums --directory dist/release --output dist/release/
 
 `checksums.txt` is published with release assets and included in workflow-dispatch dry-run artifacts.
 
-## Prototype Boundaries
+## Current Boundaries
 
 - Only `linux-amd64` is supported by this prototype.
 - Runtime acquisition is handled by a small helper script for the release workflow; follow-up tasks should harden provenance/signature checks for the selected `static-php-cli` runtime source.
