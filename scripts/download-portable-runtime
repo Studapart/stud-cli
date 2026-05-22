@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/download-portable-runtime --platform linux-amd64 --output <dir> [--url <runtime-archive-url>]
+
+Downloads and extracts the PHP runtime used by portable packaging. The script
+prints the extracted runtime executable path on success.
+USAGE
+}
+
+die() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+platform=""
+output_dir=""
+runtime_url=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --platform)
+            platform="${2:-}"
+            shift 2
+            ;;
+        --output)
+            output_dir="${2:-}"
+            shift 2
+            ;;
+        --url)
+            runtime_url="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$platform" ] || die "--platform is required"
+[ -n "$output_dir" ] || die "--output is required"
+
+case "$platform" in
+    linux-amd64)
+        default_url="https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.2.31-cli-linux-x86_64.tar.gz"
+        ;;
+    *)
+        die "Only linux-amd64 is supported"
+        ;;
+esac
+
+if [ -z "$runtime_url" ]; then
+    runtime_url="$default_url"
+fi
+
+command -v curl >/dev/null 2>&1 || die "curl is required"
+command -v tar >/dev/null 2>&1 || die "tar is required"
+
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/stud-runtime.XXXXXX")
+cleanup() {
+    rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
+
+archive_path="$tmp_dir/runtime.tar.gz"
+curl -fsSL "$runtime_url" -o "$archive_path"
+tar -xzf "$archive_path" -C "$tmp_dir"
+
+runtime_path=$(find "$tmp_dir" -type f -name php -perm -111 | head -n 1)
+[ -n "$runtime_path" ] || die "No executable php runtime found in archive"
+
+mkdir -p "$output_dir"
+cp "$runtime_path" "$output_dir/php"
+chmod 0755 "$output_dir/php"
+
+echo "$output_dir/php"

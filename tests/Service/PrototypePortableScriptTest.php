@@ -120,6 +120,49 @@ SH);
         self::assertStringContainsString('Only linux-amd64 is supported', $process->getErrorOutput());
     }
 
+    public function testDownloadPortableRuntimeExtractsRuntimeExecutable(): void
+    {
+        $archivePath = $this->createRuntimeArchive();
+        $outputDir = $this->workspace . '/downloaded-runtime';
+
+        $process = $this->runScript('download-portable-runtime', [
+            '--platform',
+            'linux-amd64',
+            '--url',
+            'file://' . $archivePath,
+            '--output',
+            $outputDir,
+        ]);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertStringContainsString($outputDir . '/php', $process->getOutput());
+        self::assertFileExists($outputDir . '/php');
+        self::assertTrue(is_executable($outputDir . '/php'));
+    }
+
+    public function testCreateReleaseChecksumsWritesSortedChecksums(): void
+    {
+        $artifactDir = $this->workspace . '/release-artifacts';
+        mkdir($artifactDir, 0777, true);
+        file_put_contents($artifactDir . '/z-artifact.txt', 'z');
+        file_put_contents($artifactDir . '/a-artifact.txt', 'a');
+
+        $process = $this->runScript('create-release-checksums', [
+            '--directory',
+            $artifactDir,
+            '--output',
+            $artifactDir . '/checksums.txt',
+        ]);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+
+        $checksums = file($artifactDir . '/checksums.txt', FILE_IGNORE_NEW_LINES);
+        self::assertIsArray($checksums);
+        self::assertCount(2, $checksums);
+        self::assertStringEndsWith('  a-artifact.txt', $checksums[0]);
+        self::assertStringEndsWith('  z-artifact.txt', $checksums[1]);
+    }
+
     /**
      * @param list<string> $arguments
      */
@@ -145,6 +188,20 @@ SH);
         self::assertStringContainsString('runtime=' . $artifactRoot . '/runtime/php', $portableProcess->getOutput());
         self::assertStringContainsString('phar=' . $artifactRoot . '/app/stud.phar', $portableProcess->getOutput());
         self::assertStringContainsString('args=--version', $portableProcess->getOutput());
+    }
+
+    protected function createRuntimeArchive(): string
+    {
+        $archiveRoot = $this->workspace . '/runtime-archive';
+        mkdir($archiveRoot . '/bin', 0777, true);
+        file_put_contents($archiveRoot . '/bin/php', "#!/usr/bin/env sh\nexit 0\n");
+        chmod($archiveRoot . '/bin/php', 0755);
+
+        $archivePath = $this->workspace . '/runtime.tar.gz';
+        $process = new Process(['tar', '-czf', $archivePath, '-C', $archiveRoot, '.']);
+        $process->mustRun();
+
+        return $archivePath;
     }
 
     protected function removeDirectory(string $path): void
