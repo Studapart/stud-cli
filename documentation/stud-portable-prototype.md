@@ -63,7 +63,7 @@ The smoke script runs these safe commands:
 ```bash
 ./stud --version
 echo '{}' | ./stud help --agent
-echo '{"skipJira":true,"skipGit":true}' | ./stud config:validate --agent
+echo '{"commandName":"config:validate"}' | ./stud help --agent
 ```
 
 The agent-mode checks must emit valid JSON with a boolean `success` field. The script prints command stdout/stderr context when a smoke check fails.

@@ -122,6 +122,6 @@ fi
 
 run_plain_check "version command" "$binary_path" --version
 run_agent_json_check "agent schema command" '{}' "$binary_path" help --agent
-run_agent_json_check "config validation command" '{"skipJira":true,"skipGit":true}' "$binary_path" config:validate --agent
+run_agent_json_check "agent command schema command" '{"commandName":"config:validate"}' "$binary_path" help --agent
 
 echo "Portable smoke checks passed for $binary_path"

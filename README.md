@@ -349,7 +349,7 @@ Verify the install:
 ```bash
 stud --version
 echo '{}' | stud help --agent
-echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
+echo '{"commandName":"config:validate"}' | stud help --agent
 ```
 
 Ensure `~/.local/bin` is on `PATH`. Add this to your shell config if needed:

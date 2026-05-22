@@ -104,7 +104,7 @@ Smoke checks:
 \`\`\`bash
 ./stud --version
 echo '{}' | ./stud help --agent
-echo '{"skipJira":true,"skipGit":true}' | ./stud config:validate --agent
+echo '{"commandName":"config:validate"}' | ./stud help --agent
 \`\`\`
 README
 
