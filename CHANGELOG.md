@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.1] - 2026-05-22
+
 ### Changed
 
 - **Dependencies (SCI-114):** Updated the affected Symfony packages and required Symfony transitive dependencies to resolve the current Composer audit advisory set.
