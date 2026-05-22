@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **stud-portable prototype (SCI-101):** Added a `linux-amd64` proof-of-concept packaging script that wraps an existing PHAR with a bundled runtime launcher under `.cursor/tmp/`, plus documentation and tests for the prototype boundaries.
+
 ## [3.16.1] - 2026-05-22
 
 ### Changed
