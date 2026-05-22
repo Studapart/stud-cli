@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/build-phar --version <version> --output <path>
+
+Builds the canonical stud PHAR artifact used by release packaging.
+USAGE
+}
+
+die() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+version=""
+output_path=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --version)
+            version="${2:-}"
+            shift 2
+            ;;
+        --output)
+            output_path="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$version" ] || die "--version is required"
+[ -n "$output_path" ] || die "--output is required"
+
+command -v composer >/dev/null 2>&1 || die "composer is required"
+[ -x vendor/bin/castor ] || die "vendor/bin/castor is required; run composer install first if dependencies are missing"
+
+composer install --no-dev
+
+vendor/bin/castor repack \
+    --logo-file src/repack/logo.php \
+    --app-name stud \
+    --app-version "$version"
+
+mkdir -p "$(dirname -- "$output_path")"
+mv stud.linux-amd64.phar "$output_path"
+echo "$output_path"

@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **stud-portable packaging (SCI-102):** Added repeatable `build-portable` and `smoke-portable` scripts for packaging an existing PHAR with a bundled runtime launcher, plus documentation and tests for the `linux-amd64` prototype boundaries.
 
+- **Release workflow (SCI-103):** Split PHAR release automation into PHAR build, portable matrix packaging, and publish steps so the PHAR is built once, `linux-amd64` portable artifacts are smoke-tested, and checksums are published alongside release assets.
+
 ## [3.16.1] - 2026-05-22
 
 ### Changed

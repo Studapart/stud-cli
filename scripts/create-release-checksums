@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/create-release-checksums --directory <artifact-dir> --output <checksums-file>
+
+Generates SHA-256 checksums for files directly inside an artifact directory.
+USAGE
+}
+
+die() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+artifact_dir=""
+output_file=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --directory)
+            artifact_dir="${2:-}"
+            shift 2
+            ;;
+        --output)
+            output_file="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$artifact_dir" ] || die "--directory is required"
+[ -n "$output_file" ] || die "--output is required"
+[ -d "$artifact_dir" ] || die "Artifact directory not found: $artifact_dir"
+
+command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required"
+
+output_basename=$(basename -- "$output_file")
+tmp_output=$(mktemp "${TMPDIR:-/tmp}/stud-checksums.XXXXXX")
+
+(
+    cd "$artifact_dir"
+    find . -maxdepth 1 -type f ! -name "$output_basename" -printf '%P\n' \
+        | sort \
+        | xargs --no-run-if-empty sha256sum
+) > "$tmp_output"
+
+[ -s "$tmp_output" ] || die "No artifact files found in $artifact_dir"
+
+mkdir -p "$(dirname -- "$output_file")"
+mv "$tmp_output" "$output_file"
+echo "$output_file"
