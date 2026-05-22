@@ -30,6 +30,8 @@
 
 ## System Requirements
 
+These requirements apply when running from source or using the PHAR install. Portable release artifacts bundle PHP for their supported platform; see [stud-portable Installation And Support](documentation/stud-portable-installation.md) for the no-local-PHP install path.
+
 ### PHP Version
 
 - **PHP 8.2 or higher** is required.
@@ -289,13 +291,19 @@ vendor/bin/phpunit
 
 ## For Users
 
-This section is for users who want to use the `stud-cli` tool as a standalone executable (PHAR).
+This section is for users who want to use the `stud-cli` tool as a standalone executable.
 
 ### User Installation
 
+#### Portable Install Without Local PHP
+
+Company users who should not install PHP locally should use `stud-portable`. The first rollout supports Linux amd64 and Windows through WSL2 using the Linux amd64 artifact.
+
+See [stud-portable Installation And Support](documentation/stud-portable-installation.md) for supported platforms, checksum verification, WSL2 guidance, remaining prerequisites, update steps, and troubleshooting.
+
 #### Quick Install (Recommended)
 
-Run this single command to download and install the latest version:
+For the PHAR install path, run this single command to download and install the latest version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
@@ -341,6 +349,8 @@ stud update
 ```
 
 The tool will automatically check for new releases, download the latest version, and replace your current installation. If you installed using the recommended method (user-owned directory), this will work seamlessly without requiring `sudo`.
+
+Portable installs are updated by replacing the extracted portable artifact. See [stud-portable Installation And Support](documentation/stud-portable-installation.md#updating).
 
 You can preview the changelog of the latest available version (including breaking changes) without downloading by using the `--info` flag:
 

@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Portable smoke checks (SCI-104):** Strengthened `smoke-portable` to validate agent-mode JSON responses and print command context when safe portable artifact checks fail.
 
+- **stud-portable docs (SCI-105):** Added company-first installation and support guidance for portable artifacts, including supported platforms, WSL2 usage, prerequisites, checksums, update steps, and limitations.
+
 ## [3.16.1] - 2026-05-22
 
 ### Changed
