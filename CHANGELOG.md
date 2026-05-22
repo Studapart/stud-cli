@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **stud-portable prototype (SCI-101):** Added a `linux-amd64` proof-of-concept packaging script that wraps an existing PHAR with a bundled runtime launcher under `.cursor/tmp/`, plus documentation and tests for the prototype boundaries.
+- **stud-portable prototype (SCI-101):** Validated the `linux-amd64` runtime-plus-PHAR packaging approach and documented the initial portable artifact boundaries.
 
 - **stud-portable packaging (SCI-102):** Added repeatable `build-portable` and `smoke-portable` scripts for packaging an existing PHAR with a bundled runtime launcher, plus documentation and tests for the `linux-amd64` prototype boundaries.
 
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Portable smoke checks (SCI-104):** Strengthened `smoke-portable` to validate agent-mode JSON responses and print command context when safe portable artifact checks fail.
 
-- **stud-portable docs (SCI-105):** Added company-first installation and support guidance for portable artifacts, including supported platforms, WSL2 usage, prerequisites, checksums, update steps, and limitations.
+- **stud-portable docs (SCI-105):** Added company-first README guidance for portable artifacts, including supported platforms, WSL2 usage, prerequisites, checksums, update steps, and limitations.
 
 ## [3.16.1] - 2026-05-22
 

@@ -19,7 +19,7 @@ class PrototypePortableScriptTest extends TestCase
         parent::setUp();
 
         $root = dirname(__DIR__, 2);
-        $this->workspace = $root . '/.cursor/tmp/prototype-portable-test-' . bin2hex(random_bytes(4));
+        $this->workspace = $root . '/.cursor/tmp/portable-script-test-' . bin2hex(random_bytes(4));
         $this->outputDir = '.cursor/tmp/' . basename($this->workspace) . '/artifact';
         $this->runtimePath = $this->workspace . '/runtime/php';
         $this->pharPath = $this->workspace . '/stud-test.phar';
@@ -70,24 +70,6 @@ SH);
         $artifactRoot = dirname(__DIR__, 2) . '/' . $artifactPath;
         self::assertStringContainsString($artifactPath, $process->getOutput());
         $this->assertPortableArtifactRunsWithBundledRuntime($artifactRoot);
-    }
-
-    public function testPrototypeWrapperCreatesLauncherUsingBundledRuntime(): void
-    {
-        $process = $this->runScript('prototype-portable', [
-            '--platform',
-            'linux-amd64',
-            '--phar',
-            $this->pharPath,
-            '--runtime',
-            $this->runtimePath,
-            '--output',
-            $this->outputDir,
-        ]);
-
-        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-
-        $this->assertPortableArtifactRunsWithBundledRuntime(dirname(__DIR__, 2) . '/' . $this->outputDir);
     }
 
     public function testSmokePortableRunsSafeCommands(): void
