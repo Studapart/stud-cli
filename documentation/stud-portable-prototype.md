@@ -55,7 +55,7 @@ The script prints the generated artifact path on success. It consumes the PHAR a
 Run the repeatable smoke script against the generated binary:
 
 ```bash
-scripts/smoke-portable --binary .cursor/tmp/stud-portable-linux-amd64/stud
+scripts/smoke-portable --binary .cursor/tmp/stud-portable-linux-amd64/stud --platform linux-amd64
 ```
 
 The smoke script runs these safe commands:
@@ -65,6 +65,8 @@ The smoke script runs these safe commands:
 echo '{}' | ./stud help --agent
 echo '{"skipJira":true,"skipGit":true}' | ./stud config:validate --agent
 ```
+
+The agent-mode checks must emit valid JSON with a boolean `success` field. The script prints command stdout/stderr context when a smoke check fails.
 
 ## Release Checksums
 

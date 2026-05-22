@@ -28,7 +28,18 @@ class PrototypePortableScriptTest extends TestCase
         file_put_contents($this->pharPath, 'phar payload');
         file_put_contents($this->runtimePath, <<<'SH'
 #!/usr/bin/env sh
-printf 'runtime=%s\nphar=%s\nargs=%s\n' "$0" "$1" "${2:-}"
+case "${2:-}" in
+    --version)
+        printf 'runtime=%s\nphar=%s\nargs=%s\n' "$0" "$1" "$2"
+        ;;
+    help|config:validate)
+        printf '{"success":true,"data":{"command":"%s"}}\n' "$2"
+        ;;
+    *)
+        printf 'unexpected command: %s\n' "${2:-}" >&2
+        exit 1
+        ;;
+esac
 SH);
         chmod($this->runtimePath, 0755);
     }
@@ -101,6 +112,43 @@ SH);
 
         self::assertSame(0, $smokeProcess->getExitCode(), $smokeProcess->getErrorOutput());
         self::assertStringContainsString('Portable smoke checks passed', $smokeProcess->getOutput());
+    }
+
+    public function testSmokePortableRejectsInvalidAgentJson(): void
+    {
+        file_put_contents($this->runtimePath, <<<'SH'
+#!/usr/bin/env sh
+case "${2:-}" in
+    --version)
+        printf 'stud 0.0.0\n'
+        ;;
+    help|config:validate)
+        printf 'not json\n'
+        ;;
+esac
+SH);
+        chmod($this->runtimePath, 0755);
+
+        $buildProcess = $this->runScript('build-portable', [
+            '--platform',
+            'linux-amd64',
+            '--phar',
+            $this->pharPath,
+            '--runtime',
+            $this->runtimePath,
+            '--output',
+            dirname($this->outputDir),
+        ]);
+        self::assertSame(0, $buildProcess->getExitCode(), $buildProcess->getErrorOutput());
+
+        $artifactRoot = dirname(__DIR__, 2) . '/' . dirname($this->outputDir) . '/stud-portable-linux-amd64';
+        $smokeProcess = $this->runScript('smoke-portable', [
+            '--binary',
+            $artifactRoot . '/stud',
+        ]);
+
+        self::assertNotSame(0, $smokeProcess->getExitCode());
+        self::assertStringContainsString('Smoke check failed: agent schema command JSON validation', $smokeProcess->getErrorOutput());
     }
 
     public function testRejectsUnsupportedPlatform(): void

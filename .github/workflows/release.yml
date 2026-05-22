@@ -89,7 +89,7 @@ jobs:
             --runtime "$RUNTIME_PATH" \
             --output dist/portable \
             --name "$PORTABLE_NAME"
-          scripts/smoke-portable --binary "dist/portable/${PORTABLE_NAME}/stud"
+          scripts/smoke-portable --binary "dist/portable/${PORTABLE_NAME}/stud" --platform "${{ matrix.platform }}"
           tar -C dist/portable -czf "dist/artifacts/${PORTABLE_NAME}.tar.gz" "$PORTABLE_NAME"
 
       - name: Upload portable artifact

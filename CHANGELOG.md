@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Release workflow (SCI-103):** Split PHAR release automation into PHAR build, portable matrix packaging, and publish steps so the PHAR is built once, `linux-amd64` portable artifacts are smoke-tested, and checksums are published alongside release assets.
 
+- **Portable smoke checks (SCI-104):** Strengthened `smoke-portable` to validate agent-mode JSON responses and print command context when safe portable artifact checks fail.
+
 ## [3.16.1] - 2026-05-22
 
 ### Changed
