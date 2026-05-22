@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-phar:
-    runs-on: gh-dind-runner
+    runs-on: ubuntu-latest
     outputs:
       app-version: ${{ steps.version.outputs.app-version }}
       phar-filename: ${{ steps.version.outputs.phar-filename }}
@@ -57,7 +57,7 @@ jobs:
           retention-days: 1
 
   build-portable:
-    runs-on: gh-dind-runner
+    runs-on: ubuntu-latest
     needs: build-phar
     strategy:
       fail-fast: false
@@ -100,7 +100,7 @@ jobs:
           retention-days: 1
 
   publish-artifacts:
-    runs-on: gh-dind-runner
+    runs-on: ubuntu-latest
     needs:
       - build-phar
       - build-portable
