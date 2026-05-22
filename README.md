@@ -30,6 +30,8 @@
 
 ## System Requirements
 
+These requirements apply when running from source or using the PHAR install. Portable release artifacts bundle PHP for their supported platform; see [Portable Install Without Local PHP](#portable-install-without-local-php) for the no-local-PHP install path.
+
 ### PHP Version
 
 - **PHP 8.2 or higher** is required.
@@ -289,13 +291,86 @@ vendor/bin/phpunit
 
 ## For Users
 
-This section is for users who want to use the `stud-cli` tool as a standalone executable (PHAR).
+This section is for users who want to use the `stud-cli` tool as a standalone executable.
 
 ### User Installation
 
+#### Portable Install Without Local PHP
+
+Company users who should not install PHP locally should use `stud-portable`. The first rollout supports Linux amd64 and Windows through WSL2 using the Linux amd64 artifact.
+
+`stud-portable` packages the canonical `stud-<version>.phar` with a platform runtime and publishes checksums alongside the release assets. The existing PHAR installation remains supported.
+
+Supported platforms:
+
+| Platform | Artifact | Status |
+| --- | --- | --- |
+| Linux amd64 | `stud-portable-<version>-linux-amd64.tar.gz` | Supported first rollout |
+| Windows | `stud-portable-<version>-linux-amd64.tar.gz` inside WSL2 | Supported through WSL2 only |
+| macOS Apple Silicon | `stud-portable-<version>-darwin-arm64.tar.gz` | Planned; use only after the asset exists on a release |
+
+Deferred targets:
+
+- Native Windows without WSL2
+- Linux ARM64
+- Windows ARM64
+- Public distribution polish beyond company needs
+
+Download the portable archive and checksums from the release page:
+
+```bash
+VERSION=3.16.1
+curl -fL -o "stud-portable-${VERSION}-linux-amd64.tar.gz" \
+  "https://github.com/Studapart/stud-cli/releases/download/v${VERSION}/stud-portable-${VERSION}-linux-amd64.tar.gz"
+curl -fL -o checksums.txt \
+  "https://github.com/Studapart/stud-cli/releases/download/v${VERSION}/checksums.txt"
+```
+
+Verify the checksum before extracting:
+
+```bash
+sha256sum -c --ignore-missing checksums.txt
+```
+
+Install the extracted portable directory under a user-owned data path and expose its launcher from `~/.local/bin`:
+
+```bash
+tar -xzf "stud-portable-${VERSION}-linux-amd64.tar.gz"
+mkdir -p "$HOME/.local/share/stud-portable" "$HOME/.local/bin"
+rm -rf "$HOME/.local/share/stud-portable/linux-amd64"
+mv "stud-portable-${VERSION}-linux-amd64" "$HOME/.local/share/stud-portable/linux-amd64"
+ln -sf "$HOME/.local/share/stud-portable/linux-amd64/stud" "$HOME/.local/bin/stud"
+```
+
+The portable artifact is a directory bundle (`stud`, `runtime/php`, and `app/stud.phar`), so only the launcher should be linked into `~/.local/bin`. The bundled runtime and PHAR must remain beside the launcher.
+
+Verify the install:
+
+```bash
+stud --version
+echo '{}' | stud help --agent
+echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
+```
+
+Ensure `~/.local/bin` is on `PATH`. Add this to your shell config if needed:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Windows support currently means WSL2 plus the Linux amd64 portable artifact. Install WSL2 with an amd64 Linux distribution, follow the Linux amd64 steps inside the WSL2 terminal, and keep the portable directory in the WSL filesystem rather than on a mounted Windows drive.
+
+Portable artifacts remove the need for a user-installed PHP runtime. They do not replace the tools and credentials that `stud` needs to do work:
+
+- Git must be installed and configured.
+- SSH keys or HTTPS credentials must work for the Git provider.
+- Jira, GitHub, and GitLab tokens are still required when the corresponding commands use those services.
+- Network and certificate trust must allow access to company services.
+- Existing `stud` configuration still lives under `~/.config/stud/config.yml` and project configuration still uses `.git/stud.config`.
+
 #### Quick Install (Recommended)
 
-Run this single command to download and install the latest version:
+For the PHAR install path, run this single command to download and install the latest version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
@@ -313,7 +388,7 @@ This script will:
 Download the latest PHAR directly:
 
 ```bash
-curl -L https://github.com/Studapart/stud-cli/releases/download/v3.16.1/stud-3.16.1.phar -o ~/.local/bin/stud
+curl -L https://github.com/Studapart/stud-cli/releases/download/v3.17.0/stud-3.17.0.phar -o ~/.local/bin/stud
 chmod +x ~/.local/bin/stud
 ```
 
@@ -326,7 +401,7 @@ Ensure `~/.local/bin` is in your `$PATH` (add `export PATH="$HOME/.local/bin:$PA
 If you prefer to install `stud` globally for all users:
 
 ```bash
-sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.16.1/stud-3.16.1.phar -o /usr/local/bin/stud
+sudo curl -L https://github.com/Studapart/stud-cli/releases/download/v3.17.0/stud-3.17.0.phar -o /usr/local/bin/stud
 sudo chmod +x /usr/local/bin/stud
 ```
 
@@ -341,6 +416,8 @@ stud update
 ```
 
 The tool will automatically check for new releases, download the latest version, and replace your current installation. If you installed using the recommended method (user-owned directory), this will work seamlessly without requiring `sudo`.
+
+Portable self-update is not implemented in the first rollout. Portable installs are updated by downloading the new release archive and `checksums.txt`, verifying the checksum, replacing the platform directory under `~/.local/share/stud-portable`, and keeping the `~/.local/bin/stud` symlink pointed at the platform launcher.
 
 You can preview the changelog of the latest available version (including breaking changes) without downloading by using the `--info` flag:
 

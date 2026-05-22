@@ -1,4 +1,4 @@
-name: Release stud.phar
+name: Release stud artifacts
 
 on:
   push:
@@ -11,52 +11,129 @@ on:
         required: true
         default: '1.0.0'
 
+permissions:
+  contents: write
+
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build-phar:
+    runs-on: gh-dind-runner
+    outputs:
+      app-version: ${{ steps.version.outputs.app-version }}
+      phar-filename: ${{ steps.version.outputs.phar-filename }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Setup PHP with tools
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
         with:
           php-version: '8.2'
           tools: box
 
       - name: Get app name and version
-        id: get_version
+        id: version
         run: |
           APP_NAME="stud"
           echo "APP_NAME=${APP_NAME}" >> $GITHUB_ENV
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             APP_VERSION="${{ github.event.inputs.version }}"
           else
-            APP_VERSION=$(jq -r .version composer.json)
+            APP_VERSION=$(php -r "echo json_decode(file_get_contents('composer.json'), true)['version'];")
           fi
           echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_ENV
-          echo "PHAR_FILENAME=${APP_NAME}-${APP_VERSION}.phar" >> $GITHUB_ENV
+          PHAR_FILENAME="${APP_NAME}-${APP_VERSION}.phar"
+          echo "PHAR_FILENAME=${PHAR_FILENAME}" >> $GITHUB_ENV
+          echo "app-version=${APP_VERSION}" >> $GITHUB_OUTPUT
+          echo "phar-filename=${PHAR_FILENAME}" >> $GITHUB_OUTPUT
 
-      - name: Build and rename phar
-        run: |
-          composer install --no-dev
+      - name: Build PHAR
+        run: scripts/build-phar --version "${{ env.APP_VERSION }}" --output "${{ env.PHAR_FILENAME }}"
 
-          vendor/bin/castor repack \
-            --logo-file src/repack/logo.php \
-            --app-name "${{ env.APP_NAME }}" \
-            --app-version "${{ env.APP_VERSION }}"
-          mv "${{ env.APP_NAME }}.linux-amd64.phar" "${{ env.PHAR_FILENAME }}"
-
-      - name: Create Release and Upload Phar
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
+      - name: Upload PHAR artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          files: ${{ env.PHAR_FILENAME }}
-
-      - name: Upload artifact (dry-run)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PHAR_FILENAME }}
+          name: phar
           path: ${{ env.PHAR_FILENAME }}
+          retention-days: 1
+
+  build-portable:
+    runs-on: gh-dind-runner
+    needs: build-phar
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-amd64
+            runtime-url: https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.2.31-cli-linux-x86_64.tar.gz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Download PHAR artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: phar
+          path: dist/phar
+
+      - name: Build portable artifact
+        run: |
+          mkdir -p dist/runtime dist/portable dist/artifacts
+          RUNTIME_PATH=$(scripts/download-portable-runtime \
+            --platform "${{ matrix.platform }}" \
+            --url "${{ matrix.runtime-url }}" \
+            --output "dist/runtime/${{ matrix.platform }}")
+          PORTABLE_NAME="stud-portable-${{ needs.build-phar.outputs.app-version }}-${{ matrix.platform }}"
+          scripts/build-portable \
+            --platform "${{ matrix.platform }}" \
+            --phar "dist/phar/${{ needs.build-phar.outputs.phar-filename }}" \
+            --runtime "$RUNTIME_PATH" \
+            --output dist/portable \
+            --name "$PORTABLE_NAME"
+          scripts/smoke-portable --binary "dist/portable/${PORTABLE_NAME}/stud" --platform "${{ matrix.platform }}"
+          tar -C dist/portable -czf "dist/artifacts/${PORTABLE_NAME}.tar.gz" "$PORTABLE_NAME"
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: portable-${{ matrix.platform }}
+          path: dist/artifacts/*.tar.gz
+          retention-days: 1
+
+  publish-artifacts:
+    runs-on: gh-dind-runner
+    needs:
+      - build-phar
+      - build-portable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Download PHAR artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: phar
+          path: dist/release
+
+      - name: Download portable artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: portable-*
+          path: dist/release
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: scripts/create-release-checksums --directory dist/release --output dist/release/checksums.txt
+
+      - name: Create Release and Upload Artifacts
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        with:
+          files: dist/release/*
+
+      - name: Upload artifacts (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-artifacts
+          path: dist/release/*
           retention-days: 1
