@@ -11,9 +11,24 @@ namespace App\Service;
 class AdfToMarkdownConverter
 {
     /**
+     * @var array<string, string>
+     */
+    private const BLOCK_CONVERTERS = [
+        'paragraph' => 'convertParagraph',
+        'heading' => 'convertHeading',
+        'bulletList' => 'convertBulletList',
+        'orderedList' => 'convertOrderedList',
+        'listItem' => 'convertListItem',
+        'codeBlock' => 'convertCodeBlock',
+        'blockquote' => 'convertBlockquote',
+        'panel' => 'convertPanel',
+        'table' => 'convertTable',
+    ];
+
+    /**
      * Convert an ADF document (array with type and content) to markdown string.
      *
-     * @param array{type: string, content?: array<int, mixed>} $adf
+     * @param array{type: string, content?: mixed} $adf
      */
     public function convert(array $adf): string
     {
@@ -38,20 +53,16 @@ class AdfToMarkdownConverter
     protected function convertBlock(array $node): string
     {
         $type = $node['type'] ?? '';
+        if ($type === 'rule') {
+            return '---';
+        }
 
-        return match ($type) {
-            'paragraph' => $this->convertParagraph($node),
-            'heading' => $this->convertHeading($node),
-            'bulletList' => $this->convertBulletList($node),
-            'orderedList' => $this->convertOrderedList($node),
-            'listItem' => $this->convertListItem($node),
-            'codeBlock' => $this->convertCodeBlock($node),
-            'blockquote' => $this->convertBlockquote($node),
-            'panel' => $this->convertPanel($node),
-            'rule' => '---',
-            'table' => $this->convertTable($node),
-            default => $this->convertUnknownBlock($node),
-        };
+        $converter = self::BLOCK_CONVERTERS[$type] ?? null;
+        if ($converter === null) {
+            return $this->convertUnknownBlock($node);
+        }
+
+        return $this->{$converter}($node);
     }
 
     /**
@@ -92,7 +103,7 @@ class AdfToMarkdownConverter
     }
 
     /**
-     * @param array<int, array<string, mixed>> $items
+     * @param array<int, mixed> $items
      */
     protected function convertListItems(array $items, string $bullet): string
     {
@@ -120,7 +131,7 @@ class AdfToMarkdownConverter
     }
 
     /**
-     * @param array<int, array<string, mixed>> $content
+     * @param array<int, mixed> $content
      */
     protected function convertListItemContent(array $content): string
     {
@@ -245,7 +256,7 @@ class AdfToMarkdownConverter
     }
 
     /**
-     * @param array<int, array<string, mixed>> $content
+     * @param array<int, mixed> $content
      */
     protected function convertInlineContent(array $content): string
     {

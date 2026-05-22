@@ -930,14 +930,9 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
         'Install it using one of the following commands:',
     ];
 
-    // Add installation instructions for each missing extension
-    foreach ($missingExtensions as $extension) {
-        if ($extension === 'ext-xml') {
-            $errorMessages[] = ' Ubuntu/Debian: sudo apt-get install php-xml';
-            $errorMessages[] = ' Fedora/RHEL: sudo dnf install php-xml';
-            $errorMessages[] = ' macOS (Homebrew): brew install php-xml';
-        }
-    }
+    $errorMessages[] = ' Ubuntu/Debian: sudo apt-get install php-xml';
+    $errorMessages[] = ' Fedora/RHEL: sudo dnf install php-xml';
+    $errorMessages[] = ' macOS (Homebrew): brew install php-xml';
 
     $errorMessages[] = 'After installation, restart your terminal or web server.';
 
@@ -2766,9 +2761,7 @@ function help(
     $logger->title(Logger::VERBOSITY_NORMAL, $translator->trans('help.title'));
 
     $sectionTitle = $translator->trans('help.description_section');
-    if ($colorHelper !== null) {
-        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
-    }
+    $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
     $logger->writeln(Logger::VERBOSITY_NORMAL, '    ' . $translator->trans('help.description_text'));
     // $logger->newLine(Logger::VERBOSITY_NORMAL);
@@ -2777,16 +2770,12 @@ function help(
     $logger->note(Logger::VERBOSITY_NORMAL, $translator->trans('help.command_specific_help_note'));
 
     $sectionTitle = $translator->trans('help.global_options_section');
-    if ($colorHelper !== null) {
-        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
-    }
+    $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
     $verboseOption = '-v|vv|vvv, --verbose';
     $verboseDesc = $translator->trans('help.global_option_verbose');
-    if ($colorHelper !== null) {
-        $verboseOption = $colorHelper->format('definition_key', $verboseOption);
-        $verboseDesc = $colorHelper->format('definition_value', $verboseDesc);
-    }
+    $verboseOption = $colorHelper->format('definition_key', $verboseOption);
+    $verboseDesc = $colorHelper->format('definition_value', $verboseDesc);
     $logger->definitionList(
         Logger::VERBOSITY_NORMAL,
         // ['-h, --help' => $translator->trans('help.global_option_help')],
@@ -2796,9 +2785,7 @@ function help(
     );
 
     $sectionTitle = $translator->trans('help.commands_section');
-    if ($colorHelper !== null) {
-        $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
-    }
+    $sectionTitle = $colorHelper->format('section_title', $sectionTitle);
     $logger->section(Logger::VERBOSITY_NORMAL, $sectionTitle);
     $logger->writeln(Logger::VERBOSITY_NORMAL, '  <info>stud</info> [command|alias] [-options] [arguments]');
     $commands = [

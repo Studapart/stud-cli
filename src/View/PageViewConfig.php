@@ -113,9 +113,7 @@ class PageViewConfig implements ViewConfigInterface
 
             if ($this->colorHelper !== null) {
                 $key = $this->colorHelper->format('definition_key', $key);
-                if (is_string($value)) {
-                    $value = $this->colorHelper->format('definition_value', $value);
-                }
+                $value = $this->colorHelper->format('definition_value', $value);
             }
 
             $definitionData[] = [$key => $value];
@@ -278,9 +276,8 @@ class PageViewConfig implements ViewConfigInterface
 
         try {
             $result = $formatter($dto);
-            if ($result !== null) {
-                return $result;
-            }
+
+            return $result;
         } catch (\Throwable) {
             // Fall back to passing property value (legacy 1-param formatters)
         }

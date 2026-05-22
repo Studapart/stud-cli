@@ -372,7 +372,7 @@ final class GithubConversationProvider
 
     protected function conversationDate(PullRequestFeedbackConversation $conversation): int
     {
-        $date = $conversation->comments[0]->date ?? $conversation->review?->date ?? new \DateTimeImmutable();
+        $date = $conversation->comments[0]->date ?? $conversation->review->date ?? new \DateTimeImmutable();
 
         return $date->getTimestamp();
     }

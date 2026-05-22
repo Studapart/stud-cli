@@ -582,7 +582,7 @@ class UpdateHandler
             if ($this->isTestCaseSubclass($frame['class'])) {
                 return true;
             }
-            if (array_key_exists('function', $frame) && str_starts_with((string) $frame['function'], 'test')
+            if (str_starts_with($frame['function'], 'test')
                 && str_contains($frame['class'], 'Test')) {
                 return true;
             }

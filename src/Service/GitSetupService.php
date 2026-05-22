@@ -130,7 +130,7 @@ class GitSetupService
     {
         $config = $this->gitRepository->readProjectConfig();
         $baseBranchValue = $config['baseBranch'] ?? null;
-        if ($baseBranchValue !== null && is_string($baseBranchValue) && trim($baseBranchValue) !== '') {
+        if ($baseBranchValue !== null && trim($baseBranchValue) !== '') {
             $baseBranch = $baseBranchValue;
             if (! str_starts_with($baseBranch, 'origin/')) {
                 return 'origin/' . $baseBranch;
