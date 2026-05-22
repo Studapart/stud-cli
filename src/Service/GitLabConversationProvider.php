@@ -139,7 +139,7 @@ final class GitLabConversationProvider
             resolvable: isset($note['resolvable']) ? (bool) $note['resolvable'] : null,
             providerState: isset($note['type']) ? (string) $note['type'] : null,
             resolvedBy: $this->gitLabAuthor($note['resolved_by'] ?? null),
-            resolvedAt: isset($note['resolved_at']) && $note['resolved_at'] !== null ? new \DateTimeImmutable((string) $note['resolved_at']) : null,
+            resolvedAt: isset($note['resolved_at']) ? new \DateTimeImmutable((string) $note['resolved_at']) : null,
         );
     }
 

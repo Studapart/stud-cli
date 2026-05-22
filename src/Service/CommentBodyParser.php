@@ -167,7 +167,7 @@ class CommentBodyParser
         }
         $cells = array_map('trim', explode('|', $trimmed));
 
-        return array_values($cells);
+        return $cells;
     }
 
     /**

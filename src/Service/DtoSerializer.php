@@ -28,7 +28,7 @@ class DtoSerializer
      */
     public function serializeList(array $dtos): array
     {
-        return array_map(fn (object $dto): array => $this->serialize($dto), $dtos);
+        return array_values(array_map(fn (object $dto): array => $this->serialize($dto), $dtos));
     }
 
     protected function serializeValue(mixed $value): mixed

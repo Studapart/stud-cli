@@ -102,7 +102,7 @@ class PrCommentBodyRenderer
 
         $columns = [];
         foreach (array_keys($safeHeaders) as $idx) {
-            $headerText = $safeHeaders[$idx] ?? (string) ($idx + 1);
+            $headerText = $safeHeaders[$idx];
             $columns[] = new Column((string) $idx, $headerText, fn (array $row): string => (string) ($row[$idx] ?? ''));
         }
 

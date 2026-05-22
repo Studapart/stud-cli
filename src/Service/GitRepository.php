@@ -580,7 +580,7 @@ SCRIPT;
         $config = $this->readProjectConfig();
         $provider = $config['gitProvider'] ?? null;
 
-        if ($provider !== null && is_string($provider) && in_array($provider, ['github', 'gitlab'], true)) {
+        if ($provider !== null && in_array($provider, ['github', 'gitlab'], true)) {
             return $provider;
         }
 
