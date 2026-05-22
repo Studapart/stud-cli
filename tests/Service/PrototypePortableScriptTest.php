@@ -32,7 +32,7 @@ case "${2:-}" in
     --version)
         printf 'runtime=%s\nphar=%s\nargs=%s\n' "$0" "$1" "$2"
         ;;
-    help|config:validate)
+    help)
         printf '{"success":true,"data":{"command":"%s"}}\n' "$2"
         ;;
     *)
@@ -104,7 +104,7 @@ case "${2:-}" in
     --version)
         printf 'stud 0.0.0\n'
         ;;
-    help|config:validate)
+    help)
         printf 'not json\n'
         ;;
 esac
