@@ -40,9 +40,30 @@ SH);
         parent::tearDown();
     }
 
-    public function testCreatesLauncherUsingBundledRuntime(): void
+    public function testBuildPortableCreatesDefaultArtifactUsingBundledRuntime(): void
     {
-        $process = $this->runPrototypeCommand([
+        $process = $this->runScript('build-portable', [
+            '--platform',
+            'linux-amd64',
+            '--phar',
+            $this->pharPath,
+            '--runtime',
+            $this->runtimePath,
+            '--output',
+            dirname($this->outputDir),
+        ]);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+
+        $artifactPath = dirname($this->outputDir) . '/stud-portable-linux-amd64';
+        $artifactRoot = dirname(__DIR__, 2) . '/' . $artifactPath;
+        self::assertStringContainsString($artifactPath, $process->getOutput());
+        $this->assertPortableArtifactRunsWithBundledRuntime($artifactRoot);
+    }
+
+    public function testPrototypeWrapperCreatesLauncherUsingBundledRuntime(): void
+    {
+        $process = $this->runScript('prototype-portable', [
             '--platform',
             'linux-amd64',
             '--phar',
@@ -55,23 +76,36 @@ SH);
 
         self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
 
-        $artifactRoot = dirname(__DIR__, 2) . '/' . $this->outputDir;
-        self::assertFileExists($artifactRoot . '/stud');
-        self::assertFileExists($artifactRoot . '/runtime/php');
-        self::assertFileExists($artifactRoot . '/app/stud.phar');
-        self::assertFileExists($artifactRoot . '/README.md');
+        $this->assertPortableArtifactRunsWithBundledRuntime(dirname(__DIR__, 2) . '/' . $this->outputDir);
+    }
 
-        $portableProcess = new Process([$artifactRoot . '/stud', '--version']);
-        $portableProcess->mustRun();
+    public function testSmokePortableRunsSafeCommands(): void
+    {
+        $buildProcess = $this->runScript('build-portable', [
+            '--platform',
+            'linux-amd64',
+            '--phar',
+            $this->pharPath,
+            '--runtime',
+            $this->runtimePath,
+            '--output',
+            dirname($this->outputDir),
+        ]);
+        self::assertSame(0, $buildProcess->getExitCode(), $buildProcess->getErrorOutput());
 
-        self::assertStringContainsString('runtime=' . $artifactRoot . '/runtime/php', $portableProcess->getOutput());
-        self::assertStringContainsString('phar=' . $artifactRoot . '/app/stud.phar', $portableProcess->getOutput());
-        self::assertStringContainsString('args=--version', $portableProcess->getOutput());
+        $artifactRoot = dirname(__DIR__, 2) . '/' . dirname($this->outputDir) . '/stud-portable-linux-amd64';
+        $smokeProcess = $this->runScript('smoke-portable', [
+            '--binary',
+            $artifactRoot . '/stud',
+        ]);
+
+        self::assertSame(0, $smokeProcess->getExitCode(), $smokeProcess->getErrorOutput());
+        self::assertStringContainsString('Portable smoke checks passed', $smokeProcess->getOutput());
     }
 
     public function testRejectsUnsupportedPlatform(): void
     {
-        $process = $this->runPrototypeCommand([
+        $process = $this->runScript('build-portable', [
             '--platform',
             'darwin-arm64',
             '--phar',
@@ -89,13 +123,28 @@ SH);
     /**
      * @param list<string> $arguments
      */
-    protected function runPrototypeCommand(array $arguments): Process
+    protected function runScript(string $script, array $arguments): Process
     {
         $root = dirname(__DIR__, 2);
-        $process = new Process(array_merge([$root . '/scripts/prototype-portable'], $arguments), $root);
+        $process = new Process(array_merge([$root . '/scripts/' . $script], $arguments), $root);
         $process->run();
 
         return $process;
+    }
+
+    protected function assertPortableArtifactRunsWithBundledRuntime(string $artifactRoot): void
+    {
+        self::assertFileExists($artifactRoot . '/stud');
+        self::assertFileExists($artifactRoot . '/runtime/php');
+        self::assertFileExists($artifactRoot . '/app/stud.phar');
+        self::assertFileExists($artifactRoot . '/README.md');
+
+        $portableProcess = new Process([$artifactRoot . '/stud', '--version']);
+        $portableProcess->mustRun();
+
+        self::assertStringContainsString('runtime=' . $artifactRoot . '/runtime/php', $portableProcess->getOutput());
+        self::assertStringContainsString('phar=' . $artifactRoot . '/app/stud.phar', $portableProcess->getOutput());
+        self::assertStringContainsString('args=--version', $portableProcess->getOutput());
     }
 
     protected function removeDirectory(string $path): void

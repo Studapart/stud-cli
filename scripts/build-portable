@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/build-portable --platform linux-amd64 --phar <path> --runtime <path> --output <dir> [--name <artifact-name>]
+
+Packages an existing stud PHAR with a platform runtime. This script consumes the
+canonical PHAR artifact; it does not run Composer or rebuild application source.
+USAGE
+}
+
+die() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+platform=""
+phar_path=""
+runtime_path=""
+output_root=""
+artifact_name=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --platform)
+            platform="${2:-}"
+            shift 2
+            ;;
+        --phar)
+            phar_path="${2:-}"
+            shift 2
+            ;;
+        --runtime)
+            runtime_path="${2:-}"
+            shift 2
+            ;;
+        --output)
+            output_root="${2:-}"
+            shift 2
+            ;;
+        --name)
+            artifact_name="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$platform" ] || die "--platform is required"
+[ -n "$phar_path" ] || die "--phar is required"
+[ -n "$runtime_path" ] || die "--runtime is required"
+[ -n "$output_root" ] || die "--output is required"
+
+[ "$platform" = "linux-amd64" ] || die "Only linux-amd64 is supported"
+[ -f "$phar_path" ] || die "PHAR not found: $phar_path"
+[ -r "$phar_path" ] || die "PHAR is not readable: $phar_path"
+[ -f "$runtime_path" ] || die "Runtime not found: $runtime_path"
+[ -x "$runtime_path" ] || die "Runtime must be executable: $runtime_path"
+
+if [ -z "$artifact_name" ]; then
+    artifact_name="stud-portable-$platform"
+fi
+
+case "$artifact_name" in
+    */*|"") die "--name must be a single directory name" ;;
+esac
+
+artifact_dir="$output_root/$artifact_name"
+
+rm -rf "$artifact_dir"
+mkdir -p "$artifact_dir/runtime" "$artifact_dir/app"
+
+cp "$runtime_path" "$artifact_dir/runtime/php"
+cp "$phar_path" "$artifact_dir/app/stud.phar"
+
+cat > "$artifact_dir/stud" <<'LAUNCHER'
+#!/usr/bin/env sh
+set -eu
+
+bin_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$bin_dir/runtime/php" "$bin_dir/app/stud.phar" "$@"
+LAUNCHER
+
+chmod 0755 "$artifact_dir/stud" "$artifact_dir/runtime/php"
+
+cat > "$artifact_dir/README.md" <<README
+# stud-portable
+
+Platform: $platform
+
+This portable artifact runs \`app/stud.phar\` with the bundled \`runtime/php\`
+executable. It does not require PHP on the user's PATH.
+
+Smoke checks:
+
+\`\`\`bash
+./stud --version
+echo '{}' | ./stud help --agent
+echo '{"skipJira":true,"skipGit":true}' | ./stud config:validate --agent
+\`\`\`
+README
+
+echo "$artifact_dir"

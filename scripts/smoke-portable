@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/smoke-portable --binary <path-to-portable-stud>
+
+Runs safe smoke checks against a portable stud executable.
+USAGE
+}
+
+die() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+binary_path=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --binary)
+            binary_path="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1"
+            ;;
+    esac
+done
+
+[ -n "$binary_path" ] || die "--binary is required"
+[ -x "$binary_path" ] || die "Binary must be executable: $binary_path"
+
+"$binary_path" --version >/dev/null
+printf '{}\n' | "$binary_path" help --agent >/dev/null
+printf '{"skipJira":true,"skipGit":true}\n' | "$binary_path" config:validate --agent >/dev/null
+
+echo "Portable smoke checks passed for $binary_path"
