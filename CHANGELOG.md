@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-05-22
+
 ### Added
 
 - **stud-portable prototype (SCI-101):** Validated the `linux-amd64` runtime-plus-PHAR packaging approach and documented the initial portable artifact boundaries.
