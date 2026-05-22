@@ -42,9 +42,11 @@ done
 [ -n "$output_path" ] || die "--output is required"
 
 command -v composer >/dev/null 2>&1 || die "composer is required"
-[ -x vendor/bin/castor ] || die "vendor/bin/castor is required; run composer install first if dependencies are missing"
 
 composer install --no-dev
+
+[ -x vendor/bin/castor ] || die "vendor/bin/castor is required after composer install"
+command -v box >/dev/null 2>&1 || die "box is required; install it before building the PHAR"
 
 vendor/bin/castor repack \
     --logo-file src/repack/logo.php \
