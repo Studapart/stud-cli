@@ -297,7 +297,7 @@ This section is for users who want to use the `stud-cli` tool as a standalone ex
 
 #### Portable Install Without Local PHP
 
-Company users who should not install PHP locally should use `stud-portable`. The first rollout supports Linux amd64 and Windows through WSL2 using the Linux amd64 artifact.
+Company users who should not install PHP locally should use `stud-portable`. The portable rollout supports Linux amd64, macOS Apple Silicon, and Windows through WSL2 using the Linux amd64 artifact.
 
 `stud-portable` packages the canonical `stud-<version>.phar` with a platform runtime and publishes checksums alongside the release assets. The existing PHAR installation remains supported.
 
@@ -306,40 +306,49 @@ Supported platforms:
 | Platform | Artifact | Status |
 | --- | --- | --- |
 | Linux amd64 | `stud-portable-<version>-linux-amd64.tar.gz` | Supported first rollout |
+| macOS Apple Silicon | `stud-portable-<version>-darwin-arm64.tar.gz` | Supported for internal Apple Silicon usage |
 | Windows | `stud-portable-<version>-linux-amd64.tar.gz` inside WSL2 | Supported through WSL2 only |
-| macOS Apple Silicon | `stud-portable-<version>-darwin-arm64.tar.gz` | Planned; use only after the asset exists on a release |
 
 Deferred targets:
 
+- Signing and notarization for macOS
+- Managed installation with `.pkg`, `.dmg`, MDM, Homebrew, or another package manager
 - Native Windows without WSL2
 - Linux ARM64
 - Windows ARM64
 - Public distribution polish beyond company needs
 
-Download the portable archive and checksums from the release page:
+Choose your platform and download the portable archive and checksums from the release page:
 
 ```bash
 VERSION=3.16.1
-curl -fL -o "stud-portable-${VERSION}-linux-amd64.tar.gz" \
-  "https://github.com/Studapart/stud-cli/releases/download/v${VERSION}/stud-portable-${VERSION}-linux-amd64.tar.gz"
+PLATFORM=linux-amd64 # use darwin-arm64 on Apple Silicon macOS
+curl -fL -o "stud-portable-${VERSION}-${PLATFORM}.tar.gz" \
+  "https://github.com/Studapart/stud-cli/releases/download/v${VERSION}/stud-portable-${VERSION}-${PLATFORM}.tar.gz"
 curl -fL -o checksums.txt \
   "https://github.com/Studapart/stud-cli/releases/download/v${VERSION}/checksums.txt"
 ```
 
-Verify the checksum before extracting:
+Verify the checksum before extracting. On Linux, use:
 
 ```bash
 sha256sum -c --ignore-missing checksums.txt
 ```
 
+On macOS, use:
+
+```bash
+grep "  stud-portable-${VERSION}-${PLATFORM}.tar.gz$" checksums.txt | shasum -a 256 -c -
+```
+
 Install the extracted portable directory under a user-owned data path and expose its launcher from `~/.local/bin`:
 
 ```bash
-tar -xzf "stud-portable-${VERSION}-linux-amd64.tar.gz"
+tar -xzf "stud-portable-${VERSION}-${PLATFORM}.tar.gz"
 mkdir -p "$HOME/.local/share/stud-portable" "$HOME/.local/bin"
-rm -rf "$HOME/.local/share/stud-portable/linux-amd64"
-mv "stud-portable-${VERSION}-linux-amd64" "$HOME/.local/share/stud-portable/linux-amd64"
-ln -sf "$HOME/.local/share/stud-portable/linux-amd64/stud" "$HOME/.local/bin/stud"
+rm -rf "$HOME/.local/share/stud-portable/${PLATFORM}"
+mv "stud-portable-${VERSION}-${PLATFORM}" "$HOME/.local/share/stud-portable/${PLATFORM}"
+ln -sf "$HOME/.local/share/stud-portable/${PLATFORM}/stud" "$HOME/.local/bin/stud"
 ```
 
 The portable artifact is a directory bundle (`stud`, `runtime/php`, and `app/stud.phar`), so only the launcher should be linked into `~/.local/bin`. The bundled runtime and PHAR must remain beside the launcher.
@@ -359,6 +368,14 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Windows support currently means WSL2 plus the Linux amd64 portable artifact. Install WSL2 with an amd64 Linux distribution, follow the Linux amd64 steps inside the WSL2 terminal, and keep the portable directory in the WSL filesystem rather than on a mounted Windows drive.
+
+macOS Apple Silicon support currently publishes an unsigned and unnotarized `darwin-arm64` tarball for internal use. Depending on how the file is downloaded and local macOS policy, you may need to approve the binary in System Settings or remove quarantine metadata after verifying checksums:
+
+```bash
+xattr -dr com.apple.quarantine "$HOME/.local/share/stud-portable/darwin-arm64"
+```
+
+Signing, notarization, managed installers, and package-manager distribution remain follow-up work.
 
 Portable artifacts remove the need for a user-installed PHP runtime. They do not replace the tools and credentials that `stud` needs to do work:
 
