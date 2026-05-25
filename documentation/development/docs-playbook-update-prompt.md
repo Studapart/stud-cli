@@ -16,7 +16,7 @@ Tasks:
 2. Run stud docs:check to confirm the generated reference is current.
 3. Compare the changed commands against documentation/features/workflow-playbook.md.
 4. Update the Mermaid workflow only when the command changes the idea-to-PR path, adds a new decision point, changes where stud please belongs, or changes how Jira, Confluence, Git, or PR commands connect.
-5. Keep command labels in the Mermaid diagram clickable and pointed at documentation/reference/commands.md anchors.
+5. Keep the Mermaid diagram visual-only. Do not use Mermaid click directives; put command links in nearby Markdown recipe text where GitHub renders them reliably.
 6. Update recipe sections when a human would now choose a different command, flag, or sequence.
 7. Keep curated pages concise. Put exhaustive options, agent JSON fields, and output shapes in the generated reference instead of duplicating them.
 8. Preserve stud please as a history-rewrite follow-up command after stud flatten, git rebase, or another intentional rewrite. Do not present it as the default push path.

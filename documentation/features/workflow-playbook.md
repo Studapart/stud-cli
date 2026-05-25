@@ -4,6 +4,8 @@ This playbook shows how the command groups fit together from idea to review. Use
 
 ## Workflow Schema
 
+The diagram is intentionally visual-only so it renders reliably on GitHub. Use the recipe sections below for clickable command links.
+
 ```mermaid
 flowchart TD
     idea([Idea or request])
@@ -39,21 +41,6 @@ flowchart TD
     cleanup -- yes --> flatten --> please --> submit
     cleanup -- no --> submit
     submit --> review --> done
-
-    click createDoc "../reference/commands.md#stud-confluence-push" "stud confluence:push"
-    click labelDoc "../reference/commands.md#stud-confluence-page-labels" "stud confluence:page-labels"
-    click createIssue "../reference/commands.md#stud-items-create" "stud items:create"
-    click updateIssue "../reference/commands.md#stud-items-update" "stud items:update"
-    click findIssue "../reference/commands.md#stud-items-list" "stud items:list"
-    click inspectIssue "../reference/commands.md#stud-items-show" "stud items:show"
-    click inspectDoc "../reference/commands.md#stud-confluence-show" "stud confluence:show"
-    click startWork "../reference/commands.md#stud-items-start" "stud items:start"
-    click status "../reference/commands.md#stud-status" "stud status"
-    click commit "../reference/commands.md#stud-commit" "stud commit"
-    click flatten "../reference/commands.md#stud-flatten" "stud flatten"
-    click please "../reference/commands.md#stud-please" "stud please"
-    click submit "../reference/commands.md#stud-submit" "stud submit"
-    click review "../reference/commands.md#stud-pr-comments" "stud pr:comments"
 ```
 
 ## Recipes
