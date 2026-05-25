@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/download-portable-runtime --platform linux-amd64 --output <dir> [--url <runtime-archive-url>]
+  scripts/download-portable-runtime --platform <platform> --output <dir> [--url <runtime-archive-url>]
 
 Downloads and extracts the PHP runtime used by portable packaging. The script
 prints the extracted runtime executable path on success.
@@ -51,8 +51,11 @@ case "$platform" in
     linux-amd64)
         default_url="https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.2.31-cli-linux-x86_64.tar.gz"
         ;;
+    darwin-arm64)
+        default_url="https://dl.static-php.dev/static-php-cli/common/php-8.2.31-cli-macos-aarch64.tar.gz"
+        ;;
     *)
-        die "Only linux-amd64 is supported"
+        die "Only linux-amd64 and darwin-arm64 are supported"
         ;;
 esac
 

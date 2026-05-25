@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/build-portable --platform linux-amd64 --phar <path> --runtime <path> --output <dir> [--name <artifact-name>]
+  scripts/build-portable --platform <platform> --phar <path> --runtime <path> --output <dir> [--name <artifact-name>]
 
 Packages an existing stud PHAR with a platform runtime. This script consumes the
 canonical PHAR artifact; it does not run Composer or rebuild application source.
@@ -59,7 +59,13 @@ done
 [ -n "$runtime_path" ] || die "--runtime is required"
 [ -n "$output_root" ] || die "--output is required"
 
-[ "$platform" = "linux-amd64" ] || die "Only linux-amd64 is supported"
+case "$platform" in
+    linux-amd64|darwin-arm64)
+        ;;
+    *)
+        die "Only linux-amd64 and darwin-arm64 are supported"
+        ;;
+esac
 [ -f "$phar_path" ] || die "PHAR not found: $phar_path"
 [ -r "$phar_path" ] || die "PHAR is not readable: $phar_path"
 [ -f "$runtime_path" ] || die "Runtime not found: $runtime_path"

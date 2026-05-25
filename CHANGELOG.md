@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **stud-portable macOS support (SCI-115):** Added `darwin-arm64` portable release packaging, smoke checks, checksums, and internal Apple Silicon install documentation.
+
 ## [3.17.3] - 2026-05-22
 
 ## [3.17.2] - 2026-05-22
