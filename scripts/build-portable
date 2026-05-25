@@ -91,7 +91,22 @@ cat > "$artifact_dir/stud" <<'LAUNCHER'
 #!/usr/bin/env sh
 set -eu
 
-bin_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_path=$0
+case "$script_path" in
+    */*) ;;
+    *) script_path=$(command -v "$script_path") ;;
+esac
+
+while [ -L "$script_path" ]; do
+    script_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)
+    link_target=$(readlink "$script_path")
+    case "$link_target" in
+        /*) script_path=$link_target ;;
+        *) script_path=$script_dir/$link_target ;;
+    esac
+done
+
+bin_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)
 exec "$bin_dir/runtime/php" "$bin_dir/app/stud.phar" "$@"
 LAUNCHER
 
