@@ -323,22 +323,37 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->callPrivateMethod($handler, 'updateChangelog', [$version]);
     }
 
-    public function testUpdateReadmeReplacesPharFilename(): void
+    public function testUpdateReadmeReplacesMarkedPharFilename(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
         $readmePath = '/README.md';
-        $content = "Download stud-3.4.1.phar and stud-3.4.1.phar again.\n";
+        $content = "<!-- release-version:start -->Download stud-3.4.1.phar and stud-3.4.1.phar again.<!-- release-version:end -->\n";
         $this->flysystem->write($readmePath, $content);
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['3.5.0']);
 
         $updated = $this->flysystem->read($readmePath);
-        $this->assertSame("Download stud-3.5.0.phar and stud-3.5.0.phar again.\n", $updated);
+        $this->assertSame("<!-- release-version:start -->Download stud-3.5.0.phar and stud-3.5.0.phar again.<!-- release-version:end -->\n", $updated);
     }
 
-    public function testUpdateReadmeReplacesDownloadUrl(): void
+    public function testUpdateReadmeReplacesMarkedDownloadUrl(): void
+    {
+        $gitRepository = $this->prophesize(GitRepository::class);
+        $logger = $this->prophesize(\App\Service\Logger::class);
+        $readmePath = '/README.md';
+        $content = "<!-- release-version:start -->https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar<!-- release-version:end -->\n";
+        $this->flysystem->write($readmePath, $content);
+
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
+
+        $updated = $this->flysystem->read($readmePath);
+        $this->assertSame("<!-- release-version:start -->https://github.com/Studapart/stud-cli/releases/download/v3.0.0/stud-3.0.0.phar<!-- release-version:end -->\n", $updated);
+    }
+
+    public function testUpdateReadmeLeavesUnmarkedVersionReferencesUnchanged(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
         $logger = $this->prophesize(\App\Service\Logger::class);
@@ -349,8 +364,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
 
-        $updated = $this->flysystem->read($readmePath);
-        $this->assertSame("https://github.com/Studapart/stud-cli/releases/download/v3.0.0/stud-3.0.0.phar\n", $updated);
+        $this->assertSame($content, $this->flysystem->read($readmePath));
     }
 
     public function testUpdateReadmeLeavesNonMatchingContentUnchanged(): void

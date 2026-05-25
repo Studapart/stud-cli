@@ -175,7 +175,7 @@ class ReleaseHandler
     }
 
     /**
-     * Updates version references in README.md (PHAR filename and download URL).
+     * Updates intentionally marked release examples in README.md.
      *
      * @param string $version The new version (e.g. '3.5.0')
      */
@@ -187,8 +187,16 @@ class ReleaseHandler
             throw new \RuntimeException('Unable to read README.md', 0, $e);
         }
 
-        $updated = preg_replace('/stud-\d+\.\d+\.\d+\.phar/', 'stud-' . $version . '.phar', $content);
-        $updated = preg_replace('#releases/download/v\d+\.\d+\.\d+/#', 'releases/download/v' . $version . '/', $updated ?? $content);
+        $updated = preg_replace_callback(
+            '/<!-- release-version:start -->(.*?)<!-- release-version:end -->/s',
+            function (array $matches) use ($version): string {
+                $block = preg_replace('/stud-\d+\.\d+\.\d+\.phar/', 'stud-' . $version . '.phar', $matches[1]);
+                $block = preg_replace('#releases/download/v\d+\.\d+\.\d+/#', 'releases/download/v' . $version . '/', $block ?? $matches[1]);
+
+                return '<!-- release-version:start -->' . ($block ?? $matches[1]) . '<!-- release-version:end -->';
+            },
+            $content
+        );
 
         $this->fileSystem->write($this->readmePath, $updated ?? $content);
     }

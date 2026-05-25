@@ -649,6 +649,8 @@ help:
   option_config_project_init_base_branch: "Βασικός κλάδος· ελέγχεται η ύπαρξη στο origin εκτός αν έχει οριστεί --skip-base-branch-remote-check"
   option_config_project_init_skip_base: "Να μην ελέγχεται αν ο βασικός κλάδος υπάρχει στο origin"
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
+  command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
+  command_docs_check: Check that the generated command reference is up to date.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
@@ -679,7 +681,7 @@ help:
   universal_help_note: 'Συμβουλή: Χρησιμοποιήστε --help (ή -h) με οποιαδήποτε εντολή για να δείτε λεπτομερή βοήθεια. Για παράδειγμα: stud commit --help'
   command_specific_help_note: 'Συμβουλή: Εκτελέστε ''stud help <εντολή>'' για να δείτε λεπτομερή βοήθεια για μια συγκεκριμένη εντολή. Για παράδειγμα: stud help commit'
   command_help_title: 'Βοήθεια: %command%'
-  see_readme_note: Για περισσότερες πληροφορίες, δείτε την πλήρη τεκμηρίωση στο README.md
+  see_readme_note: Για περισσότερες πληροφορίες, δείτε το ευρετήριο τεκμηρίωσης στο README.md και documentation/features/
   command_not_found: 'Κείμενο βοήθειας δεν είναι διαθέσιμο για την εντολή: %command%'
   option_all: Λίστα στοιχείων για όλους τους χρήστες (παρακάμπτει το προεπιλεγμένο φίλτρο αναθέτη)
   option_project: Φιλτράρισμα στοιχείων με συγκεκριμένο κλειδί έργου (π.χ., PROJ)

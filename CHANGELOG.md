@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Documentation workflow reference:** Added `stud docs:generate` and `stud docs:check` for generated command reference maintenance, plus a workflow playbook with clickable command schema and contributor prompt for curated docs updates.
+
+- **Installer and documentation onboarding (SCI-116):** Added explicit PHAR and portable install modes to `setup-stud.sh`, split user setup/provider/feature/development guidance into focused documentation pages, and reduced README.md to an install decision guide plus documentation index.
+
 - **stud-portable macOS support (SCI-115):** Added `darwin-arm64` portable release packaging, smoke checks, checksums, and internal Apple Silicon install documentation.
 
 ## [3.17.3] - 2026-05-22

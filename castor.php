@@ -89,8 +89,10 @@ use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
 use App\Response\AgentJsonResponse;
 use App\Service\AgentModeHelper;
+use App\Service\AgentModeSchemaGenerator;
 use App\Service\ChangelogParser;
 use App\Service\CommandMap;
+use App\Service\CommandReferenceGenerator;
 use App\Service\ConfigValidator;
 use App\Service\ConfluenceService;
 use App\Service\FileSystem;
@@ -2814,6 +2816,16 @@ function help(
                 'description' => $translator->trans('help.command_completion'),
                 'example' => 'stud completion bash',
             ],
+            [
+                'name' => 'docs:generate',
+                'alias' => 'dg',
+                'description' => $translator->trans('help.command_docs_generate'),
+            ],
+            [
+                'name' => 'docs:check',
+                'alias' => 'dc',
+                'description' => $translator->trans('help.command_docs_check'),
+            ],
         ],
         $translator->trans('help.category_jira_information') => [
             [
@@ -2998,6 +3010,68 @@ function help(
             $tableRows,
         );
     }
+}
+
+#[AsTask(name: 'docs:generate', aliases: ['dg'], description: 'Generate the command reference documentation')]
+#[AgentOutput(properties: ['message' => 'string', 'path' => 'string'], description: 'Documentation generation result')]
+function docs_generate(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+
+    $schema = (new AgentModeSchemaGenerator())->generate();
+    $reference = new CommandReferenceGenerator(_get_translation_service());
+    $reference->write(_get_file_system(), $schema);
+
+    $message = 'Generated ' . CommandReferenceGenerator::OUTPUT_PATH;
+    if ($agent) {
+        _agent_respond(new AgentJsonResponse(true, data: [
+            'message' => $message,
+            'path' => CommandReferenceGenerator::OUTPUT_PATH,
+        ]));
+
+        return;
+    }
+
+    _get_logger()->success(Logger::VERBOSITY_NORMAL, $message);
+}
+
+#[AsTask(name: 'docs:check', aliases: ['dc'], description: 'Check generated documentation is up to date')]
+#[AgentOutput(properties: ['message' => 'string', 'path' => 'string'], description: 'Documentation freshness check result')]
+function docs_check(
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+
+    $path = CommandReferenceGenerator::OUTPUT_PATH;
+    $schema = (new AgentModeSchemaGenerator())->generate();
+    $reference = new CommandReferenceGenerator(_get_translation_service());
+
+    if (! $reference->isCurrent(_get_file_system(), $schema)) {
+        $message = $path . ' is stale. Run stud docs:generate.';
+        if ($agent) {
+            _agent_respond(new AgentJsonResponse(false, error: $message));
+
+            return;
+        }
+
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $message);
+        exit(1);
+    }
+
+    $message = $path . ' is up to date.';
+    if ($agent) {
+        _agent_respond(new AgentJsonResponse(true, data: [
+            'message' => $message,
+            'path' => $path,
+        ]));
+
+        return;
+    }
+
+    _get_logger()->success(Logger::VERBOSITY_NORMAL, $message);
 }
 
 

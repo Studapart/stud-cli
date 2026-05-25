@@ -1,5 +1,7 @@
 # stud-portable Packaging
 
+For user installation instructions, see [Portable install](setup/portable.md). This page documents packaging internals for contributors and release automation.
+
 `scripts/build-portable` creates a portable `stud` directory for a supported platform from an existing PHAR and a platform PHP runtime.
 
 The prototype follows the SCI-100 recommendation: keep `stud-<version>.phar` as the canonical application artifact and package it beside a runtime launcher. It does not rebuild application source.
