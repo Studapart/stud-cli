@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.5] - 2026-05-25
+
 ### Fixed
 
 - **Portable launcher symlinks (SCI-117):** Portable installs now resolve bundled runtime and PHAR paths from the real bundle directory when `stud` is invoked through `~/.local/bin/stud`.
