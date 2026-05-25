@@ -28,7 +28,7 @@ The installer:
 6. Links only the launcher to `~/.local/bin/stud`.
 7. Verifies `stud --version`.
 
-The bundled runtime and `app/stud.phar` must stay beside the launcher inside the portable directory.
+The launcher resolves its real portable directory before executing, so `stud` works from `~/.local/bin/stud` even though that command is a symlink. The bundled runtime and `app/stud.phar` must stay beside the launcher inside the portable directory.
 
 ## Updating Portable Installs
 
