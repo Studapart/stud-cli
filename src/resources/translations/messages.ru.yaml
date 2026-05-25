@@ -649,6 +649,8 @@ help:
   option_config_project_init_base_branch: "Базовая ветка; наличие на origin проверяется, если не задан --skip-base-branch-remote-check"
   option_config_project_init_skip_base: "Не проверять, существует ли базовая ветка на origin"
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
+  command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
+  command_docs_check: Check that the generated command reference is up to date.
   command_projects_list: Список всех видимых проектов Jira.
   command_items_list: Список активных элементов работы (ваша панель управления).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
@@ -679,7 +681,7 @@ help:
   universal_help_note: 'Совет: Используйте --help (или -h) с любой командой, чтобы увидеть подробную справку. Например: stud commit --help'
   command_specific_help_note: 'Совет: Запустите ''stud help <команда>'' для просмотра подробной справки по конкретной команде. Например: stud help commit'
   command_help_title: 'Справка: %command%'
-  see_readme_note: Для получения дополнительной информации см. полную документацию в README.md
+  see_readme_note: Для получения дополнительной информации см. индекс документации в README.md и documentation/features/
   command_not_found: 'Текст справки недоступен для команды: %command%'
   option_all: Список элементов для всех пользователей (переопределяет фильтр назначенного по умолчанию)
   option_project: Фильтровать элементы по конкретному ключу проекта (например, PROJ)

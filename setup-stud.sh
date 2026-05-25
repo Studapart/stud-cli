@@ -1,36 +1,61 @@
 #!/bin/bash
 # setup-stud.sh - Install or reinstall stud-cli from the latest GitHub release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
+#        curl -fsSL ... | bash -s -- --phar
+#        curl -fsSL ... | bash -s -- --portable
 #        curl -fsSL ... | bash -s -- --force
 #        curl -fsSL ... | bash -s -- --skip-init
-#        curl -fsSL ... | bash -s -- --skip-init   # CI: skip interactive stud init (no need for --force)
 
 set -e
 
 FORCE=false
 SKIP_INIT=false
-for arg in "$@"; do
-    case "$arg" in
-        --force) FORCE=true ;;
-        --skip-init) SKIP_INIT=true ;;
-    esac
-done
-
-REPO_URL="https://github.com/Studapart/stud-cli"
-API_LATEST="https://api.github.com/repos/Studapart/stud-cli/releases/latest"
+INSTALL_MODE="phar"
 INSTALL_DIR="${HOME}/.local/bin"
-STUD_BIN="${INSTALL_DIR}/stud"
-
-# Strip carriage returns so URLs are valid when script has CRLF line endings (e.g. on macOS)
-REPO_URL="${REPO_URL//$'\r'/}"
-API_LATEST="${API_LATEST//$'\r'/}"
+PORTABLE_ROOT="${HOME}/.local/share/stud-portable"
 
 die() {
     echo "$1" >&2
     exit 1
 }
 
-# Detect OS and architecture
+usage() {
+    cat <<'USAGE'
+Usage: setup-stud.sh [--phar|--portable] [--force] [--skip-init]
+
+Install modes:
+  --phar       Install the recommended PHAR artifact. This is the default.
+  --portable   Install the portable artifact for Linux amd64 / WSL2 or macOS Apple Silicon.
+
+Options:
+  --force      Reinstall even when stud is already present.
+  --skip-init  Skip interactive first-time configuration.
+USAGE
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --phar) INSTALL_MODE="phar" ;;
+        --portable) INSTALL_MODE="portable" ;;
+        --force) FORCE=true ;;
+        --skip-init) SKIP_INIT=true ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *) die "Unknown option: $arg" ;;
+    esac
+done
+
+REPO_URL="https://github.com/Studapart/stud-cli"
+API_LATEST="https://api.github.com/repos/Studapart/stud-cli/releases/latest"
+STUD_BIN="${INSTALL_DIR}/stud"
+
+# Strip carriage returns so URLs are valid when script has CRLF line endings (e.g. on macOS)
+REPO_URL="${REPO_URL//$'\r'/}"
+API_LATEST="${API_LATEST//$'\r'/}"
+
+# Detect OS and architecture for general installer support.
 detect_platform() {
     local os
     local arch
@@ -52,6 +77,16 @@ detect_platform() {
     echo "${os}-${arch}"
 }
 
+detect_portable_platform() {
+    case "$(detect_platform)" in
+        linux-x86_64) echo "linux-amd64" ;;
+        macos-aarch64) echo "darwin-arm64" ;;
+        *)
+            die "Portable install supports Linux amd64 / WSL2 and macOS Apple Silicon only. Use the recommended PHAR install with --phar on this platform."
+            ;;
+    esac
+}
+
 # Get latest release version from GitHub API (strip leading v and any carriage return)
 get_latest_version() {
     local tag_name
@@ -71,7 +106,7 @@ get_stud_version() {
     fi
 }
 
-# Check for existing stud and handle --force / version comparison
+# Check for existing stud and handle --force / version comparison for PHAR installs.
 check_existing() {
     local latest="$1"
     local stud_cmd
@@ -171,45 +206,99 @@ show_php_install() {
     esac
 }
 
-# Ensure curl is available
-if ! command -v curl >/dev/null 2>&1; then
-    die "curl is required but not installed. Please install curl and re-run this script."
-fi
-
-# Detect platform (exits if unsupported)
-detect_platform >/dev/null
-
-LATEST_VERSION=$(get_latest_version)
-check_existing "$LATEST_VERSION"
-
-if ! check_php; then
-    if ! check_php; then
-        die "PHP 8.2+ with extensions (xml, curl, mbstring) is still not available."
+download_release_asset() {
+    local url="$1"
+    local target="$2"
+    url="${url//$'\r'/}"
+    if ! curl -sSfL -o "$target" "$url"; then
+        die "Failed to download ${url}"
     fi
-fi
+}
 
-# Download and install
-mkdir -p "$INSTALL_DIR"
-LATEST_VERSION="${LATEST_VERSION//$'\r'/}"
-DOWNLOAD_URL="${REPO_URL}/releases/download/v${LATEST_VERSION}/stud-${LATEST_VERSION}.phar"
-DOWNLOAD_URL="${DOWNLOAD_URL//$'\r'/}"
-if ! curl -sSfL -o "${INSTALL_DIR}/stud" "$DOWNLOAD_URL"; then
-    die "Failed to download stud from ${DOWNLOAD_URL}"
-fi
-chmod +x "${INSTALL_DIR}/stud"
+verify_portable_checksum() {
+    local checksums_file="$1"
+    local artifact_name="$2"
+    local checksum_entry
+    checksum_entry=$(grep "  ${artifact_name}$" "$checksums_file" || true)
+    if [ -z "$checksum_entry" ]; then
+        die "Checksum entry for ${artifact_name} was not found in checksums.txt."
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        printf '%s\n' "$checksum_entry" | sha256sum -c -
+    elif command -v shasum >/dev/null 2>&1; then
+        printf '%s\n' "$checksum_entry" | shasum -a 256 -c -
+    else
+        die "sha256sum or shasum is required to verify portable artifacts."
+    fi
+}
 
-# Ensure PATH
+install_phar() {
+    local latest_version="$1"
+    local download_url
+    mkdir -p "$INSTALL_DIR"
+    latest_version="${latest_version//$'\r'/}"
+    download_url="${REPO_URL}/releases/download/v${latest_version}/stud-${latest_version}.phar"
+    download_release_asset "$download_url" "${INSTALL_DIR}/stud"
+    chmod +x "${INSTALL_DIR}/stud"
+}
+
+install_portable() {
+    local latest_version="$1"
+    local platform="$2"
+    local artifact_name="stud-portable-${latest_version}-${platform}.tar.gz"
+    local artifact_dir="stud-portable-${latest_version}-${platform}"
+    local release_url="${REPO_URL}/releases/download/v${latest_version}"
+    local tmp_dir
+
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/stud-portable.XXXXXX")
+    cleanup_portable_tmp() {
+        rm -rf "$tmp_dir"
+    }
+    trap cleanup_portable_tmp EXIT
+
+    download_release_asset "${release_url}/${artifact_name}" "${tmp_dir}/${artifact_name}"
+    download_release_asset "${release_url}/checksums.txt" "${tmp_dir}/checksums.txt"
+
+    (
+        cd "$tmp_dir" || exit 1
+        verify_portable_checksum "checksums.txt" "$artifact_name"
+        tar -xzf "$artifact_name"
+    )
+
+    if [ ! -x "${tmp_dir}/${artifact_dir}/stud" ]; then
+        die "Portable artifact ${artifact_name} did not contain an executable stud launcher."
+    fi
+
+    mkdir -p "$PORTABLE_ROOT" "$INSTALL_DIR"
+    rm -rf "${PORTABLE_ROOT:?}/${platform}"
+    mv "${tmp_dir}/${artifact_dir}" "${PORTABLE_ROOT}/${platform}"
+    ln -sf "${PORTABLE_ROOT}/${platform}/stud" "$STUD_BIN"
+}
+
+detect_shell_config_file() {
+    local shell_name
+    shell_name=$(basename "${SHELL:-}")
+
+    if [ -n "${ZSH_VERSION:-}" ] || [ "$shell_name" = "zsh" ]; then
+        echo "${HOME}/.zshrc"
+    elif [ -n "${BASH_VERSION:-}" ] || [ "$shell_name" = "bash" ]; then
+        if [ -f "${HOME}/.bashrc" ]; then
+            echo "${HOME}/.bashrc"
+        else
+            echo "${HOME}/.profile"
+        fi
+    elif [ -f "${HOME}/.profile" ]; then
+        echo "${HOME}/.profile"
+    else
+        echo "${HOME}/.profile"
+    fi
+}
+
 add_path() {
     local path_export="export PATH=\"\$HOME/.local/bin:\$PATH\""
     local config_file
-    if [ -n "${ZSH_VERSION:-}" ] && [ -f "${HOME}/.zshrc" ]; then
-        config_file="${HOME}/.zshrc"
-    elif [ -f "${HOME}/.bashrc" ]; then
-        config_file="${HOME}/.bashrc"
-    elif [ -f "${HOME}/.profile" ]; then
-        config_file="${HOME}/.profile"
-    else
-        config_file="${HOME}/.profile"
+    config_file=$(detect_shell_config_file)
+    if [ ! -f "$config_file" ]; then
         touch "$config_file"
     fi
     if ! grep -q '.local/bin' "$config_file" 2>/dev/null; then
@@ -218,10 +307,62 @@ add_path() {
     fi
 }
 
-case ":$PATH:" in
-    *":${INSTALL_DIR}:"*) ;;
-    *) add_path ;;
+ensure_user_bin_on_path() {
+    case ":$PATH:" in
+        *":${INSTALL_DIR}:"*) ;;
+        *) add_path ;;
+    esac
+}
+
+offer_first_time_setup() {
+    local run_init=true
+    if [ "$FORCE" = true ] || [ "$SKIP_INIT" = true ]; then
+        run_init=false
+    fi
+    if [ "$run_init" = true ]; then
+        printf "Would you like to configure stud now? [Y/n] "
+        read -r answer </dev/tty || true
+        case "$answer" in
+            [nN]|[nN][oO])
+                echo "Run 'stud init' when you're ready to configure."
+                ;;
+            *)
+                "$STUD_BIN" init || true
+                ;;
+        esac
+    fi
+}
+
+# Ensure required installer tools are available.
+command -v curl >/dev/null 2>&1 || die "curl is required but not installed. Please install curl and re-run this script."
+command -v tar >/dev/null 2>&1 || die "tar is required but not installed. Please install tar and re-run this script."
+
+# Detect platform early so unsupported OS/architecture fails before any install work.
+detect_platform >/dev/null
+
+LATEST_VERSION=$(get_latest_version)
+
+case "$INSTALL_MODE" in
+    phar)
+        check_existing "$LATEST_VERSION"
+        if ! check_php; then
+            if ! check_php; then
+                die "PHP 8.2+ with extensions (xml, curl, mbstring) is still not available."
+            fi
+        fi
+        install_phar "$LATEST_VERSION"
+        ;;
+    portable)
+        PORTABLE_PLATFORM=$(detect_portable_platform)
+        echo "Installing portable stud for ${PORTABLE_PLATFORM}."
+        install_portable "$LATEST_VERSION" "$PORTABLE_PLATFORM"
+        ;;
+    *)
+        die "Unsupported install mode: ${INSTALL_MODE}"
+        ;;
 esac
+
+ensure_user_bin_on_path
 
 # Verify installation
 if [ -x "$STUD_BIN" ]; then
@@ -229,23 +370,7 @@ if [ -x "$STUD_BIN" ]; then
     "$STUD_BIN" --version || true
 fi
 
-# Offer first-time setup (skip with --skip-init for CI, or with --force to match previous behavior)
-RUN_INIT=true
-if [ "$FORCE" = true ] || [ "$SKIP_INIT" = true ]; then
-    RUN_INIT=false
-fi
-if [ "$RUN_INIT" = true ]; then
-    printf "Would you like to configure stud now? [Y/n] "
-    read -r answer </dev/tty || true
-    case "$answer" in
-        [nN]|[nN][oO])
-            echo "Run 'stud init' when you're ready to configure."
-            ;;
-        *)
-            "$STUD_BIN" init || true
-            ;;
-    esac
-fi
+offer_first_time_setup
 
 echo ""
 echo "stud is installed! Quick start:"
