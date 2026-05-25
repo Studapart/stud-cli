@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.4] - 2026-05-25
+
 ### Added
 
 - **Documentation workflow reference:** Added `stud docs:generate` and `stud docs:check` for generated command reference maintenance, plus a workflow playbook with clickable command schema and contributor prompt for curated docs updates.
