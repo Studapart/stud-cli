@@ -57,9 +57,19 @@ class SetupStudScriptTest extends TestCase
         $process = $this->runSetup(['--portable', '--skip-init']);
 
         self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-        self::assertFileExists($this->home . '/.local/share/stud-portable/linux-amd64/stud');
+        $bundleRoot = $this->home . '/.local/share/stud-portable/linux-amd64';
+        self::assertFileExists($bundleRoot . '/stud');
         self::assertTrue(is_link($this->home . '/.local/bin/stud'));
-        self::assertStringContainsString('portable stud 9.8.7', $process->getOutput());
+        self::assertSame($bundleRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
+        $this->assertPortableOutputUsesBundle($process->getOutput(), $bundleRoot);
+        self::assertFileDoesNotExist($this->workspace . '/php.log');
+
+        $installedProcess = new Process(['/usr/bin/env', 'stud', '--version'], null, [
+            'PATH' => $this->home . '/.local/bin:' . $this->fakeBin . ':' . (string) getenv('PATH'),
+            'HOME' => $this->home,
+        ]);
+        $installedProcess->mustRun();
+        $this->assertPortableOutputUsesBundle($installedProcess->getOutput(), $bundleRoot);
         self::assertFileDoesNotExist($this->workspace . '/php.log');
     }
 
@@ -193,18 +203,76 @@ SH);
 
     protected function createPortableArchive(string $platform): string
     {
-        $artifactDir = $this->workspace . '/stud-portable-9.8.7-' . $platform;
-        mkdir($artifactDir, 0777, true);
-        $this->writeExecutable($artifactDir . '/stud', <<<'SH'
-#!/usr/bin/env sh
-printf 'portable stud 9.8.7\n'
-SH);
+        $fixtureRoot = $this->workspace . '/portable-fixture-' . $platform;
+        $artifactName = 'stud-portable-9.8.7-' . $platform;
+        [$runtimePath, $pharPath] = $this->createPortableFixture($fixtureRoot);
+        $buildRoot = $this->buildPortableFixture($platform, $artifactName, $pharPath, $runtimePath);
 
         $archivePath = $this->workspace . '/stud-portable-9.8.7-' . $platform . '.tar.gz';
-        $process = new Process(['tar', '-czf', $archivePath, '-C', $this->workspace, basename($artifactDir)]);
-        $process->mustRun();
+        $archiveProcess = new Process(['tar', '-czf', $archivePath, '-C', $buildRoot, $artifactName]);
+        $archiveProcess->mustRun();
 
         return $archivePath;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    protected function createPortableFixture(string $fixtureRoot): array
+    {
+        $runtimePath = $fixtureRoot . '/runtime/php';
+        $pharPath = $fixtureRoot . '/app/stud.phar';
+        mkdir($fixtureRoot . '/runtime', 0777, true);
+        mkdir($fixtureRoot . '/app', 0777, true);
+        file_put_contents($pharPath, 'phar payload');
+        $this->writeExecutable($runtimePath, <<<'SH'
+#!/usr/bin/env sh
+case "${2:-}" in
+    --version)
+        printf 'portable stud 9.8.7\nruntime=%s\nphar=%s\nargs=%s\n' "$0" "$1" "$2"
+        ;;
+    *)
+        printf 'unexpected command: %s\n' "${2:-}" >&2
+        exit 1
+        ;;
+esac
+SH);
+
+        return [$runtimePath, $pharPath];
+    }
+
+    protected function buildPortableFixture(
+        string $platform,
+        string $artifactName,
+        string $pharPath,
+        string $runtimePath,
+    ): string {
+        $buildRoot = $this->workspace . '/portable-build-' . $platform;
+        $root = dirname(__DIR__, 2);
+        $buildProcess = new Process([
+            $root . '/scripts/build-portable',
+            '--platform',
+            $platform,
+            '--phar',
+            $pharPath,
+            '--runtime',
+            $runtimePath,
+            '--output',
+            $buildRoot,
+            '--name',
+            $artifactName,
+        ], $root);
+        $buildProcess->mustRun();
+
+        return $buildRoot;
+    }
+
+    protected function assertPortableOutputUsesBundle(string $output, string $bundleRoot): void
+    {
+        self::assertStringContainsString('portable stud 9.8.7', $output);
+        self::assertStringContainsString('runtime=' . $bundleRoot . '/runtime/php', $output);
+        self::assertStringContainsString('phar=' . $bundleRoot . '/app/stud.phar', $output);
+        self::assertStringContainsString('args=--version', $output);
     }
 
     protected function createChecksums(string $artifactPath): string

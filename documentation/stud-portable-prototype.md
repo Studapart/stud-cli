@@ -48,13 +48,13 @@ Expected layout:
   README.md
 ```
 
-The generated `stud` launcher executes `runtime/php app/stud.phar`, so the artifact does not use `php` from the user's `PATH`.
+The generated `stud` launcher resolves its real path before executing `runtime/php app/stud.phar`, so the artifact works both directly and through symlinks such as `~/.local/bin/stud`. It does not use `php` from the user's `PATH`.
 
 The script prints the generated artifact path on success. It consumes the PHAR and runtime that are passed to it; it does not run Composer, Castor, or Box.
 
 ## Smoke Checks
 
-Run the repeatable smoke script against the generated binary:
+Run the repeatable smoke script against the generated binary or a symlink that points to it:
 
 ```bash
 scripts/smoke-portable --binary .cursor/tmp/stud-portable-darwin-arm64/stud --platform darwin-arm64

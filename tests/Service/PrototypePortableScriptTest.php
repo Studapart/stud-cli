@@ -207,10 +207,28 @@ SH);
 
         $portableProcess = new Process([$artifactRoot . '/stud', '--version']);
         $portableProcess->mustRun();
+        $this->assertPortableOutputUsesBundle($portableProcess->getOutput(), $artifactRoot);
 
-        self::assertStringContainsString('runtime=' . $artifactRoot . '/runtime/php', $portableProcess->getOutput());
-        self::assertStringContainsString('phar=' . $artifactRoot . '/app/stud.phar', $portableProcess->getOutput());
-        self::assertStringContainsString('args=--version', $portableProcess->getOutput());
+        $symlinkDir = $this->workspace . '/symlink-bin-' . basename($artifactRoot);
+        mkdir($symlinkDir, 0777, true);
+        symlink($artifactRoot . '/stud', $symlinkDir . '/stud');
+
+        $symlinkProcess = new Process([$symlinkDir . '/stud', '--version']);
+        $symlinkProcess->mustRun();
+        $this->assertPortableOutputUsesBundle($symlinkProcess->getOutput(), $artifactRoot);
+
+        $pathProcess = new Process(['/usr/bin/env', 'stud', '--version'], null, [
+            'PATH' => $symlinkDir . ':' . (string) getenv('PATH'),
+        ]);
+        $pathProcess->mustRun();
+        $this->assertPortableOutputUsesBundle($pathProcess->getOutput(), $artifactRoot);
+    }
+
+    protected function assertPortableOutputUsesBundle(string $output, string $artifactRoot): void
+    {
+        self::assertStringContainsString('runtime=' . $artifactRoot . '/runtime/php', $output);
+        self::assertStringContainsString('phar=' . $artifactRoot . '/app/stud.phar', $output);
+        self::assertStringContainsString('args=--version', $output);
     }
 
     protected function createRuntimeArchive(): string
@@ -242,7 +260,7 @@ SH);
             }
 
             $itemPath = $path . '/' . $item;
-            if (is_dir($itemPath)) {
+            if (is_dir($itemPath) && ! is_link($itemPath)) {
                 $this->removeDirectory($itemPath);
 
                 continue;
