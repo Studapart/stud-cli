@@ -710,6 +710,8 @@ help:
   option_config_project_init_base_branch: "Basisbranch; aanwezigheid op origin wordt gecontroleerd tenzij --skip-base-branch-remote-check is gezet"
   option_config_project_init_skip_base: "Niet controleren of de basisbranch op origin bestaat"
   command_completion: Genereert shell auto-aanvulling scripts voor bash of zsh.
+  command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
+  command_docs_check: Check that the generated command reference is up to date.
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
@@ -740,7 +742,7 @@ help:
   universal_help_note: 'Tip: Gebruik --help (of -h) met elk commando om gedetailleerde help te zien. Bijvoorbeeld: stud commit --help'
   command_specific_help_note: 'Tip: Voer ''stud help <commando>'' uit om gedetailleerde help voor een specifiek commando te zien. Bijvoorbeeld: stud help commit'
   command_help_title: 'Help: %command%'
-  see_readme_note: Voor meer informatie, zie de volledige documentatie in README.md
+  see_readme_note: Voor meer informatie, zie de documentatie-index in README.md en documentation/features/
   command_not_found: 'Helptekst niet beschikbaar voor commando: %command%'
   option_all: Lijst items voor alle gebruikers (overschrijft standaard toewijzingsfilter)
   option_project: Filter items op een specifieke projectcode (bijv. PROJ)

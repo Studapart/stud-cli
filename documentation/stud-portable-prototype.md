@@ -1,6 +1,8 @@
 # stud-portable Packaging
 
-`scripts/build-portable` creates a portable `stud` directory for `linux-amd64` from an existing PHAR and a platform PHP runtime.
+For user installation instructions, see [Portable install](setup/portable.md). This page documents packaging internals for contributors and release automation.
+
+`scripts/build-portable` creates a portable `stud` directory for a supported platform from an existing PHAR and a platform PHP runtime.
 
 The prototype follows the SCI-100 recommendation: keep `stud-<version>.phar` as the canonical application artifact and package it beside a runtime launcher. It does not rebuild application source.
 
@@ -20,26 +22,26 @@ Release automation uses `scripts/download-portable-runtime` to download the supp
 
 ```bash
 scripts/download-portable-runtime \
-  --platform linux-amd64 \
-  --output .cursor/tmp/static-php-linux-amd64
+  --platform darwin-arm64 \
+  --output .cursor/tmp/static-php-darwin-arm64
 ```
 
-The script currently supports `linux-amd64` using the StaticPHP `gnu-bulk` PHP 8.2 CLI archive. It prints the extracted `php` path on success.
+The script supports `linux-amd64` with the StaticPHP `gnu-bulk` PHP 8.2 CLI archive and `darwin-arm64` with the StaticPHP `common` PHP 8.2 CLI archive. It prints the extracted `php` path on success.
 
 ## Usage
 
 ```bash
 scripts/build-portable \
-  --platform linux-amd64 \
+  --platform darwin-arm64 \
   --phar .cursor/tmp/stud-3.16.1.phar \
-  --runtime .cursor/tmp/static-php-linux-amd64/php \
+  --runtime .cursor/tmp/static-php-darwin-arm64/php \
   --output .cursor/tmp
 ```
 
 Expected layout:
 
 ```text
-.cursor/tmp/stud-portable-linux-amd64/
+.cursor/tmp/stud-portable-darwin-arm64/
   stud
   runtime/php
   app/stud.phar
@@ -55,7 +57,7 @@ The script prints the generated artifact path on success. It consumes the PHAR a
 Run the repeatable smoke script against the generated binary:
 
 ```bash
-scripts/smoke-portable --binary .cursor/tmp/stud-portable-linux-amd64/stud --platform linux-amd64
+scripts/smoke-portable --binary .cursor/tmp/stud-portable-darwin-arm64/stud --platform darwin-arm64
 ```
 
 The smoke script runs these safe commands:
@@ -80,8 +82,9 @@ scripts/create-release-checksums --directory dist/release --output dist/release/
 
 ## Current Boundaries
 
-- Only `linux-amd64` is supported by this prototype.
+- Supported portable targets are `linux-amd64` and `darwin-arm64`.
 - Runtime acquisition is handled by a small helper script for the release workflow; follow-up tasks should harden provenance/signature checks for the selected `static-php-cli` runtime source.
 - Agent-run temporary outputs must be written under `.cursor/tmp/` and must not be committed. CI can point `--output` at its artifact directory.
 - The normal PHAR release remains unchanged.
+- The first `darwin-arm64` artifact is unsigned and unnotarized for internal use; signing, notarization, and managed installers remain follow-up work.
 - Portable self-update is not implemented here; users should replace the portable artifact manually during this spike.

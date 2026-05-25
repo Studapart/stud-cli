@@ -9,6 +9,8 @@ use Symfony\Component\Process\Process;
 
 class PrototypePortableScriptTest extends TestCase
 {
+    private const SUPPORTED_PLATFORMS = ['linux-amd64', 'darwin-arm64'];
+
     private string $workspace;
     private string $outputDir;
     private string $runtimePath;
@@ -53,37 +55,21 @@ SH);
 
     public function testBuildPortableCreatesDefaultArtifactUsingBundledRuntime(): void
     {
-        $process = $this->runScript('build-portable', [
-            '--platform',
-            'linux-amd64',
-            '--phar',
-            $this->pharPath,
-            '--runtime',
-            $this->runtimePath,
-            '--output',
-            dirname($this->outputDir),
-        ]);
+        foreach (self::SUPPORTED_PLATFORMS as $platform) {
+            $process = $this->buildPortableArtifact($platform);
 
-        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+            self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
 
-        $artifactPath = dirname($this->outputDir) . '/stud-portable-linux-amd64';
-        $artifactRoot = dirname(__DIR__, 2) . '/' . $artifactPath;
-        self::assertStringContainsString($artifactPath, $process->getOutput());
-        $this->assertPortableArtifactRunsWithBundledRuntime($artifactRoot);
+            $artifactPath = dirname($this->outputDir) . '/stud-portable-' . $platform;
+            $artifactRoot = dirname(__DIR__, 2) . '/' . $artifactPath;
+            self::assertStringContainsString($artifactPath, $process->getOutput());
+            $this->assertPortableArtifactRunsWithBundledRuntime($artifactRoot);
+        }
     }
 
     public function testSmokePortableRunsSafeCommands(): void
     {
-        $buildProcess = $this->runScript('build-portable', [
-            '--platform',
-            'linux-amd64',
-            '--phar',
-            $this->pharPath,
-            '--runtime',
-            $this->runtimePath,
-            '--output',
-            dirname($this->outputDir),
-        ]);
+        $buildProcess = $this->buildPortableArtifact('linux-amd64');
         self::assertSame(0, $buildProcess->getExitCode(), $buildProcess->getErrorOutput());
 
         $artifactRoot = dirname(__DIR__, 2) . '/' . dirname($this->outputDir) . '/stud-portable-linux-amd64';
@@ -111,16 +97,7 @@ esac
 SH);
         chmod($this->runtimePath, 0755);
 
-        $buildProcess = $this->runScript('build-portable', [
-            '--platform',
-            'linux-amd64',
-            '--phar',
-            $this->pharPath,
-            '--runtime',
-            $this->runtimePath,
-            '--output',
-            dirname($this->outputDir),
-        ]);
+        $buildProcess = $this->buildPortableArtifact('linux-amd64');
         self::assertSame(0, $buildProcess->getExitCode(), $buildProcess->getErrorOutput());
 
         $artifactRoot = dirname(__DIR__, 2) . '/' . dirname($this->outputDir) . '/stud-portable-linux-amd64';
@@ -137,7 +114,7 @@ SH);
     {
         $process = $this->runScript('build-portable', [
             '--platform',
-            'darwin-arm64',
+            'freebsd-amd64',
             '--phar',
             $this->pharPath,
             '--runtime',
@@ -147,27 +124,29 @@ SH);
         ]);
 
         self::assertNotSame(0, $process->getExitCode());
-        self::assertStringContainsString('Only linux-amd64 is supported', $process->getErrorOutput());
+        self::assertStringContainsString('Only linux-amd64 and darwin-arm64 are supported', $process->getErrorOutput());
     }
 
     public function testDownloadPortableRuntimeExtractsRuntimeExecutable(): void
     {
         $archivePath = $this->createRuntimeArchive();
-        $outputDir = $this->workspace . '/downloaded-runtime';
 
-        $process = $this->runScript('download-portable-runtime', [
-            '--platform',
-            'linux-amd64',
-            '--url',
-            'file://' . $archivePath,
-            '--output',
-            $outputDir,
-        ]);
+        foreach (self::SUPPORTED_PLATFORMS as $platform) {
+            $outputDir = $this->workspace . '/downloaded-runtime-' . $platform;
+            $process = $this->runScript('download-portable-runtime', [
+                '--platform',
+                $platform,
+                '--url',
+                'file://' . $archivePath,
+                '--output',
+                $outputDir,
+            ]);
 
-        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-        self::assertStringContainsString($outputDir . '/php', $process->getOutput());
-        self::assertFileExists($outputDir . '/php');
-        self::assertTrue(is_executable($outputDir . '/php'));
+            self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+            self::assertStringContainsString($outputDir . '/php', $process->getOutput());
+            self::assertFileExists($outputDir . '/php');
+            self::assertTrue(is_executable($outputDir . '/php'));
+        }
     }
 
     public function testCreateReleaseChecksumsWritesSortedChecksums(): void
@@ -203,6 +182,20 @@ SH);
         $process->run();
 
         return $process;
+    }
+
+    protected function buildPortableArtifact(string $platform): Process
+    {
+        return $this->runScript('build-portable', [
+            '--platform',
+            $platform,
+            '--phar',
+            $this->pharPath,
+            '--runtime',
+            $this->runtimePath,
+            '--output',
+            dirname($this->outputDir),
+        ]);
     }
 
     protected function assertPortableArtifactRunsWithBundledRuntime(string $artifactRoot): void

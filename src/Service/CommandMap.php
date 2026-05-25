@@ -348,6 +348,18 @@ class CommandMap
                     'options' => [],
                     'arguments' => ['<shell>'],
                 ],
+                'docs:generate' => [
+                    'alias' => 'dg',
+                    'description_key' => 'help.command_docs_generate',
+                    'options' => [],
+                    'arguments' => [],
+                ],
+                'docs:check' => [
+                    'alias' => 'dc',
+                    'description_key' => 'help.command_docs_check',
+                    'options' => [],
+                    'arguments' => [],
+                ],
                 'projects:list' => [
                     'alias' => 'pj',
                     'description_key' => 'help.command_projects_list',
