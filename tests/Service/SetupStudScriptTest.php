@@ -96,13 +96,28 @@ class SetupStudScriptTest extends TestCase
         self::assertFileDoesNotExist($this->home . '/.local/share/stud-portable/linux-amd64/stud');
     }
 
+    public function testFailsWhenLatestReleaseResponseHasNoTagName(): void
+    {
+        $this->writeCurlFakeWithApiResponse(<<<'JSON'
+{
+  "name": "v9.8.7"
+}
+JSON);
+
+        $process = $this->runSetup(['--skip-init']);
+
+        self::assertNotSame(0, $process->getExitCode());
+        self::assertStringContainsString('Could not determine latest release version from GitHub API.', $process->getErrorOutput());
+        self::assertStringNotContainsString('releases/download', file_get_contents($this->curlLog) ?: '');
+    }
+
     /**
      * @param list<string> $arguments
      */
     protected function runSetup(array $arguments): Process
     {
         $root = dirname(__DIR__, 2);
-        $path = $this->fakeBin . ':' . (string) getenv('PATH');
+        $path = $this->fakeBin . ':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
         $process = new Process(array_merge(['bash', $root . '/setup-stud.sh'], $arguments), $root, [
             'PATH' => $path,
             'HOME' => $this->home,
@@ -155,6 +170,19 @@ SH);
 
     protected function writeCurlFake(?string $portableArtifactPath, ?string $checksumsPath): void
     {
+        $this->writeCurlFakeWithApiResponse(<<<'JSON'
+{
+  "tag_name": "v9.8.7",
+  "name": "v9.8.7"
+}
+JSON, $portableArtifactPath, $checksumsPath);
+    }
+
+    protected function writeCurlFakeWithApiResponse(
+        string $apiResponse,
+        ?string $portableArtifactPath = null,
+        ?string $checksumsPath = null,
+    ): void {
         $portableArtifactPath ??= '';
         $checksumsPath ??= '';
         $this->writeExecutable($this->fakeBin . '/curl', <<<SH
@@ -179,7 +207,9 @@ done
 printf '%s\n' "\$url" >> "{$this->curlLog}"
 case "\$url" in
     *api.github.com*)
-        printf '{"tag_name":"v9.8.7"}\n'
+        cat <<'JSON'
+$apiResponse
+JSON
         ;;
     *stud-9.8.7.phar)
         cat > "\$out" <<'STUD'

@@ -90,7 +90,7 @@ detect_portable_platform() {
 # Get latest release version from GitHub API (strip leading v and any carriage return)
 get_latest_version() {
     local tag_name
-    tag_name=$(curl -sSfL "$API_LATEST" | grep '"tag_name"' | sed 's/.*"v\?\([^"]*\)".*/\1/' | head -1 | tr -d '\r')
+    tag_name=$(curl -sSfL "$API_LATEST" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 | sed 's/^v//' | tr -d '\r')
     if [ -z "$tag_name" ]; then
         die "Could not determine latest release version from GitHub API."
     fi
