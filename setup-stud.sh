@@ -320,6 +320,10 @@ offer_first_time_setup() {
         run_init=false
     fi
     if [ "$run_init" = true ]; then
+        if ! { true </dev/tty; } 2>/dev/null; then
+            echo "Run 'stud init' when you're ready to configure."
+            return
+        fi
         printf "Would you like to configure stud now? [Y/n] "
         read -r answer </dev/tty || true
         case "$answer" in
@@ -327,7 +331,7 @@ offer_first_time_setup() {
                 echo "Run 'stud init' when you're ready to configure."
                 ;;
             *)
-                "$STUD_BIN" init || true
+                "$STUD_BIN" init </dev/tty || true
                 ;;
         esac
     fi

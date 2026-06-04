@@ -1936,6 +1936,11 @@ class GitRepositoryTest extends CommandTestCase
         $parsed = $this->fileSystem->parseFile($configPath);
         $this->assertSame('TEST', $parsed['projectKey']);
         $this->assertSame(11, $parsed['transitionId']);
+        $backupPaths = array_filter(
+            $this->fileSystem->listDirectory($configDir),
+            static fn (string $path): bool => str_contains($path, 'stud.config.bak.')
+        );
+        $this->assertSame([], array_values($backupPaths));
     }
 
     public function testWriteProjectConfigPreservesMigrationVersion(): void
@@ -1983,6 +1988,13 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame(11, $parsed['transitionId']);
         // migration_version should be preserved
         $this->assertSame('202501150000001', $parsed['migration_version']);
+        $backupPaths = array_values(array_filter(
+            $this->fileSystem->listDirectory($configDir),
+            static fn (string $path): bool => str_contains($path, 'stud.config.bak.')
+        ));
+        $this->assertCount(1, $backupPaths);
+        $backupConfig = $this->fileSystem->parseFile($backupPaths[0]);
+        $this->assertSame($existingConfig, $backupConfig);
     }
 
     public function testWriteProjectConfigDoesNotAddMigrationVersionWhenNotExists(): void
