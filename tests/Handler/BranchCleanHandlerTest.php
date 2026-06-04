@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\BranchCleanupPlan;
+use App\DTO\BranchDeletionEligibility;
+use App\Enum\BranchAutoCleanDecision;
+use App\Enum\BranchCleanupLocalAction;
+use App\Enum\BranchCleanupRemoteAction;
 use App\Handler\BranchCleanHandler;
+use App\Service\BranchCleanupExecutor;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GithubProvider;
 use App\Service\Logger;
@@ -39,6 +45,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $this->logger),
             'origin/develop',
             $this->translationService,
             $this->logger
@@ -61,7 +68,9 @@ class BranchCleanHandlerTest extends CommandTestCase
         );
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged', false);
+        $this->gitRepository->expects($this->once())->method('pruneRemoteTrackingRefs');
+        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged');
+        $this->gitRepository->expects($this->never())->method('deleteBranchForce');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io, true);
@@ -106,7 +115,8 @@ class BranchCleanHandlerTest extends CommandTestCase
         ]);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/manual', false);
+        $this->gitRepository->expects($this->once())->method('pruneRemoteTrackingRefs');
+        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/manual');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io, false);
@@ -114,7 +124,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testHandleWithDeletionFailureFallsBackToForceDelete(): void
+    public function testHandleProviderMergedBranchUsesForceDeleteDirectly(): void
     {
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/fallback']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
@@ -125,10 +135,85 @@ class BranchCleanHandlerTest extends CommandTestCase
             ['origin', 'master', false],
             ['origin', 'feat/fallback', false],
         ]);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
+        $this->githubProvider->method('getAllPullRequests')->willReturn([
+            [
+                'state' => 'closed',
+                'merged_at' => '2026-06-04T10:00:00Z',
+                'head' => ['ref' => 'feat/fallback', 'repo' => ['full_name' => 'owner/repo']],
+                'base' => ['repo' => ['full_name' => 'owner/repo']],
+            ],
+        ]);
+        $this->gitRepository->expects($this->never())->method('deleteBranch');
+        $this->gitRepository->expects($this->once())->method('deleteBranchForce')->with('feat/fallback');
+
+        $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        $result = $this->handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleQuietKeepsExistingRemoteForProviderMergedBranch(): void
+    {
+        $logger = $this->createMock(Logger::class);
+        $logger->method('section');
+        $logger->method('note');
+        $logger->method('text');
+        $logger->method('writeln');
+        $logger->method('warning');
+        $logger->method('success');
+        $logger->expects($this->never())->method('confirm');
+        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
+        $handler = new BranchCleanHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $logger),
+            'origin/develop',
+            $this->translationService,
+            $logger
+        );
+
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/provider-remote']);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/provider-remote']);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('develop');
+        $this->gitRepository->method('remoteBranchExists')->willReturnMap([
+            ['origin', 'develop', true],
+            ['origin', 'main', false],
+            ['origin', 'master', false],
+        ]);
+        $this->gitBranchService->method('isBranchMergedInto')->willReturn(false);
+        $this->githubProvider->method('getAllPullRequests')->willReturn([
+            [
+                'state' => 'closed',
+                'merged_at' => '2026-06-04T10:00:00Z',
+                'head' => ['ref' => 'feat/provider-remote', 'repo' => ['full_name' => 'owner/repo']],
+                'base' => ['repo' => ['full_name' => 'owner/repo']],
+            ],
+        ]);
+
+        $this->gitRepository->expects($this->once())->method('deleteBranchForce')->with('feat/provider-remote');
+        $this->gitRepository->expects($this->never())->method('deleteRemoteBranch');
+
+        $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
+        $result = $handler->handle($io, true);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testHandleDoesNotRecheckRemoteStateDuringDeletion(): void
+    {
+        $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/merged']);
+        $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
+        $this->gitRepository->expects($this->once())
+            ->method('remoteBranchExists')
+            ->with('origin', 'develop')
+            ->willReturn(true);
         $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
-        $this->gitRepository->method('deleteBranch')->willThrowException(new \RuntimeException('branch is not fully merged'));
-        $this->gitRepository->expects($this->once())->method('deleteBranchForce')->with('feat/fallback');
+
+        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io, true);
@@ -150,20 +235,13 @@ class BranchCleanHandlerTest extends CommandTestCase
         ]);
         $this->gitBranchService->method('isBranchMergedInto')->willReturn(true);
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
-        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/remote', true);
+        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/remote');
         $this->gitRepository->expects($this->once())->method('deleteRemoteBranch')->with('origin', 'feat/remote');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io, false);
 
         $this->assertSame(0, $result);
-    }
-
-    public function testHandleRemoteBranchDeletionQuietPath(): void
-    {
-        $this->logger->expects($this->never())->method('confirm');
-        $this->callPrivateMethod($this->handler, 'handleRemoteBranchDeletion', ['feat/quiet', true]);
-        $this->assertTrue(true);
     }
 
     public function testResolveBaseBranchReturnsNullWhenPromptedBranchMissingRemotely(): void
@@ -182,13 +260,14 @@ class BranchCleanHandlerTest extends CommandTestCase
 
     public function testShouldExitEarlyReturnsFalseWhenManualBranchesExist(): void
     {
-        $result = $this->callPrivateMethod($this->handler, 'shouldExitEarly', [[], [], false, [['branch' => 'feat/x', 'reason' => 'provider_unavailable', 'remote_exists' => false]]]);
+        $manualPlan = $this->createManualCleanupPlan('feat/x');
+        $result = $this->callPrivateMethod($this->handler, 'shouldExitEarly', [[], false, [$manualPlan]]);
         $this->assertFalse($result);
     }
 
     public function testShouldExitEarlyReturnsTrueWhenOnlyCurrentSkipped(): void
     {
-        $result = $this->callPrivateMethod($this->handler, 'shouldExitEarly', [[], [], true, []]);
+        $result = $this->callPrivateMethod($this->handler, 'shouldExitEarly', [[], true, []]);
         $this->assertTrue($result);
     }
 
@@ -202,38 +281,14 @@ class BranchCleanHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $logger),
             'origin/develop',
             $this->translationService,
             $logger
         );
 
-        $confirmed = $this->callPrivateMethod($handler, 'confirmDeletion', [['feat/a'], [], false]);
+        $confirmed = $this->callPrivateMethod($handler, 'confirmDeletion', [[$this->createCleanupPlan('feat/a')], false]);
         $this->assertFalse($confirmed);
-    }
-
-    public function testHandleDeleteFailureNonFallbackReturnsFalse(): void
-    {
-        $this->gitRepository->method('remoteBranchExists')->with('origin', 'feat/no-fallback')->willReturn(true);
-        $result = $this->callPrivateMethod(
-            $this->handler,
-            'handleDeleteFailure',
-            ['feat/no-fallback', new \RuntimeException('some failure')]
-        );
-        $this->assertFalse($result);
-    }
-
-    public function testAttemptForceDeleteReturnsFalseOnException(): void
-    {
-        $this->gitRepository->method('deleteBranchForce')->willThrowException(new \RuntimeException('force failed'));
-        $result = $this->callPrivateMethod($this->handler, 'attemptForceDelete', ['feat/fail-force']);
-        $this->assertFalse($result);
-    }
-
-    public function testDeleteRemoteBranchHandlesException(): void
-    {
-        $this->gitRepository->method('deleteRemoteBranch')->willThrowException(new \RuntimeException('remote fail'));
-        $this->callPrivateMethod($this->handler, 'deleteRemoteBranch', ['feat/remote-fail']);
-        $this->assertTrue(true);
     }
 
     public function testHandleReturnsEarlyWhenDeletionCancelled(): void
@@ -251,6 +306,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $logger),
             'origin/develop',
             $this->translationService,
             $logger
@@ -287,12 +343,13 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitBranchService->method('isBranchMergedInto')->willReturnCallback(fn (string $b) => $b === 'feat/merged');
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
-        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged', false);
+        $this->gitRepository->expects($this->once())->method('pruneRemoteTrackingRefs');
+        $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged');
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $this->assertSame(0, $this->handler->handle($io, true));
     }
 
-    public function testAddManuallyConfirmedBranchesSupportsSkipAndRemoteAppend(): void
+    public function testAddManuallyConfirmedPlansSupportsSkipAndRemoteAppend(): void
     {
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->exactly(2))->method('confirm')->willReturnOnConsecutiveCalls(false, true);
@@ -301,65 +358,61 @@ class BranchCleanHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $logger),
             'origin/develop',
             $this->translationService,
             $logger
         );
 
-        $local = [];
-        $remote = [];
+        $cleanupPlans = [];
         $manual = [
-            ['branch' => 'feat/skip', 'reason' => 'provider_unavailable', 'remote_exists' => false],
-            ['branch' => 'feat/remote-manual', 'reason' => 'provider_unavailable', 'remote_exists' => true],
+            $this->createManualCleanupPlan('feat/skip'),
+            $this->createManualCleanupPlan('feat/remote-manual', true),
         ];
 
         $reflection = new \ReflectionClass($handler);
-        $method = $reflection->getMethod('addManuallyConfirmedBranches');
+        $method = $reflection->getMethod('addManuallyConfirmedPlans');
         $method->setAccessible(true);
-        $args = [$manual, &$local, &$remote];
+        $args = [$manual, &$cleanupPlans, false];
         $method->invokeArgs($handler, $args);
 
-        $this->assertSame([], $local);
-        $this->assertSame(['feat/remote-manual'], $remote);
+        $this->assertCount(1, $cleanupPlans);
+        $this->assertSame('feat/remote-manual', $cleanupPlans[0]->branch);
+        $this->assertSame(BranchCleanupLocalAction::SafeDelete, $cleanupPlans[0]->localAction);
+        $this->assertSame(BranchCleanupRemoteAction::PromptDelete, $cleanupPlans[0]->remoteAction);
     }
 
     public function testDisplayManualBranchesReportWithEntries(): void
     {
-        $this->callPrivateMethod($this->handler, 'displayManualBranchesReport', [[
-            ['branch' => 'feat/manual', 'reason' => 'provider_unavailable', 'remote_exists' => false],
-        ]]);
+        $this->callPrivateMethod($this->handler, 'displayManualBranchesReport', [[$this->createManualCleanupPlan('feat/manual')]]);
         $this->assertTrue(true);
     }
 
-    public function testDeleteLocalOnlyBranchesSkipsProtected(): void
+    public function testBuildCleanupPlanSkipsProtected(): void
     {
-        $result = $this->callPrivateMethod($this->handler, 'deleteLocalOnlyBranches', [['main']]);
-        $this->assertSame(0, $result);
-    }
-
-    public function testDeleteBranchesWithRemoteSkipsProtected(): void
-    {
-        $result = $this->callPrivateMethod($this->handler, 'deleteBranchesWithRemote', [['main'], true]);
-        $this->assertSame(0, $result);
-    }
-
-    public function testHandleRemoteBranchDeletionInteractiveKeepsRemoteWhenDenied(): void
-    {
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('confirm')->willReturn(false);
-        $logger->expects($this->once())->method('writeln');
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            'origin/develop',
-            $this->translationService,
-            $logger
+        $plan = $this->callPrivateMethod(
+            $this->handler,
+            'buildCleanupPlan',
+            [
+                'main',
+                new BranchDeletionEligibility(BranchAutoCleanDecision::No, 'protected_branch', 'active', false),
+                true,
+                true,
+            ]
         );
 
-        $this->callPrivateMethod($handler, 'handleRemoteBranchDeletion', ['feat/keep', false]);
-        $this->assertTrue(true);
+        $this->assertSame(BranchCleanupLocalAction::Skip, $plan->localAction);
+        $this->assertSame(BranchCleanupRemoteAction::Skip, $plan->remoteAction);
+    }
+
+    public function testDeleteBranchesSkipsNonExecutablePlans(): void
+    {
+        $result = $this->callPrivateMethod(
+            $this->handler,
+            'deleteBranches',
+            [[$this->createCleanupPlan('main', true, BranchCleanupRemoteAction::Skip, BranchCleanupLocalAction::Skip)], true]
+        );
+        $this->assertSame(0, $result);
     }
 
     public function testResolveBaseBranchInteractiveValidationAndSuccessPath(): void
@@ -379,6 +432,7 @@ class BranchCleanHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->gitBranchService,
             $resolver,
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $logger),
             null,
             $this->translationService,
             $logger
@@ -390,5 +444,43 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         $resolved = $this->callPrivateMethod($handler, 'resolveBaseBranch', [false]);
         $this->assertSame('origin/develop', $resolved);
+    }
+
+    private function createCleanupPlan(
+        string $branch,
+        bool $remoteExists = false,
+        BranchCleanupRemoteAction $remoteAction = BranchCleanupRemoteAction::Skip,
+        BranchCleanupLocalAction $localAction = BranchCleanupLocalAction::SafeDelete
+    ): BranchCleanupPlan {
+        return new BranchCleanupPlan(
+            $branch,
+            new BranchDeletionEligibility(
+                BranchAutoCleanDecision::Yes,
+                'merged',
+                $remoteExists ? 'merged' : 'stale',
+                false,
+                $localAction === BranchCleanupLocalAction::SafeDelete,
+                $localAction === BranchCleanupLocalAction::ForceDelete
+            ),
+            $remoteExists,
+            $localAction,
+            $remoteAction
+        );
+    }
+
+    private function createManualCleanupPlan(string $branch, bool $remoteExists = false): BranchCleanupPlan
+    {
+        return new BranchCleanupPlan(
+            $branch,
+            new BranchDeletionEligibility(
+                BranchAutoCleanDecision::Manual,
+                'provider_unavailable',
+                'active',
+                false
+            ),
+            $remoteExists,
+            BranchCleanupLocalAction::Manual,
+            BranchCleanupRemoteAction::Manual
+        );
     }
 }

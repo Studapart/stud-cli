@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\BranchCleanupPlan;
+use App\DTO\BranchDeletionEligibility;
 use App\Enum\BranchAutoCleanDecision;
+use App\Enum\BranchCleanupLocalAction;
+use App\Enum\BranchCleanupRemoteAction;
+use App\Service\BranchCleanupExecutor;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
@@ -14,13 +19,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchCleanHandler
 {
-    /** @var array<string> Protected branches that should never be deleted */
-    private const PROTECTED_BRANCHES = ['develop', 'main', 'master'];
-
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
         private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
+        private readonly BranchCleanupExecutor $cleanupExecutor,
         private readonly ?string $configuredBaseBranch,
         private readonly TranslationService $translator,
         private readonly Logger $logger
@@ -32,35 +35,34 @@ class BranchCleanHandler
         $this->displayHeader();
 
         $baseBranch = $this->resolveBaseBranch($quiet);
-        $result = $this->findBranchesToClean($baseBranch);
-        $branchesToCleanLocal = $result['local_only'];
-        $branchesToCleanRemote = $result['with_remote'];
+        $result = $this->findBranchesToClean($baseBranch, $quiet);
+        $cleanupPlans = $result['automatic'];
         $currentBranchSkipped = $result['current_branch_skipped'];
-        $manualBranches = $result['manual'];
+        $manualPlans = $result['manual'];
 
         if (! $quiet) {
-            $this->addManuallyConfirmedBranches($manualBranches, $branchesToCleanLocal, $branchesToCleanRemote);
+            $this->addManuallyConfirmedPlans($manualPlans, $cleanupPlans, $quiet);
         }
 
-        if ($this->shouldExitEarly($branchesToCleanLocal, $branchesToCleanRemote, $currentBranchSkipped, $manualBranches)) {
+        if ($this->shouldExitEarly($cleanupPlans, $currentBranchSkipped, $manualPlans)) {
             if ($quiet) {
-                $this->displayManualBranchesReport($manualBranches);
+                $this->displayManualBranchesReport($manualPlans);
             }
 
             return 0;
         }
 
         $this->notifyCurrentBranchSkipped($currentBranchSkipped);
-        $this->displayBranchesToClean($branchesToCleanLocal, $branchesToCleanRemote, $quiet);
+        $this->displayBranchesToClean($cleanupPlans, $quiet);
 
-        if (! $this->confirmDeletion($branchesToCleanLocal, $branchesToCleanRemote, $quiet)) {
+        if (! $this->confirmDeletion($cleanupPlans, $quiet)) {
             return 0;
         }
 
-        $deletedCount = $this->deleteBranches($branchesToCleanLocal, $branchesToCleanRemote, $quiet);
+        $deletedCount = $this->deleteBranches($cleanupPlans, $quiet);
         $this->displayDeletionResult($deletedCount);
         if ($quiet) {
-            $this->displayManualBranchesReport($manualBranches);
+            $this->displayManualBranchesReport($manualPlans);
         }
 
         return 0;
@@ -80,16 +82,15 @@ class BranchCleanHandler
     /**
      * Checks if we should exit early (no branches to clean).
      *
-     * @param array<string> $branchesToCleanLocal Local-only branches
-     * @param array<string> $branchesToCleanRemote Branches with remote
+     * @param array<BranchCleanupPlan> $cleanupPlans Cleanup plans to execute
      * @param bool $currentBranchSkipped Whether current branch was skipped
-     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
+     * @param array<BranchCleanupPlan> $manualPlans Manual cleanup plans
      * @return bool True if should exit early, false otherwise
      */
-    protected function shouldExitEarly(array $branchesToCleanLocal, array $branchesToCleanRemote, bool $currentBranchSkipped, array $manualBranches): bool
+    protected function shouldExitEarly(array $cleanupPlans, bool $currentBranchSkipped, array $manualPlans): bool
     {
-        $totalBranches = count($branchesToCleanLocal) + count($branchesToCleanRemote);
-        $hasManualBranches = ! empty($manualBranches);
+        $totalBranches = count($cleanupPlans);
+        $hasManualBranches = ! empty($manualPlans);
 
         if ($totalBranches === 0 && ! $currentBranchSkipped && ! $hasManualBranches) {
             $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.none'));
@@ -120,13 +121,14 @@ class BranchCleanHandler
     /**
      * Displays the list of branches to be cleaned.
      *
-     * @param array<string> $branchesToCleanLocal Local-only branches
-     * @param array<string> $branchesToCleanRemote Branches with remote
+     * @param array<BranchCleanupPlan> $cleanupPlans Cleanup plans to display
      * @param bool $quiet Whether in quiet mode
      */
-    protected function displayBranchesToClean(array $branchesToCleanLocal, array $branchesToCleanRemote, bool $quiet): void
+    protected function displayBranchesToClean(array $cleanupPlans, bool $quiet): void
     {
-        $totalBranches = count($branchesToCleanLocal) + count($branchesToCleanRemote);
+        $branchesToCleanLocal = $this->getLocalOnlyBranchNames($cleanupPlans);
+        $branchesToCleanRemote = $this->getRemoteBranchNames($cleanupPlans);
+        $totalBranches = count($cleanupPlans);
         $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.found', ['count' => $totalBranches]));
 
         if (! empty($branchesToCleanLocal)) {
@@ -146,18 +148,17 @@ class BranchCleanHandler
     /**
      * Confirms deletion with user (if not in quiet mode).
      *
-     * @param array<string> $branchesToCleanLocal Local-only branches
-     * @param array<string> $branchesToCleanRemote Branches with remote
+     * @param array<BranchCleanupPlan> $cleanupPlans Cleanup plans to execute
      * @param bool $quiet Whether in quiet mode
      * @return bool True if confirmed or quiet mode, false if cancelled
      */
-    protected function confirmDeletion(array $branchesToCleanLocal, array $branchesToCleanRemote, bool $quiet): bool
+    protected function confirmDeletion(array $cleanupPlans, bool $quiet): bool
     {
         if ($quiet) {
             return true;
         }
 
-        $totalBranches = count($branchesToCleanLocal) + count($branchesToCleanRemote);
+        $totalBranches = count($cleanupPlans);
         $confirmed = $this->logger->confirm(
             $this->translator->trans('branches.clean.confirm', ['count' => $totalBranches]),
             true
@@ -186,13 +187,12 @@ class BranchCleanHandler
 
     /**
      * @return array{
-     *   local_only: array<string>,
-     *   with_remote: array<string>,
+     *   automatic: array<BranchCleanupPlan>,
      *   current_branch_skipped: bool,
-     *   manual: array<int, array{branch: string, reason: string, remote_exists: bool}>
+     *   manual: array<BranchCleanupPlan>
      * }
      */
-    protected function findBranchesToClean(?string $baseBranch): array
+    protected function findBranchesToClean(?string $baseBranch, bool $quiet): array
     {
         $allBranches = $this->fetchAllBranches();
         $remoteBranchesSet = $this->fetchRemoteBranchesSet();
@@ -200,10 +200,9 @@ class BranchCleanHandler
         $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>");
         $prSnapshot = $this->eligibilityResolver->buildPullRequestSnapshot();
 
-        $branchesToCleanLocal = [];
-        $branchesToCleanRemote = [];
+        $automaticPlans = [];
         $currentBranchSkipped = false;
-        $manualBranches = [];
+        $manualPlans = [];
 
         foreach ($allBranches as $branch) {
             $remoteExists = isset($remoteBranchesSet[$branch]);
@@ -220,29 +219,72 @@ class BranchCleanHandler
                 $currentBranchSkipped = true;
             }
 
-            if ($eligibility->decision === BranchAutoCleanDecision::Yes) {
-                if ($remoteExists) {
-                    $branchesToCleanRemote[] = $branch;
-                } else {
-                    $branchesToCleanLocal[] = $branch;
-                }
+            $plan = $this->buildCleanupPlan($branch, $eligibility, $remoteExists, $quiet);
+            if ($plan->localAction === BranchCleanupLocalAction::Manual) {
+                $manualPlans[] = $plan;
             }
 
-            if ($eligibility->decision === BranchAutoCleanDecision::Manual) {
-                $manualBranches[] = [
-                    'branch' => $branch,
-                    'reason' => $eligibility->reason,
-                    'remote_exists' => $remoteExists,
-                ];
+            if (
+                $plan->localAction === BranchCleanupLocalAction::SafeDelete
+                || $plan->localAction === BranchCleanupLocalAction::ForceDelete
+            ) {
+                $automaticPlans[] = $plan;
             }
         }
 
         return [
-            'local_only' => $branchesToCleanLocal,
-            'with_remote' => $branchesToCleanRemote,
+            'automatic' => $automaticPlans,
             'current_branch_skipped' => $currentBranchSkipped,
-            'manual' => $manualBranches,
+            'manual' => $manualPlans,
         ];
+    }
+
+    protected function buildCleanupPlan(
+        string $branch,
+        BranchDeletionEligibility $eligibility,
+        bool $remoteExists,
+        bool $quiet,
+    ): BranchCleanupPlan {
+        if ($eligibility->decision === BranchAutoCleanDecision::Manual) {
+            return new BranchCleanupPlan(
+                $branch,
+                $eligibility,
+                $remoteExists,
+                BranchCleanupLocalAction::Manual,
+                BranchCleanupRemoteAction::Manual
+            );
+        }
+
+        if ($eligibility->decision !== BranchAutoCleanDecision::Yes) {
+            return new BranchCleanupPlan(
+                $branch,
+                $eligibility,
+                $remoteExists,
+                BranchCleanupLocalAction::Skip,
+                BranchCleanupRemoteAction::Skip
+            );
+        }
+
+        $localAction = $eligibility->mergedByGit
+            ? BranchCleanupLocalAction::SafeDelete
+            : BranchCleanupLocalAction::ForceDelete;
+
+        return new BranchCleanupPlan(
+            $branch,
+            $eligibility,
+            $remoteExists,
+            $localAction,
+            $this->resolveAutomaticRemoteAction($remoteExists, $quiet)
+        );
+    }
+
+    protected function resolveAutomaticRemoteAction(bool $remoteExists, bool $quiet): BranchCleanupRemoteAction
+    {
+        if (! $remoteExists) {
+            return BranchCleanupRemoteAction::Skip;
+        }
+
+        return $quiet ? BranchCleanupRemoteAction::KeepQuiet : BranchCleanupRemoteAction::PromptDelete;
     }
 
     /**
@@ -300,17 +342,16 @@ class BranchCleanHandler
     }
 
     /**
-     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
-     * @param array<string> $branchesToCleanLocal
-     * @param array<string> $branchesToCleanRemote
+     * @param array<BranchCleanupPlan> $manualPlans
+     * @param array<BranchCleanupPlan> $cleanupPlans
      */
-    protected function addManuallyConfirmedBranches(array $manualBranches, array &$branchesToCleanLocal, array &$branchesToCleanRemote): void
+    protected function addManuallyConfirmedPlans(array $manualPlans, array &$cleanupPlans, bool $quiet): void
     {
-        foreach ($manualBranches as $manualBranch) {
+        foreach ($manualPlans as $manualPlan) {
             $confirm = $this->logger->confirm(
                 $this->translator->trans('branches.clean.manual_confirm', [
-                    'branch' => $manualBranch['branch'],
-                    'reason' => $this->translateReason($manualBranch['reason']),
+                    'branch' => $manualPlan->branch,
+                    'reason' => $this->translateReason($manualPlan->eligibility->reason),
                 ]),
                 false
             );
@@ -318,34 +359,30 @@ class BranchCleanHandler
                 continue;
             }
 
-            if ($manualBranch['remote_exists']) {
-                $branchesToCleanRemote[] = $manualBranch['branch'];
-            } else {
-                $branchesToCleanLocal[] = $manualBranch['branch'];
-            }
+            $cleanupPlans[] = $this->buildManuallyConfirmedPlan($manualPlan, $quiet);
         }
     }
 
     /**
-     * @param array<int, array{branch: string, reason: string, remote_exists: bool}> $manualBranches
+     * @param array<BranchCleanupPlan> $manualPlans
      */
-    protected function displayManualBranchesReport(array $manualBranches): void
+    protected function displayManualBranchesReport(array $manualPlans): void
     {
-        if ($manualBranches === []) {
+        if ($manualPlans === []) {
             return;
         }
 
         $this->logger->note(
             Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('branches.clean.manual_report_header', ['count' => count($manualBranches)])
+            $this->translator->trans('branches.clean.manual_report_header', ['count' => count($manualPlans)])
         );
 
-        foreach ($manualBranches as $manualBranch) {
+        foreach ($manualPlans as $manualPlan) {
             $this->logger->text(
                 Logger::VERBOSITY_NORMAL,
                 $this->translator->trans('branches.clean.manual_report_row', [
-                    'branch' => $manualBranch['branch'],
-                    'reason' => $this->translateReason($manualBranch['reason']),
+                    'branch' => $manualPlan->branch,
+                    'reason' => $this->translateReason($manualPlan->eligibility->reason),
                 ])
             );
         }
@@ -358,15 +395,15 @@ class BranchCleanHandler
         return $this->translator->trans("branches.clean.reason.{$reason}");
     }
 
-    /**
-     * Checks if a branch is protected (should never be deleted).
-     *
-     * @param string $branch The branch name
-     * @return bool True if branch is protected, false otherwise
-     */
-    protected function isProtectedBranch(string $branch): bool
+    protected function buildManuallyConfirmedPlan(BranchCleanupPlan $manualPlan, bool $quiet): BranchCleanupPlan
     {
-        return in_array($branch, self::PROTECTED_BRANCHES, true);
+        return new BranchCleanupPlan(
+            $manualPlan->branch,
+            $manualPlan->eligibility,
+            $manualPlan->remoteExists,
+            BranchCleanupLocalAction::SafeDelete,
+            $this->resolveAutomaticRemoteAction($manualPlan->remoteExists, $quiet)
+        );
     }
 
     /**
@@ -384,185 +421,36 @@ class BranchCleanHandler
     /**
      * Deletes the specified branches, handling errors gracefully.
      *
-     * @param array<string> $localOnlyBranches Branches to delete locally only
-     * @param array<string> $withRemoteBranches Branches that exist on remote (delete local, suggest remote)
+     * @param array<BranchCleanupPlan> $cleanupPlans Plans to execute
      * @param bool $quiet Whether to skip remote deletion prompts
      * @return int Number of successfully deleted branches
      */
-    protected function deleteBranches(array $localOnlyBranches, array $withRemoteBranches, bool $quiet): int
+    protected function deleteBranches(array $cleanupPlans, bool $quiet): int
     {
-        $deletedCount = 0;
-
-        $deletedCount += $this->deleteLocalOnlyBranches($localOnlyBranches);
-        $deletedCount += $this->deleteBranchesWithRemote($withRemoteBranches, $quiet);
-
-        return $deletedCount;
+        return $this->cleanupExecutor->execute($cleanupPlans, $quiet);
     }
 
     /**
-     * Deletes local-only branches.
-     *
-     * @param array<string> $branches Branches to delete locally only
-     * @return int Number of successfully deleted branches
+     * @param array<BranchCleanupPlan> $cleanupPlans
+     * @return array<string>
      */
-    protected function deleteLocalOnlyBranches(array $branches): int
+    protected function getLocalOnlyBranchNames(array $cleanupPlans): array
     {
-        $deletedCount = 0;
-
-        foreach ($branches as $branch) {
-            if ($this->isProtectedBranch($branch)) {
-                $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=yellow>{$this->translator->trans('branches.clean.protected', ['branch' => $branch])}</>");
-
-                continue;
-            }
-
-            if ($this->deleteBranchWithFallback($branch, true)) {
-                $deletedCount++;
-            }
-        }
-
-        return $deletedCount;
+        return array_values(array_map(
+            fn (BranchCleanupPlan $plan): string => $plan->branch,
+            array_filter($cleanupPlans, fn (BranchCleanupPlan $plan): bool => ! $plan->remoteExists)
+        ));
     }
 
     /**
-     * Deletes branches that exist on remote (delete local, suggest remote).
-     *
-     * @param array<string> $branches Branches that exist on remote
-     * @param bool $quiet Whether to skip remote deletion prompts
-     * @return int Number of successfully deleted branches
+     * @param array<BranchCleanupPlan> $cleanupPlans
+     * @return array<string>
      */
-    protected function deleteBranchesWithRemote(array $branches, bool $quiet): int
+    protected function getRemoteBranchNames(array $cleanupPlans): array
     {
-        $deletedCount = 0;
-
-        foreach ($branches as $branch) {
-            if ($this->isProtectedBranch($branch)) {
-                $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=yellow>{$this->translator->trans('branches.clean.protected', ['branch' => $branch])}</>");
-
-                continue;
-            }
-
-            if ($this->deleteBranchWithFallback($branch, false)) {
-                $deletedCount++;
-                $this->handleRemoteBranchDeletion($branch, $quiet);
-            }
-        }
-
-        return $deletedCount;
-    }
-
-    /**
-     * Deletes a branch with force delete fallback if needed.
-     *
-     * @param string $branch Branch name to delete
-     * @param bool $showPruningMessage Whether to show pruning message for local-only branches
-     * @return bool True if branch was successfully deleted, false otherwise
-     */
-    protected function deleteBranchWithFallback(string $branch, bool $showPruningMessage): bool
-    {
-        try {
-            // Verify remote state (might have changed or categorization might be based on stale refs)
-            $remoteExists = $this->gitRepository->remoteBranchExists('origin', $branch);
-            if ($showPruningMessage && ! $remoteExists) {
-                $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.pruning_refs')}</>");
-            }
-
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleting', ['branch' => $branch]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Deleting local branch: {$branch}</>");
-            $this->gitRepository->deleteBranch($branch, $remoteExists);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted local branch: {$branch}</>");
-
-            return true;
-        } catch (\Exception $e) {
-            return $this->handleDeleteFailure($branch, $e);
-        }
-    }
-
-    /**
-     * Handles branch deletion failure with force delete fallback.
-     *
-     * @param string $branch Branch name that failed to delete
-     * @param \Exception $e Original exception
-     * @return bool True if force delete succeeded, false otherwise
-     */
-    protected function handleDeleteFailure(string $branch, \Exception $e): bool
-    {
-        // If deletion fails and remote doesn't exist, try force delete as fallback
-        $remoteExists = $this->gitRepository->remoteBranchExists('origin', $branch);
-        if (! $remoteExists && str_contains($e->getMessage(), 'not fully merged')) {
-            return $this->attemptForceDelete($branch);
-        }
-
-        $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error', ['branch' => $branch, 'error' => $e->getMessage()]));
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Deletion failed: {$e->getMessage()}</>");
-
-        return false;
-    }
-
-    /**
-     * Attempts to force delete a branch.
-     *
-     * @param string $branch Branch name to force delete
-     * @return bool True if force delete succeeded, false otherwise
-     */
-    protected function attemptForceDelete(string $branch): bool
-    {
-        try {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.force_delete_warning', ['branch' => $branch]));
-            $this->gitRepository->deleteBranchForce($branch);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully force-deleted local branch: {$branch}</>");
-
-            return true;
-        } catch (\Exception $forceException) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error', ['branch' => $branch, 'error' => $forceException->getMessage()]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Force deletion also failed: {$forceException->getMessage()}</>");
-
-            return false;
-        }
-    }
-
-    /**
-     * Handles remote branch deletion prompt and execution.
-     *
-     * @param string $branch Branch name
-     * @param bool $quiet Whether to skip remote deletion prompts
-     */
-    protected function handleRemoteBranchDeletion(string $branch, bool $quiet): void
-    {
-        if ($quiet) {
-            // In quiet mode, only delete local, don't prompt for remote
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.remote_kept_quiet', ['branch' => $branch])}</>");
-
-            return;
-        }
-
-        $deleteRemote = $this->logger->confirm(
-            $this->translator->trans('branches.clean.delete_remote_confirm', ['branch' => $branch]),
-            false
-        );
-
-        if ($deleteRemote) {
-            $this->deleteRemoteBranch($branch);
-        } else {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.remote_kept', ['branch' => $branch])}</>");
-        }
-    }
-
-    /**
-     * Deletes a remote branch.
-     *
-     * @param string $branch Branch name to delete from remote
-     */
-    protected function deleteRemoteBranch(string $branch): void
-    {
-        try {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Deleting remote branch: origin/{$branch}</>");
-            $this->gitRepository->deleteRemoteBranch('origin', $branch);
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleted_remote', ['branch' => $branch]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted remote branch: origin/{$branch}</>");
-        } catch (\Exception $e) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error_remote', ['branch' => $branch, 'error' => $e->getMessage()]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Remote deletion failed: {$e->getMessage()}</>");
-        }
+        return array_values(array_map(
+            fn (BranchCleanupPlan $plan): string => $plan->branch,
+            array_filter($cleanupPlans, fn (BranchCleanupPlan $plan): bool => $plan->remoteExists)
+        ));
     }
 }
