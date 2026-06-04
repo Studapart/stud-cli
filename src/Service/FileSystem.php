@@ -94,6 +94,45 @@ class FileSystem
     }
 
     /**
+     * Copies the current file contents to a sibling backup before mutation.
+     *
+     * @return string|null The backup path, or null when the source file does not exist
+     * @throws \InvalidArgumentException If path contains invalid characters
+     * @throws \RuntimeException If the source cannot be read or the backup cannot be written
+     */
+    public function backupFileIfExists(string $path): ?string
+    {
+        $this->validatePath($path);
+        if (! $this->fileExists($path)) {
+            return null;
+        }
+
+        $backupPath = $this->generateBackupPath($path);
+        $this->write($backupPath, $this->read($path));
+
+        return $backupPath;
+    }
+
+    /**
+     * Generates a non-overwriting sibling backup path.
+     */
+    protected function generateBackupPath(string $path): string
+    {
+        $basePath = $path . '.bak.' . date('YmdHis');
+        if (! $this->fileExists($basePath)) {
+            return $basePath;
+        }
+
+        $index = 1;
+        do {
+            $candidate = $basePath . '.' . $index;
+            ++$index;
+        } while ($this->fileExists($candidate));
+
+        return $candidate;
+    }
+
+    /**
      * Checks if a path is a directory.
      *
      * @param string $path The path to check

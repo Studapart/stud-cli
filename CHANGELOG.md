@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Setup init config safety (SCI-118):** Immediate setup-time configuration now reads from the user TTY instead of installer stdin and backs up existing global/project config files before overwriting them.
+
 ## [3.17.6] - 2026-05-26
 
 ### Fixed

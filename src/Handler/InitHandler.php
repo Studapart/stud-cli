@@ -267,6 +267,7 @@ class InitHandler
         }
 
         $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
+        $this->fileSystem->backupFileIfExists($this->configPath);
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
         $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
     }

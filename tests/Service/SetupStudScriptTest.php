@@ -47,6 +47,28 @@ class SetupStudScriptTest extends TestCase
         self::assertStringContainsString('-r', file_get_contents($this->workspace . '/php.log') ?: '');
     }
 
+    public function testDefaultPharModeWithoutTtySkipsImmediateInit(): void
+    {
+        $process = $this->runSetup([]);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertFileDoesNotExist($this->workspace . '/stud-init-stdin.log');
+        self::assertStringContainsString("Run 'stud init' when you're ready to configure.", $process->getOutput());
+    }
+
+    public function testPipedSetupRunsInitFromTtyInsteadOfInstallerStdin(): void
+    {
+        $script = trim((string) shell_exec('command -v script 2>/dev/null'));
+        if ($script === '') {
+            self::markTestSkipped('The script command is required for pseudo-TTY setup coverage.');
+        }
+
+        $process = $this->runPipedSetupWithTty($script, "Y\n");
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertSame('tty', trim(file_get_contents($this->workspace . '/stud-init-stdin.log') ?: ''));
+    }
+
     public function testPortableModeInstallsLinuxArtifactAndDoesNotRequireLocalPhp(): void
     {
         $artifactPath = $this->createPortableArchive('linux-amd64');
@@ -70,6 +92,25 @@ class SetupStudScriptTest extends TestCase
         ]);
         $installedProcess->mustRun();
         $this->assertPortableOutputUsesBundle($installedProcess->getOutput(), $bundleRoot);
+        self::assertFileDoesNotExist($this->workspace . '/php.log');
+    }
+
+    public function testPortableModeInstallsDarwinArtifactAndDoesNotRequireLocalPhp(): void
+    {
+        $this->writeUnameFake('Darwin', 'arm64');
+        $artifactPath = $this->createPortableArchive('darwin-arm64');
+        $checksumPath = $this->createChecksums($artifactPath);
+        $this->writeCurlFake($artifactPath, $checksumPath);
+        $this->writePhpFakeThatFailsIfCalled();
+
+        $process = $this->runSetup(['--portable', '--skip-init']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        $bundleRoot = $this->home . '/.local/share/stud-portable/darwin-arm64';
+        self::assertFileExists($bundleRoot . '/stud');
+        self::assertTrue(is_link($this->home . '/.local/bin/stud'));
+        self::assertSame($bundleRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
+        $this->assertPortableOutputUsesBundle($process->getOutput(), $bundleRoot);
         self::assertFileDoesNotExist($this->workspace . '/php.log');
     }
 
@@ -123,6 +164,23 @@ JSON);
             'HOME' => $this->home,
             'SHELL' => '/bin/bash',
         ]);
+        $process->run();
+
+        return $process;
+    }
+
+    protected function runPipedSetupWithTty(string $scriptCommand, string $input): Process
+    {
+        $root = dirname(__DIR__, 2);
+        $path = $this->fakeBin . ':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+        $setupScript = $root . '/setup-stud.sh';
+        $command = "bash -c 'cat \"\$1\" | bash' -- " . escapeshellarg($setupScript);
+        $process = new Process([$scriptCommand, '-qfec', $command, '/dev/null'], $root, [
+            'PATH' => $path,
+            'HOME' => $this->home,
+            'SHELL' => '/bin/bash',
+        ]);
+        $process->setInput($input);
         $process->run();
 
         return $process;
@@ -214,10 +272,26 @@ JSON
     *stud-9.8.7.phar)
         cat > "\$out" <<'STUD'
 #!/usr/bin/env sh
-printf 'stud 9.8.7\n'
+case "\${1:-}" in
+    --version|"")
+        printf 'stud 9.8.7\n'
+        ;;
+    init)
+        if [ -t 0 ]; then
+            printf 'tty\n' > "{$this->workspace}/stud-init-stdin.log"
+        else
+            printf 'stdin\n' > "{$this->workspace}/stud-init-stdin.log"
+        fi
+        printf 'init ok\n'
+        ;;
+    *)
+        printf 'unexpected stud command: %s\n' "\${1:-}" >&2
+        exit 1
+        ;;
+esac
 STUD
         ;;
-    *stud-portable-9.8.7-linux-amd64.tar.gz)
+    *stud-portable-9.8.7-*.tar.gz)
         cp "$portableArtifactPath" "\$out"
         ;;
     *checksums.txt)
