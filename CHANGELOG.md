@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.7] - 2026-06-04
+
 ### Fixed
 
 - **Branch cleanup matrix (SCI-119):** `branches:clean` now plans safe local deletes, force local deletes, remote prompts, remote skips, and manual actions from one branch-state scan so stale remotes and provider-merged branches clean up without expected-state warning noise.
