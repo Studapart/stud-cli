@@ -105,7 +105,9 @@ class BranchDeletionEligibilityResolver
                 BranchAutoCleanDecision::Yes,
                 'merged',
                 $remoteExists ? 'merged' : 'stale',
-                $hasPullRequest
+                $hasPullRequest,
+                $mergedByGit,
+                $mergedByProvider
             );
         }
 

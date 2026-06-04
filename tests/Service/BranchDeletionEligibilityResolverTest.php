@@ -100,8 +100,33 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
         $this->assertSame(BranchAutoCleanDecision::Yes, $mergedByGit->decision);
         $this->assertSame('merged', $mergedByGit->status);
+        $this->assertTrue($mergedByGit->mergedByGit);
+        $this->assertFalse($mergedByGit->mergedByProvider);
         $this->assertSame(BranchAutoCleanDecision::Yes, $mergedByProvider->decision);
         $this->assertSame('stale', $mergedByProvider->status);
+        $this->assertFalse($mergedByProvider->mergedByGit);
+        $this->assertTrue($mergedByProvider->mergedByProvider);
+    }
+
+    public function testEvaluateKeepsExistingRemoteStatusForProviderMergedBranch(): void
+    {
+        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService->method('isBranchMergedInto')->willReturn(false);
+        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+
+        $eligibility = $resolver->evaluate(
+            'feat/provider',
+            'main',
+            true,
+            'origin/develop',
+            ['feat/provider' => ['state' => 'closed', 'merged_at' => '2026-03-26T10:00:00Z']],
+            true
+        );
+
+        $this->assertSame(BranchAutoCleanDecision::Yes, $eligibility->decision);
+        $this->assertSame('merged', $eligibility->status);
+        $this->assertFalse($eligibility->mergedByGit);
+        $this->assertTrue($eligibility->mergedByProvider);
     }
 
     public function testEvaluateReturnsManualOnClosedUnmergedPullRequest(): void

@@ -13,6 +13,8 @@ final class BranchDeletionEligibility
         public readonly string $reason,
         public readonly string $status,
         public readonly bool $hasPullRequest,
+        public readonly bool $mergedByGit = false,
+        public readonly bool $mergedByProvider = false,
     ) {
     }
 }
