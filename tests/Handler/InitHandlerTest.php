@@ -237,6 +237,9 @@ class InitHandlerTest extends CommandTestCase
             ->method('parseFile')
             ->with('/tmp/config.yml')
             ->willReturn($existingConfig);
+        $this->fileSystem->expects($this->once())
+            ->method('backupFileIfExists')
+            ->with('/tmp/config.yml');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);

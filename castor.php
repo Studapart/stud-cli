@@ -2109,7 +2109,15 @@ function branches_clean(
     $gitBranchService = _get_git_branch_service();
     $gitProvider = _get_git_provider();
     $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
-    $handler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
+    $handler = new BranchCleanHandler(
+        $gitRepository,
+        $gitBranchService,
+        $resolver,
+        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_logger()),
+        _get_configured_base_branch_or_null(),
+        _get_translation_service(),
+        _get_logger()
+    );
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
@@ -3186,7 +3194,15 @@ function deploy(
         $gitBranchService = _get_git_branch_service();
         $githubProvider = _get_github_provider();
         $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
-        $cleanHandler = new BranchCleanHandler($gitRepository, $gitBranchService, $resolver, _get_configured_base_branch_or_null(), _get_translation_service(), _get_logger());
+        $cleanHandler = new BranchCleanHandler(
+            $gitRepository,
+            $gitBranchService,
+            $resolver,
+            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_logger()),
+            _get_configured_base_branch_or_null(),
+            _get_translation_service(),
+            _get_logger()
+        );
         $cleanHandler->handle(io(), true);
     }
     if ($agent) {

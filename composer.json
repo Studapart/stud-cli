@@ -3,7 +3,7 @@
     "description": "Stud Cli DX - Jira & Git Workflow Streamliner",
     "type": "project",
     "license": "MIT",
-    "version": "3.17.6",
+    "version": "3.17.7",
     "authors": [
         {
             "name": "Pierre-Emmanuel Manteau",

@@ -554,6 +554,7 @@ SCRIPT;
             }
         }
 
+        $this->fileSystem->backupFileIfExists($configPath);
         $this->fileSystem->dumpFile($configPath, $config);
     }
 

@@ -56,6 +56,49 @@ class FileSystemTest extends TestCase
         $this->assertSame($data, Yaml::parse($content));
     }
 
+    public function testBackupFileIfExistsReturnsNullWhenSourceDoesNotExist(): void
+    {
+        $backupPath = $this->fileSystem->backupFileIfExists('missing.yml');
+
+        $this->assertNull($backupPath);
+    }
+
+    public function testBackupFileIfExistsCopiesRawContents(): void
+    {
+        $path = 'config.yml';
+        $contents = "JIRA_URL: https://jira.example.com\n# keep comment\n";
+        $this->fileSystem->write($path, $contents);
+
+        $backupPath = $this->fileSystem->backupFileIfExists($path);
+
+        $this->assertIsString($backupPath);
+        $this->assertStringStartsWith($path . '.bak.', $backupPath);
+        $this->assertSame($contents, $this->fileSystem->read($backupPath));
+        $this->assertSame($contents, $this->fileSystem->read($path));
+    }
+
+    public function testBackupFileIfExistsDoesNotOverwriteExistingBackup(): void
+    {
+        $fileSystem = new class ($this->flysystem) extends FileSystem {
+            public function exposedBackupPath(string $path): string
+            {
+                return $this->generateBackupPath($path);
+            }
+        };
+        $path = 'config.yml';
+        $contents = "LANGUAGE: en\n";
+        $fileSystem->write($path, $contents);
+        $occupiedBackupPath = $fileSystem->exposedBackupPath($path);
+        $fileSystem->write($occupiedBackupPath, 'existing backup');
+
+        $backupPath = $fileSystem->backupFileIfExists($path);
+
+        $this->assertIsString($backupPath);
+        $this->assertNotSame($occupiedBackupPath, $backupPath);
+        $this->assertSame('existing backup', $fileSystem->read($occupiedBackupPath));
+        $this->assertSame($contents, $fileSystem->read($backupPath));
+    }
+
     public function testIsDir(): void
     {
         $this->flysystem->createDirectory('test_dir');
