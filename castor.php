@@ -23,6 +23,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 
 
 use App\Attribute\AgentOutput;
+use App\Command\StudHelpCommand;
 use App\DTO\ConfluencePushInput;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
@@ -117,6 +118,7 @@ use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
+use Castor\Event\AfterBootEvent;
 
 use function Castor\input;
 use function Castor\io;
@@ -793,6 +795,15 @@ function _version_check_bootstrap(): void
         // Fail silently - don't block the user's command or build process
         // Catch Throwable (not just Exception) to catch all errors including fatal ones
     }
+}
+
+/**
+ * Replace the Castor task named "help" with a Symfony-compatible command.
+ */
+#[AsListener(event: AfterBootEvent::class)]
+function _help_command_boot_listener(AfterBootEvent $event): void
+{
+    $event->application->addCommand(new StudHelpCommand());
 }
 
 /**

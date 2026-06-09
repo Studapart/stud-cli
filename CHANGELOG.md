@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CLI help and short-flag workflow (SCI-120):** Replaced the conflicting Castor `help` task at runtime with a Symfony-compatible command so native `--help` no longer fails, while preserving `stud help --agent`; added regression coverage for `stud co -a -q` and `stud push -a -q` staging flows.
+
 ## [3.17.7] - 2026-06-04
 
 ### Fixed
