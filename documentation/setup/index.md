@@ -23,7 +23,7 @@ Portable artifacts bundle PHP and are available for:
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash -s -- --portable
 ```
 
-Portable is useful when installing local PHP is not desirable. It is not yet the default recommendation, and portable self-update is not implemented. Upgrade portable installs by rerunning the installer or replacing the installed artifact.
+Portable is useful when installing local PHP is not desirable. It is not yet the default recommendation, but versioned portable installs support `stud update`. Existing legacy portable installs can be repaired by rerunning the latest portable installer, which creates the versioned layout and repoints managed symlinks.
 
 ## Installer Options
 

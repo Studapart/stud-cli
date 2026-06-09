@@ -232,6 +232,40 @@ verify_portable_checksum() {
     fi
 }
 
+is_managed_portable_target() {
+    local target="$1"
+    case "$target" in
+        "$PORTABLE_ROOT"/*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+prepare_stud_symlink() {
+    if [ ! -e "$STUD_BIN" ] && [ ! -L "$STUD_BIN" ]; then
+        return 0
+    fi
+
+    if [ -L "$STUD_BIN" ]; then
+        local link_target
+        link_target=$(readlink "$STUD_BIN")
+        case "$link_target" in
+            /*) ;;
+            *) link_target="$(cd "$(dirname "$STUD_BIN")" && pwd -P)/$link_target" ;;
+        esac
+
+        if is_managed_portable_target "$link_target"; then
+            return 0
+        fi
+    fi
+
+    if [ "$FORCE" = true ]; then
+        rm -f "$STUD_BIN"
+        return 0
+    fi
+
+    die "Refusing to overwrite unmanaged stud at ${STUD_BIN}. Re-run with --force to replace it, or move it manually first."
+}
+
 install_phar() {
     local latest_version="$1"
     local download_url
@@ -269,10 +303,17 @@ install_portable() {
         die "Portable artifact ${artifact_name} did not contain an executable stud launcher."
     fi
 
-    mkdir -p "$PORTABLE_ROOT" "$INSTALL_DIR"
-    rm -rf "${PORTABLE_ROOT:?}/${platform}"
-    mv "${tmp_dir}/${artifact_dir}" "${PORTABLE_ROOT}/${platform}"
-    ln -sf "${PORTABLE_ROOT}/${platform}/stud" "$STUD_BIN"
+    if ! "${tmp_dir}/${artifact_dir}/stud" --version >/dev/null 2>&1; then
+        die "Portable artifact ${artifact_name} did not pass the launcher smoke check."
+    fi
+
+    local platform_root="${PORTABLE_ROOT}/${platform}"
+    local version_root="${platform_root}/${latest_version}"
+    mkdir -p "$platform_root" "$INSTALL_DIR"
+    prepare_stud_symlink
+    rm -rf "$version_root"
+    mv "${tmp_dir}/${artifact_dir}" "$version_root"
+    ln -sfn "$version_root/stud" "$STUD_BIN"
 }
 
 detect_shell_config_file() {
