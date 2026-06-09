@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.8] - 2026-06-09
+
+### Added
+
+- **Portable self-update (SCI-122):** Portable installs now use a versioned bundle layout with manifest metadata, safe installer migration for managed legacy symlinks, and `stud update` support that verifies and smoke-checks complete portable archives before switching the active launcher.
+
+### Fixed
+
+- **CLI help and short-flag workflow (SCI-120):** Replaced the conflicting Castor `help` task at runtime with a Symfony-compatible command so native `--help` no longer fails, while preserving `stud help --agent`; added regression coverage for `stud co -a -q` and `stud push -a -q` staging flows.
+
 ## [3.17.7] - 2026-06-04
 
 ### Fixed

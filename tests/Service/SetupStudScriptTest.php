@@ -79,8 +79,9 @@ class SetupStudScriptTest extends TestCase
         $process = $this->runSetup(['--portable', '--skip-init']);
 
         self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-        $bundleRoot = $this->home . '/.local/share/stud-portable/linux-amd64';
+        $bundleRoot = $this->home . '/.local/share/stud-portable/linux-amd64/9.8.7';
         self::assertFileExists($bundleRoot . '/stud');
+        $this->assertPortableManifest($bundleRoot, 'linux-amd64');
         self::assertTrue(is_link($this->home . '/.local/bin/stud'));
         self::assertSame($bundleRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
         $this->assertPortableOutputUsesBundle($process->getOutput(), $bundleRoot);
@@ -106,8 +107,9 @@ class SetupStudScriptTest extends TestCase
         $process = $this->runSetup(['--portable', '--skip-init']);
 
         self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
-        $bundleRoot = $this->home . '/.local/share/stud-portable/darwin-arm64';
+        $bundleRoot = $this->home . '/.local/share/stud-portable/darwin-arm64/9.8.7';
         self::assertFileExists($bundleRoot . '/stud');
+        $this->assertPortableManifest($bundleRoot, 'darwin-arm64');
         self::assertTrue(is_link($this->home . '/.local/bin/stud'));
         self::assertSame($bundleRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
         $this->assertPortableOutputUsesBundle($process->getOutput(), $bundleRoot);
@@ -134,7 +136,46 @@ class SetupStudScriptTest extends TestCase
         $process = $this->runSetup(['--portable', '--skip-init']);
 
         self::assertNotSame(0, $process->getExitCode());
-        self::assertFileDoesNotExist($this->home . '/.local/share/stud-portable/linux-amd64/stud');
+        self::assertFileDoesNotExist($this->home . '/.local/share/stud-portable/linux-amd64/9.8.7/stud');
+    }
+
+    public function testPortableModeRepointsManagedLegacySymlinkToVersionedLayout(): void
+    {
+        $artifactPath = $this->createPortableArchive('linux-amd64');
+        $checksumPath = $this->createChecksums($artifactPath);
+        $this->writeCurlFake($artifactPath, $checksumPath);
+
+        $legacyRoot = $this->home . '/.local/share/stud-portable/linux-amd64';
+        mkdir($legacyRoot . '/runtime', 0777, true);
+        mkdir($this->home . '/.local/bin', 0777, true);
+        $this->writeExecutable($legacyRoot . '/stud', "#!/usr/bin/env sh\nprintf 'legacy portable\\n'\n");
+        symlink($legacyRoot . '/stud', $this->home . '/.local/bin/stud');
+
+        $process = $this->runSetup(['--portable', '--skip-init']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertFileExists($legacyRoot . '/stud');
+        self::assertSame($legacyRoot . '/9.8.7/stud', readlink($this->home . '/.local/bin/stud'));
+        $this->assertPortableOutputUsesBundle($process->getOutput(), $legacyRoot . '/9.8.7');
+    }
+
+    public function testPortableModeRefusesUnmanagedStudSymlink(): void
+    {
+        $artifactPath = $this->createPortableArchive('linux-amd64');
+        $checksumPath = $this->createChecksums($artifactPath);
+        $this->writeCurlFake($artifactPath, $checksumPath);
+
+        $unmanagedRoot = $this->workspace . '/unmanaged';
+        mkdir($unmanagedRoot, 0777, true);
+        mkdir($this->home . '/.local/bin', 0777, true);
+        $this->writeExecutable($unmanagedRoot . '/stud', "#!/usr/bin/env sh\nprintf 'unmanaged\\n'\n");
+        symlink($unmanagedRoot . '/stud', $this->home . '/.local/bin/stud');
+
+        $process = $this->runSetup(['--portable', '--skip-init']);
+
+        self::assertNotSame(0, $process->getExitCode());
+        self::assertStringContainsString('Refusing to overwrite unmanaged stud', $process->getErrorOutput());
+        self::assertSame($unmanagedRoot . '/stud', readlink($this->home . '/.local/bin/stud'));
     }
 
     public function testFailsWhenLatestReleaseResponseHasNoTagName(): void
@@ -365,10 +406,24 @@ SH);
             $buildRoot,
             '--name',
             $artifactName,
+            '--version',
+            '9.8.7',
         ], $root);
         $buildProcess->mustRun();
 
         return $buildRoot;
+    }
+
+    protected function assertPortableManifest(string $bundleRoot, string $platform): void
+    {
+        $manifest = json_decode(file_get_contents($bundleRoot . '/.stud-portable.json') ?: '', true);
+        self::assertIsArray($manifest);
+        self::assertSame('portable', $manifest['installMode'] ?? null);
+        self::assertSame('9.8.7', $manifest['version'] ?? null);
+        self::assertSame($platform, $manifest['platform'] ?? null);
+        self::assertSame('stud', $manifest['launcher'] ?? null);
+        self::assertSame('app/stud.phar', $manifest['phar'] ?? null);
+        self::assertSame('runtime/php', $manifest['runtime'] ?? null);
     }
 
     protected function assertPortableOutputUsesBundle(string $output, string $bundleRoot): void

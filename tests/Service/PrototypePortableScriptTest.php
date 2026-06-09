@@ -203,7 +203,16 @@ SH);
         self::assertFileExists($artifactRoot . '/stud');
         self::assertFileExists($artifactRoot . '/runtime/php');
         self::assertFileExists($artifactRoot . '/app/stud.phar');
+        self::assertFileExists($artifactRoot . '/.stud-portable.json');
         self::assertFileExists($artifactRoot . '/README.md');
+        $manifest = json_decode(file_get_contents($artifactRoot . '/.stud-portable.json') ?: '', true);
+        self::assertIsArray($manifest);
+        self::assertSame('portable', $manifest['installMode'] ?? null);
+        self::assertSame('unknown', $manifest['version'] ?? null);
+        self::assertSame(basename($artifactRoot, ''), 'stud-portable-' . ($manifest['platform'] ?? null));
+        self::assertSame('stud', $manifest['launcher'] ?? null);
+        self::assertSame('app/stud.phar', $manifest['phar'] ?? null);
+        self::assertSame('runtime/php', $manifest['runtime'] ?? null);
 
         $portableProcess = new Process([$artifactRoot . '/stud', '--version']);
         $portableProcess->mustRun();

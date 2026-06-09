@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-st
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash -s -- --portable
 ```
 
-Use `--portable` only when you deliberately want the bundled-runtime artifact for Linux amd64 / WSL2 or macOS Apple Silicon. Portable self-update is not implemented yet; portable upgrades require replacing the installed artifact.
+Use `--portable` only when you deliberately want the bundled-runtime artifact for Linux amd64 / WSL2 or macOS Apple Silicon. Versioned portable installs support `stud update`; rerun the latest portable installer to repair older legacy portable layouts.
 
 ## Choose Your Path
 

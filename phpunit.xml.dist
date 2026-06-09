@@ -11,6 +11,7 @@
             <directory>tests/Config</directory>
             <directory>tests/Handler</directory>
             <directory>tests/Service</directory>
+            <directory>tests/Command</directory>
             <directory>tests/Migrations</directory>
             <directory>tests/Exception</directory>
             <directory>tests/Responder</directory>
