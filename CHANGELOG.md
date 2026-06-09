@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.8] - 2026-06-09
+
 ### Added
 
 - **Portable self-update (SCI-122):** Portable installs now use a versioned bundle layout with manifest metadata, safe installer migration for managed legacy symlinks, and `stud update` support that verifies and smoke-checks complete portable archives before switching the active launcher.
