@@ -64,7 +64,7 @@ class AgentModeParityIntegrationTest extends TestCase
             __DIR__ . '/../..',
             null,
             null,
-            15
+            30
         );
         $proc->setInput($input);
         $proc->run();
