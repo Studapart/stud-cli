@@ -49,6 +49,7 @@ stud init                  # first-time configuration
 stud ls                    # list your Jira work items
 stud sh SCI-123            # show a work item
 stud start SCI-123         # create or switch to a branch for a work item
+stud sw SCI-123            # switch to an existing local branch for a work item
 stud co                    # create a conventional commit
 stud su                    # push and open a pull request
 stud help                  # list commands

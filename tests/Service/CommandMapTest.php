@@ -32,6 +32,7 @@ class CommandMapTest extends TestCase
         $this->assertSame('branches:clean', $lookup['bc']);
         $this->assertSame('flatten', $lookup['ft']);
         $this->assertSame('sync', $lookup['sy']);
+        $this->assertSame('switch', $lookup['sw']);
         $this->assertSame('cache:clear', $lookup['cc']);
         $this->assertSame('update', $lookup['up']);
     }

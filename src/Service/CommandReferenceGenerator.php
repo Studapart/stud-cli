@@ -131,7 +131,7 @@ class CommandReferenceGenerator
         if (str_starts_with($name, 'items:') || str_starts_with($name, 'filters:') || $name === 'projects:list') {
             return 'jira';
         }
-        if (in_array($name, ['commit', 'commit:undo', 'push', 'please', 'flatten', 'sync', 'status', 'branch:rename', 'branches:list', 'branches:clean'], true)) {
+        if (in_array($name, ['commit', 'commit:undo', 'push', 'please', 'flatten', 'sync', 'switch', 'status', 'branch:rename', 'branches:list', 'branches:clean'], true)) {
             return 'git';
         }
         if (str_starts_with($name, 'pr:') || $name === 'submit') {

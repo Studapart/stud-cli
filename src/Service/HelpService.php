@@ -32,6 +32,7 @@ class HelpService
         'please' => 'stud please',
         'flatten' => 'stud flatten',
         'sync' => 'stud sync',
+        'switch' => 'stud switch',
         'cache:clear' => 'stud cache:clear',
         'status' => 'stud status',
         'submit' => 'stud submit',

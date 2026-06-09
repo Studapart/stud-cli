@@ -35,6 +35,7 @@ use App\Exception\AgentModeException;
 use App\Handler\BranchCleanHandler;
 use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
+use App\Handler\BranchSwitchHandler;
 use App\Handler\CacheClearHandler;
 use App\Handler\CommitHandler;
 use App\Handler\ConfigProjectInitHandler;
@@ -70,6 +71,7 @@ use App\Handler\SyncHandler;
 use App\Handler\UpdateHandler;
 use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
+use App\Responder\BranchSwitchResponder;
 use App\Responder\ConfigProjectInitResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
@@ -89,6 +91,7 @@ use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
 use App\Response\AgentJsonResponse;
+use App\Response\BranchSwitchResponse;
 use App\Service\AgentModeHelper;
 use App\Service\AgentModeSchemaGenerator;
 use App\Service\ChangelogParser;
@@ -2304,6 +2307,66 @@ function flatten(
         return;
     }
     exit($exitCode);
+}
+
+#[AsTask(name: 'switch', aliases: ['sw'], description: 'Switch to a local branch by Jira item key')]
+#[AgentOutput(responseClass: BranchSwitchResponse::class, description: 'Branch switch result')]
+function switch_branch(
+    #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
+    ?string $key = null,
+    #[AsOption(name: 'sync', shortcut: 's', description: 'Run stud sync after a successful switch')]
+    bool $sync = false,
+    #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: fail on ambiguous matches, no prompts')]
+    bool $quiet = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($key);
+        if ($input === null) {
+            return;
+        }
+        $key = isset($input['key']) ? (string) $input['key'] : '';
+        $sync = (bool) ($input['sync'] ?? false);
+        $quiet = true;
+    }
+
+    $handler = new BranchSwitchHandler(_get_git_repository(), _get_git_branch_service(), _get_translation_service());
+    $response = $handler->handle((string) $key, $quiet);
+    if ($response->needsSelection && ! $agent) {
+        $selectedBranch = _branch_switch_select_branch($response);
+        $response = $handler->handle((string) $key, false, $selectedBranch);
+    }
+
+    if ($response->isSuccess() && $sync) {
+        $syncHandler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
+        $syncExitCode = $syncHandler->handle(io());
+        $response = $response->withSyncResult($syncExitCode, _get_translation_service()->trans('branch.switch.error_sync_failed'));
+    }
+
+    $responder = new BranchSwitchResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+
+    exit($response->isSuccess() ? 0 : 1);
+}
+
+function _branch_switch_select_branch(BranchSwitchResponse $response): ?string
+{
+    _get_logger()->text(Logger::VERBOSITY_NORMAL, _get_translation_service()->trans('branch.switch.multiple_branches', ['key' => $response->key]));
+
+    $selected = _get_logger()->choice(
+        _get_translation_service()->trans('branch.switch.select_branch'),
+        $response->matches
+    );
+
+    return is_string($selected) ? $selected : null;
 }
 
 #[AsTask(name: 'sync', aliases: ['sy'], description: 'Fetch the latest base branch and rebase the current feature branch onto it')]

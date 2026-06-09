@@ -423,6 +423,28 @@ class GitBranchServiceTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    public function testFindLocalBranchesContainingIssueKeyMatchesCaseInsensitively(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with("git branch --format='%(refname:short)'")
+            ->willReturn($this->createSuccessProcess("develop\nfeat/SCI-123-title\nfix/sci-123-bug\nchore/OTHER-1"));
+
+        $result = $this->gitBranchService->findLocalBranchesContainingIssueKey('SCI-123');
+
+        $this->assertSame(['feat/SCI-123-title', 'fix/sci-123-bug'], $result);
+    }
+
+    public function testFindLocalBranchesContainingIssueKeyReturnsEmptyForBlankKey(): void
+    {
+        $this->gitRepository->expects($this->never())
+            ->method('runQuietly');
+
+        $result = $this->gitBranchService->findLocalBranchesContainingIssueKey('   ');
+
+        $this->assertSame([], $result);
+    }
+
     public function testIsBranchMergedIntoReturnsTrue(): void
     {
         $this->gitRepository->expects($this->once())
