@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-st
 The portable artifact is currently unsigned and unnotarized. After checksum verification, local macOS policy may still require you to approve the binary in System Settings or remove quarantine metadata:
 
 ```bash
-xattr -dr com.apple.quarantine "$HOME/.local/share/stud-portable/darwin-arm64"
+xattr -dr com.apple.quarantine "$HOME/.local/share/stud-portable/darwin-arm64/<version>"
 ```
 
-Signing, notarization, Homebrew packaging, and managed installers are follow-up work. Portable self-update is not implemented; replace the artifact when upgrading.
+Signing, notarization, Homebrew packaging, and managed installers are follow-up work. Versioned portable installs can update with `stud update`; rerun the latest portable installer first if your machine still uses the older non-versioned portable layout.

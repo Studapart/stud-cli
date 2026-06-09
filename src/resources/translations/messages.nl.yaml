@@ -593,6 +593,19 @@ update:
     Wilt u toch doorgaan met de installatie?'
   downloading_checksum: Checksumbestand downloaden vanaf
   checksum_download_error: Fout bij downloaden van checksumbestand
+  portable_legacy_layout: This portable install uses the legacy non-versioned layout. Re-run the latest portable installer to migrate it safely, then run stud update again.
+  portable_context_invalid: 'Portable update failed: the current portable install metadata is incomplete.'
+  portable_asset_missing: 'Portable update failed: the latest release does not contain a matching portable archive and checksums.txt for this platform.'
+  portable_checksum_failed: 'Portable update failed: checksum verification did not match the downloaded portable archive.'
+  portable_extract_failed: 'Portable update failed: the portable archive could not be extracted.'
+  portable_smoke_failed: 'Portable update failed: the new portable launcher did not pass the smoke check.'
+  portable_unmanaged_symlink: 'Portable update failed: ~/.local/bin/stud does not point to a managed portable install. Re-run setup-stud.sh --portable to repair the installation.'
+  portable_symlink_failed: 'Portable update failed: could not switch the managed stud symlink. The previous version was kept active.'
+  portable_success: Portable stud updated to %version%.
+  portable_cleanup_prompt: Remove older portable versions now?
+  portable_update_failed: 'Portable update failed.
+
+    Error: %error%'
 release:
   section: Release proces starten voor versie %version%
   fetched: Laatste wijzigingen opgehaald van origin.

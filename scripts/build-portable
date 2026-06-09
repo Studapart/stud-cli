@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/build-portable --platform <platform> --phar <path> --runtime <path> --output <dir> [--name <artifact-name>]
+  scripts/build-portable --platform <platform> --phar <path> --runtime <path> --output <dir> [--name <artifact-name>] [--version <version>]
 
 Packages an existing stud PHAR with a platform runtime. This script consumes the
 canonical PHAR artifact; it does not run Composer or rebuild application source.
@@ -21,6 +21,7 @@ phar_path=""
 runtime_path=""
 output_root=""
 artifact_name=""
+version=""
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -42,6 +43,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --name)
             artifact_name="${2:-}"
+            shift 2
+            ;;
+        --version)
+            version="${2:-}"
             shift 2
             ;;
         -h|--help)
@@ -79,6 +84,21 @@ case "$artifact_name" in
     */*|"") die "--name must be a single directory name" ;;
 esac
 
+if [ -z "$version" ]; then
+    case "$artifact_name" in
+        stud-portable-*-"$platform")
+            version="${artifact_name#stud-portable-}"
+            version="${version%-$platform}"
+            if [ -z "$version" ]; then
+                version="unknown"
+            fi
+            ;;
+        *)
+            version="unknown"
+            ;;
+    esac
+fi
+
 artifact_dir="$output_root/$artifact_name"
 
 rm -rf "$artifact_dir"
@@ -112,10 +132,22 @@ LAUNCHER
 
 chmod 0755 "$artifact_dir/stud" "$artifact_dir/runtime/php"
 
+cat > "$artifact_dir/.stud-portable.json" <<JSON
+{
+  "installMode": "portable",
+  "version": "$version",
+  "platform": "$platform",
+  "launcher": "stud",
+  "phar": "app/stud.phar",
+  "runtime": "runtime/php"
+}
+JSON
+
 cat > "$artifact_dir/README.md" <<README
 # stud-portable
 
 Platform: $platform
+Version: $version
 
 This portable artifact runs \`app/stud.phar\` with the bundled \`runtime/php\`
 executable. It does not require PHP on the user's PATH.

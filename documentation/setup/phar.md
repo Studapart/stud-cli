@@ -20,7 +20,7 @@ Omitting `--phar` does the same thing.
 
 ## Updating
 
-PHAR installs support:
+PHAR installs keep the existing single-binary update behavior:
 
 ```bash
 stud update
@@ -34,6 +34,8 @@ stud up -i
 ```
 
 If you installed globally with `sudo`, updates may require elevated privileges. Prefer the user-owned `~/.local/bin` install path.
+
+Portable installs also support `stud update`, but they update by installing a complete portable bundle and switching the managed symlink instead of replacing a PHAR in place.
 
 ## CI and Non-Interactive Install
 

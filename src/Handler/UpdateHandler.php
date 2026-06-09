@@ -11,8 +11,12 @@ use App\Service\GithubProvider;
 use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
+use App\Service\PortableUpdateService;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
+use App\Service\UpdateInstallContext;
+use App\Service\UpdateInstallDetector;
+use App\Service\UpdateRepositoryContext;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -43,6 +47,7 @@ class UpdateHandler
         $this->logVerbose($this->translator->trans('update.repository'), "{$this->repoOwner}/{$this->repoName}");
         $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
 
+        $installContext = (new UpdateInstallDetector())->detect($binaryPath, $this->currentVersion);
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
         $release = $this->getReleaseOrExitCode($githubProvider);
         if (is_int($release)) {
@@ -52,6 +57,10 @@ class UpdateHandler
 
         if ($info) {
             return 0;
+        }
+
+        if ($installContext->mode === UpdateInstallContext::MODE_PORTABLE) {
+            return $this->handlePortableUpdate($io, $installContext, $release, $quiet);
         }
 
         $pharAsset = $this->findPharAsset($release);
@@ -77,6 +86,46 @@ class UpdateHandler
         // @codeCoverageIgnoreEnd
 
         return $this->updateFileService->replaceBinary($this->logger, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown');
+    }
+
+    /**
+     * @param array<string, mixed> $release
+     */
+    protected function handlePortableUpdate(
+        SymfonyStyle $io,
+        UpdateInstallContext $installContext,
+        array $release,
+        bool $quiet,
+    ): int {
+        if ($installContext->legacyPortableLayout) {
+            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_legacy_layout')));
+
+            return 1;
+        }
+
+        $migrationResult = $this->runPrerequisiteMigrations($io);
+        // @codeCoverageIgnoreStart
+        if ($migrationResult !== 0) {
+            return $migrationResult;
+        }
+        // @codeCoverageIgnoreEnd
+
+        return $this->createPortableUpdateService()->update($installContext, $release, $quiet);
+    }
+
+    /**
+     * Factory method for the portable updater. Tested through portable update service tests.
+     *
+     * @codeCoverageIgnore
+     */
+    protected function createPortableUpdateService(): PortableUpdateService
+    {
+        return new PortableUpdateService(
+            new UpdateRepositoryContext($this->repoOwner, $this->repoName, $this->gitToken),
+            $this->translator,
+            $this->logger,
+            $this->httpClient
+        );
     }
 
     /**
