@@ -285,20 +285,20 @@ class CommandReferenceGenerator
             $lines[] = $output['description'];
             $lines[] = '';
         }
-        $lines[] = 'Success shape:';
-        $lines[] = '';
-        $lines[] = '```text';
-        $lines[] = $this->renderPayloadShape($output['success'] ?? '(undescribed)');
-        $lines[] = '```';
-        $lines[] = '';
         if (isset($output['compactSuccess'])) {
-            $lines[] = 'Compact success shape (`{"compact":true}`):';
+            $lines[] = 'Default compact success shape (`{"compact":true}` or omitted):';
             $lines[] = '';
             $lines[] = '```text';
             $lines[] = $this->renderPayloadShape($output['compactSuccess']);
             $lines[] = '```';
             $lines[] = '';
         }
+        $lines[] = 'Full success shape (`{"compact":false}`):';
+        $lines[] = '';
+        $lines[] = '```text';
+        $lines[] = $this->renderPayloadShape($output['success'] ?? '(undescribed)');
+        $lines[] = '```';
+        $lines[] = '';
         $lines[] = 'Error shape: `{"success":false,"error":"string"}`';
         $lines[] = '';
 

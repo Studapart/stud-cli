@@ -43,7 +43,8 @@ class CommandReferenceGeneratorTest extends TestCase
         $this->assertStringNotContainsString('echo \'{"compact":true', $markdown);
         $this->assertStringContainsString('success: true', $markdown);
         $this->assertStringContainsString('jira: bool', $markdown);
-        $this->assertStringContainsString('Compact success shape (`{"compact":true}`):', $markdown);
+        $this->assertStringContainsString('Default compact success shape (`{"compact":true}` or omitted):', $markdown);
+        $this->assertStringContainsString('Full success shape (`{"compact":false}`):', $markdown);
     }
 
     public function testWriteCreatesExpectedFileAndIsCurrentChecksExactContent(): void
@@ -229,7 +230,7 @@ class CommandReferenceGeneratorTest extends TestCase
                             'compact' => [
                                 'type' => 'bool',
                                 'optional' => true,
-                                'default' => false,
+                                'default' => true,
                             ],
                             'skipJira' => [
                                 'type' => 'bool',

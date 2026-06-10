@@ -169,12 +169,24 @@ class AgentModeParityIntegrationTest extends TestCase
 
     public function testHelpDocumentsCompactAgentInputAndOutputShape(): void
     {
-        $decoded = $this->runHelpAgent(['command' => 'commit', 'compact' => true]);
+        $decoded = $this->runHelpAgent(['command' => 'commit']);
 
         self::assertTrue($decoded['success'] ?? false);
         self::assertSame('commit', $decoded['data']['name'] ?? null);
         self::assertSame('bool', $decoded['data']['input']['properties']['compact']['type'] ?? null);
+        self::assertTrue($decoded['data']['input']['properties']['compact']['default'] ?? false);
         self::assertSame(['success' => true], $decoded['data']['output']['compactSuccess'] ?? null);
+    }
+
+    public function testAgentCompactFlagDefaultsToTrue(): void
+    {
+        self::assertTrue(\_agent_compact_enabled([]));
+        self::assertTrue(\_agent_compact_enabled(['compact' => true]));
+    }
+
+    public function testAgentCompactFlagCanRequestFullOutput(): void
+    {
+        self::assertFalse(\_agent_compact_enabled(['compact' => false]));
     }
 
     /**

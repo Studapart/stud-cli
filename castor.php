@@ -1288,7 +1288,7 @@ function _read_agent_input(?string $inputFile): ?array
  */
 function _agent_compact_enabled(array $input): bool
 {
-    return ($input['compact'] ?? false) === true;
+    return ($input['compact'] ?? true) !== false;
 }
 
 /**

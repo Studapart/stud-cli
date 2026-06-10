@@ -499,7 +499,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
             $this->assertArrayHasKey('compact', $props, "Command '{$cmd['name']}' input must include compact");
             $this->assertSame('bool', $props['compact']['type']);
             $this->assertTrue($props['compact']['optional']);
-            $this->assertFalse($props['compact']['default']);
+            $this->assertTrue($props['compact']['default']);
         }
     }
 

@@ -23,7 +23,7 @@ class AgentModeSchemaGenerator
     private const COMPACT_PROPERTY = [
         'type' => 'bool',
         'optional' => true,
-        'default' => false,
+        'default' => true,
     ];
 
     /**
