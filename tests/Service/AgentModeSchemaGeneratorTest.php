@@ -292,6 +292,30 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('target', $output);
     }
 
+    public function testSwitchSchemaDocumentsBranchSwitchContract(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertArrayHasKey('switch', $schemaByName);
+        $cmd = $schemaByName['switch'];
+        $this->assertContains('sw', $cmd['aliases']);
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('key', $props);
+        $this->assertArrayHasKey('sync', $props);
+        $this->assertArrayHasKey('quiet', $props);
+        $this->assertSame('bool', $props['sync']['type']);
+        $this->assertFalse($props['sync']['default']);
+
+        $output = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('branch', $output);
+        $this->assertArrayHasKey('matches', $output);
+        $this->assertArrayHasKey('synced', $output);
+        $this->assertArrayHasKey('syncExitCode', $output);
+    }
+
     public function testOutputSchemaHasErrorStructure(): void
     {
         foreach ($this->schema['commands'] as $cmd) {

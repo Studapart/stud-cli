@@ -114,6 +114,7 @@ class CommandReferenceGeneratorTest extends TestCase
             'commands' => [
                 $this->command('items:show', ['arguments' => ['<key>']]),
                 $this->command('branch:rename'),
+                $this->command('switch', ['arguments' => ['<key>']]),
                 $this->command('submit'),
                 $this->command('confluence:show'),
                 $this->command('docs:check'),
@@ -124,6 +125,7 @@ class CommandReferenceGeneratorTest extends TestCase
         $this->assertStringContainsString('| `<key>` |', $markdown);
         $this->assertStringContainsString('## Jira Work Items', $markdown);
         $this->assertStringContainsString('## Git Workflow', $markdown);
+        $this->assertStringContainsString('[`stud switch`](#stud-switch)', $markdown);
         $this->assertStringContainsString('## Pull Requests', $markdown);
         $this->assertStringContainsString('## Confluence', $markdown);
         $this->assertStringContainsString('## Documentation', $markdown);

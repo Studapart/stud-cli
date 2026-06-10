@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`stud switch` / `stud sw` (SCI-121):** Switches to an existing local branch by Jira item key, handles ambiguous matches interactively or with actionable non-interactive errors, and supports `--sync` / `-s` to run `stud sync` after a successful switch.
+
 ## [3.17.8] - 2026-06-09
 
 ### Added

@@ -37,6 +37,7 @@ This reference is generated from the same runtime metadata used by `stud help --
 - [`stud please`](#stud-please)
 - [`stud push`](#stud-push)
 - [`stud status`](#stud-status)
+- [`stud switch`](#stud-switch)
 - [`stud sync`](#stud-sync)
 
 ### Pull Requests
@@ -1461,6 +1462,69 @@ Success data:
 
 ```text
 message: string
+```
+
+Error shape: `{"success":false,"error":"string"}`
+
+</details>
+
+<a id="stud-switch"></a>
+### `stud switch`
+
+Switch to a local branch by Jira item key
+
+- **Alias:** `stud sw`
+- **Syntax:** `stud switch <key> [options]`
+
+<details>
+<summary>Options, examples, and agent schema</summary>
+
+#### Arguments
+
+| Argument |
+| --- |
+| `<key>` |
+
+#### Options
+
+| Option | Description |
+| --- | --- |
+| `--sync<br>`-s`` | Run stud sync after a successful switch |
+| `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
+
+
+#### Examples
+
+```bash
+stud switch SCI-123
+stud sw SCI-123
+stud switch SCI-123 --sync
+stud switch SCI-123 --quiet
+echo '{"key":"SCI-123","sync":true,"quiet":true}' | stud switch --agent
+```
+
+#### Agent JSON Input
+
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `key` | `string\|null` | yes | `NULL` |
+| `sync` | `bool` | yes | `false` |
+| `quiet` | `bool` | yes | `false` |
+
+#### Agent JSON Output
+
+Branch switch result
+
+Success data:
+
+```text
+key: string
+branch: string|null
+matches: array
+switched: bool
+needsSelection: bool
+synced: bool
+syncExitCode: int|null
 ```
 
 Error shape: `{"success":false,"error":"string"}`

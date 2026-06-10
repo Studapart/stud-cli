@@ -92,6 +92,15 @@ class WorkflowCommandMap
                 'options' => [],
                 'arguments' => [],
             ],
+            'switch' => [
+                'alias' => 'sw',
+                'description_key' => 'branch.switch.help_description',
+                'options' => [
+                    ['name' => '--sync', 'shortcut' => '-s', 'description_key' => 'branch.switch.option_sync', 'argument' => null],
+                    ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                ],
+                'arguments' => ['<key>'],
+            ],
             'cache:clear' => [
                 'alias' => 'cc',
                 'description_key' => 'help.command_cache_clear',
