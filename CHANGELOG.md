@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Castor runtime (SCI-128):** Upgraded the Castor runtime lockfile to v1.5.0 and refreshed the required Symfony transitive dependencies while preserving CLI, agent-mode, and build workflow behavior.
+
 ## [3.18.2] - 2026-06-10
 
 ## [3.18.1] - 2026-06-10
