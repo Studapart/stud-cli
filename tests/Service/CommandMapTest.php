@@ -35,6 +35,8 @@ class CommandMapTest extends TestCase
         $this->assertSame('switch', $lookup['sw']);
         $this->assertSame('cache:clear', $lookup['cc']);
         $this->assertSame('update', $lookup['up']);
+        $this->assertArrayHasKey('help', CommandMap::all());
+        $this->assertNull(CommandMap::all()['help']['alias']);
     }
 
     public function testAliasLookupMapHasNoDuplicateAliases(): void

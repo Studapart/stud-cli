@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Service;
 
+use App\Service\CommandMap;
 use App\Service\FileSystem;
 use App\Service\HelpService;
 use App\Service\Logger;
@@ -170,6 +173,43 @@ MD);
             }));
 
         $this->helpService->displayCommandHelp($logger, 'nonexistent');
+    }
+
+    public function testGeneralHelpCommandGroupsCoverCommandMap(): void
+    {
+        $groups = $this->helpService->getGeneralHelpCommandGroups();
+        $rows = array_merge(...array_values($groups));
+        $names = array_column($rows, 'name');
+
+        $this->assertEqualsCanonicalizing(array_keys(CommandMap::all()), $names);
+    }
+
+    public function testGeneralHelpCommandGroupsIncludePreviouslyMissingCommands(): void
+    {
+        $groups = $this->helpService->getGeneralHelpCommandGroups();
+        $rows = array_merge(...array_values($groups));
+        $rowsByName = [];
+        foreach ($rows as $row) {
+            $rowsByName[$row['name']] = $row;
+        }
+
+        foreach ([
+            'items:download',
+            'items:upload',
+            'items:update',
+            'branches:list',
+            'branches:clean',
+            'flatten',
+            'switch',
+            'sync',
+            'cache:clear',
+            'help',
+            'update',
+        ] as $commandName) {
+            $this->assertArrayHasKey($commandName, $rowsByName);
+            $this->assertSame(CommandMap::all()[$commandName]['alias'], $rowsByName[$commandName]['alias']);
+            $this->assertNotSame('', $rowsByName[$commandName]['description']);
+        }
     }
 
     public function testDisplayCommandHelpCallsSection(): void

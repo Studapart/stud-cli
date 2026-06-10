@@ -2153,17 +2153,19 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-help"></a>
 ### `stud help`
 
-Displays a list of available commands
+Displays a list of available commands.
 
 - **Alias:** None
-- **Syntax:** `stud help`
+- **Syntax:** `stud help [<command>]`
 
 <details>
 <summary>Options, examples, and agent schema</summary>
 
 #### Arguments
 
-None.
+| Argument |
+| --- |
+| `[<command>]` |
 
 #### Options
 
