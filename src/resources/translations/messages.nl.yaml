@@ -741,6 +741,7 @@ help:
   command_completion: Genereert shell auto-aanvulling scripts voor bash of zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
+  command_help: Displays a list of available commands.
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.

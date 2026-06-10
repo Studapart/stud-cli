@@ -680,6 +680,7 @@ help:
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
+  command_help: Displays a list of available commands.
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."

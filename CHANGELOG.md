@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **General help discoverability (SCI-123):** `stud help` now builds its command list from shared command metadata so `stud switch` and other existing commands stay visible alongside command-specific help, agent help, and generated docs.
+
 ## [3.18.0] - 2026-06-10
 
 ### Added
