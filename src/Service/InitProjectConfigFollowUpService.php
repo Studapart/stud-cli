@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
 use App\Enum\OutputFormat;
 use App\Handler\ConfigProjectInitHandler;
 use App\Responder\ConfigProjectInitResponder;
@@ -20,9 +21,10 @@ class InitProjectConfigFollowUpService
         private readonly ProjectStudConfigAdequacyChecker $adequacyChecker,
         private readonly ConfigProjectInitHandler $projectInitHandler,
         private readonly ConfigProjectInitResponder $projectInitResponder,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $translator,
+        private readonly WorkflowOutput $logger,
     ) {
+        unset($translator);
     }
 
     /**
@@ -49,7 +51,7 @@ class InitProjectConfigFollowUpService
 
         if ($isInteractiveCli) {
             $confirmed = $this->logger->confirm(
-                $this->translator->trans('config.init.project_follow_up.prompt_configure_now'),
+                MessageRef::key('config.init.project_follow_up.prompt_configure_now'),
                 false
             );
             if ($confirmed) {
@@ -75,9 +77,9 @@ class InitProjectConfigFollowUpService
 
     private function emitRunLaterHint(): void
     {
-        $this->logger->note(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('config.init.project_follow_up.hint_run_later')
+        $this->logger->addNote(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('config.init.project_follow_up.hint_run_later')
         );
     }
 

@@ -4,32 +4,28 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Exception\GitException;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FlattenHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(): CommandResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.section'));
-
         // 1. Check for clean working directory
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.error_dirty_working'));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('flatten.error_dirty_working'));
         }
 
         // 2. Check if there are any fixup commits
@@ -37,32 +33,28 @@ class FlattenHandler
         $hasFixups = $this->gitRepository->hasFixupCommits($baseSha);
 
         if (! $hasFixups) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.no_fixups'));
-
-            return 0;
+            return CommandResponse::success(
+                messages: [ResponseMessage::notice(MessageRef::key('flatten.no_fixups'))],
+            );
         }
 
         // 3. Warn about history rewrite
-        $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.warning_rewrite'));
+        $messages = [ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'))];
 
         // 4. Perform the rebase with autosquash
         try {
             $this->gitRepository->rebaseAutosquash($baseSha);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.success'));
 
-            return 0;
+            return CommandResponse::success(MessageRef::key('flatten.success'), messages: $messages);
         } catch (GitException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('flatten.error_rebase', ['error' => $e->getMessage()]),
-                $e->getTechnicalDetails()
+            $error = MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]);
+
+            return CommandResponse::error(
+                $error,
+                [ResponseMessage::error($error, $e->getTechnicalDetails())],
             );
-
-            return 1;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('flatten.error_rebase', ['error' => $e->getMessage()]));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]));
         }
     }
 }

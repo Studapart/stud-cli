@@ -18,7 +18,7 @@ class ConfigProjectInitResponderTest extends TestCase
 {
     public function testJsonSuccessIncludesUpdatedAndConfig(): void
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->translator();
         $helper = new ResponderHelper($translator, $this->createMock(ColorHelper::class));
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
@@ -34,7 +34,7 @@ class ConfigProjectInitResponderTest extends TestCase
 
     public function testJsonErrorUsesErrorKey(): void
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->translator();
         $helper = new ResponderHelper($translator, null);
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
@@ -112,7 +112,7 @@ class ConfigProjectInitResponderTest extends TestCase
 
     public function testJsonErrorFallsBackWhenErrorKeyMissing(): void
     {
-        $translator = $this->createMock(TranslationService::class);
+        $translator = $this->translator();
         $helper = new ResponderHelper($translator, null);
         $logger = $this->createMock(Logger::class);
         $responder = new ConfigProjectInitResponder($helper, $logger);
@@ -128,5 +128,15 @@ class ConfigProjectInitResponderTest extends TestCase
         $this->assertNotNull($json);
         $this->assertFalse($json->success);
         $this->assertSame('config.project_init.failed', $json->error);
+    }
+
+    private function translator(): TranslationService
+    {
+        $translator = $this->createMock(TranslationService::class);
+        $translator->method('transForAgentText')->willReturnCallback(
+            fn (string $id, array $parameters = []): string => $id . ($parameters === [] ? '' : ' ' . json_encode($parameters))
+        );
+
+        return $translator;
     }
 }

@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\ItemUpdateInput;
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
 use App\Service\JiraService;
-use App\Service\TranslationService;
 
 class ItemUpdateHandler
 {
     public function __construct(
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator,
+        mixed $_translator,
         private readonly FieldsParser $fieldsParser
     ) {
+        unset($_translator);
     }
 
     public function handle(ItemUpdateInput $input): ItemUpdateResponse
@@ -32,7 +33,7 @@ class ItemUpdateHandler
         $parsedFields = $this->resolveParsedFields($input);
 
         if ($fields === [] && $parsedFields === []) {
-            return ItemUpdateResponse::error($this->translator->trans('item.update.error_no_fields'));
+            return ItemUpdateResponse::error(MessageRef::key('item.update.error_no_fields'));
         }
 
         $editMetaOrError = $this->fetchEditMeta($input->key);
@@ -92,9 +93,9 @@ class ItemUpdateHandler
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
 
-            return ItemUpdateResponse::error($this->translator->trans('item.update.error_editmeta', ['error' => $error]));
+            return ItemUpdateResponse::error(MessageRef::key('item.update.error_editmeta', ['error' => $error]));
         } catch (\Throwable $e) {
-            return ItemUpdateResponse::error($this->translator->trans('item.update.error_editmeta', ['error' => $e->getMessage()]));
+            return ItemUpdateResponse::error(MessageRef::key('item.update.error_editmeta', ['error' => $e->getMessage()]));
         }
     }
 
@@ -112,9 +113,9 @@ class ItemUpdateHandler
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
 
-            return ItemUpdateResponse::error($this->translator->trans('item.update.error_update', ['error' => $error]));
+            return ItemUpdateResponse::error(MessageRef::key('item.update.error_update', ['error' => $error]));
         } catch (\Throwable $e) {
-            return ItemUpdateResponse::error($this->translator->trans('item.update.error_update', ['error' => $e->getMessage()]));
+            return ItemUpdateResponse::error(MessageRef::key('item.update.error_update', ['error' => $e->getMessage()]));
         }
     }
 }

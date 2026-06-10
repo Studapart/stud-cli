@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\MessageRef;
 use App\Responder\AgentCommandResponder;
+use App\Response\CommandResponse;
+use App\Service\MessageRenderer;
+use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 
 class AgentCommandResponderTest extends TestCase
@@ -50,5 +54,17 @@ class AgentCommandResponderTest extends TestCase
     {
         $result = $this->responder->respondSuccess('Operation completed', compact: true);
         $this->assertSame(['success' => true], $result->toPayload());
+    }
+
+    public function testRespondUsesAgentRendererForPayloadData(): void
+    {
+        $responder = new AgentCommandResponder(new MessageRenderer(
+            new TranslationService('vi', __DIR__ . '/../../src/resources/translations'),
+            agent: true,
+        ));
+
+        $result = $responder->respond(CommandResponse::success(MessageRef::key('table.key')));
+
+        $this->assertSame(['success' => true, 'data' => ['message' => 'key']], $result->toPayload());
     }
 }

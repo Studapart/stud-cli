@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 
 class SubmitLabelResolver
 {
+    private const LABEL_CREATE_OPTION = 'Create: Create the label on GitHub and add it to the PR';
+    private const LABEL_IGNORE_OPTION = 'Ignore: Skip this label and remove it from the final list';
+    private const LABEL_RETRY_OPTION = 'Retry: Abort the command and re-run with a corrected list';
+
     public function __construct(
         private readonly GitProviderInterface $gitProvider,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $translator,
+        private readonly WorkflowOutput $logger,
     ) {
+        unset($translator);
     }
 
     /**
@@ -60,20 +66,20 @@ class SubmitLabelResolver
      */
     public function fetchRemoteLabels(): ?array
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.fetching_labels'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.fetching_labels'));
 
         try {
             return $this->gitProvider->getLabels();
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()]),
+            $this->logger->addErrorWithDetails(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('submit.error_fetch_labels', ['error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_fetch_labels', ['error' => $e->getMessage()])));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_fetch_labels', ['error' => $e->getMessage()]));
 
             return null;
         }
@@ -130,50 +136,50 @@ class SubmitLabelResolver
         }
 
         $choice = $this->logger->choice(
-            $this->translator->trans('submit.label_unknown_prompt', ['label' => $unknownLabel]),
+            MessageRef::key('submit.label_unknown_prompt', ['label' => $unknownLabel]),
             [
-                $this->translator->trans('submit.label_create_option'),
-                $this->translator->trans('submit.label_ignore_option'),
-                $this->translator->trans('submit.label_retry_option'),
+                self::LABEL_CREATE_OPTION,
+                self::LABEL_IGNORE_OPTION,
+                self::LABEL_RETRY_OPTION,
             ],
             0
         );
 
-        if ($choice === $this->translator->trans('submit.label_retry_option')) {
+        if ($choice === self::LABEL_RETRY_OPTION) {
             return null;
         }
 
-        if ($choice === $this->translator->trans('submit.label_create_option')) {
+        if ($choice === self::LABEL_CREATE_OPTION) {
             $created = $this->createLabelOnProvider($unknownLabel);
 
             return $created === null ? null : array_merge($finalLabels, [$created]);
         }
 
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('submit.label_ignored', ['label' => $unknownLabel])}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('submit.label_ignored', ['label' => $unknownLabel]));
 
         return $finalLabels;
     }
 
     public function createLabelOnProvider(string $unknownLabel): ?string
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.label_creating', ['label' => $unknownLabel]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.label_creating', ['label' => $unknownLabel]));
 
         try {
             $color = sprintf('%06x', mt_rand(0, 0xffffff));
             $this->gitProvider->createLabel($unknownLabel, $color);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('submit.label_created', ['label' => $unknownLabel]));
+            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.label_created', ['label' => $unknownLabel]));
 
             return $unknownLabel;
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]),
+            $this->logger->addErrorWithDetails(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()])));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]));
 
             return null;
         }

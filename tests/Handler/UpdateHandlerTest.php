@@ -105,18 +105,18 @@ class UpdateHandlerTest extends CommandTestCase
         $logger = $this->createMock(\App\Service\Logger::class);
         // Set up logger methods that might be called during migrations
         // Use callbacks to handle multiple calls with different arguments
-        $logger->method('section')->willReturnCallback(function () {
+        $logger->method('addSection')->willReturnCallback(function () {
         });
-        $logger->method('text')->willReturnCallback(function () {
+        $logger->method('addText')->willReturnCallback(function () {
         });
-        $logger->method('success')->willReturnCallback(function () {
+        $logger->method('addSuccess')->willReturnCallback(function () {
         });
-        $logger->method('error')->willReturnCallback(function ($verbosity, $message) {
+        $logger->method('addError')->willReturnCallback(function ($verbosity, $message) {
             // Accept any verbosity and message format (string or array)
         });
-        $logger->method('writeln')->willReturnCallback(function () {
+        $logger->method('addLine')->willReturnCallback(function () {
         });
-        $logger->method('warning')->willReturnCallback(function () {
+        $logger->method('addWarning')->willReturnCallback(function () {
         });
 
         // Create mocked FileSystem for unit testing
@@ -1415,11 +1415,11 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln');
-        $logger->method('text');
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSection');
+        $logger->method('addLine');
+        $logger->method('addText');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = new UpdateHandler(
@@ -1491,9 +1491,9 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls
                 if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
@@ -1504,8 +1504,8 @@ CHANGELOG;
                     return;
                 }
             });
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = new UpdateHandler(
@@ -2207,7 +2207,7 @@ CHANGELOG;
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('warning')
+            ->method('addWarning')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
@@ -2250,7 +2250,7 @@ CHANGELOG;
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
@@ -2313,11 +2313,11 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln'); // Allow all writeln calls (including logVerbose which calls writeln)
-        $logger->method('text');
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSection');
+        $logger->method('addLine'); // Allow all writeln calls (including logVerbose which calls writeln)
+        $logger->method('addText');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $handler = new UpdateHandler(
@@ -2541,17 +2541,17 @@ CHANGELOG;
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
-        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSection')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addText')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSuccess')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        $loggerWithConfirm->method('addError')->willReturnCallback(function ($verbosity, $message) {
         });
-        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addLine')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
         $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
         $fileSystem = $this->createMock(FileSystem::class);
@@ -2721,17 +2721,17 @@ CHANGELOG;
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
-        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSection')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addText')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSuccess')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        $loggerWithConfirm->method('addError')->willReturnCallback(function ($verbosity, $message) {
         });
-        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addLine')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
         $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
         $fileSystem = $this->createMock(FileSystem::class);
@@ -3100,9 +3100,9 @@ CHANGELOG;
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section')->willReturnCallback(function () {
+        $logger->method('addSection')->willReturnCallback(function () {
         });
-        $logger->method('error')->willReturnCallback(function () {
+        $logger->method('addError')->willReturnCallback(function () {
         });
 
         // Create handler that uses in-memory filesystem
@@ -3216,13 +3216,13 @@ CHANGELOG;
 
         try {
             $logger = $this->createMock(\App\Service\Logger::class);
-            $logger->method('section')->willReturnCallback(function () {
+            $logger->method('addSection')->willReturnCallback(function () {
             });
-            $logger->method('text')->willReturnCallback(function () {
+            $logger->method('addText')->willReturnCallback(function () {
             });
-            $logger->method('error')->willReturnCallback(function () {
+            $logger->method('addError')->willReturnCallback(function () {
             });
-            $logger->method('success')->willReturnCallback(function () {
+            $logger->method('addSuccess')->willReturnCallback(function () {
             });
 
             $inMemoryFileSystem = $this->createInMemoryFileSystem();
@@ -3386,9 +3386,9 @@ CHANGELOG;
         $logger = $this->createMock(\App\Service\Logger::class);
         // Should NOT call section or success when there are no pending migrations
         $logger->expects($this->never())
-            ->method('section');
+            ->method('addSection');
         $logger->expects($this->never())
-            ->method('success');
+            ->method('addSuccess');
 
         // Create handler that uses in-memory filesystem - this will use the REAL method
         $testHandler = new class (
@@ -3449,7 +3449,7 @@ CHANGELOG;
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $adapter = new InMemoryFilesystemAdapter();
@@ -3483,7 +3483,7 @@ CHANGELOG;
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $httpClient = $this->createMock(HttpClientInterface::class);
@@ -3891,7 +3891,11 @@ CHANGELOG;
 
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['202501160000001', 'Failed to write file']);
 
-        $this->assertSame('Migration 202501160000001 failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => '202501160000001',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration 202501160000001 failed: Failed to write file', $result->fallback);
     }
 
     public function testGetErrorMessageWithTranslationReturnsKey(): void
@@ -3926,7 +3930,11 @@ CHANGELOG;
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
 
         // Should return fallback message when translation returns the key
-        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => 'prerequisite',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result->fallback);
     }
 
     public function testGetErrorMessageWithTranslationException(): void
@@ -3961,7 +3969,11 @@ CHANGELOG;
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
 
         // Should return fallback message when translation throws exception
-        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => 'prerequisite',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result->fallback);
     }
 
     public function testHandleWithHashVerificationFailureAndCleanupError(): void

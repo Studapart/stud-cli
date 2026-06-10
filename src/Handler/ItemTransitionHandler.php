@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
-use App\Service\Logger;
-use App\Service\TranslationService;
+use App\Service\WorkflowOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemTransitionHandler
@@ -16,14 +16,15 @@ class ItemTransitionHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
+        private readonly WorkflowOutput $logger
     ) {
+        unset($_translator);
     }
 
     public function handle(SymfonyStyle $io, ?string $key = null): int
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.section'));
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.section'));
 
         $resolvedKey = $this->resolveKey($key);
         if ($resolvedKey === null) {
@@ -47,16 +48,16 @@ class ItemTransitionHandler
     protected function verifyIssueExists(string $key): bool
     {
         try {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.transition.fetching', ['key' => $key])}");
+            $this->logger->addJiraLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('item.transition.fetching', ['key' => $key]));
             $this->jiraService->getIssue($key);
 
             return true;
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $key]), $e->getTechnicalDetails());
+            $this->logger->addErrorWithDetails(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_not_found', ['key' => $key]), $e->getTechnicalDetails());
 
             return false;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_not_found', ['key' => $key]));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_not_found', ['key' => $key]));
 
             return false;
         }
@@ -70,18 +71,18 @@ class ItemTransitionHandler
         try {
             $transitions = $this->jiraService->getTransitions($key);
             if ($transitions === []) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.no_transitions', ['key' => $key]));
+                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.no_transitions', ['key' => $key]));
 
                 return null;
             }
 
             return $transitions;
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
+            $this->logger->addErrorWithDetails(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_fetch', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => $e->getMessage()]));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_fetch', ['error' => $e->getMessage()]));
 
             return null;
         }
@@ -93,10 +94,10 @@ class ItemTransitionHandler
     protected function selectTransitionIdFromUser(array $transitions): ?int
     {
         $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
-        $selected = $this->logger->choice($this->translator->trans('item.transition.select_transition'), $options);
+        $selected = $this->logger->choice(MessageRef::key('item.transition.select_transition'), $options);
         preg_match('/ID: (\d+)\)$/', $selected, $matches);
         if (! isset($matches[1])) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_fetch', ['error' => 'Unable to extract transition ID from selection']));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_fetch', ['error' => 'Unable to extract transition ID from selection']));
 
             return null;
         }
@@ -108,15 +109,15 @@ class ItemTransitionHandler
     {
         try {
             $this->jiraService->transitionIssue($key, $transitionId);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.success', ['key' => $key]));
+            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.success', ['key' => $key]));
 
             return 0;
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
+            $this->logger->addErrorWithDetails(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_execute', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
 
             return 1;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_execute', ['error' => $e->getMessage()]));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_execute', ['error' => $e->getMessage()]));
 
             return 1;
         }
@@ -133,7 +134,7 @@ class ItemTransitionHandler
         $detectedKey = $this->gitRepository->getJiraKeyFromBranchName();
         if ($detectedKey !== null) {
             $confirmed = $this->logger->confirm(
-                $this->translator->trans('item.transition.detected_key', ['key' => $detectedKey]),
+                MessageRef::key('item.transition.detected_key', ['key' => $detectedKey]),
                 true
             );
 
@@ -143,9 +144,9 @@ class ItemTransitionHandler
         }
 
         // Prompt user for key
-        $promptedKey = $this->logger->ask($this->translator->trans('item.transition.prompt_key'));
+        $promptedKey = $this->logger->ask(MessageRef::key('item.transition.prompt_key'));
         if ($promptedKey === '' || $promptedKey === null) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_invalid_key'));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_invalid_key'));
 
             return null;
         }
@@ -154,7 +155,7 @@ class ItemTransitionHandler
 
         // Validate key format
         if (! preg_match('/^[A-Z]+-\d+$/', $promptedKey)) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.transition.error_invalid_key'));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_invalid_key'));
 
             return null;
         }

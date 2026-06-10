@@ -11,13 +11,16 @@ use App\Service\DurationParser;
 use App\Service\FieldsParser;
 use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
+use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemCreateHandlerTest extends CommandTestCase
 {
     private IssueFieldResolver $fieldResolver;
     private FieldsParser $fieldsParser;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
@@ -25,6 +28,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->gitRepository = $this->createMock(GitRepository::class);
         $this->fieldResolver = new IssueFieldResolver($this->jiraService, new DurationParser());
         $this->fieldsParser = new FieldsParser(new DurationParser());
+        $this->prompt = $this->createMock(PromptInterface::class);
     }
 
     private function createHandler(): ItemCreateHandler
@@ -34,7 +38,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->jiraService,
             $this->translationService,
             $this->fieldResolver,
-            $this->fieldsParser
+            $this->fieldsParser,
+            $this->prompt
         );
     }
 
@@ -176,8 +181,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
-        $this->assertStringContainsString('Custom (customfield_10001)', $response->getError() ?? '');
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required');
+        $this->assertStringContainsString('Custom (customfield_10001)', (string) $message->parameters['fields']);
     }
 
     public function testHandleReturnsErrorWhenIssueTypeNotFound(): void
@@ -414,7 +419,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $io = $this->createMock(SymfonyStyle::class);
         $callCount = 0;
-        $io->expects($this->exactly(2))
+        $this->prompt->expects($this->exactly(2))
             ->method('ask')
             ->willReturnCallback(function () use (&$callCount) {
                 ++$callCount;
@@ -461,7 +466,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->anything())
             ->willReturn('Alpha');
@@ -539,7 +544,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->anything())
             ->willReturn('Alpha');
@@ -586,7 +591,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $io = $this->createMock(SymfonyStyle::class);
         $callCount = 0;
-        $io->expects($this->exactly(2))
+        $this->prompt->expects($this->exactly(2))
             ->method('ask')
             ->willReturnCallback(function () use (&$callCount) {
                 ++$callCount;
@@ -628,8 +633,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
-        $io->expects($this->never())->method('choice');
+        $this->prompt->expects($this->never())->method('ask');
+        $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
         $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -670,8 +675,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
-        $io->expects($this->never())->method('choice');
+        $this->prompt->expects($this->never())->method('ask');
+        $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
         $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -862,8 +867,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
-        $io->expects($this->never())->method('choice');
+        $this->prompt->expects($this->never())->method('ask');
+        $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
         $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -901,8 +906,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
-        $io->expects($this->once())
+        $this->prompt->expects($this->never())->method('ask');
+        $this->prompt->expects($this->once())
             ->method('choice')
             ->with($this->anything(), ['Story', 'Task'], $this->anything())
             ->willReturn('Task');
@@ -960,9 +965,10 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
-            ->with($this->stringContains('item.create.prompt_project_not_found'))
+            ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
+                && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('PROJ');
 
         $handler = $this->createHandler();
@@ -982,9 +988,10 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
-            ->with($this->stringContains('item.create.prompt_project_not_found'))
+            ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
+                && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('');
 
         $handler = $this->createHandler();
@@ -1009,9 +1016,10 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('createIssue');
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
-            ->with($this->stringContains('item.create.prompt_project_not_found'))
+            ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
+                && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('ALSO_BAD');
 
         $handler = $this->createHandler();
@@ -1091,9 +1099,10 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
-            ->with($this->stringContains('item.create.prompt_description_required'))
+            ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
+                && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('Typed description');
 
         $handler = $this->createHandler();
@@ -1180,7 +1189,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
+        $this->prompt->expects($this->never())->method('ask');
         $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
@@ -1197,7 +1206,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ', '10001')
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->never())->method('ask');
+        $this->prompt->expects($this->never())->method('ask');
         $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
             $io, true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
@@ -1219,9 +1228,10 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('User typed description')
             ->willReturn(['type' => 'doc', 'content' => []]);
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
-            ->with($this->stringContains('item.create.prompt_description_required'))
+            ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
+                && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('User typed description');
         $handler = $this->createHandler();
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
@@ -1471,7 +1481,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);
 
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('choice')
             ->willReturn('Other');
 
@@ -1485,7 +1495,7 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testPromptDescriptionValueReturnsNullWhenAskReturnsEmpty(): void
     {
         $io = $this->createMock(SymfonyStyle::class);
-        $io->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('ask')
             ->willReturn('   ');
 

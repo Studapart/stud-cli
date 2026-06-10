@@ -29,7 +29,7 @@ class PrCommentsResponder
         ?DtoSerializer $serializer = null,
     ) {
         $bodyRenderer = new PrCommentBodyRenderer($this->helper, $bodyParser, $this->logger);
-        $this->jsonSerializer = new PrCommentsJsonSerializer($serializer ?? new DtoSerializer());
+        $this->jsonSerializer = new PrCommentsJsonSerializer($serializer ?? new DtoSerializer(), $this->helper->translator);
         $this->flatRenderer = new PrFlatCommentsRenderer($this->helper, $this->logger, $bodyRenderer);
         $this->threadedRenderer = new PrThreadedConversationRenderer($this->helper, $this->logger, $bodyRenderer);
     }
@@ -43,6 +43,12 @@ class PrCommentsResponder
         $useThreaded = $threaded || $response->threaded;
         if ($format === OutputFormat::Json) {
             return $this->jsonSerializer->serialize($response, $useThreaded);
+        }
+
+        if (! $response->isSuccess()) {
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->helper->translator->renderText($response->getErrorMessage()));
+
+            return null;
         }
 
         $this->helper->initSection($this->logger, 'pr.comments.section', ['number' => $response->pullNumber]);

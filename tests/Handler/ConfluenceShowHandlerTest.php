@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\ConfluenceShowInput;
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Handler\ConfluenceShowHandler;
 use App\Service\AdfToMarkdownConverter;
@@ -133,7 +134,10 @@ class ConfluenceShowHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('99999', $response->getError() ?? '');
+        $message = $response->getErrorMessage();
+        self::assertInstanceOf(MessageRef::class, $message);
+        self::assertSame('confluence.show.error_page_not_found', $message->key);
+        self::assertSame(['id' => '99999'], $message->parameters);
     }
 
     public function testHandleErrorWhenUrlInvalid(): void

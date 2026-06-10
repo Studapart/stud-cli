@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\BranchCleanupPlan;
 use App\DTO\BranchDeletionEligibility;
+use App\DTO\MessageRef;
 use App\Enum\BranchAutoCleanDecision;
 use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
@@ -13,8 +14,7 @@ use App\Service\BranchCleanupExecutor;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
+use App\Service\WorkflowOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchCleanHandler
@@ -25,9 +25,10 @@ class BranchCleanHandler
         private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
         private readonly BranchCleanupExecutor $cleanupExecutor,
         private readonly ?string $configuredBaseBranch,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
+        private readonly WorkflowOutput $logger
     ) {
+        unset($_translator);
     }
 
     public function handle(SymfonyStyle $io, bool $quiet = false): int
@@ -73,10 +74,10 @@ class BranchCleanHandler
      */
     protected function displayHeader(): void
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.section'));
-        $this->logger->note(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.note_origin')}</>");
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.scanning'));
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.fetching_local')}</>");
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.section'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.note_origin'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.scanning'));
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.fetching_local'));
     }
 
     /**
@@ -93,7 +94,7 @@ class BranchCleanHandler
         $hasManualBranches = ! empty($manualPlans);
 
         if ($totalBranches === 0 && ! $currentBranchSkipped && ! $hasManualBranches) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.none'));
+            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.none'));
 
             return true;
         }
@@ -114,7 +115,7 @@ class BranchCleanHandler
     {
         if ($currentBranchSkipped) {
             $currentBranch = $this->gitRepository->getCurrentBranchName();
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.current_branch_skipped', ['branch' => $currentBranch]));
+            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.current_branch_skipped', ['branch' => $currentBranch]));
         }
     }
 
@@ -129,18 +130,18 @@ class BranchCleanHandler
         $branchesToCleanLocal = $this->getLocalOnlyBranchNames($cleanupPlans);
         $branchesToCleanRemote = $this->getRemoteBranchNames($cleanupPlans);
         $totalBranches = count($cleanupPlans);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.found', ['count' => $totalBranches]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.found', ['count' => $totalBranches]));
 
         if (! empty($branchesToCleanLocal)) {
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.local_only_header', ['count' => count($branchesToCleanLocal)]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.local_only_header', ['count' => count($branchesToCleanLocal)]));
             $this->displayBranchesList($branchesToCleanLocal);
         }
 
         if (! empty($branchesToCleanRemote)) {
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.with_remote_header', ['count' => count($branchesToCleanRemote)]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.with_remote_header', ['count' => count($branchesToCleanRemote)]));
             $this->displayBranchesList($branchesToCleanRemote);
             if (! $quiet) {
-                $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.with_remote_note'));
+                $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.with_remote_note'));
             }
         }
     }
@@ -160,12 +161,12 @@ class BranchCleanHandler
 
         $totalBranches = count($cleanupPlans);
         $confirmed = $this->logger->confirm(
-            $this->translator->trans('branches.clean.confirm', ['count' => $totalBranches]),
+            MessageRef::key('branches.clean.confirm', ['count' => $totalBranches]),
             true
         );
 
         if (! $confirmed) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.cancelled'));
+            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.cancelled'));
 
             return false;
         }
@@ -181,7 +182,7 @@ class BranchCleanHandler
     protected function displayDeletionResult(int $deletedCount): void
     {
         if ($deletedCount > 0) {
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleted', ['count' => $deletedCount]));
+            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleted', ['count' => $deletedCount]));
         }
     }
 
@@ -197,7 +198,7 @@ class BranchCleanHandler
         $allBranches = $this->fetchAllBranches();
         $remoteBranchesSet = $this->fetchRemoteBranchesSet();
         $currentBranch = $this->gitRepository->getCurrentBranchName();
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Current branch: {$currentBranch}</>");
         $prSnapshot = $this->eligibilityResolver->buildPullRequestSnapshot();
 
         $automaticPlans = [];
@@ -294,9 +295,9 @@ class BranchCleanHandler
      */
     protected function fetchAllBranches(): array
     {
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.fetching_local')}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.fetching_local'));
         $allBranches = $this->gitBranchService->getAllLocalBranches();
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($allBranches) . " local branches</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($allBranches) . " local branches</>");
 
         return $allBranches;
     }
@@ -308,9 +309,9 @@ class BranchCleanHandler
      */
     protected function fetchRemoteBranchesSet(): array
     {
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.fetching_remote')}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.fetching_remote'));
         $remoteBranches = $this->gitBranchService->getAllRemoteBranches('origin');
-        $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($remoteBranches) . " remote branches on origin</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Found " . count($remoteBranches) . " remote branches on origin</>");
 
         return array_flip($remoteBranches);
     }
@@ -323,7 +324,7 @@ class BranchCleanHandler
         }
 
         $enteredBranch = $this->logger->ask(
-            $this->translator->trans('branches.clean.base_branch_prompt'),
+            MessageRef::key('branches.clean.base_branch_prompt'),
             'develop',
             function (?string $value): string {
                 $branch = trim((string) $value);
@@ -349,7 +350,7 @@ class BranchCleanHandler
     {
         foreach ($manualPlans as $manualPlan) {
             $confirm = $this->logger->confirm(
-                $this->translator->trans('branches.clean.manual_confirm', [
+                MessageRef::key('branches.clean.manual_confirm', [
                     'branch' => $manualPlan->branch,
                     'reason' => $this->translateReason($manualPlan->eligibility->reason),
                 ]),
@@ -372,27 +373,27 @@ class BranchCleanHandler
             return;
         }
 
-        $this->logger->note(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('branches.clean.manual_report_header', ['count' => count($manualPlans)])
+        $this->logger->addNote(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('branches.clean.manual_report_header', ['count' => count($manualPlans)])
         );
 
         foreach ($manualPlans as $manualPlan) {
-            $this->logger->text(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('branches.clean.manual_report_row', [
+            $this->logger->addText(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('branches.clean.manual_report_row', [
                     'branch' => $manualPlan->branch,
                     'reason' => $this->translateReason($manualPlan->eligibility->reason),
                 ])
             );
         }
 
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.manual_report_hint'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.manual_report_hint'));
     }
 
-    protected function translateReason(string $reason): string
+    protected function translateReason(string $reason): MessageRef
     {
-        return $this->translator->trans("branches.clean.reason.{$reason}");
+        return MessageRef::key("branches.clean.reason.{$reason}");
     }
 
     protected function buildManuallyConfirmedPlan(BranchCleanupPlan $manualPlan, bool $quiet): BranchCleanupPlan
@@ -414,7 +415,7 @@ class BranchCleanHandler
     protected function displayBranchesList(array $branches): void
     {
         foreach ($branches as $branch) {
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, "  - {$branch}");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "  - {$branch}");
         }
     }
 

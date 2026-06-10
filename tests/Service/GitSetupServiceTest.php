@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\MessageRef;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -368,7 +369,7 @@ class GitSetupServiceTest extends TestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Git provider is required');
+        $this->expectExceptionMessage('config.git_provider_required');
 
         $gitSetupService->ensureGitProviderConfigured($io);
     }
@@ -453,7 +454,7 @@ class GitSetupServiceTest extends TestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Git provider is required');
+        $this->expectExceptionMessage('config.git_provider_required');
 
         $gitSetupService->ensureGitProviderConfigured($io);
     }
@@ -522,7 +523,7 @@ class GitSetupServiceTest extends TestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Git token is required');
+        $this->expectExceptionMessage('config.git_token_required');
 
         $gitSetupService->ensureGitTokenConfigured('github', $io, []);
     }
@@ -558,10 +559,12 @@ class GitSetupServiceTest extends TestCase
         });
 
         $this->logger->expects($this->once())
-            ->method('warning')
+            ->method('addWarning')
             ->with(
                 Logger::VERBOSITY_NORMAL,
-                $this->stringContains('Provider is set to')
+                $this->callback(fn (mixed $message): bool => $message instanceof MessageRef
+                    && $message->key === 'config.git_token_type_mismatch'
+                    && $message->parameters === ['provider' => 'Github', 'opposite' => 'GitLab'])
             );
         $this->logger->expects($this->once())
             ->method('askHidden')
@@ -591,7 +594,7 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
 
         $this->logger->expects($this->exactly(2))
-            ->method('note')
+            ->method('addNote')
             ->with(Logger::VERBOSITY_NORMAL, $this->anything());
         $this->logger->expects($this->once())
             ->method('askHidden')

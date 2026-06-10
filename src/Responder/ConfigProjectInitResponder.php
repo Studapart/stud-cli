@@ -59,7 +59,9 @@ class ConfigProjectInitResponder
     protected function respondJson(ConfigProjectInitResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'config.project_init.failed');
+            $error = $response->getError() ?? 'config.project_init.failed';
+
+            return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error, $response->getErrorParameters()));
         }
 
         return new AgentJsonResponse(true, data: [

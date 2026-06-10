@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 final class BranchSwitchResponse extends AbstractResponse
 {
     /**
@@ -11,7 +13,7 @@ final class BranchSwitchResponse extends AbstractResponse
      */
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly string $key,
         public readonly ?string $branch,
         public readonly array $matches,
@@ -39,12 +41,12 @@ final class BranchSwitchResponse extends AbstractResponse
     /**
      * @param array<string> $matches
      */
-    public static function error(string $key, string $error, array $matches = [], ?string $branch = null, bool $switched = false): self
+    public static function error(string $key, MessageRef|string $error, array $matches = [], ?string $branch = null, bool $switched = false): self
     {
         return new self(false, $error, $key, $branch, $matches, $switched, false, false, null);
     }
 
-    public function withSyncResult(int $exitCode, string $error): self
+    public function withSyncResult(int $exitCode, MessageRef|string $error): self
     {
         if ($exitCode !== 0) {
             return new self(false, $error, $this->key, $this->branch, $this->matches, $this->switched, false, false, $exitCode);

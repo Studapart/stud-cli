@@ -2,6 +2,7 @@
 
 namespace App\Tests\Service;
 
+use App\DTO\MessageRef;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
@@ -45,6 +46,77 @@ class TranslationServiceTest extends TestCase
         $result = $service->trans('item.start.section', ['key' => 'TPW-123']);
         $this->assertStringContainsString('TPW-123', $result);
         $this->assertStringContainsString('Starting work', $result);
+    }
+
+    public function testTransRendersMessageRefParameters(): void
+    {
+        $service = new TranslationService('en', $this->translationsPath);
+
+        $this->assertSame(
+            "Switched to branch 'Key'.",
+            $service->trans('branch.switch.success', ['branch' => MessageRef::key('table.key')])
+        );
+    }
+
+    public function testAgentDomainTranslationsAreEnglishOnly(): void
+    {
+        $service = new TranslationService('vi', $this->translationsPath);
+
+        $this->assertSame('Commit changes.', $service->trans('agent.command.commit', domain: 'agent', locale: 'en'));
+        $this->assertSame(
+            'Use this schema for normal calls. Query command help only when data semantics are unclear. Compact success omits data only when no reusable data exists; diagnostics are included when present.',
+            $service->trans('agent.response.note', domain: 'agent', locale: 'en')
+        );
+    }
+
+    public function testRenderForAgentPrefersAgentDomainAndFallsBackToEnglish(): void
+    {
+        $service = new TranslationService('vi', $this->translationsPath);
+
+        $this->assertNull($service->renderForAgent(null));
+        $this->assertSame('already rendered', $service->renderForAgent('already rendered'));
+        $this->assertSame('key', $service->renderForAgent(MessageRef::key('table.key')));
+        $this->assertSame('Manual', $service->renderForAgent(MessageRef::key('help.title')));
+        $this->assertSame('missing fallback', $service->renderForAgent(MessageRef::key('missing.agent.key', fallback: 'missing fallback')));
+    }
+
+    public function testTransForAgentRendersMessageRefParametersWithAgentStrategy(): void
+    {
+        $service = new TranslationService('vi', $this->translationsPath);
+
+        $this->assertSame(
+            'switched to key',
+            $service->transForAgent('branch.switch.success', ['branch' => MessageRef::key('table.key')])
+        );
+        $this->assertSame(
+            'switched to main',
+            $service->transForAgent('branch.switch.success', ['%branch%' => 'main'])
+        );
+    }
+
+    public function testAgentTextHelpersPreserveFallbackText(): void
+    {
+        $service = new TranslationService('vi', $this->translationsPath);
+
+        $this->assertSame('unknown.key', $service->transForAgentText('unknown.key'));
+        $this->assertSame('', $service->renderForAgentText(null));
+        $this->assertSame('fallback text', $service->renderForAgentText(MessageRef::key('unknown.key', fallback: 'fallback text')));
+    }
+
+    public function testRenderReturnsNullAndPlainStringsUnchanged(): void
+    {
+        $service = new TranslationService('en', $this->translationsPath);
+
+        $this->assertNull($service->render(null));
+        $this->assertSame('already rendered', $service->render('already rendered'));
+    }
+
+    public function testRenderTextReturnsEmptyStringForNull(): void
+    {
+        $service = new TranslationService('en', $this->translationsPath);
+
+        $this->assertSame('', $service->renderText(null));
+        $this->assertSame('Key', $service->renderText(MessageRef::key('table.key')));
     }
 
     /**

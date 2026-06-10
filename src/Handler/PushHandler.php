@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\Prompt\PromptInterface;
 
 class PushHandler
 {
@@ -15,90 +16,148 @@ class PushHandler
         private readonly CommitHandler $commitHandler,
         private readonly GitRepository $gitRepository,
         private readonly PleaseHandler $pleaseHandler,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $_translator,
+        private readonly PromptInterface $prompt,
     ) {
+        unset($_translator);
     }
 
     /**
      * Run commit (same semantics as stud commit), then push HEAD to origin. On a failed non-fast-forward
      * push, optionally delegates to {@see PleaseHandler} per quiet, agent, `--no-please` (CLI only), and
      * agent `pleaseFallback` (JSON / folded from CLI `--no-please` when using `--agent`).
-     *
-     * @param bool $pleaseFallback In agent mode: when false, disables the please fallback (the only agent control). Ignored when not in agent mode (pass true).
      */
     public function handle(
-        SymfonyStyle $io,
-        bool $isNew,
-        ?string $message,
-        bool $stageAll,
-        bool $quiet,
-        bool $noPlease,
-        bool $agentMode,
-        bool $pleaseFallback,
-    ): int {
-        $commitExit = $this->commitHandler->handle($io, $isNew, $message, $stageAll, $quiet);
-        if ($commitExit !== 0) {
-            return $commitExit;
+        mixed $first,
+        mixed $second = null,
+        mixed $third = null,
+        mixed $fourth = false,
+        mixed $fifth = false,
+        mixed $sixth = false,
+        mixed $seventh = false,
+        mixed $eighth = true,
+    ): CommandResponse {
+        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback] = $this->normalizeHandleArguments(
+            $first,
+            $second,
+            $third,
+            $fourth,
+            $fifth,
+            $sixth,
+            $seventh,
+            $eighth,
+        );
+        $commitResponse = $this->normalizeResponse(
+            $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
+            'Commit created',
+            'Commit failed',
+        );
+        if (! $commitResponse->isSuccess()) {
+            return $commitResponse;
         }
 
         $branch = $this->gitRepository->getCurrentBranchName();
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('push.pushing', ['branch' => $branch]));
 
         $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if ($pushProcess->isSuccessful()) {
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('push.success'));
-
-            return 0;
+            return CommandResponse::success(
+                MessageRef::key('push.success'),
+                ['branch' => $branch, 'commit' => $commitResponse->payloadData()],
+                $commitResponse->getMessages(),
+            );
         }
 
-        return $this->handleFailedPush($io, $quiet, $noPlease, $agentMode, $pleaseFallback);
+        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $commitResponse->getMessages());
     }
 
     /**
      * Handles a rejected normal push: error, prompt, or run please.
+     *
+     * @param list<ResponseMessage> $messages
      */
     protected function handleFailedPush(
-        SymfonyStyle $io,
         bool $quiet,
         bool $noPlease,
         bool $agentMode,
         bool $pleaseFallback,
-    ): int {
+        array $messages,
+    ): CommandResponse {
         if ($agentMode) {
             if (! $pleaseFallback) {
-                $this->emitPushFailedError();
-
-                return 1;
+                return $this->pushFailedResponse($messages);
             }
 
-            return $this->pleaseHandler->handle($io);
+            return $this->normalizeResponse($this->pleaseHandler->handle(), 'Force push completed', 'Force push failed');
         }
 
         if ($noPlease) {
-            $this->emitPushFailedError();
-
-            return 1;
+            return $this->pushFailedResponse($messages);
         }
 
         $interactive = ! $quiet;
         if ($interactive) {
-            $confirmed = $this->logger->confirm(
-                $this->translator->trans('push.confirm_please'),
+            $confirmed = $this->prompt->confirm(
+                MessageRef::key('push.confirm_please'),
                 false
             );
             if (! $confirmed) {
-                $this->emitPushFailedError();
-
-                return 1;
+                return $this->pushFailedResponse($messages);
             }
         }
 
-        return $this->pleaseHandler->handle($io);
+        return $this->normalizeResponse($this->pleaseHandler->handle(), 'Force push completed', 'Force push failed');
     }
 
-    protected function emitPushFailedError(): void
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    protected function pushFailedResponse(array $messages): CommandResponse
     {
-        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('push.error_push')));
+        return CommandResponse::error(MessageRef::key('push.error_push'), $messages);
+    }
+
+    /**
+     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool}
+     */
+    private function normalizeHandleArguments(
+        mixed $first,
+        mixed $second,
+        mixed $third,
+        mixed $fourth,
+        mixed $fifth,
+        mixed $sixth,
+        mixed $seventh,
+        mixed $eighth,
+    ): array {
+        if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
+            return [
+                (bool) $second,
+                is_string($third) ? $third : null,
+                (bool) $fourth,
+                (bool) $fifth,
+                (bool) $sixth,
+                (bool) $seventh,
+                (bool) $eighth,
+            ];
+        }
+
+        return [
+            (bool) $first,
+            is_string($second) ? $second : null,
+            (bool) $third,
+            (bool) $fourth,
+            (bool) $fifth,
+            (bool) $sixth,
+            (bool) $seventh,
+        ];
+    }
+
+    private function normalizeResponse(CommandResponse|int $response, string $successMessage, string $errorMessage): CommandResponse
+    {
+        if ($response instanceof CommandResponse) {
+            return $response;
+        }
+
+        return CommandResponse::fromExitCode($response, $successMessage, $errorMessage);
     }
 }

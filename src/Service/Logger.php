@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -11,7 +13,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * Logger service for handling verbosity-aware logging in handlers.
  * Simplifies verbosity level checking and provides consistent color formatting.
  */
-class Logger
+class Logger extends CommandOutputBuffer implements PromptInterface
 {
     public const VERBOSITY_NORMAL = 0;
     public const VERBOSITY_VERBOSE = 1;
@@ -24,7 +26,9 @@ class Logger
     public function __construct(
         private readonly SymfonyStyle $io,
         /** @phpstan-ignore-next-line - Colors property reserved for future color formatting implementation */
-        private readonly array $colors
+        private readonly array $colors,
+        private readonly bool $suppressOutput = false,
+        private readonly ?MessageRenderer $messageRenderer = null,
     ) {
     }
 
@@ -42,12 +46,15 @@ class Logger
      * Errors are always shown, even when output is quiet (--quiet means non-interactive, not suppress errors).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string|array<string> $message
+     * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function error(int $verbosity, string|array $message): void
+    public function error(int $verbosity, MessageRef|string|array $message): void
     {
+        if ($this->suppressOutput) {
+            return;
+        }
         if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
-            $this->io->error($message);
+            $this->io->error($this->renderLogMessage($message));
         }
     }
 
@@ -56,13 +63,16 @@ class Logger
      * Errors are always shown, even when output is quiet (--quiet means non-interactive, not suppress errors).
      *
      * @param int $verbosity Minimum verbosity level to display
-     * @param string $userMessage User-friendly translated message
+     * @param MessageRef|string $userMessage User-friendly translated message
      * @param string $technicalDetails Technical error details (Git output, API response, etc.)
      */
-    public function errorWithDetails(int $verbosity, string $userMessage, string $technicalDetails): void
+    public function errorWithDetails(int $verbosity, MessageRef|string $userMessage, string $technicalDetails): void
     {
+        if ($this->suppressOutput) {
+            return;
+        }
         if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
-            $this->io->error($userMessage);
+            $this->io->error((string) $userMessage);
             if (! empty(trim($technicalDetails))) {
                 $this->io->text(['', ' Technical details: ' . $technicalDetails]);
             }
@@ -74,12 +84,15 @@ class Logger
      * Warnings are always shown, even when output is quiet (--quiet means non-interactive, not suppress output).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string|array<string> $message
+     * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function warning(int $verbosity, string|array $message): void
+    public function warning(int $verbosity, MessageRef|string|array $message): void
     {
+        if ($this->suppressOutput) {
+            return;
+        }
         if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
-            $this->io->warning($message);
+            $this->io->warning($this->renderLogMessage($message));
         }
     }
 
@@ -87,12 +100,12 @@ class Logger
      * Logs a note/info message.
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string|array<string> $message
+     * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function note(int $verbosity, string|array $message): void
+    public function note(int $verbosity, MessageRef|string|array $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
-            $this->io->note($message);
+            $this->io->note($this->renderLogMessage($message));
         }
     }
 
@@ -101,12 +114,15 @@ class Logger
      * Success is always shown, even when output is quiet (--quiet means non-interactive, not suppress output).
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string|array<string> $message
+     * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function success(int $verbosity, string|array $message): void
+    public function success(int $verbosity, MessageRef|string|array $message): void
     {
+        if ($this->suppressOutput) {
+            return;
+        }
         if ($this->io->isQuiet() || $this->shouldDisplay($verbosity)) {
-            $this->io->success($message);
+            $this->io->success($this->renderLogMessage($message));
         }
     }
 
@@ -114,12 +130,12 @@ class Logger
      * Logs informational text.
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string|array<string> $message
+     * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function text(int $verbosity, string|array $message): void
+    public function text(int $verbosity, MessageRef|string|array $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
-            $this->io->text($message);
+            $this->io->text($this->renderLogMessage($message));
         }
     }
 
@@ -131,6 +147,9 @@ class Logger
      */
     public function rawValue(string $message): void
     {
+        if ($this->suppressOutput) {
+            return;
+        }
         if ($this->io->isQuiet() || $this->shouldDisplay(self::VERBOSITY_NORMAL)) {
             $this->io->writeln($message, OutputInterface::VERBOSITY_QUIET | OutputInterface::OUTPUT_RAW);
         }
@@ -140,12 +159,12 @@ class Logger
      * Logs a writeln message with optional color formatting.
      *
      * @param int $verbosity Minimum verbosity level to display
-     * @param string $message Message to display (can include color tags)
+     * @param MessageRef|string $message Message to display (can include color tags)
      */
-    public function writeln(int $verbosity, string $message): void
+    public function writeln(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
-            $this->io->writeln($message);
+            $this->io->writeln((string) $message);
         }
     }
 
@@ -153,9 +172,9 @@ class Logger
      * Logs a Jira-related informational message with jira_message color.
      *
      * @param int $verbosity Minimum verbosity level to display
-     * @param string $message Message to display
+     * @param MessageRef|string $message Message to display
      */
-    public function jiraWriteln(int $verbosity, string $message): void
+    public function jiraWriteln(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
             $jiraColor = $this->colors['jira_message'] ?? 'blue';
@@ -167,9 +186,9 @@ class Logger
      * Logs a Git-related informational message with git_message color.
      *
      * @param int $verbosity Minimum verbosity level to display
-     * @param string $message Message to display
+     * @param MessageRef|string $message Message to display
      */
-    public function gitWriteln(int $verbosity, string $message): void
+    public function gitWriteln(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
             $gitColor = $this->colors['git_message'] ?? 'yellow';
@@ -219,12 +238,12 @@ class Logger
      * Displays a section header.
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string $message Section message
+     * @param MessageRef|string $message Section message
      */
-    public function section(int $verbosity, string $message): void
+    public function section(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
-            $this->io->section($message);
+            $this->io->section((string) $message);
         }
     }
 
@@ -232,12 +251,12 @@ class Logger
      * Displays a title.
      *
      * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
-     * @param string $message Title message
+     * @param MessageRef|string $message Title message
      */
-    public function title(int $verbosity, string $message): void
+    public function title(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
-            $this->io->title($message);
+            $this->io->title((string) $message);
         }
     }
 
@@ -348,6 +367,24 @@ class Logger
     }
 
     /**
+     * @param MessageRef|string|array<MessageRef|string> $message
+     * @return string|array<string>
+     */
+    private function renderLogMessage(MessageRef|string|array $message): string|array
+    {
+        if (is_array($message)) {
+            return array_map(fn (MessageRef|string $line): string => $this->messageRenderer?->render($line) ?? (string) $line, $message);
+        }
+
+        return $this->messageRenderer?->render($message) ?? (string) $message;
+    }
+
+    private function renderLogString(MessageRef|string $message): string
+    {
+        return $this->messageRenderer?->render($message) ?? (string) $message;
+    }
+
+    /**
      * Asks a question to the user (interactive - always displayed regardless of verbosity).
      *
      * @param string $question Question to ask
@@ -355,9 +392,9 @@ class Logger
      * @param callable|null $validator Validation callback
      * @return string|null User's answer, or null if no input provided and no default value, or if user cancels/interactive mode unavailable
      */
-    public function ask(string $question, ?string $default = null, ?callable $validator = null): ?string
+    public function ask(MessageRef|string $question, ?string $default = null, ?callable $validator = null): ?string
     {
-        return $this->io->ask($question, $default, $validator);
+        return $this->io->ask($this->renderLogString($question), $default, $validator);
     }
 
     /**
@@ -367,9 +404,9 @@ class Logger
      * @param callable|null $validator Validation callback
      * @return string|null User's answer, or null if no input provided and no default value, or if user cancels/interactive mode unavailable
      */
-    public function askHidden(string $question, ?callable $validator = null): ?string
+    public function askHidden(MessageRef|string $question, ?callable $validator = null): ?string
     {
-        return $this->io->askHidden($question, $validator);
+        return $this->io->askHidden($this->renderLogString($question), $validator);
     }
 
     /**
@@ -379,9 +416,9 @@ class Logger
      * @param bool $default Default value
      * @return bool User's answer
      */
-    public function confirm(string $question, bool $default = true): bool
+    public function confirm(MessageRef|string $question, bool $default = true): bool
     {
-        return $this->io->confirm($question, $default);
+        return $this->io->confirm($this->renderLogString($question), $default);
     }
 
     /**
@@ -393,9 +430,9 @@ class Logger
      * @param bool $multiSelect Whether to allow multiple selections
      * @return mixed User's selection
      */
-    public function choice(string $question, array $choices, mixed $default = null, bool $multiSelect = false): mixed
+    public function choice(MessageRef|string $question, array $choices, mixed $default = null, bool $multiSelect = false): mixed
     {
-        return $this->io->choice($question, $choices, $default, $multiSelect);
+        return $this->io->choice($this->renderLogString($question), $choices, $default, $multiSelect);
     }
 
     /**
@@ -405,6 +442,10 @@ class Logger
      */
     protected function shouldDisplay(int $verbosity): bool
     {
+        if ($this->suppressOutput) {
+            return false;
+        }
+
         if ($this->io->isQuiet()) {
             return false;
         }

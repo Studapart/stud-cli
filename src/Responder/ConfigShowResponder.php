@@ -23,7 +23,9 @@ class ConfigShowResponder
     {
         if ($format === OutputFormat::Json) {
             if (! $response->isSuccess()) {
-                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+                $error = $response->getError() ?? 'Unknown error';
+
+                return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error, $response->getErrorParameters()));
             }
             $data = $response->isSingleKey()
                 ? ['singleKey' => $response->singleKey, 'singleKeyValue' => $response->singleKeyValue, 'singleKeySection' => $response->singleKeySection]

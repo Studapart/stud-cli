@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
 use App\Migrations\MigrationInterface;
 
 /**
@@ -13,10 +14,11 @@ use App\Migrations\MigrationInterface;
 class MigrationExecutor
 {
     public function __construct(
-        private readonly Logger $logger,
+        private readonly WorkflowOutput $logger,
         private readonly FileSystem $fileSystem,
-        private readonly TranslationService $translator
+        mixed $translator
     ) {
+        unset($translator);
     }
 
     /**
@@ -27,26 +29,14 @@ class MigrationExecutor
      *
      * @param string $migrationId The migration ID
      * @param string $errorMessage The original error message
-     * @return string The formatted error message
      */
-    private function getErrorMessage(string $migrationId, string $errorMessage): string
+    private function getErrorMessage(string $migrationId, string $errorMessage): MessageRef
     {
-        try {
-            $translated = $this->translator->trans('migration.error', [
-                'id' => $migrationId,
-                'error' => $errorMessage,
-            ]);
-
-            // If translation returns the key itself, it means translation failed
-            if ($translated === 'migration.error') {
-                return "Migration {$migrationId} failed: {$errorMessage}";
-            }
-
-            return $translated;
-        } catch (\Throwable $e) {
-            // If translation throws an exception, use fallback
-            return "Migration {$migrationId} failed: {$errorMessage}";
-        }
+        return MessageRef::key(
+            'migration.error',
+            ['id' => $migrationId, 'error' => $errorMessage],
+            "Migration {$migrationId} failed: {$errorMessage}",
+        );
     }
 
     /**
@@ -81,9 +71,9 @@ class MigrationExecutor
      */
     private function runSingleMigration(MigrationInterface $migration, array $config): array
     {
-        $this->logger->text(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('migration.running', [
+        $this->logger->addText(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('migration.running', [
                 'id' => $migration->getId(),
                 'description' => $migration->getDescription(),
             ])
@@ -97,9 +87,9 @@ class MigrationExecutor
 
         $config['migration_version'] = $migration->getId();
 
-        $this->logger->text(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('migration.version_updated', [
+        $this->logger->addText(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('migration.version_updated', [
                 'version' => $migration->getId(),
             ])
         );
@@ -115,9 +105,9 @@ class MigrationExecutor
         $errorMessage = $this->getErrorMessage($migration->getId(), $e->getMessage());
 
         if ($migration->isPrerequisite()) {
-            $this->logger->error(
-                Logger::VERBOSITY_NORMAL,
-                explode("\n", $errorMessage)
+            $this->logger->addError(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                $errorMessage
             );
 
             throw new \RuntimeException(
@@ -127,9 +117,9 @@ class MigrationExecutor
             );
         }
 
-        $this->logger->warning(
-            Logger::VERBOSITY_NORMAL,
-            explode("\n", $errorMessage)
+        $this->logger->addWarning(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            $errorMessage
         );
     }
 }

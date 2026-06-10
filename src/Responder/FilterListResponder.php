@@ -62,7 +62,10 @@ class FilterListResponder
     protected function respondJson(FilterListResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(
+                false,
+                error: $this->helper->translator->renderForAgentText($response->getErrorMessage()),
+            );
         }
 
         return new AgentJsonResponse(true, data: [

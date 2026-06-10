@@ -5,36 +5,37 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\ItemUploadInput;
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
 use App\Service\JiraAttachmentService;
-use App\Service\TranslationService;
 
 class ItemUploadHandler
 {
     public function __construct(
         private readonly FileSystem $fileSystem,
         private readonly JiraAttachmentService $jiraAttachmentService,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(ItemUploadInput $input): ItemUploadResponse
     {
         $key = $this->normalizeKey($input->issueKey);
         if ($key === '') {
-            return ItemUploadResponse::fatal($this->translator->trans('item.upload.error_no_key'));
+            return ItemUploadResponse::fatal(MessageRef::key('item.upload.error_no_key'));
         }
 
         if ($input->filePaths === []) {
-            return ItemUploadResponse::fatal($this->translator->trans('item.upload.error_no_files'));
+            return ItemUploadResponse::fatal(MessageRef::key('item.upload.error_no_files'));
         }
 
         $cwd = getcwd();
         // @codeCoverageIgnoreStart
         if ($cwd === false) {
-            return ItemUploadResponse::fatal($this->translator->trans('item.upload.error_cwd'));
+            return ItemUploadResponse::fatal(MessageRef::key('item.upload.error_cwd'));
         }
         // @codeCoverageIgnoreEnd
 
@@ -48,8 +49,8 @@ class ItemUploadHandler
     }
 
     /**
-     * @param list<array{filename: string, path: string}>             $files
-     * @param list<array{filename: string|null, message: string}> $errors
+     * @param list<array{filename: string, path: string}>                         $files
+     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
      */
     private function processOnePath(
         string $issueKey,
@@ -68,7 +69,7 @@ class ItemUploadHandler
         } catch (\InvalidArgumentException) {
             $errors[] = [
                 'filename' => $trimmed,
-                'message' => $this->translator->trans('item.upload.error_path_traversal'),
+                'message' => MessageRef::key('item.upload.error_path_traversal'),
             ];
 
             return;
@@ -77,7 +78,7 @@ class ItemUploadHandler
         if (! $this->fileSystem->fileExists($trimmed)) {
             $errors[] = [
                 'filename' => $trimmed,
-                'message' => $this->translator->trans('item.upload.error_not_found'),
+                'message' => MessageRef::key('item.upload.error_not_found'),
             ];
 
             return;
@@ -86,7 +87,7 @@ class ItemUploadHandler
         if ($this->fileSystem->isDir($trimmed)) {
             $errors[] = [
                 'filename' => $trimmed,
-                'message' => $this->translator->trans('item.upload.error_not_file'),
+                'message' => MessageRef::key('item.upload.error_not_file'),
             ];
 
             return;

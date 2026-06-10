@@ -78,12 +78,12 @@ class ItemDownloadResponder
     protected function respondJson(ItemDownloadResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(false, error: $this->helper->translator->renderForAgentText($response->getErrorMessage()));
         }
 
         return new AgentJsonResponse(true, data: [
             'files' => $response->files,
-            'errors' => $response->errors,
+            'errors' => $this->renderErrors($response->errors),
         ]);
     }
 
@@ -94,9 +94,21 @@ class ItemDownloadResponder
                 Logger::VERBOSITY_NORMAL,
                 $this->helper->translator->trans('item.download.error_partial', [
                     'filename' => $err['filename'] ?? '',
-                    'message' => $err['message'],
+                    'message' => $this->helper->translator->renderText($err['message']),
                 ])
             );
         }
+    }
+
+    /**
+     * @param list<array{filename: string|null, message: mixed}> $errors
+     * @return list<array{filename: string|null, message: string}>
+     */
+    private function renderErrors(array $errors): array
+    {
+        return array_map(fn (array $error): array => [
+            'filename' => $error['filename'],
+            'message' => $this->helper->translator->renderForAgentText($error['message']),
+        ], $errors);
     }
 }

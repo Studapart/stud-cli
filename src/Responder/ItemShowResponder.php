@@ -129,8 +129,11 @@ class ItemShowResponder
      */
     protected function buildDescriptionSections(string $description): array
     {
-        $formatter = $this->descriptionFormatter ?? new DescriptionFormatter($this->helper->translator);
-        $parsedSections = $formatter->parseSections($description);
+        $formatter = $this->descriptionFormatter ?? new DescriptionFormatter();
+        $parsedSections = $formatter->parseSections(
+            $description,
+            $this->helper->translator->trans('item.show.label_description')
+        );
         $sections = [];
 
         foreach ($parsedSections as $parsed) {

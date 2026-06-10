@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
+
 class IssueFieldResolver
 {
     public function __construct(
@@ -190,15 +192,14 @@ class IssueFieldResolver
      *
      * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param array<string, mixed> $fields Create payload; modified in place
-     * @param TranslationService $translator
-     * @return list<string>
+     * @return list<MessageRef>
      */
     public function applyOptionalFieldsFromCreatemeta(
         array $allFieldsMeta,
         array &$fields,
         ?string $labelsOption,
         ?string $originalEstimateOption,
-        TranslationService $translator
+        mixed $translator = null
     ): array {
         $skipped = [];
         $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'labels', 'labels');
@@ -211,18 +212,18 @@ class IssueFieldResolver
                     $fields['labels'] = $labels;
                 }
             } else {
-                $skipped[] = $translator->trans('item.create.skipped_field_labels');
+                $skipped[] = MessageRef::key('item.create.skipped_field_labels');
             }
         }
 
         if ($originalEstimateOption !== null && trim($originalEstimateOption) !== '') {
             $seconds = $this->durationParser->parseToSeconds(trim($originalEstimateOption));
             if ($seconds === null) {
-                $skipped[] = $translator->trans('item.create.skipped_field_original_estimate');
+                $skipped[] = MessageRef::key('item.create.skipped_field_original_estimate');
             } elseif ($estimatePayloadKey !== null) {
                 $fields['timeoriginalestimate'] = $seconds;
             } else {
-                $skipped[] = $translator->trans('item.create.skipped_field_original_estimate');
+                $skipped[] = MessageRef::key('item.create.skipped_field_original_estimate');
             }
         }
 

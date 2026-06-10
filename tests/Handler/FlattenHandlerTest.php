@@ -43,7 +43,7 @@ class FlattenHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called for dirty working directory
     }
 
@@ -71,7 +71,7 @@ class FlattenHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: note() was called indicating no fixups, verified by return value
     }
 
@@ -100,7 +100,7 @@ class FlattenHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: warning() and success() were called, verified by return value
     }
 
@@ -130,7 +130,7 @@ class FlattenHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called for rebase failure, verified by return value
     }
 
@@ -156,17 +156,16 @@ class FlattenHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\GitException('Git command failed: git rebase', 'fatal: could not read object', null));
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('errorWithDetails')
+        $logger->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('flatten.error_rebase'),
+                $this->messageRefWithKey('flatten.error_rebase'),
                 'fatal: could not read object'
             );
-        $logger->method('section');
-        $logger->method('note');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addSection');
+        $logger->method('addNote');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
 
         $handler = new \App\Handler\FlattenHandler($this->gitRepository, $this->baseBranch, $this->translationService, $logger);
 
@@ -175,6 +174,6 @@ class FlattenHandlerTest extends CommandTestCase
 
         $result = $handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
+use App\Service\WorkflowOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandler
@@ -15,13 +15,14 @@ class ReleaseHandler
     // @codeCoverageIgnoreStart
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $_translator,
+        private readonly WorkflowOutput $logger,
         private readonly FileSystem $fileSystem,
         private readonly string $composerJsonPath = 'composer.json',
         private readonly string $changelogPath = 'CHANGELOG.md',
         private readonly string $readmePath = 'README.md'
     ) {
+        unset($_translator);
     }
     // @codeCoverageIgnoreEnd
 
@@ -87,47 +88,47 @@ class ReleaseHandler
             $targetVersion = $this->calculateNextVersion($currentVersion, 'patch');
         }
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.section', ['version' => $targetVersion]));
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.section', ['version' => $targetVersion]));
 
         $this->gitRepository->fetch();
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.fetched'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.fetched'));
 
         $releaseBranch = 'release/v' . $targetVersion;
         $this->gitRepository->createBranch($releaseBranch, 'origin/develop');
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.created_branch', ['branch' => $releaseBranch]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.created_branch', ['branch' => $releaseBranch]));
 
         $this->updateComposerVersion($targetVersion);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_composer', ['version' => $targetVersion]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_composer', ['version' => $targetVersion]));
 
         $this->gitRepository->run('composer update --lock');
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_lock'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_lock'));
 
         $this->gitRepository->run('composer dump-config');
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.dumped_config'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.dumped_config'));
 
         $this->updateChangelog($targetVersion);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_changelog', ['version' => $targetVersion]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_changelog', ['version' => $targetVersion]));
 
         $this->updateReadme($targetVersion);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.updated_readme', ['version' => $targetVersion]));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_readme', ['version' => $targetVersion]));
 
         $this->gitRepository->stageAllChanges();
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.staged'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.staged'));
 
         $this->gitRepository->commit('chore(Version): Bump version to ' . $targetVersion);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.committed'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.committed'));
 
         if ($publish) {
             $this->gitRepository->pushToOrigin($releaseBranch);
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.published'));
+            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.published'));
         } else {
-            if (! $quiet && $this->logger->confirm($this->translator->trans('release.confirm_publish'), false)) {
+            if (! $quiet && $this->logger->confirm(MessageRef::key('release.confirm_publish'), false)) {
                 $this->gitRepository->pushToOrigin($releaseBranch);
-                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.published'));
+                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.published'));
             }
         }
 
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('release.success', ['version' => $targetVersion]));
+        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.success', ['version' => $targetVersion]));
     }
 
     protected function updateComposerVersion(string $version): void

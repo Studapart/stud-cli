@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\ConfluencePushInput;
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ConfluencePushResponse;
 use App\Service\ConfluenceService;
 use App\Service\MarkdownToAdfConverter;
-use App\Service\TranslationService;
 
 class ConfluencePushHandler
 {
     public function __construct(
         private readonly ConfluenceService $confluenceService,
         private readonly MarkdownToAdfConverter $converter,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(ConfluencePushInput $input, string $baseUrl): ConfluencePushResponse
@@ -25,7 +26,7 @@ class ConfluencePushHandler
         $content = trim($input->content);
         if ($content === '') {
             return ConfluencePushResponse::error(
-                $this->translator->trans('confluence.push.error_no_content')
+                MessageRef::key('confluence.push.error_no_content')
             );
         }
 
@@ -42,7 +43,7 @@ class ConfluencePushHandler
             $page = $this->confluenceService->getPage($input->pageId);
         } catch (ApiException $e) {
             return ConfluencePushResponse::error(
-                $this->translator->trans('confluence.push.error_page_not_found', ['%id%' => $input->pageId])
+                MessageRef::key('confluence.push.error_page_not_found', ['id' => $input->pageId])
             );
         }
 
@@ -129,7 +130,7 @@ class ConfluencePushHandler
         } catch (ApiException $e) {
             if ($e->getStatusCode() !== 404) {
                 return ConfluencePushResponse::error(
-                    $this->translator->trans('confluence.push.error_page_not_found', ['%id%' => $parentId])
+                    MessageRef::key('confluence.push.error_page_not_found', ['id' => $parentId])
                 );
             }
 
@@ -139,7 +140,7 @@ class ConfluencePushHandler
                 return ['spaceId' => $parentFolder['spaceId']];
             } catch (ApiException) {
                 return ConfluencePushResponse::error(
-                    $this->translator->trans('confluence.push.error_parent_not_found', ['%id%' => $parentId])
+                    MessageRef::key('confluence.push.error_parent_not_found', ['id' => $parentId])
                 );
             }
         }
@@ -155,7 +156,7 @@ class ConfluencePushHandler
         $space = $input->space;
         if ($space === null || trim($space) === '') {
             return ConfluencePushResponse::error(
-                $this->translator->trans('confluence.push.error_space_required')
+                MessageRef::key('confluence.push.error_space_required')
             );
         }
 
@@ -163,7 +164,7 @@ class ConfluencePushHandler
             return $this->confluenceService->resolveSpaceId(trim($space));
         } catch (ApiException) {
             return ConfluencePushResponse::error(
-                $this->translator->trans('confluence.push.error_space_not_found', ['%key%' => $space])
+                MessageRef::key('confluence.push.error_space_not_found', ['key' => $space])
             );
         }
     }
@@ -176,7 +177,7 @@ class ConfluencePushHandler
         $title = $input->title;
         if ($title === null || trim($title) === '') {
             return ConfluencePushResponse::error(
-                $this->translator->trans('confluence.push.error_no_title')
+                MessageRef::key('confluence.push.error_no_title')
             );
         }
 
@@ -243,12 +244,13 @@ class ConfluencePushHandler
         );
     }
 
-    protected function buildApiErrorMessage(ApiException $e): string
+    protected function buildApiErrorMessage(ApiException $e): MessageRef
     {
-        $msg = $this->translator->trans('confluence.push.error_api', ['%message%' => $e->getMessage()]);
         $details = $e->getTechnicalDetails();
 
-        return $details !== '' ? $msg . ' ' . $details : $msg;
+        return MessageRef::key('confluence.push.error_api', [
+            'message' => $details !== '' ? $e->getMessage() . ' ' . $details : $e->getMessage(),
+        ]);
     }
 
     /**

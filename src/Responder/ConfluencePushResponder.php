@@ -23,7 +23,7 @@ class ConfluencePushResponder
     {
         if ($format === OutputFormat::Json) {
             if (! $response->isSuccess()) {
-                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+                return new AgentJsonResponse(false, error: $this->translator->renderForAgentText($response->getErrorMessage()));
             }
 
             return new AgentJsonResponse(true, data: [
@@ -35,7 +35,7 @@ class ConfluencePushResponder
         }
 
         if (! $response->isSuccess()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $response->getError());
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->renderText($response->getErrorMessage()));
 
             return null;
         }

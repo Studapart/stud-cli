@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\MessageRef;
 use App\Migrations\AbstractMigration;
 use App\Migrations\MigrationScope;
 use App\Service\FileSystem;
@@ -89,7 +90,7 @@ class MigrationExecutorTest extends TestCase
             });
 
         $this->logger->expects($this->atLeastOnce())
-            ->method('text');
+            ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
 
@@ -144,7 +145,7 @@ class MigrationExecutorTest extends TestCase
             });
 
         $this->logger->expects($this->atLeastOnce())
-            ->method('error');
+            ->method('addError');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Prerequisite migration');
@@ -194,7 +195,7 @@ class MigrationExecutorTest extends TestCase
             });
 
         $this->logger->expects($this->atLeastOnce())
-            ->method('warning');
+            ->method('addWarning');
 
         // Non-prerequisite failures should not throw, just log
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
@@ -301,7 +302,7 @@ class MigrationExecutorTest extends TestCase
             });
 
         $this->logger->expects($this->atLeastOnce())
-            ->method('text');
+            ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration1, $migration2], $config, $this->testConfigPath);
 
@@ -346,7 +347,7 @@ class MigrationExecutorTest extends TestCase
             });
 
         $this->logger->expects($this->atLeastOnce())
-            ->method('text');
+            ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
 
@@ -408,13 +409,14 @@ class MigrationExecutorTest extends TestCase
 
         // Verify that error is called with fallback message
         $this->logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(
                 Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($messages) {
-                    $message = is_array($messages) ? $messages[0] : $messages;
-
-                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                $this->callback(function ($message) {
+                    return $message instanceof MessageRef
+                        && $message->key === 'migration.error'
+                        && $message->parameters['id'] === '202501160000001'
+                        && str_contains((string) $message->fallback, 'Failed to write file');
                 })
             );
 
@@ -473,13 +475,14 @@ class MigrationExecutorTest extends TestCase
 
         // Verify that warning is called with fallback message
         $this->logger->expects($this->once())
-            ->method('warning')
+            ->method('addWarning')
             ->with(
                 Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($messages) {
-                    $message = is_array($messages) ? $messages[0] : $messages;
-
-                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                $this->callback(function ($message) {
+                    return $message instanceof MessageRef
+                        && $message->key === 'migration.error'
+                        && $message->parameters['id'] === '202501160000001'
+                        && str_contains((string) $message->fallback, 'Failed to write file');
                 })
             );
 
@@ -537,13 +540,14 @@ class MigrationExecutorTest extends TestCase
 
         // Verify that error is called with fallback message
         $this->logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(
                 Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($messages) {
-                    $message = is_array($messages) ? $messages[0] : $messages;
-
-                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                $this->callback(function ($message) {
+                    return $message instanceof MessageRef
+                        && $message->key === 'migration.error'
+                        && $message->parameters['id'] === '202501160000001'
+                        && str_contains((string) $message->fallback, 'Failed to write file');
                 })
             );
 
@@ -601,13 +605,14 @@ class MigrationExecutorTest extends TestCase
 
         // Verify that warning is called with fallback message
         $this->logger->expects($this->once())
-            ->method('warning')
+            ->method('addWarning')
             ->with(
                 Logger::VERBOSITY_NORMAL,
-                $this->callback(function ($messages) {
-                    $message = is_array($messages) ? $messages[0] : $messages;
-
-                    return str_contains($message, 'Migration 202501160000001 failed: Failed to write file');
+                $this->callback(function ($message) {
+                    return $message instanceof MessageRef
+                        && $message->key === 'migration.error'
+                        && $message->parameters['id'] === '202501160000001'
+                        && str_contains((string) $message->fallback, 'Failed to write file');
                 })
             );
 

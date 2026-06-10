@@ -7,6 +7,7 @@ namespace App\Responder;
 use App\Response\AgentJsonResponse;
 use App\Response\PrCommentsResponse;
 use App\Service\DtoSerializer;
+use App\Service\TranslationService;
 
 /**
  * Serializes PR/MR comments responses for agent-mode JSON consumers.
@@ -15,13 +16,14 @@ class PrCommentsJsonSerializer
 {
     public function __construct(
         private readonly DtoSerializer $serializer,
+        private readonly TranslationService $translator,
     ) {
     }
 
     public function serialize(PrCommentsResponse $response, bool $threaded): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(false, error: $this->translator->renderForAgentText($response->getErrorMessage()));
         }
 
         if ($threaded) {

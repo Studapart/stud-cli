@@ -97,14 +97,14 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.start.error_not_found'),
+                $this->messageRefWithKey('item.start.error_not_found'),
                 'HTTP 404: Not Found'
             );
-        $logger->method('section');
-        $logger->method('jiraWriteln');
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
 
         $handler = new \App\Handler\ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
 
@@ -907,9 +907,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls (like 'item.start.fetching_changes')
                 if ($verbosity === Logger::VERBOSITY_NORMAL) {
@@ -920,9 +920,9 @@ class ItemStartHandlerTest extends CommandTestCase
                     return;
                 }
             });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addGitLine');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
 
         $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
@@ -987,9 +987,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls (like 'item.start.fetching_changes')
                 if ($verbosity === Logger::VERBOSITY_NORMAL) {
@@ -1000,9 +1000,9 @@ class ItemStartHandlerTest extends CommandTestCase
                     return;
                 }
             });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addGitLine');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
 
         $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
@@ -1067,9 +1067,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls (like 'item.start.fetching_changes')
                 if ($verbosity === Logger::VERBOSITY_NORMAL) {
@@ -1080,9 +1080,9 @@ class ItemStartHandlerTest extends CommandTestCase
                     return;
                 }
             });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addGitLine');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
 
         $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
@@ -1147,8 +1147,8 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln')
+        $logger->method('addSection');
+        $logger->method('addJiraLine')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Check for cached transition message
                 if ($verbosity === Logger::VERBOSITY_VERBOSE && str_contains($message, 'item.start.using_cached_transition')) {
@@ -1158,9 +1158,9 @@ class ItemStartHandlerTest extends CommandTestCase
                 // Allow other jiraWriteln calls
                 return;
             });
-        $logger->method('text');
-        $logger->method('gitWriteln');
-        $logger->method('success');
+        $logger->method('addText');
+        $logger->method('addGitLine');
+        $logger->method('addSuccess');
 
         $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
@@ -1635,17 +1635,17 @@ class ItemStartHandlerTest extends CommandTestCase
 
         // Create a mocked logger to test the edge case where choice() returns invalid string
         $logger = $this->createMock(Logger::class);
-        $logger->method('jiraWriteln');
-        $logger->method('text');
-        $logger->method('section');
+        $logger->method('addJiraLine');
+        $logger->method('addText');
+        $logger->method('addSection');
         // Mock choice to return a string that doesn't match our regex pattern
         // This simulates an edge case where the regex fails (shouldn't happen in practice)
         $logger->expects($this->once())
             ->method('choice')
             ->willReturn('Invalid Selection Without ID Pattern');
         $logger->expects($this->once())
-            ->method('warning')
-            ->with(Logger::VERBOSITY_NORMAL, $this->stringContains('item.start.transition_error'));
+            ->method('addWarning')
+            ->with(Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('item.start.transition_error'));
 
         $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
 
@@ -1936,11 +1936,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->atLeastOnce())
-            ->method('gitWriteln');
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text');
-        $logger->method('success');
+            ->method('addGitLine');
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
+        $logger->method('addText');
+        $logger->method('addSuccess');
 
         $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
 
@@ -1990,14 +1990,14 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->method('success');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addSuccess');
         $logger->expects($this->once())
-            ->method('gitWriteln')
+            ->method('addGitLine')
             ->with(
                 Logger::VERBOSITY_VERBOSE,
-                $this->stringContains('item.start.generated_branch')
+                $this->messageRefWithKey('item.start.generated_branch')
             );
 
         $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);

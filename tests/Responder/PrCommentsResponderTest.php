@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\MessageRef;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestFeedbackActions;
 use App\DTO\PullRequestFeedbackComment;
@@ -282,6 +283,27 @@ class PrCommentsResponderTest extends CommandTestCase
         $this->assertNotNull($result);
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
+    }
+
+    public function testRespondCliRendersErrorMessageRef(): void
+    {
+        $logger = $this->createMock(\App\Service\Logger::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'Key');
+        $translator = new \App\Service\TranslationService('en', __DIR__ . '/../../src/resources/translations');
+        $responder = new PrCommentsResponder(
+            new ResponderHelper($translator),
+            new CommentBodyParser(),
+            $logger
+        );
+
+        $result = $responder->respond(
+            $this->io,
+            PrCommentsResponse::error(MessageRef::key('table.key'))
+        );
+
+        $this->assertNull($result);
     }
 
     private function createFeedbackConversation(): PullRequestFeedbackConversation

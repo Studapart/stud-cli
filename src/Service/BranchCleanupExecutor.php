@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\BranchCleanupPlan;
+use App\DTO\MessageRef;
 use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
 
@@ -14,9 +15,10 @@ class BranchCleanupExecutor
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $translator,
+        private readonly WorkflowOutput $logger
     ) {
+        unset($translator);
     }
 
     /**
@@ -57,16 +59,16 @@ class BranchCleanupExecutor
 
         try {
             $this->pruneRemoteTrackingRefsIfNeeded($plan);
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleting', ['branch' => $branch]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Deleting local branch: {$branch}</>");
+            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Deleting local branch: {$branch}</>");
             $this->gitRepository->deleteBranch($branch);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted local branch: {$branch}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted local branch: {$branch}</>");
             $this->handleRemoteBranchDeletion($plan, $quiet);
 
             return true;
         } catch (\Exception $e) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error', ['branch' => $branch, 'error' => $e->getMessage()]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Deletion failed: {$e->getMessage()}</>");
+            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $e->getMessage()]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Deletion failed: {$e->getMessage()}</>");
 
             return false;
         }
@@ -77,16 +79,16 @@ class BranchCleanupExecutor
         $branch = $plan->branch;
 
         try {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleting', ['branch' => $branch]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Force deleting local branch: {$branch}</>");
+            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Force deleting local branch: {$branch}</>");
             $this->gitRepository->deleteBranchForce($branch);
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully force-deleted local branch: {$branch}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully force-deleted local branch: {$branch}</>");
             $this->handleRemoteBranchDeletion($plan, $quiet);
 
             return true;
         } catch (\Exception $forceException) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error', ['branch' => $branch, 'error' => $forceException->getMessage()]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Force deletion also failed: {$forceException->getMessage()}</>");
+            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $forceException->getMessage()]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Force deletion also failed: {$forceException->getMessage()}</>");
 
             return false;
         }
@@ -98,7 +100,7 @@ class BranchCleanupExecutor
             return;
         }
 
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.pruning_refs')}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.pruning_refs'));
         $this->gitRepository->pruneRemoteTrackingRefs();
         $this->remoteTrackingRefsPruned = true;
     }
@@ -111,7 +113,7 @@ class BranchCleanupExecutor
 
         $branch = $plan->branch;
         if ($quiet || $plan->remoteAction === BranchCleanupRemoteAction::KeepQuiet) {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.remote_kept_quiet', ['branch' => $branch])}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept_quiet', ['branch' => $branch]));
 
             return;
         }
@@ -121,27 +123,27 @@ class BranchCleanupExecutor
         }
 
         $deleteRemote = $this->logger->confirm(
-            $this->translator->trans('branches.clean.delete_remote_confirm', ['branch' => $branch]),
+            MessageRef::key('branches.clean.delete_remote_confirm', ['branch' => $branch]),
             false
         );
 
         if ($deleteRemote) {
             $this->deleteRemoteBranch($branch);
         } else {
-            $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$this->translator->trans('branches.clean.remote_kept', ['branch' => $branch])}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept', ['branch' => $branch]));
         }
     }
 
     protected function deleteRemoteBranch(string $branch): void
     {
         try {
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=gray>Deleting remote branch: origin/{$branch}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Deleting remote branch: origin/{$branch}</>");
             $this->gitRepository->deleteRemoteBranch('origin', $branch);
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.deleted_remote', ['branch' => $branch]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted remote branch: origin/{$branch}</>");
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleted_remote', ['branch' => $branch]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted remote branch: origin/{$branch}</>");
         } catch (\Exception $e) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.error_remote', ['branch' => $branch, 'error' => $e->getMessage()]));
-            $this->logger->writeln(Logger::VERBOSITY_DEBUG, "    <fg=red>Remote deletion failed: {$e->getMessage()}</>");
+            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error_remote', ['branch' => $branch, 'error' => $e->getMessage()]));
+            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Remote deletion failed: {$e->getMessage()}</>");
         }
     }
 }

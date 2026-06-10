@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Enum\ResponseMessageLevel;
 use App\Service\DtoSerializer;
 use PHPUnit\Framework\TestCase;
+
+enum DtoSerializerTestUnitEnum
+{
+    case Example;
+}
 
 class DtoSerializerTest extends TestCase
 {
@@ -123,5 +129,23 @@ class DtoSerializerTest extends TestCase
         $result = $this->serializer->serialize($dto);
 
         $this->assertSame([['item' => ['id' => 'child']]], $result['groups']);
+    }
+
+    public function testSerializeWithBackedEnum(): void
+    {
+        $dto = new class () {
+            public ResponseMessageLevel $level = ResponseMessageLevel::Warning;
+        };
+
+        $this->assertSame(['level' => 'warning'], $this->serializer->serialize($dto));
+    }
+
+    public function testSerializeWithUnitEnum(): void
+    {
+        $dto = new class () {
+            public DtoSerializerTestUnitEnum $level = DtoSerializerTestUnitEnum::Example;
+        };
+
+        $this->assertSame(['level' => 'Example'], $this->serializer->serialize($dto));
     }
 }

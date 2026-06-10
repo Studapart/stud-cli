@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Service;
 
 use App\Service\Logger;
@@ -35,6 +37,25 @@ class LoggerTest extends CommandTestCase
 
         $logger = new Logger($io, []);
         $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
+    }
+
+    public function testSuppressOutputPreventsHumanLoggerOutput(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $io->expects($this->never())->method('error');
+        $io->expects($this->never())->method('warning');
+        $io->expects($this->never())->method('success');
+        $io->expects($this->never())->method('writeln');
+        $io->expects($this->never())->method('text');
+
+        $logger = new Logger($io, [], suppressOutput: true);
+        $logger->error(Logger::VERBOSITY_NORMAL, 'Test error');
+        $logger->errorWithDetails(Logger::VERBOSITY_NORMAL, 'Test error', 'Technical details');
+        $logger->warning(Logger::VERBOSITY_NORMAL, 'Test warning');
+        $logger->success(Logger::VERBOSITY_NORMAL, 'Test success');
+        $logger->text(Logger::VERBOSITY_NORMAL, 'Test text');
+        $logger->rawValue('raw');
     }
 
     public function testWarningRespectsVerbosity(): void

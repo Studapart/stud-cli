@@ -21,6 +21,13 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
     define('DEFAULT_BASE_BRANCH', 'origin/develop');
 }
 
+if (isset($_SERVER['argv']) && in_array('--agent', $_SERVER['argv'], true)) {
+    $GLOBALS['_agent_stdout_buffer_level'] = ob_get_level();
+    ob_start();
+} else {
+    $GLOBALS['_agent_stdout_buffer_level'] = null;
+}
+
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
@@ -73,6 +80,7 @@ use App\Handler\UpdateHandler;
 use App\Responder\AgentCommandResponder;
 use App\Responder\BranchListResponder;
 use App\Responder\BranchSwitchResponder;
+use App\Responder\CommandResponder;
 use App\Responder\ConfigProjectInitResponder;
 use App\Responder\ConfigShowResponder;
 use App\Responder\ConfigValidateResponder;
@@ -91,12 +99,15 @@ use App\Responder\PrCommentResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
 use App\Responder\SearchResponder;
+use App\Responder\WorkflowResponder;
 use App\Response\AgentJsonResponse;
 use App\Response\BranchSwitchResponse;
+use App\Response\CommandResponse;
 use App\Service\AgentModeHelper;
 use App\Service\AgentModeSchemaGenerator;
 use App\Service\ChangelogParser;
 use App\Service\CommandMap;
+use App\Service\CommandOutputBuffer;
 use App\Service\CommandReferenceGenerator;
 use App\Service\ConfigValidator;
 use App\Service\ConfluenceService;
@@ -109,15 +120,20 @@ use App\Service\InitProjectConfigFollowUpService;
 use App\Service\JiraAttachmentService;
 use App\Service\JiraService;
 use App\Service\Logger;
+use App\Service\MessageRenderer;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
 use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectStudConfigAdequacyChecker;
+use App\Service\Prompt\NonInteractivePromptService;
+use App\Service\Prompt\PromptInterface;
+use App\Service\Prompt\SymfonyPromptService;
 use App\Service\ThemeDetector;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
 use App\Service\VersionCheckService;
+use App\Service\WorkflowOutput;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
@@ -259,7 +275,7 @@ function _get_git_config(): array
 
 function _get_html_converter(): \App\Service\JiraHtmlConverter
 {
-    return new \App\Service\JiraHtmlConverter(null, _get_logger());
+    return new \App\Service\JiraHtmlConverter();
 }
 
 function _get_jira_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterface
@@ -383,7 +399,7 @@ function _get_git_setup_service(): GitSetupService
     return new GitSetupService(
         _get_git_repository(),
         _get_git_branch_service(),
-        _get_logger(),
+        _get_command_output_buffer(),
         _get_translation_service()
     );
 }
@@ -396,7 +412,7 @@ function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUp
         $gitRepository,
         $gitSetup,
         _get_translation_service(),
-        _get_logger(),
+        _get_command_output_buffer(),
         new \App\Service\GitTokenPromptResolver()
     );
     $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
@@ -407,7 +423,7 @@ function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUp
         $projectInitHandler,
         new ConfigProjectInitResponder(_get_responder_helper(), _get_logger()),
         _get_translation_service(),
-        _get_logger(),
+        _get_command_output_buffer(),
     );
 }
 
@@ -556,6 +572,16 @@ function _get_translation_service(): TranslationService
     return new TranslationService($locale, $translationsPath);
 }
 
+function _get_message_renderer(): MessageRenderer
+{
+    return new MessageRenderer(_get_translation_service());
+}
+
+function _get_agent_message_renderer(): MessageRenderer
+{
+    return new MessageRenderer(_get_translation_service(), agent: true);
+}
+
 function _get_duration_parser(): \App\Service\DurationParser
 {
     return new \App\Service\DurationParser();
@@ -592,7 +618,37 @@ function _get_logger(): Logger
 {
     $colors = _get_colour_config();
 
-    return new Logger(io(), $colors);
+    return new Logger(io(), $colors, _is_agent_mode_request(), _get_message_renderer());
+}
+
+function _get_prompt(): PromptInterface
+{
+    if (_is_agent_mode_request()) {
+        return new NonInteractivePromptService();
+    }
+
+    return new SymfonyPromptService(io(), _get_message_renderer());
+}
+
+function _get_command_output_buffer(): WorkflowOutput
+{
+    return new WorkflowOutput(_get_prompt());
+}
+
+function _get_workflow_responder(bool $agent = false): WorkflowResponder
+{
+    return new WorkflowResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
+}
+
+function _respond_workflow_output(WorkflowOutput $output, int $exitCode, bool $agent, bool $compact = true): void
+{
+    $response = $output->toResponse($exitCode);
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $agentResponse = _get_workflow_responder($agent)->respond(io(), $response, $format, $compact);
+
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+    }
 }
 
 /**
@@ -646,6 +702,15 @@ function _get_error_responder(): ErrorResponder
 function _get_agent_mode_helper(): AgentModeHelper
 {
     return new AgentModeHelper();
+}
+
+function _is_agent_mode_request(?\Symfony\Component\Console\Input\InputInterface $input = null): bool
+{
+    if ($input !== null && $input->hasParameterOption('--agent', true)) {
+        return true;
+    }
+
+    return isset($_SERVER['argv']) && in_array('--agent', $_SERVER['argv'], true);
 }
 
 /**
@@ -866,11 +931,22 @@ function _config_check_listener(ConsoleCommandEvent $event): void
     // Config file is missing and command is not whitelisted
     // Get translation service (works without config, defaults to 'en')
     $translator = _get_translation_service();
-    $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-    $logger = new Logger($io, _get_colour_config());
+    $setupMessage = $translator->trans('config.error.missing_setup');
+    $initMessage = $translator->trans('config.error.run_init_instruction');
+    if (_is_agent_mode_request($event->getInput())) {
+        $setupMessage = $translator->transForAgentText('config.error.missing_setup');
+        $initMessage = $translator->transForAgentText('config.error.run_init_instruction');
+        _agent_output_and_exit(
+            _get_agent_mode_helper(),
+            _get_agent_mode_helper()->buildErrorPayload($setupMessage . "\n" . $initMessage)
+        );
+    }
 
-    $logger->warning(Logger::VERBOSITY_NORMAL, $translator->trans('config.error.missing_setup'));
-    $logger->text(Logger::VERBOSITY_NORMAL, $translator->trans('config.error.run_init_instruction'));
+    $io = new SymfonyStyle($event->getInput(), $event->getOutput());
+    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
+
+    $logger->warning(Logger::VERBOSITY_NORMAL, $setupMessage);
+    $logger->text(Logger::VERBOSITY_NORMAL, $initMessage);
 
     // Prevent command execution and set exit code to 1
     $event->disableCommand();
@@ -940,7 +1016,7 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     // Get translation service (works without config, defaults to 'en')
     $translator = _get_translation_service();
     $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-    $logger = new Logger($io, _get_colour_config());
+    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
 
     $errorMessages = [
         'Required PHP extension is missing: ' . implode(', ', $missingExtensions),
@@ -952,6 +1028,13 @@ function _php_extension_check_listener(ConsoleCommandEvent $event): void
     $errorMessages[] = ' macOS (Homebrew): brew install php-xml';
 
     $errorMessages[] = 'After installation, restart your terminal or web server.';
+
+    if (_is_agent_mode_request($event->getInput())) {
+        _agent_output_and_exit(
+            _get_agent_mode_helper(),
+            _get_agent_mode_helper()->buildErrorPayload(implode("\n", $errorMessages))
+        );
+    }
 
     $logger->error(Logger::VERBOSITY_NORMAL, $errorMessages);
 
@@ -1012,7 +1095,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
     try {
         $io = new SymfonyStyle($event->getInput(), $event->getOutput());
-        $logger = new Logger($io, _get_colour_config());
+        $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
         $translator = _get_translation_service();
         $fileSystem = _get_file_system();
 
@@ -1021,13 +1104,13 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         $currentVersion = $config['migration_version'] ?? '0';
 
         // Step 1: Run global migrations if pending
-        $registry = new MigrationRegistry($logger, $translator, $fileSystem);
+        $registry = new MigrationRegistry(new CommandOutputBuffer($logger, _get_prompt()), $translator, $fileSystem);
         $globalMigrations = $registry->discoverGlobalMigrations();
         $pendingGlobalMigrations = $registry->getPendingMigrations($globalMigrations, $currentVersion);
 
         if (! empty($pendingGlobalMigrations)) {
             $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.running'));
-            $executor = new MigrationExecutor($logger, $fileSystem, $translator);
+            $executor = new MigrationExecutor(new CommandOutputBuffer($logger, _get_prompt()), $fileSystem, $translator);
             $config = $executor->executeMigrations($pendingGlobalMigrations, $config, $configPath);
             $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.complete'));
             $currentVersion = $config['migration_version'] ?? $currentVersion;
@@ -1047,7 +1130,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
                 if (! empty($pendingProjectMigrations)) {
                     $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.running'));
-                    $executor = new MigrationExecutor($logger, $fileSystem, $translator);
+                    $executor = new MigrationExecutor(new CommandOutputBuffer($logger, _get_prompt()), $fileSystem, $translator);
                     $projectConfig = $executor->executeMigrations($pendingProjectMigrations, $projectConfig, $projectConfigPath);
                     $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.complete'));
                 }
@@ -1057,7 +1140,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         }
 
         // Step 3: Validate command requirements
-        $validator = new ConfigValidator($logger, $translator, _get_git_branch_service());
+        $validator = new ConfigValidator(new CommandOutputBuffer($logger, _get_prompt()), $translator, _get_git_branch_service());
         $projectConfig = null;
 
         try {
@@ -1140,6 +1223,10 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 #[AsListener(event: ConsoleEvents::TERMINATE)]
 function _version_check_listener(ConsoleTerminateEvent $event): void
 {
+    if (_is_agent_mode_request($event->getInput())) {
+        return;
+    }
+
     if (! isset($GLOBALS['_version_check_message'])) {
         return;
     }
@@ -1157,7 +1244,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
     }
 
     $io = new SymfonyStyle($event->getInput(), $output);
-    $logger = new Logger($io, _get_colour_config());
+    $logger = new Logger($io, _get_colour_config(), _is_agent_mode_request($event->getInput()), _get_message_renderer());
     $logger->warning(Logger::VERBOSITY_NORMAL, sprintf(
         "A new version (v%s) is available. Run 'stud up' to update.",
         $latestVersion
@@ -1190,13 +1277,13 @@ function config_init(
         _get_file_system(),
         _get_config_path(),
         _get_translation_service(),
-        _get_logger(),
+        _get_command_output_buffer(),
         new \App\Service\GitTokenPromptResolver(),
         _get_init_project_config_follow_up_service()
     );
     $handler->handle(io(), $agent, input()->isInteractive());
     if ($format === OutputFormat::Json) {
-        $cmdResponder = new AgentCommandResponder();
+        $cmdResponder = new AgentCommandResponder(_get_agent_message_renderer());
         _agent_respond($cmdResponder->respondSuccess('Configuration initialized', $compact));
 
         return;
@@ -1250,17 +1337,30 @@ function config_show(
 /**
  * Write agent payload to stdout and exit. Uses helper's writeAgentOutput (returns line when no io) then echo and exit.
  *
- * @param array{success: bool, error?: string, data?: mixed} $payload
+ * @param array<string, mixed> $payload
  */
 function _agent_output_and_exit(AgentModeHelper $helper, array $payload): void
 {
     $line = $helper->writeAgentOutput($payload);
     if ($line !== null) {
+        _discard_agent_stdout_buffer();
         echo $line;
         exit($helper->exitCodeForPayload($payload));
     }
 
     return;
+}
+
+function _discard_agent_stdout_buffer(): void
+{
+    $bufferLevel = $GLOBALS['_agent_stdout_buffer_level'] ?? null;
+    if (! is_int($bufferLevel)) {
+        return;
+    }
+
+    while (ob_get_level() > $bufferLevel) {
+        ob_end_clean();
+    }
 }
 
 /**
@@ -1296,17 +1396,17 @@ function _agent_compact_enabled(array $input): bool
  *
  * @param array<string, mixed> $input Agent JSON (uses isNew, message, pleaseFallback when present)
  */
-function _agent_submit_run_push_phase(\Symfony\Component\Console\Style\SymfonyStyle $io, array $input): int
+function _agent_submit_run_push_phase(array $input): \App\Response\CommandResponse
 {
     $isNew = (bool) ($input['isNew'] ?? false);
     $message = isset($input['message']) && is_string($input['message']) ? $input['message'] : null;
     $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
-    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
+    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
 
-    return $pushHandler->handle($io, $isNew, $message, true, true, false, true, $pleaseFallback);
+    return $pushHandler->handle($isNew, $message, true, true, false, true, $pleaseFallback);
 }
 
 /**
@@ -1458,7 +1558,7 @@ function config_project_init(
         $gitRepository,
         $gitSetup,
         _get_translation_service(),
-        _get_logger(),
+        _get_command_output_buffer(),
         new \App\Service\GitTokenPromptResolver()
     );
     $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
@@ -1766,7 +1866,7 @@ function items_upload(
     }
     if ($key === null || trim($key) === '') {
         if ($format === OutputFormat::Json) {
-            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.upload.error_no_key')));
+            _agent_respond(new AgentJsonResponse(false, error: $translator->transForAgentText('item.upload.error_no_key')));
 
             return;
         }
@@ -1775,7 +1875,7 @@ function items_upload(
     }
     if ($files === []) {
         if ($format === OutputFormat::Json) {
-            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.upload.error_no_files')));
+            _agent_respond(new AgentJsonResponse(false, error: $translator->transForAgentText('item.upload.error_no_files')));
 
             return;
         }
@@ -1878,7 +1978,7 @@ function items_create(
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
-    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser());
+    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser(), _get_prompt());
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle(io(), $interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
@@ -1939,7 +2039,7 @@ function items_update(
     if ($key === null || trim($key) === '') {
         $translator = _get_translation_service();
         if ($format === OutputFormat::Json) {
-            _agent_respond(new AgentJsonResponse(false, error: $translator->trans('item.update.error_no_key')));
+            _agent_respond(new AgentJsonResponse(false, error: $translator->transForAgentText('item.update.error_no_key')));
 
             return;
         }
@@ -1980,14 +2080,10 @@ function items_transition(
         $compact = _agent_compact_enabled($input);
         $key = isset($input['key']) ? (string) $input['key'] : null;
     }
-    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
+    $output = _get_command_output_buffer();
+    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
     $exitCode = $handler->handle(io(), $key);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Transition completed', 'Transition failed', $compact));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
 
@@ -1997,7 +2093,7 @@ function items_transition(
 
 #[AsTask(name: 'items:start', aliases: ['start'], description: 'Creates a new git branch from a Jira item')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Branch creation result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Branch creation result', completionOnly: true)]
 function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
     ?string $key = null,
@@ -2005,24 +2101,23 @@ function items_start(
     bool $agent = false,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $key = (string) ($input['key'] ?? '');
     } elseif ($key === null || $key === '') {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_logger());
+    $output = _get_command_output_buffer();
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), $output);
     $exitCode = $handler->handle(io(), $key);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch created', 'Start failed'));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
+    exit($exitCode);
 }
 
 #[AsTask(name: 'items:takeover', aliases: ['to'], description: 'Takes over an issue from another user')]
@@ -2051,15 +2146,11 @@ function items_takeover(
     }
     $baseBranch = _get_base_branch();
     $gitBranchService = _get_git_branch_service();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), _get_logger());
+    $output = _get_command_output_buffer();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), $output);
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $output);
     $exitCode = $handler->handle(io(), $key, $quiet);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Takeover completed', 'Takeover failed', $compact));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
 
@@ -2092,14 +2183,10 @@ function branch_rename(
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_logger(), _get_html_converter());
+    $output = _get_command_output_buffer();
+    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), $output, _get_html_converter());
     $exitCode = $handler->handle(io(), $branch, $key, $explicitName, $quiet);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch renamed', 'Rename failed', $compact));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
 
@@ -2154,23 +2241,19 @@ function branches_clean(
     $gitRepository = _get_git_repository();
     $gitBranchService = _get_git_branch_service();
     $gitProvider = _get_git_provider();
+    $output = _get_command_output_buffer();
     $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
     $handler = new BranchCleanHandler(
         $gitRepository,
         $gitBranchService,
         $resolver,
-        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_logger()),
+        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), $output),
         _get_configured_base_branch_or_null(),
         _get_translation_service(),
-        _get_logger()
+        $output
     );
     $exitCode = $handler->handle(io(), $quiet);
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branches cleaned', 'Clean failed', $compact));
-
-        return 0;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
 
     return $exitCode;
 }
@@ -2213,14 +2296,19 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet);
+    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $response = $handler->handle($isNew, $message, $stageAll, $quiet);
+    if (is_int($response)) {
+        $response = CommandResponse::fromExitCode($response, 'Commit created', 'Commit failed');
+    }
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit created', 'Commit failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
@@ -2270,17 +2358,19 @@ function push(
         return;
     }
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service(), _get_logger());
-    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_logger());
+    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
+    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
     $noPleaseForHandler = $agent ? false : $noPlease;
-    $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
+    $response = $handler->handle($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
@@ -2301,14 +2391,19 @@ function please(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io());
+    $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
+    $response = $handler->handle();
+    if (is_int($response)) {
+        $response = CommandResponse::fromExitCode($response, 'Force push completed', 'Force push failed');
+    }
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Force push completed', 'Force push failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
@@ -2331,15 +2426,16 @@ function commit_undo(
         $compact = _agent_compact_enabled($input);
         $quiet = true;
     }
-    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
-    $exitCode = $handler->handle(io(), $quiet);
+    $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_prompt(), _get_translation_service());
+    $response = $handler->handle($quiet);
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit undone', 'Undo failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
-    exit($exitCode);
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
@@ -2360,15 +2456,16 @@ function flatten(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io());
+    $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
+    $response = $handler->handle();
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Flatten completed', 'Flatten failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
-    exit($exitCode);
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'switch', aliases: ['sw'], description: 'Switch to a local branch by Jira item key')]
@@ -2404,8 +2501,9 @@ function switch_branch(
     }
 
     if ($response->isSuccess() && $sync) {
-        $syncHandler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-        $syncExitCode = $syncHandler->handle(io());
+        $syncHandler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service());
+        $syncResponse = $syncHandler->handle();
+        $syncExitCode = $syncResponse->isSuccess() ? 0 : 1;
         $response = $response->withSyncResult($syncExitCode, _get_translation_service()->trans('branch.switch.error_sync_failed'));
     }
 
@@ -2450,15 +2548,16 @@ function sync(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $exitCode = $handler->handle(io());
+    $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service());
+    $response = $handler->handle();
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Sync completed', 'Sync failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
-    exit($exitCode);
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'cache:clear', aliases: ['cc'], description: 'Clear the update check cache to force a version check on next command')]
@@ -2478,20 +2577,21 @@ function cache_clear(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new CacheClearHandler(_get_translation_service(), _get_logger(), _get_file_system());
-    $exitCode = $handler->handle(io());
+    $handler = new CacheClearHandler(_get_translation_service(), _get_file_system());
+    $response = $handler->handle();
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Cache cleared', 'Cache clear failed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
-    exit($exitCode);
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Submit result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Submit result', completionOnly: true)]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')]
     bool $draft = false,
@@ -2509,11 +2609,13 @@ function submit(
     _load_constants();
     /** @var array<string, mixed>|null $agentSubmitInput when set, stageAll was true and push phase must run first */
     $agentSubmitInput = null;
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $draft = (bool) ($input['draft'] ?? false);
         $labels = $input['labels'] ?? null;
         $assignToAuthor = (bool) ($input['assignToAuthor'] ?? false);
@@ -2527,7 +2629,7 @@ function submit(
 
     if ($gitProvider === null) {
         if ($agent) {
-            $cmdResponder = new AgentCommandResponder();
+            $cmdResponder = new AgentCommandResponder(_get_agent_message_renderer());
             _agent_respond(new AgentJsonResponse(false, error: 'Git provider not configured'));
 
             return;
@@ -2554,23 +2656,20 @@ function submit(
     }
 
     if ($agent && $agentSubmitInput !== null) {
-        $pushExit = _agent_submit_run_push_phase(io(), $agentSubmitInput);
-        if ($pushExit !== 0) {
-            $cmdResponder = new AgentCommandResponder();
-            _agent_respond($cmdResponder->respondFromExitCode($pushExit, 'Pull request created', 'Commit or push before submit failed'));
+        $pushResponse = _agent_submit_run_push_phase($agentSubmitInput);
+        if (! $pushResponse->isSuccess()) {
+            $responder = new CommandResponder(_get_logger(), _get_agent_message_renderer());
+            _agent_respond($responder->respond($pushResponse, OutputFormat::Json));
 
             return;
         }
     }
 
-    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_logger(), _get_html_converter());
+    $output = _get_command_output_buffer();
+    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), $output, _get_html_converter());
     $exitCode = $handler->handle(io(), new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Pull request created', 'Submit failed'));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
+    exit($exitCode);
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
@@ -2697,7 +2796,7 @@ function confluence_push(
                 $content = (string) file_get_contents($filePath);
             } else {
                 $translator = _get_translation_service();
-                $message = $translator->trans('confluence.push.error_file_not_readable', ['%path%' => $filePath]);
+                $message = $translator->transForAgentText('confluence.push.error_file_not_readable', ['%path%' => $filePath]);
                 _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($message));
             }
         } elseif (isset($input['content'])) {
@@ -2847,7 +2946,7 @@ function confluence_show(
     if ($pageId === null && $pageUrl === null) {
         $translator = _get_translation_service();
         if ($format === OutputFormat::Json) {
-            _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($translator->trans('confluence.show.error_page_or_url_required')));
+            _agent_output_and_exit(_get_agent_mode_helper(), _get_agent_mode_helper()->buildErrorPayload($translator->transForAgentText('confluence.show.error_page_or_url_required')));
         }
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('confluence.show.error_page_or_url_required'));
         exit(1);
@@ -2887,7 +2986,7 @@ function help(
         if ($input === null) {
             return;
         }
-        $generator = new \App\Service\AgentModeSchemaGenerator();
+        $generator = new \App\Service\AgentModeSchemaGenerator(_get_translation_service());
         $filterCommand = $input['commandName'] ?? $input['command'] ?? null;
         if ($filterCommand !== null) {
             $schema = $generator->generate();
@@ -2903,7 +3002,7 @@ function help(
             return;
         }
         $essentialOnly = ($input['essential'] ?? true) !== false;
-        $schema = $generator->generate(essentialOnly: $essentialOnly);
+        $schema = $generator->generate(essentialOnly: $essentialOnly, expandedOutput: false);
         _agent_respond(new AgentJsonResponse(true, data: $schema));
 
         return;
@@ -3074,14 +3173,11 @@ function status(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
+    $output = _get_command_output_buffer();
+    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
     $exitCode = $handler->handle(io());
-    if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Status displayed', 'Status failed', $compact));
-
-        return;
-    }
+    _respond_workflow_output($output, $exitCode, $agent, $compact);
+    exit($exitCode);
 }
 
 // =================================================================================
@@ -3117,10 +3213,10 @@ function release(
         $bumpType = $input['bumpType'] ?? ($version === null ? 'patch' : null);
         $publish = (bool) ($input['publish'] ?? false);
         $quiet = true;
-        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
+        $output = _get_command_output_buffer();
+        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
         $handler->handle(io(), $version, $publish, $bumpType, $quiet);
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondSuccess('Release created', $compact));
+        _respond_workflow_output($output, 0, true, $compact);
 
         return;
     }
@@ -3147,8 +3243,10 @@ function release(
         exit(1);
     }
 
-    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
+    $output = _get_command_output_buffer();
+    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
     $handler->handle(io(), $version, $publish, $bumpType, $quiet);
+    _respond_workflow_output($output, 0, false);
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
@@ -3171,10 +3269,11 @@ function deploy(
         $compact = _agent_compact_enabled($input);
         $clean = (bool) ($input['clean'] ?? false);
     }
-    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
-    $handler->handle(io());
+    $output = _get_command_output_buffer();
+    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), $output);
+    $response = $handler->handle();
 
-    if ($clean) {
+    if ($response->isSuccess() && $clean) {
         $gitRepository = _get_git_repository();
         $gitBranchService = _get_git_branch_service();
         $githubProvider = _get_github_provider();
@@ -3183,19 +3282,22 @@ function deploy(
             $gitRepository,
             $gitBranchService,
             $resolver,
-            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_logger()),
+            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), $output),
             _get_configured_base_branch_or_null(),
             _get_translation_service(),
-            _get_logger()
+            $output
         );
         $cleanHandler->handle(io(), true);
     }
+    $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
-        $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondSuccess('Deployment completed', $compact));
+        _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
 
         return;
     }
+    _respond_workflow_output($output, $response->isSuccess() ? 0 : 1, false);
+    $responder->respond($response);
+    exit($response->isSuccess() ? 0 : 1);
 }
 
 #[AsTask(name: 'update', aliases: ['up'], description: 'Checks for and installs new versions of the tool')]
@@ -3212,7 +3314,8 @@ function update(
 ): void {
     _load_constants();
     if ($agent) {
-        _agent_respond(new AgentJsonResponse(false, error: 'Update is not supported in agent mode'));
+        $response = \App\Response\CommandResponse::error('Update is not supported in agent mode');
+        _agent_respond((new CommandResponder(_get_logger(), _get_agent_message_renderer()))->respond($response, OutputFormat::Json));
 
         return;
     }
@@ -3251,6 +3354,7 @@ function update(
 
     [$repoOwner, $repoName] = $nameParts;
 
+    $output = _get_command_output_buffer();
     $handler = new UpdateHandler(
         $repoOwner,
         $repoName,
@@ -3259,10 +3363,11 @@ function update(
         _get_translation_service(),
         new ChangelogParser(),
         new UpdateFileService(_get_translation_service()),
-        _get_logger(),
+        $output,
         _get_file_system(),
         $gitToken
     );
     $result = $handler->handle(io(), $info, $quiet);
+    _respond_workflow_output($output, $result, false);
     exit($result);
 }

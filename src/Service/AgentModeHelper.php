@@ -72,7 +72,7 @@ class AgentModeHelper
     /**
      * Write a single JSON object to output. When I/O is injected, writes to it; otherwise returns the JSON line for the caller to output and exit.
      *
-     * @param array{success: bool, error?: string, data?: mixed} $payload Must contain "success"; on failure "error", on success "data".
+     * @param array<string, mixed> $payload Must contain "success"; on failure "error", on success "data".
      *
      * @return string|null The JSON line to echo and then exit when io is null; null when written to injected io.
      */
@@ -92,7 +92,7 @@ class AgentModeHelper
     /**
      * Exit code for a payload: 0 on success, 1 on failure.
      *
-     * @param array{success: bool, error?: string, data?: mixed} $payload
+     * @param array<string, mixed> $payload
      */
     public function exitCodeForPayload(array $payload): int
     {

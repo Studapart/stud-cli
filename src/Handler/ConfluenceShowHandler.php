@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\ConfluenceShowInput;
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ConfluenceShowResponse;
 use App\Service\AdfToMarkdownConverter;
 use App\Service\ConfluenceService;
-use App\Service\TranslationService;
 
 class ConfluenceShowHandler
 {
     public function __construct(
         private readonly ConfluenceService $confluenceService,
         private readonly AdfToMarkdownConverter $adfConverter,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(ConfluenceShowInput $input, string $baseUrl): ConfluenceShowResponse
@@ -29,7 +30,7 @@ class ConfluenceShowHandler
         }
         if ($pageId === null) {
             return ConfluenceShowResponse::error(
-                $this->translator->trans('confluence.show.error_page_or_url_required')
+                MessageRef::key('confluence.show.error_page_or_url_required')
             );
         }
 
@@ -37,7 +38,7 @@ class ConfluenceShowHandler
             $page = $this->confluenceService->getPageWithBody($pageId);
         } catch (ApiException $e) {
             return ConfluenceShowResponse::error(
-                $this->translator->trans('confluence.show.error_page_not_found', ['%id%' => $pageId])
+                MessageRef::key('confluence.show.error_page_not_found', ['id' => $pageId])
             );
         }
 

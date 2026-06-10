@@ -33,6 +33,12 @@ class DtoSerializer
 
     protected function serializeValue(mixed $value): mixed
     {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
         if ($value instanceof \DateTimeInterface) {
             return $value->format('c');
         }

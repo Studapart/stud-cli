@@ -37,7 +37,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('getProjectConfigPath')->willThrowException(new \RuntimeException('not git'));
 
         $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('note');
+        $logger->expects($this->once())->method('addNote');
 
         $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
 
@@ -52,7 +52,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
         $logger = $this->createMock(Logger::class);
-        $logger->expects($this->never())->method('note');
+        $logger->expects($this->never())->method('addNote');
         $logger->expects($this->never())->method('confirm');
 
         $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
@@ -69,7 +69,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->never())->method('confirm');
-        $logger->expects($this->once())->method('note');
+        $logger->expects($this->once())->method('addNote');
 
         $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
 
@@ -85,7 +85,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->once())->method('confirm')->willReturn(false);
-        $logger->expects($this->once())->method('note');
+        $logger->expects($this->once())->method('addNote');
 
         $handler = $this->createMock(ConfigProjectInitHandler::class);
         $handler->expects($this->never())->method('handle');
@@ -104,7 +104,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
 
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->once())->method('confirm')->willReturn(true);
-        $logger->expects($this->never())->method('note');
+        $logger->expects($this->never())->method('addNote');
 
         $response = ConfigProjectInitResponse::success(false, []);
 

@@ -894,7 +894,11 @@ class InitHandlerTest extends CommandTestCase
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         // Use real Logger for this test so output is actually written
-        $realLogger = new \App\Service\Logger($io, ['text' => 'white', 'muted' => 'gray']);
+        $realLogger = new \App\Service\Logger(
+            $io,
+            ['text' => 'white', 'muted' => 'gray'],
+            messageRenderer: new \App\Service\MessageRenderer($this->translationService)
+        );
         $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
 
         $handlerWithRealLogger->handle($io);

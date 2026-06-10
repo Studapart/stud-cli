@@ -56,7 +56,8 @@ class FilterListHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertNotNull($response->getError());
-        $this->assertStringContainsString('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.list.error_fetch');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertCount(0, $response->filters);
     }
 

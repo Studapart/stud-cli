@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Response\PrCommentsResponse;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
-use App\Service\TranslationService;
 
 /**
  * Fetches and aggregates PR/MR comments (issue and review) for the current branch's open PR.
@@ -18,24 +18,25 @@ class PrCommentsHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GitProviderInterface $gitProvider,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(bool $threaded = false): PrCommentsResponse
     {
         if (! $this->gitProvider) {
-            return PrCommentsResponse::error($this->translator->trans('pr.comments.error_no_provider'));
+            return PrCommentsResponse::error(MessageRef::key('pr.comments.error_no_provider'));
         }
 
         $pr = $this->findActivePullRequest();
         if ($pr === null) {
-            return PrCommentsResponse::error($this->translator->trans('pr.comments.error_no_pr'));
+            return PrCommentsResponse::error(MessageRef::key('pr.comments.error_no_pr'));
         }
 
         $prNumber = (int) ($pr['number'] ?? 0);
         if ($prNumber <= 0) {
-            return PrCommentsResponse::error($this->translator->trans('pr.comments.error_no_pr'));
+            return PrCommentsResponse::error(MessageRef::key('pr.comments.error_no_pr'));
         }
 
         try {
@@ -52,7 +53,7 @@ class PrCommentsHandler
             return PrCommentsResponse::success($issueComments, $reviewComments, $reviews, $prNumber);
         } catch (\Exception $e) {
             return PrCommentsResponse::error(
-                $this->translator->trans('pr.comments.error_fetch', ['error' => $e->getMessage()])
+                MessageRef::key('pr.comments.error_fetch', ['error' => $e->getMessage()])
             );
         }
     }

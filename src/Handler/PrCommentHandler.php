@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\DTO\PrCommentRequest;
 use App\DTO\PullRequestFeedbackConversation;
 use App\Response\PrCommentResponse;
@@ -11,33 +12,33 @@ use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\MarkdownHelper;
 use App\Service\PullRequestFeedbackTargetResolver;
-use App\Service\TranslationService;
 
 class PrCommentHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly ?GitProviderInterface $gitProvider,
-        private readonly TranslationService $translator,
+        mixed $_translator,
         private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {
+        unset($_translator);
     }
 
     public function handle(PrCommentRequest $request): PrCommentResponse
     {
         if (! $this->gitProvider) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_provider'));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_no_provider'));
         }
 
         $commentBody = $this->prepareCommentBody($request->message);
 
         if ($commentBody === null) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_input'));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_no_input'));
         }
 
         $prNumber = $this->findActivePullRequest();
         if ($prNumber === null) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_no_pr'));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_no_pr'));
         }
 
         try {
@@ -48,11 +49,11 @@ class PrCommentHandler
             $this->gitProvider->createComment($prNumber, $commentBody);
 
             return PrCommentResponse::posted(
-                $this->translator->trans('pr.comment.success', ['number' => $prNumber]),
+                MessageRef::key('pr.comment.success', ['number' => $prNumber]),
                 $prNumber
             );
         } catch (\Exception $e) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_post', ['error' => $e->getMessage()]));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_post', ['error' => $e->getMessage()]));
         }
     }
 
@@ -91,11 +92,11 @@ class PrCommentHandler
         $target = trim((string) $request->replyTo);
         $conversation = $this->findTargetConversation($prNumber, $target);
         if ($conversation === null) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_invalid_target', ['target' => $target]));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_invalid_target', ['target' => $target]));
         }
 
         if (! $conversation->actions->canReply) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_reply_unsupported', ['target' => $target]));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_reply_unsupported', ['target' => $target]));
         }
 
         if ($request->resolve && ! $conversation->actions->canResolve) {
@@ -108,7 +109,7 @@ class PrCommentHandler
         }
 
         return PrCommentResponse::replied(
-            $this->translator->trans('pr.comment.reply_success', ['number' => $prNumber]),
+            MessageRef::key('pr.comment.reply_success', ['number' => $prNumber]),
             $prNumber,
             $target,
             false
@@ -123,13 +124,13 @@ class PrCommentHandler
         );
     }
 
-    protected function resolveUnsupportedError(PullRequestFeedbackConversation $conversation, string $target): string
+    protected function resolveUnsupportedError(PullRequestFeedbackConversation $conversation, string $target): MessageRef
     {
         $key = $conversation->state->resolved === true
             ? 'pr.comment.error_already_resolved'
             : 'pr.comment.error_resolve_unsupported';
 
-        return $this->translator->trans($key, ['target' => $target]);
+        return MessageRef::key($key, ['target' => $target]);
     }
 
     protected function resolveAfterReply(
@@ -140,11 +141,11 @@ class PrCommentHandler
         try {
             $this->gitProvider?->resolvePullRequestFeedback($prNumber, $conversation->ids);
         } catch (\Exception $e) {
-            return PrCommentResponse::error($this->translator->trans('pr.comment.error_resolve_after_reply', ['error' => $e->getMessage()]));
+            return PrCommentResponse::error(MessageRef::key('pr.comment.error_resolve_after_reply', ['error' => $e->getMessage()]));
         }
 
         return PrCommentResponse::replied(
-            $this->translator->trans('pr.comment.reply_resolve_success', ['number' => $prNumber]),
+            MessageRef::key('pr.comment.reply_resolve_success', ['number' => $prNumber]),
             $prNumber,
             $target,
             true
