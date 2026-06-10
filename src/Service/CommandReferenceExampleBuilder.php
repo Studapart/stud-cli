@@ -110,6 +110,9 @@ class CommandReferenceExampleBuilder
         $payload = [];
         if (is_array($properties)) {
             foreach ($properties as $property => $schema) {
+                if ($property === 'compact') {
+                    continue;
+                }
                 $payload[$property] = $this->sampleForProperty((string) $property, is_array($schema) ? $schema : []);
             }
         }

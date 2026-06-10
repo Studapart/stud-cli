@@ -93,15 +93,24 @@ echo '{}' | stud config:init --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Confirmation message
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -148,6 +157,7 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `projectKey` | `string\|null` | yes | `NULL` |
 | `transitionId` | `int\|null` | yes | `NULL` |
 | `baseBranch` | `string\|null` | yes | `NULL` |
@@ -163,9 +173,18 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 
 Merged project configuration (redacted) and whether the file was updated
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+updated: bool
+redactedProjectConfig: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 updated: bool
 redactedProjectConfig: array
 ```
@@ -210,6 +229,7 @@ echo '{"key":"SCI-123","quiet":true}' | stud config:show --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 
@@ -217,9 +237,21 @@ echo '{"key":"SCI-123","quiet":true}' | stud config:show --agent
 
 Global and project configuration or a single key value
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+globalConfig: array
+projectConfig: array|null
+singleKey: string|null
+singleKeyValue: mixed|null
+singleKeySection: string|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 globalConfig: array
 projectConfig: array|null
 singleKey: string|null
@@ -267,6 +299,7 @@ echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `skipJira` | `bool` | yes | `false` |
 | `skipGit` | `bool` | yes | `false` |
 
@@ -274,9 +307,20 @@ echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
 
 Jira and Git provider connectivity status
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+jiraStatus: string
+jiraMessage: string|null
+gitStatus: string
+gitMessage: string|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 jiraStatus: string
 jiraMessage: string|null
 gitStatus: string
@@ -319,15 +363,25 @@ echo '{}' | stud filters:list --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 List of Jira filters
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+filters: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 filters: array
 ```
 
@@ -369,15 +423,25 @@ echo '{"filterName":"My Filter"}' | stud filters:show --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `filterName` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
 Issues from a saved filter
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+issues: array
+filterName: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 issues: array
 filterName: string
 ```
@@ -433,6 +497,7 @@ echo '{"project":"example","type":"example","summary":"example","description":"e
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `project` | `string\|null` | yes | `NULL` |
 | `type` | `string\|null` | yes | `NULL` |
 | `summary` | `string\|null` | yes | `NULL` |
@@ -445,9 +510,19 @@ echo '{"project":"example","type":"example","summary":"example","description":"e
 
 Created issue key and URL
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+key: string|null
+self: string|null
+skippedOptionalFields: array|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 key: string|null
 self: string|null
 skippedOptionalFields: array|null
@@ -496,6 +571,7 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","url":"https://example.atlassian.net
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `issueKey` | `string\|null` | yes | `NULL` |
 | `key` | `string\|null` | yes | `NULL` |
 | `url` | `string\|null` | yes | `NULL` |
@@ -505,9 +581,18 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","url":"https://example.atlassian.net
 
 Downloaded attachment paths (filename, path) and per-file errors
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+files: array
+errors: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 files: array
 errors: array
 ```
@@ -555,6 +640,7 @@ echo '{"all":true,"project":"example","sort":"example"}' | stud items:list --age
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `all` | `bool` | yes | `false` |
 | `project` | `string\|null` | yes | `NULL` |
 | `sort` | `string\|null` | yes | `NULL` |
@@ -563,9 +649,19 @@ echo '{"all":true,"project":"example","sort":"example"}' | stud items:list --age
 
 List of work items
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+issues: array
+all: bool
+project: string|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 issues: array
 all: bool
 project: string|null
@@ -609,15 +705,25 @@ echo '{"jql":"project = SCI and statusCategory != Done"}' | stud items:search --
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `jql` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
 JQL search results
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+issues: array
+jql: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 issues: array
 jql: string
 ```
@@ -660,15 +766,24 @@ echo '{"key":"SCI-123"}' | stud items:show --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
 Detailed work item information
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+issue: App\DTO\WorkItem|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 issue: App\DTO\WorkItem|null
 ```
 
@@ -710,15 +825,24 @@ echo '{"key":"SCI-123"}' | stud items:start --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
 Branch creation result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -763,6 +887,7 @@ echo '{"key":"SCI-123","quiet":true}' | stud items:takeover --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 
@@ -770,9 +895,16 @@ echo '{"key":"SCI-123","quiet":true}' | stud items:takeover --agent
 
 Takeover result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -814,15 +946,23 @@ echo '{"key":"SCI-123"}' | stud items:transition --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
 Transition result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -873,6 +1013,7 @@ echo '{"key":"SCI-123","summary":"example","description":"example","descriptionF
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 | `summary` | `string\|null` | yes | `NULL` |
 | `description` | `string\|null` | yes | `NULL` |
@@ -883,9 +1024,18 @@ echo '{"key":"SCI-123","summary":"example","description":"example","descriptionF
 
 Updated issue key
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+key: string|null
+skippedOptionalFields: array|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 key: string|null
 skippedOptionalFields: array|null
 ```
@@ -931,6 +1081,7 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","files":["example"]}' | stud items:u
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `issueKey` | `string\|null` | yes | `NULL` |
 | `key` | `string\|null` | yes | `NULL` |
 | `files` | `array` | yes | `[]` |
@@ -939,9 +1090,18 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","files":["example"]}' | stud items:u
 
 Uploaded attachment paths (filename, path) and per-file errors
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+files: array
+errors: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 files: array
 errors: array
 ```
@@ -980,15 +1140,25 @@ echo '{}' | stud projects:list --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 List of Jira projects
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+projects: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 projects: array
 ```
 
@@ -1038,6 +1208,7 @@ echo '{"branch":"example","key":"SCI-123","explicitName":"example","quiet":true}
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `branch` | `string\|null` | yes | `NULL` |
 | `key` | `string\|null` | yes | `NULL` |
 | `explicitName` | `string\|null` | yes | `NULL` |
@@ -1047,9 +1218,16 @@ echo '{"branch":"example","key":"SCI-123","explicitName":"example","quiet":true}
 
 Rename result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1092,15 +1270,23 @@ echo '{"quiet":true}' | stud branches:clean --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `quiet` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
 Cleanup result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1138,15 +1324,25 @@ echo '{}' | stud branches:list --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 List of branches with status
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+rows: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 rows: array
 ```
 
@@ -1195,6 +1391,7 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"quiet":true,"h
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
@@ -1205,9 +1402,16 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"quiet":true,"h
 
 Commit result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1250,15 +1454,23 @@ echo '{"quiet":true}' | stud commit:undo --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `quiet` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
 Undo result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1296,15 +1508,24 @@ echo '{}' | stud flatten --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Flatten result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1342,15 +1563,24 @@ echo '{}' | stud please --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Force push result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1401,6 +1631,7 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `pleaseFallback` | `bool` | yes | `true` |
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
@@ -1412,9 +1643,16 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 
 Push result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1452,15 +1690,24 @@ echo '{}' | stud status --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Status result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1507,6 +1754,7 @@ echo '{"key":"SCI-123","sync":true,"quiet":true}' | stud switch --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
 | `sync` | `bool` | yes | `false` |
 | `quiet` | `bool` | yes | `false` |
@@ -1515,9 +1763,23 @@ echo '{"key":"SCI-123","sync":true,"quiet":true}' | stud switch --agent
 
 Branch switch result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+key: string
+branch: string|null
+matches: array
+switched: bool
+needsSelection: bool
+synced: bool
+syncExitCode: int|null
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 key: string
 branch: string|null
 matches: array
@@ -1561,17 +1823,25 @@ echo '{}' | stud sync --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Sync result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
-rebased: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1619,6 +1889,7 @@ echo '{"message":"Ready for review","replyTo":"example","resolve":true}' | stud 
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `message` | `string\|null` | yes | `NULL` |
 | `replyTo` | `string\|null` | yes | `NULL` |
 | `resolve` | `bool` | yes | `false` |
@@ -1627,9 +1898,21 @@ echo '{"message":"Ready for review","replyTo":"example","resolve":true}' | stud 
 
 Comment post result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+action: string
+pullNumber: int
+target: string|null
+resolved: bool
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 action: string
 pullNumber: int
@@ -1676,15 +1959,25 @@ echo '{"threaded":true}' | stud pr:comments --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `threaded` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
 Pull request comments and reviews. Default agent output is flat; threaded=true returns grouped conversations.
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+default: flat shape: issueComments, reviewComments, reviews, pullNumber
+threaded: when threaded=true: mode, pullNumber, conversations
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 default: flat shape: issueComments, reviewComments, reviews, pullNumber
 threaded: when threaded=true: mode, pullNumber, conversations
 ```
@@ -1734,6 +2027,7 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `stageAll` | `bool` | yes | `false` |
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
@@ -1747,9 +2041,17 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 
 Submit result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -1797,6 +2099,7 @@ echo '{"page":"12345","labels":"AI-Generated,RFR","url":"https://example.atlassi
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `page` | `string` | yes | `''` |
 | `labels` | `string` | yes | `''` |
 | `url` | `string\|null` | yes | `NULL` |
@@ -1805,9 +2108,17 @@ echo '{"page":"12345","labels":"AI-Generated,RFR","url":"https://example.atlassi
 
 Labels added to the page
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+labels: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 labels: array
 ```
 
@@ -1866,6 +2177,7 @@ echo '{"file":"doc.md","content":"# Feature documentation","space":"DEV","title"
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `file` | `string` | yes | `` |
 | `content` | `string` | yes | `''` |
 | `space` | `string\|null` | yes | `NULL` |
@@ -1880,9 +2192,20 @@ echo '{"file":"doc.md","content":"# Feature documentation","space":"DEV","title"
 
 Created or updated page ID, title, URL, and action (created|updated)
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+pageId: string
+title: string
+url: string
+action: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 pageId: string
 title: string
 url: string
@@ -1934,6 +2257,7 @@ echo '{"page":"12345","url":"https://example.atlassian.net/wiki/spaces/DEV/pages
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `page` | `string\|null` | yes | `NULL` |
 | `url` | `string\|null` | yes | `NULL` |
 | `confluenceUrl` | `string\|null` | yes | `NULL` |
@@ -1942,9 +2266,20 @@ echo '{"page":"12345","url":"https://example.atlassian.net/wiki/spaces/DEV/pages
 
 Page id, title, url, and body content (markdown)
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+id: string
+title: string
+url: string
+body: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 id: string
 title: string
 url: string
@@ -1987,15 +2322,26 @@ echo '{}' | stud docs:check --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Documentation freshness check result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+path: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 path: string
 ```
@@ -2034,15 +2380,26 @@ echo '{}' | stud docs:generate --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Documentation generation result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+path: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 path: string
 ```
@@ -2083,15 +2440,24 @@ echo '{}' | stud cache:clear --agent
 
 #### Agent JSON Input
 
-No input properties.
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Cache clear result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -2134,15 +2500,23 @@ echo '{"clean":true}' | stud deploy --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `clean` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
 Deployment result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -2176,22 +2550,33 @@ None.
 
 ```bash
 stud help
-echo '{"commandName":"config:validate"}' | stud help --agent
+echo '{"commandName":"config:validate","command":"config:validate","essential":true}' | stud help --agent
 ```
 
 #### Agent JSON Input
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `commandName` | `string\|null` | yes | `NULL` |
+| `command` | `string\|null` | yes | `NULL` |
+| `essential` | `bool` | yes | `true` |
 
 #### Agent JSON Output
 
 Agent mode schema with all commands
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+commands: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 commands: array
 ```
 
@@ -2244,6 +2629,7 @@ echo '{"version":"example","major":true,"minor":true,"patch":true,"publish":true
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `version` | `string\|null` | yes | `NULL` |
 | `major` | `bool` | yes | `false` |
 | `minor` | `bool` | yes | `false` |
@@ -2255,9 +2641,16 @@ echo '{"version":"example","major":true,"minor":true,"patch":true,"publish":true
 
 Release creation result
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 
@@ -2302,6 +2695,7 @@ echo '{"info":true,"quiet":true}' | stud update --agent
 
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
 | `info` | `bool` | yes | `false` |
 | `quiet` | `bool` | yes | `false` |
 
@@ -2309,9 +2703,17 @@ echo '{"info":true,"quiet":true}' | stud update --agent
 
 Update is not supported in agent mode
 
-Success data:
+Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
+success: true
+message: string
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
 message: string
 ```
 

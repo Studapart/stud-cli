@@ -285,10 +285,18 @@ class CommandReferenceGenerator
             $lines[] = $output['description'];
             $lines[] = '';
         }
-        $lines[] = 'Success data:';
+        if (isset($output['compactSuccess'])) {
+            $lines[] = 'Default compact success shape (`{"compact":true}` or omitted):';
+            $lines[] = '';
+            $lines[] = '```text';
+            $lines[] = $this->renderPayloadShape($output['compactSuccess']);
+            $lines[] = '```';
+            $lines[] = '';
+        }
+        $lines[] = 'Full success shape (`{"compact":false}`):';
         $lines[] = '';
         $lines[] = '```text';
-        $lines[] = $this->renderOutputShape($output['success']['data'] ?? '(undescribed)');
+        $lines[] = $this->renderPayloadShape($output['success'] ?? '(undescribed)');
         $lines[] = '```';
         $lines[] = '';
         $lines[] = 'Error shape: `{"success":false,"error":"string"}`';
@@ -312,6 +320,19 @@ class CommandReferenceGenerator
         }
 
         return implode("\n", $lines);
+    }
+
+    protected function renderPayloadShape(mixed $shape): string
+    {
+        if (! is_array($shape)) {
+            return (string) $shape;
+        }
+
+        if (! array_key_exists('data', $shape)) {
+            return 'success: true';
+        }
+
+        return "success: true\n" . $this->renderOutputShape($shape['data']);
     }
 
     /**

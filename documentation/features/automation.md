@@ -19,6 +19,18 @@ Empty input returns the essential commands used in common agent workflows. Pass
 `{"command":"<name-or-alias>"}` to inspect one command regardless of whether it is
 essential.
 
+Agent mode uses compact success output by default to reduce tokens. For
+completion-only commands, compact output omits `data`:
+
+```json
+{"success":true}
+```
+
+Commands that return follow-up values keep the smallest useful `data` value, and
+errors always include an explicit `error` string. Send `{"compact":false}` when
+you need the full success payload. Use `compact` for this mode; `zip` is not
+supported.
+
 ## Quiet Mode
 
 Where available, `--quiet` / `-q` means non-interactive: use documented defaults and do not prompt.
