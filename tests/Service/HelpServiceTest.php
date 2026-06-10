@@ -650,6 +650,23 @@ MD);
         $this->assertStringContainsString('[<key>]', $result);
     }
 
+    public function testFormatCommandHelpFromTranslationWithSwitch(): void
+    {
+        $reflection = new \ReflectionClass($this->helpService);
+        $method = $reflection->getMethod('formatCommandHelpFromTranslation');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->helpService, 'switch');
+
+        $this->assertIsString($result);
+        $this->assertNotEmpty($result);
+        $this->assertStringContainsString('stud switch', $result);
+        $this->assertStringContainsString('stud sw', $result);
+        $this->assertStringContainsString('--sync', $result);
+        $this->assertStringContainsString('-s', $result);
+        $this->assertStringContainsString('<key>', $result);
+    }
+
     public function testFormatCommandHelpFromTranslationWithItemsListSortOption(): void
     {
         // Test items:list command with --sort option (third option with <value> argument)

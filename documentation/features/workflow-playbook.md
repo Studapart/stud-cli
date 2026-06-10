@@ -69,12 +69,13 @@ Use [`stud items:list`](../reference/commands.md#stud-items-list), [`stud items:
 
 ### Pick Up Work
 
-Use [`stud items:start`](../reference/commands.md#stud-items-start) for new local work, or [`stud items:takeover`](../reference/commands.md#stud-items-takeover) when continuing an existing branch.
+Use [`stud items:start`](../reference/commands.md#stud-items-start) for new local work, [`stud switch`](../reference/commands.md#stud-switch) when you already have a local branch for the item key, or [`stud items:takeover`](../reference/commands.md#stud-items-takeover) when continuing an existing branch from local or remote state.
 
 ```bash
 stud items:show SCI-123
 stud confluence:show --url "https://example.atlassian.net/wiki/spaces/DEV/pages/12345"
 stud start SCI-123
+stud sw SCI-123 --sync
 ```
 
 ### Develop And Commit

@@ -6,10 +6,11 @@ Git workflow commands connect Jira keys, branch naming, conventional commits, an
 
 ```bash
 stud start SCI-123
+stud switch SCI-123
 stud items:takeover SCI-123
 ```
 
-`stud start` creates or switches to a branch for the Jira item. `items:takeover` helps continue work from an existing local or remote branch.
+`stud start` creates or switches to a branch for the Jira item. `stud switch` (alias `stud sw`) switches to an existing local branch whose name contains the item key, and `stud switch SCI-123 --sync` runs `stud sync` after a successful switch. `items:takeover` helps continue work from an existing local or remote branch.
 
 ## Commit and Push
 

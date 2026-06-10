@@ -458,6 +458,22 @@ pr:
       path: Lêer
       line: Reël
 branch:
+  switch:
+    section: "Switching branch for %key%"
+    help_description: "Switch to a local branch by Jira item key"
+    option_sync: "Run stud sync after a successful switch"
+    error_no_key: "The \"key\" argument is required."
+    error_dirty_working: "Your working directory has uncommitted changes. Commit or stash them before switching branches."
+    error_no_branch: "No local branch exists with key %key%. Did you mean to use stud takeover?"
+    error_multiple_branches: "Multiple local branches match %key%:\n%branches%\n\nUse: git switch <branch-name>"
+    error_sync_failed: "Sync failed after switching branches."
+    multiple_branches: "Multiple local branches match %key%:"
+    select_branch: "Select the branch to switch to:"
+    label_branch: "Branch"
+    label_synced: "Synced"
+    value_yes: "yes"
+    value_no: "no"
+    success: "Switched to branch '%branch%'."
   rename:
     section: Renaming branch
     error_dirty_working: Your working directory is not clean. Please commit your changes before renaming a branch.

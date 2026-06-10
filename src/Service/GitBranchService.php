@@ -196,6 +196,25 @@ class GitBranchService
     }
 
     /**
+     * Finds local branches whose names contain the Jira issue key.
+     *
+     * @param string $key The Jira issue key
+     * @return array<string> Array of matching local branch names
+     */
+    public function findLocalBranchesContainingIssueKey(string $key): array
+    {
+        $needle = trim($key);
+        if ($needle === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->getAllLocalBranches(),
+            fn (string $branch): bool => stripos($branch, $needle) !== false
+        ));
+    }
+
+    /**
      * Gets all remote branch names.
      *
      * @param string $remote The remote name (default: 'origin')
