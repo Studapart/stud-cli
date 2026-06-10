@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Agent help discovery (SCI-125):** `stud help --agent` now returns essential agent workflow commands by default, with explicit full-schema and single-command discovery inputs.
+
 - **Castor runtime (SCI-128):** Upgraded the Castor runtime lockfile to v1.5.0 and refreshed the required Symfony transitive dependencies while preserving CLI, agent-mode, and build workflow behavior.
 
 ## [3.18.2] - 2026-06-10

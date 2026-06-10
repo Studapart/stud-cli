@@ -136,4 +136,62 @@ class AgentModeParityIntegrationTest extends TestCase
         self::assertArrayHasKey('name', $decoded['data']);
         self::assertSame('commit', $decoded['data']['name']);
     }
+
+    public function testHelpDefaultsToEssentialCommandsInAgentMode(): void
+    {
+        $decoded = $this->runHelpAgent([]);
+
+        self::assertTrue($decoded['success'] ?? false);
+        $names = array_column($decoded['data']['commands'] ?? [], 'name');
+        self::assertContains('commit', $names);
+        self::assertContains('items:show', $names);
+        self::assertNotContains('cache:clear', $names);
+    }
+
+    public function testHelpCanReturnFullSchemaInAgentMode(): void
+    {
+        $decoded = $this->runHelpAgent(['essential' => false]);
+
+        self::assertTrue($decoded['success'] ?? false);
+        $names = array_column($decoded['data']['commands'] ?? [], 'name');
+        self::assertContains('commit', $names);
+        self::assertContains('cache:clear', $names);
+    }
+
+    public function testHelpCommandLookupIgnoresEssentialFilterInAgentMode(): void
+    {
+        $decoded = $this->runHelpAgent(['command' => 'cc']);
+
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('cache:clear', $decoded['data']['name'] ?? null);
+        self::assertFalse($decoded['data']['essential'] ?? true);
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function runHelpAgent(array $input): array
+    {
+        $proc = new \Symfony\Component\Process\Process(
+            [
+                __DIR__ . '/../../vendor/bin/castor',
+                'help',
+                '--agent',
+            ],
+            __DIR__ . '/../..',
+            null,
+            (string) json_encode($input),
+            15
+        );
+        $proc->run();
+        $stdout = $proc->getOutput();
+        $stderr = $proc->getErrorOutput();
+
+        self::assertSame(0, $proc->getExitCode(), 'help --agent must exit 0. stderr: ' . $stderr);
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON. stderr: ' . $stderr);
+
+        return $decoded;
+    }
 }

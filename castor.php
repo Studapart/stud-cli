@@ -22,6 +22,7 @@ if (! defined('DEFAULT_BASE_BRANCH')) {
 }
 
 
+use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
 use App\Command\StudHelpCommand;
 use App\DTO\ConfluencePushInput;
@@ -1201,6 +1202,7 @@ function config_init(
 }
 
 #[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ConfigShowResponse::class, description: 'Global and project configuration or a single key value')]
 function config_show(
     #[AsOption(name: 'key', shortcut: 'k', description: 'Show only this config key (whitelisted non-secret keys only)')]
@@ -1639,6 +1641,7 @@ function filters_show(
 }
 
 #[AsTask(name: 'items:show', aliases: ['sh'], description: 'Shows detailed info for one work item')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ItemShowResponse::class, description: 'Detailed work item information')]
 function items_show(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
@@ -1673,6 +1676,7 @@ function items_show(
 }
 
 #[AsTask(name: 'items:download', aliases: ['idl'], description: 'Downloads Jira issue attachments or a single attachment URL')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ItemDownloadResponse::class, description: 'Downloaded attachment paths (filename, path) and per-file errors')]
 function items_download(
     #[AsArgument(name: 'key', description: 'Jira issue key (optional if --url); downloads all attachments and ignores --url when set (or inputFile when --agent)')]
@@ -1717,6 +1721,7 @@ function items_download(
  * @param list<string> $files
  */
 #[AsTask(name: 'items:upload', aliases: ['iup'], description: 'Uploads local files as attachments on a Jira issue')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ItemUploadResponse::class, description: 'Uploaded attachment paths (filename, path) and per-file errors')]
 function items_upload(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
@@ -1813,6 +1818,7 @@ function _items_create_normalize_summary(?string $summary): ?string
 }
 
 #[AsTask(name: 'items:create', aliases: ['ic'], description: 'Creates a Jira issue in a project')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ItemCreateResponse::class, description: 'Created issue key and URL')]
 function items_create(
     #[AsOption(name: 'project', shortcut: 'p', description: 'Jira project key (or set JIRA_DEFAULT_PROJECT in .git/stud.config)')]
@@ -1877,6 +1883,7 @@ function items_create(
 }
 
 #[AsTask(name: 'items:update', aliases: ['iu'], description: 'Update a Jira issue fields')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ItemUpdateResponse::class, description: 'Updated issue key')]
 function items_update(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
@@ -1975,6 +1982,7 @@ function items_transition(
 // =================================================================================
 
 #[AsTask(name: 'items:start', aliases: ['start'], description: 'Creates a new git branch from a Jira item')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Branch creation result')]
 function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
@@ -2144,6 +2152,7 @@ function branches_clean(
 }
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Commit result')]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
@@ -2189,6 +2198,7 @@ function commit(
 }
 
 #[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Push result')]
 function push(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
@@ -2246,6 +2256,7 @@ function push(
 }
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Force push result')]
 function please(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2290,6 +2301,7 @@ function commit_undo(
 }
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Flatten result')]
 function flatten(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2310,6 +2322,7 @@ function flatten(
 }
 
 #[AsTask(name: 'switch', aliases: ['sw'], description: 'Switch to a local branch by Jira item key')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: BranchSwitchResponse::class, description: 'Branch switch result')]
 function switch_branch(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
@@ -2370,6 +2383,7 @@ function _branch_switch_select_branch(BranchSwitchResponse $response): ?string
 }
 
 #[AsTask(name: 'sync', aliases: ['sy'], description: 'Fetch the latest base branch and rebase the current feature branch onto it')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string', 'rebased' => 'bool'], description: 'Sync result')]
 function sync(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2410,6 +2424,7 @@ function cache_clear(
 }
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Submit result')]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')]
@@ -2493,6 +2508,7 @@ function submit(
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\PrCommentResponse::class, description: 'Comment post result')]
 function pr_comment(
     #[AsArgument(name: 'message', description: 'The comment message (or inputFile when --agent; optional if piping from STDIN)')]
@@ -2533,6 +2549,7 @@ function pr_comment(
 }
 
 #[AsTask(name: 'pr:comments', aliases: ['pcs'], description: 'Fetches and displays issue and review comments for the active Pull Request')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(
     properties: [
         'default' => 'flat shape: issueComments, reviewComments, reviews, pullNumber',
@@ -2724,6 +2741,7 @@ function confluence_page_labels(
 }
 
 #[AsTask(name: 'confluence:show', aliases: ['csh'], description: 'Fetch and display a Confluence page by ID or URL')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['id' => 'string', 'title' => 'string', 'url' => 'string', 'body' => 'string'], description: 'Page id, title, url, and body content (markdown)')]
 function confluence_show(
     #[AsOption(name: 'page', shortcut: 'p', description: 'Confluence page ID')]
@@ -2789,6 +2807,7 @@ function confluence_show(
 }
 
 #[AsTask(name: 'help', description: 'Displays a list of available commands')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['commands' => 'array'], description: 'Agent mode schema with all commands')]
 function help(
     #[AsArgument(name: 'command_name', description: 'The command name to get help for')]
@@ -2803,9 +2822,9 @@ function help(
             return;
         }
         $generator = new \App\Service\AgentModeSchemaGenerator();
-        $schema = $generator->generate();
         $filterCommand = $input['commandName'] ?? $input['command'] ?? null;
         if ($filterCommand !== null) {
+            $schema = $generator->generate();
             foreach ($schema['commands'] as $cmd) {
                 if ($cmd['name'] === $filterCommand || in_array($filterCommand, $cmd['aliases'] ?? [], true)) {
                     _agent_respond(new AgentJsonResponse(true, data: $cmd));
@@ -2817,6 +2836,8 @@ function help(
 
             return;
         }
+        $essentialOnly = ($input['essential'] ?? true) !== false;
+        $schema = $generator->generate(essentialOnly: $essentialOnly);
         _agent_respond(new AgentJsonResponse(true, data: $schema));
 
         return;
