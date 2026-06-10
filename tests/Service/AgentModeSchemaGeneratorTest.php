@@ -18,6 +18,27 @@ require_once __DIR__ . '/../Fixtures/schema_generator_fixtures.php';
  */
 class AgentModeSchemaGeneratorTest extends TestCase
 {
+    private const ESSENTIAL_COMMANDS = [
+        'commit',
+        'config:show',
+        'confluence:show',
+        'flatten',
+        'help',
+        'items:create',
+        'items:download',
+        'items:show',
+        'items:start',
+        'items:update',
+        'items:upload',
+        'please',
+        'pr:comment',
+        'pr:comments',
+        'push',
+        'submit',
+        'switch',
+        'sync',
+    ];
+
     private AgentModeSchemaGenerator $generator;
 
     /** @var array{meta: array<string, string>, commands: list<array<string, mixed>>} */
@@ -49,14 +70,23 @@ class AgentModeSchemaGeneratorTest extends TestCase
 
     public function testEveryCommandHasRequiredKeys(): void
     {
-        $requiredKeys = ['name', 'aliases', 'description', 'parameters', 'input', 'output'];
+        $requiredKeys = ['name', 'aliases', 'essential', 'description', 'parameters', 'input', 'output'];
         foreach ($this->schema['commands'] as $cmd) {
             foreach ($requiredKeys as $key) {
                 $this->assertArrayHasKey($key, $cmd, "Command '{$cmd['name']}' missing key '{$key}'");
             }
+            $this->assertIsBool($cmd['essential'], "Command '{$cmd['name']}' essential flag must be boolean");
             $this->assertArrayHasKey('options', $cmd['parameters']);
             $this->assertArrayHasKey('arguments', $cmd['parameters']);
             $this->assertArrayHasKey('properties', $cmd['input']);
+        }
+    }
+
+    public function testMetaIncludesDiscoveryHints(): void
+    {
+        foreach (['defaultDiscovery', 'fullDiscovery', 'commandDiscovery'] as $key) {
+            $this->assertArrayHasKey($key, $this->schema['meta']);
+            $this->assertNotSame('', $this->schema['meta'][$key]);
         }
     }
 
@@ -165,6 +195,42 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertSame($sorted, $names, 'Commands should be sorted alphabetically');
     }
 
+    public function testEssentialCommandsAreMarked(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        foreach (self::ESSENTIAL_COMMANDS as $commandName) {
+            $this->assertArrayHasKey($commandName, $schemaByName);
+            $this->assertTrue($schemaByName[$commandName]['essential'], "{$commandName} must be essential");
+        }
+    }
+
+    public function testEssentialOnlyGenerationReturnsAgreedEssentialCommands(): void
+    {
+        $schema = $this->generator->generate(essentialOnly: true);
+        $names = array_column($schema['commands'], 'name');
+        $expected = self::ESSENTIAL_COMMANDS;
+        sort($expected);
+
+        $this->assertSame($expected, $names);
+        foreach ($schema['commands'] as $cmd) {
+            $this->assertTrue($cmd['essential'], "Command '{$cmd['name']}' must be essential");
+        }
+    }
+
+    public function testFullGenerationStillIncludesNonEssentialCommands(): void
+    {
+        $fullNames = array_column($this->schema['commands'], 'name');
+        $essentialNames = array_column($this->generator->generate(essentialOnly: true)['commands'], 'name');
+
+        $this->assertContains('cache:clear', $fullNames);
+        $this->assertNotContains('cache:clear', $essentialNames);
+        $this->assertGreaterThan(count($essentialNames), count($fullNames));
+    }
+
     public function testGeneratorSkipsDefaultAndAgentlessTasks(): void
     {
         $schema = $this->schema;
@@ -198,6 +264,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
     {
         $schema = $this->generator->generate(['_test_fixture_no_output_attr']);
         $cmd = $schema['commands'][0];
+        $this->assertFalse($cmd['essential']);
         $this->assertNull($cmd['output']['description']);
         $this->assertSame('(undescribed)', $cmd['output']['success']['data']);
     }

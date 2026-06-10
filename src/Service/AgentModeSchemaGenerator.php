@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
@@ -24,10 +25,14 @@ class AgentModeSchemaGenerator
      * @param list<string>|null $functionNames Override function list (for testing); null = all user-defined functions.
      * @return array{meta: array<string, string>, commands: list<array<string, mixed>>}
      */
-    public function generate(?array $functionNames = null): array
+    public function generate(?array $functionNames = null, bool $essentialOnly = false): array
     {
         $commands = [];
         foreach ($this->discoverTasks($functionNames) as $taskDef) {
+            if ($essentialOnly && $taskDef['essential'] !== true) {
+                continue;
+            }
+
             $commands[] = $taskDef;
         }
 
@@ -37,6 +42,9 @@ class AgentModeSchemaGenerator
             'meta' => [
                 'description' => 'Agent-mode schema — auto-generated from command signatures. When --agent is passed, input is a single JSON document (stdin or one positional file path) and output is a single JSON document.',
                 'generatedBy' => 'AgentModeSchemaGenerator (runtime reflection)',
+                'defaultDiscovery' => 'help --agent with empty input returns essential command schemas only.',
+                'fullDiscovery' => 'Use {"essential": false} with help --agent to return every command schema.',
+                'commandDiscovery' => 'Use {"command": "<name-or-alias>"} with help --agent to return one command schema.',
             ],
             'commands' => $commands,
         ];
@@ -65,7 +73,9 @@ class AgentModeSchemaGenerator
 
             $outputAttr = $rf->getAttributes(AgentOutput::class);
             $agentOutput = $outputAttr !== [] ? $outputAttr[0]->newInstance() : null;
-            yield $this->buildCommandEntry($task, $rf->getParameters(), $agentOutput);
+            $commandAttr = $rf->getAttributes(AgentCommand::class);
+            $agentCommand = $commandAttr !== [] ? $commandAttr[0]->newInstance() : null;
+            yield $this->buildCommandEntry($task, $rf->getParameters(), $agentOutput, $agentCommand);
         }
     }
 
@@ -73,8 +83,12 @@ class AgentModeSchemaGenerator
      * @param \ReflectionParameter[] $params
      * @return array<string, mixed>
      */
-    private function buildCommandEntry(AsTask $task, array $params, ?AgentOutput $agentOutput): array
-    {
+    private function buildCommandEntry(
+        AsTask $task,
+        array $params,
+        ?AgentOutput $agentOutput,
+        ?AgentCommand $agentCommand,
+    ): array {
         $options = [];
         $arguments = [];
         $inputProperties = [];
@@ -91,6 +105,7 @@ class AgentModeSchemaGenerator
         return [
             'name' => $task->name,
             'aliases' => $task->aliases,
+            'essential' => $agentCommand instanceof AgentCommand && $agentCommand->essential,
             'description' => $task->description,
             'parameters' => ['options' => $options, 'arguments' => $arguments],
             'input' => ['properties' => $inputProperties],
@@ -137,6 +152,14 @@ class AgentModeSchemaGenerator
         if ($taskName === 'items:upload') {
             $inputProperties = [
                 'issueKey' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            ] + $inputProperties;
+        }
+
+        if ($taskName === 'help') {
+            $inputProperties = [
+                'commandName' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+                'command' => ['type' => 'string|null', 'optional' => true, 'default' => null],
+                'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
             ] + $inputProperties;
         }
     }

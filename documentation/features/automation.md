@@ -8,11 +8,16 @@ Commands that support `--agent` accept JSON on stdin and return structured JSON.
 
 ```bash
 echo '{}' | stud help --agent
-echo '{"commandName":"config:validate"}' | stud help --agent
+echo '{"essential":false}' | stud help --agent
+echo '{"command":"config:validate"}' | stud help --agent
 echo '{"skipGit":true}' | stud config:validate --agent
 ```
 
 Use the generated schema from `stud help --agent` as the source of truth for JSON properties.
+Empty input returns the essential commands used in common agent workflows. Pass
+`{"essential":false}` to return every command schema, or
+`{"command":"<name-or-alias>"}` to inspect one command regardless of whether it is
+essential.
 
 ## Quiet Mode
 
