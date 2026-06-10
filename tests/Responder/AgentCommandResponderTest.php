@@ -25,6 +25,12 @@ class AgentCommandResponderTest extends TestCase
         $this->assertNull($result->error);
     }
 
+    public function testRespondFromExitCodeZeroReturnsCompactSuccess(): void
+    {
+        $result = $this->responder->respondFromExitCode(0, 'Done', 'Failed', compact: true);
+        $this->assertSame(['success' => true], $result->toPayload());
+    }
+
     public function testRespondFromExitCodeNonZeroReturnsError(): void
     {
         $result = $this->responder->respondFromExitCode(1, 'Done', 'Failed');
@@ -38,5 +44,11 @@ class AgentCommandResponderTest extends TestCase
         $this->assertTrue($result->success);
         $this->assertSame(['message' => 'Operation completed'], $result->data);
         $this->assertNull($result->error);
+    }
+
+    public function testRespondSuccessReturnsCompactSuccess(): void
+    {
+        $result = $this->responder->respondSuccess('Operation completed', compact: true);
+        $this->assertSame(['success' => true], $result->toPayload());
     }
 }

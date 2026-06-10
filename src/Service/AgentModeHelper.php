@@ -48,11 +48,14 @@ class AgentModeHelper
     /**
      * Build success payload for agent output.
      *
-     * @param array<string, mixed> $data
-     * @return array{success: true, data: array<string, mixed>}
+     * @return array{success: true, data?: mixed}
      */
-    public function buildSuccessPayload(array $data): array
+    public function buildSuccessPayload(mixed $data = [], bool $hasData = true): array
     {
+        if (! $hasData) {
+            return ['success' => true];
+        }
+
         return ['success' => true, 'data' => $data];
     }
 

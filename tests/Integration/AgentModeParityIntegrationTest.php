@@ -167,6 +167,16 @@ class AgentModeParityIntegrationTest extends TestCase
         self::assertFalse($decoded['data']['essential'] ?? true);
     }
 
+    public function testHelpDocumentsCompactAgentInputAndOutputShape(): void
+    {
+        $decoded = $this->runHelpAgent(['command' => 'commit', 'compact' => true]);
+
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('commit', $decoded['data']['name'] ?? null);
+        self::assertSame('bool', $decoded['data']['input']['properties']['compact']['type'] ?? null);
+        self::assertSame(['success' => true], $decoded['data']['output']['compactSuccess'] ?? null);
+    }
+
     /**
      * @param array<string, mixed> $input
      * @return array<string, mixed>

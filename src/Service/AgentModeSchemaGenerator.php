@@ -20,6 +20,11 @@ use Castor\Attribute\AsTask;
 class AgentModeSchemaGenerator
 {
     private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
+    private const COMPACT_PROPERTY = [
+        'type' => 'bool',
+        'optional' => true,
+        'default' => false,
+    ];
 
     /**
      * @param list<string>|null $functionNames Override function list (for testing); null = all user-defined functions.
@@ -99,6 +104,7 @@ class AgentModeSchemaGenerator
         }
 
         $this->injectExtraInputProperties($task->name, $inputProperties);
+        $inputProperties = ['compact' => self::COMPACT_PROPERTY] + $inputProperties;
 
         $outputSchema = $this->buildOutputSchema($agentOutput);
 
@@ -170,10 +176,15 @@ class AgentModeSchemaGenerator
     private function buildOutputSchema(?AgentOutput $agentOutput): array
     {
         $dataProperties = $this->resolveOutputProperties($agentOutput);
+        $successSchema = ['success' => true, 'data' => $dataProperties];
+        $compactSuccessSchema = $agentOutput?->completionOnly === true
+            ? ['success' => true]
+            : $successSchema;
 
         return [
             'description' => $agentOutput?->description,
-            'success' => ['success' => true, 'data' => $dataProperties],
+            'success' => $successSchema,
+            'compactSuccess' => $compactSuccessSchema,
             'error' => ['success' => false, 'error' => 'string'],
         ];
     }

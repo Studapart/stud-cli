@@ -1169,7 +1169,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 // =================================================================================
 
 #[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Confirmation message')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Confirmation message', completionOnly: true)]
 function config_init(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -1178,11 +1178,13 @@ function config_init(
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
     }
     $handler = new InitHandler(
         _get_file_system(),
@@ -1195,7 +1197,7 @@ function config_init(
     $handler->handle(io(), $agent, input()->isInteractive());
     if ($format === OutputFormat::Json) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondSuccess('Configuration initialized'));
+        _agent_respond($cmdResponder->respondSuccess('Configuration initialized', $compact));
 
         return;
     }
@@ -1277,6 +1279,16 @@ function _read_agent_input(?string $inputFile): ?array
 
         return null;
     }
+}
+
+/**
+ * Return whether the agent requested compact success output.
+ *
+ * @param array<string, mixed> $input
+ */
+function _agent_compact_enabled(array $input): bool
+{
+    return ($input['compact'] ?? false) === true;
 }
 
 /**
@@ -1951,7 +1963,7 @@ function items_update(
 }
 
 #[AsTask(name: 'items:transition', aliases: ['tx'], description: 'Transitions a Jira work item to a different status')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Transition result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Transition result', completionOnly: true)]
 function items_transition(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent). Optional - will detect from branch if not provided')]
     ?string $key = null,
@@ -1959,18 +1971,20 @@ function items_transition(
     bool $agent = false,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $key = isset($input['key']) ? (string) $input['key'] : null;
     }
     $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io(), $key);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Transition completed', 'Transition failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Transition completed', 'Transition failed', $compact));
 
         return;
     }
@@ -2012,7 +2026,7 @@ function items_start(
 }
 
 #[AsTask(name: 'items:takeover', aliases: ['to'], description: 'Takes over an issue from another user')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Takeover result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Takeover result', completionOnly: true)]
 function items_takeover(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
     ?string $key = null,
@@ -2022,11 +2036,13 @@ function items_takeover(
     bool $agent = false,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $key = (string) ($input['key'] ?? '');
         $quiet = true; // agent mode is non-interactive; no need to read from input
     } elseif ($key === null || $key === '') {
@@ -2040,7 +2056,7 @@ function items_takeover(
     $exitCode = $handler->handle(io(), $key, $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Takeover completed', 'Takeover failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Takeover completed', 'Takeover failed', $compact));
 
         return;
     }
@@ -2048,7 +2064,7 @@ function items_takeover(
 }
 
 #[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Rename result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Rename result', completionOnly: true)]
 function branch_rename(
     #[AsArgument(name: 'branch', description: 'The branch to rename (or inputFile when --agent; defaults to current branch)')]
     ?string $branch = null,
@@ -2062,11 +2078,13 @@ function branch_rename(
     bool $agent = false,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($branch);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $branch = $input['branch'] ?? null;
         $key = $input['key'] ?? null;
         $explicitName = $input['explicitName'] ?? null;
@@ -2078,7 +2096,7 @@ function branch_rename(
     $exitCode = $handler->handle(io(), $branch, $key, $explicitName, $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch renamed', 'Rename failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branch renamed', 'Rename failed', $compact));
 
         return;
     }
@@ -2114,7 +2132,7 @@ function branches_list(
 }
 
 #[AsTask(name: 'branches:clean', aliases: ['bc'], description: 'Clean branches with conservative auto-clean eligibility')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Cleanup result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Cleanup result', completionOnly: true)]
 function branches_clean(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
@@ -2124,7 +2142,13 @@ function branches_clean(
     ?string $inputFile = null,
 ): int {
     _load_constants();
+    $compact = false;
     if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return 1;
+        }
+        $compact = _agent_compact_enabled($input);
         $quiet = true;
     }
     $gitRepository = _get_git_repository();
@@ -2143,7 +2167,7 @@ function branches_clean(
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branches cleaned', 'Clean failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Branches cleaned', 'Clean failed', $compact));
 
         return 0;
     }
@@ -2153,7 +2177,7 @@ function branches_clean(
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Commit result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Commit result', completionOnly: true)]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
     bool $isNew = false,
@@ -2171,11 +2195,13 @@ function commit(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $isNew = (bool) ($input['isNew'] ?? false);
         $message = $input['message'] ?? null;
         $stageAll = (bool) ($input['stageAll'] ?? false);
@@ -2191,7 +2217,7 @@ function commit(
     $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit created', 'Commit failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit created', 'Commit failed', $compact));
 
         return;
     }
@@ -2199,7 +2225,7 @@ function commit(
 
 #[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Push result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Push result', completionOnly: true)]
 function push(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
     bool $isNew = false,
@@ -2220,11 +2246,13 @@ function push(
 ): void {
     _load_constants();
     $pleaseFallback = true;
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $isNew = (bool) ($input['isNew'] ?? false);
         $message = $input['message'] ?? null;
         $stageAll = (bool) ($input['stageAll'] ?? false);
@@ -2249,7 +2277,7 @@ function push(
     $exitCode = $handler->handle(io(), $isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Push completed', 'Push failed', $compact));
 
         return;
     }
@@ -2257,7 +2285,7 @@ function push(
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Force push result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Force push result', completionOnly: true)]
 function please(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -2265,18 +2293,26 @@ function please(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
+    }
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Force push completed', 'Force push failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Force push completed', 'Force push failed', $compact));
 
         return;
     }
 }
 
 #[AsTask(name: 'commit:undo', aliases: ['undo'], description: 'Remove the last commit and keep changes unstaged')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Undo result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Undo result', completionOnly: true)]
 function commit_undo(
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
     bool $quiet = false,
@@ -2286,14 +2322,20 @@ function commit_undo(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
         $quiet = true;
     }
     $handler = new \App\Handler\CommitUndoHandler(_get_git_repository(), _get_logger(), _get_translation_service());
     $exitCode = $handler->handle(io(), $quiet);
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit undone', 'Undo failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Commit undone', 'Undo failed', $compact));
 
         return;
     }
@@ -2302,7 +2344,7 @@ function commit_undo(
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Flatten result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Flatten result', completionOnly: true)]
 function flatten(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -2310,11 +2352,19 @@ function flatten(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
+    }
     $handler = new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Flatten completed', 'Flatten failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Flatten completed', 'Flatten failed', $compact));
 
         return;
     }
@@ -2384,7 +2434,7 @@ function _branch_switch_select_branch(BranchSwitchResponse $response): ?string
 
 #[AsTask(name: 'sync', aliases: ['sy'], description: 'Fetch the latest base branch and rebase the current feature branch onto it')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string', 'rebased' => 'bool'], description: 'Sync result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Sync result', completionOnly: true)]
 function sync(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -2392,11 +2442,19 @@ function sync(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
+    }
     $handler = new SyncHandler(_get_git_repository(), _get_git_branch_service(), _get_base_branch(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Sync completed', 'Sync failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Sync completed', 'Sync failed', $compact));
 
         return;
     }
@@ -2404,7 +2462,7 @@ function sync(
 }
 
 #[AsTask(name: 'cache:clear', aliases: ['cc'], description: 'Clear the update check cache to force a version check on next command')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Cache clear result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Cache clear result', completionOnly: true)]
 function cache_clear(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -2412,11 +2470,19 @@ function cache_clear(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
+    }
     $handler = new CacheClearHandler(_get_translation_service(), _get_logger(), _get_file_system());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Cache cleared', 'Cache clear failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Cache cleared', 'Cache clear failed', $compact));
 
         return;
     }
@@ -2992,7 +3058,7 @@ function docs_check(
 
 
 #[AsTask(name: 'status', aliases: ['ss'], description: 'A quick "where am I?" dashboard')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Status result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Status result', completionOnly: true)]
 function status(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -3000,11 +3066,19 @@ function status(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $compact = _agent_compact_enabled($input);
+    }
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_logger());
     $exitCode = $handler->handle(io());
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Status displayed', 'Status failed'));
+        _agent_respond($cmdResponder->respondFromExitCode($exitCode, 'Status displayed', 'Status failed', $compact));
 
         return;
     }
@@ -3015,7 +3089,7 @@ function status(
 // =================================================================================
 
 #[AsTask(name: 'release', aliases: ['rl'], description: 'Creates a new release branch and bumps the version')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Release creation result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Release creation result', completionOnly: true)]
 function release(
     #[AsArgument(name: 'version', description: 'The new version (or inputFile when --agent). Optional if using --major, --minor, or --patch flags')]
     ?string $version = null,
@@ -3038,6 +3112,7 @@ function release(
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $version = $input['version'] ?? null;
         $bumpType = $input['bumpType'] ?? ($version === null ? 'patch' : null);
         $publish = (bool) ($input['publish'] ?? false);
@@ -3045,7 +3120,7 @@ function release(
         $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_logger(), _get_file_system());
         $handler->handle(io(), $version, $publish, $bumpType, $quiet);
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondSuccess('Release created'));
+        _agent_respond($cmdResponder->respondSuccess('Release created', $compact));
 
         return;
     }
@@ -3077,7 +3152,7 @@ function release(
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Deployment result')]
+#[AgentOutput(properties: ['message' => 'string'], description: 'Deployment result', completionOnly: true)]
 function deploy(
     #[AsOption(name: 'clean', description: 'Clean up merged branches after deployment')]
     bool $clean = false,
@@ -3087,11 +3162,13 @@ function deploy(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    $compact = false;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
+        $compact = _agent_compact_enabled($input);
         $clean = (bool) ($input['clean'] ?? false);
     }
     $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), _get_logger());
@@ -3115,7 +3192,7 @@ function deploy(
     }
     if ($agent) {
         $cmdResponder = new AgentCommandResponder();
-        _agent_respond($cmdResponder->respondSuccess('Deployment completed'));
+        _agent_respond($cmdResponder->respondSuccess('Deployment completed', $compact));
 
         return;
     }

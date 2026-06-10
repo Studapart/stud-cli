@@ -43,11 +43,26 @@ class AgentJsonResponseTest extends TestCase
         $this->assertSame([], $payload['data']);
     }
 
+    public function testSuccessPayloadWithoutData(): void
+    {
+        $payload = AgentJsonResponse::successWithoutData()->toPayload();
+        $this->assertSame(['success' => true], $payload);
+    }
+
+    public function testSuccessPayloadWithScalarData(): void
+    {
+        $response = new AgentJsonResponse(true, data: '1.2.3');
+        $payload = $response->toPayload();
+        $this->assertTrue($payload['success']);
+        $this->assertSame('1.2.3', $payload['data']);
+    }
+
     public function testReadonlyProperties(): void
     {
         $response = new AgentJsonResponse(true, ['foo' => 'bar'], 'ignored');
         $this->assertTrue($response->success);
         $this->assertSame(['foo' => 'bar'], $response->data);
         $this->assertSame('ignored', $response->error);
+        $this->assertTrue($response->hasData);
     }
 }

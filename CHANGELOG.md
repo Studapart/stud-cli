@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Agent compact output (SCI-126):** Agent JSON input now accepts `compact` to omit success `data` for completion-only commands while preserving reusable follow-up values and explicit errors.
+
 - **Agent help discovery (SCI-125):** `stud help --agent` now returns essential agent workflow commands by default, with explicit full-schema and single-command discovery inputs.
 
 - **Castor runtime (SCI-128):** Upgraded the Castor runtime lockfile to v1.5.0 and refreshed the required Symfony transitive dependencies while preserving CLI, agent-mode, and build workflow behavior.
