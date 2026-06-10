@@ -196,6 +196,22 @@ class HelpService
     }
 
     /**
+     * Build the grouped command rows used by the general `stud help` command.
+     *
+     * @return array<string, list<array{name: string, alias: ?string, args: string, description: string, example: ?string}>>
+     */
+    public function getGeneralHelpCommandGroups(): array
+    {
+        $groups = $this->emptyGeneralHelpGroups();
+
+        foreach ($this->getCommandMap() as $name => $command) {
+            $groups[$this->generalHelpCategoryFor($name)][] = $this->buildGeneralHelpCommandRow($name, $command);
+        }
+
+        return array_filter($groups);
+    }
+
+    /**
      * Format command help from translation keys
      */
     protected function formatCommandHelpFromTranslation(string $commandName): string
@@ -227,6 +243,90 @@ class HelpService
     protected function getCommandMap(): array
     {
         return CommandMap::all();
+    }
+
+    /**
+     * @return array<string, list<array{name: string, alias: ?string, args: string, description: string, example: ?string}>>
+     */
+    protected function emptyGeneralHelpGroups(): array
+    {
+        return [
+            $this->translator->trans('help.category_configuration') => [],
+            $this->translator->trans('help.category_jira_information') => [],
+            $this->translator->trans('help.category_confluence') => [],
+            $this->translator->trans('help.category_git_workflow') => [],
+            $this->translator->trans('help.category_release_commands') => [],
+        ];
+    }
+
+    protected function generalHelpCategoryFor(string $name): string
+    {
+        if ($this->isConfigurationHelpCommand($name)) {
+            return $this->translator->trans('help.category_configuration');
+        }
+        if ($this->isGitWorkflowHelpCommand($name)) {
+            return $this->translator->trans('help.category_git_workflow');
+        }
+        if (str_starts_with($name, 'confluence:')) {
+            return $this->translator->trans('help.category_confluence');
+        }
+        if ($this->isReleaseHelpCommand($name)) {
+            return $this->translator->trans('help.category_release_commands');
+        }
+
+        return $this->translator->trans('help.category_jira_information');
+    }
+
+    protected function isConfigurationHelpCommand(string $name): bool
+    {
+        return str_starts_with($name, 'config:') || in_array($name, ['completion', 'docs:generate', 'docs:check'], true);
+    }
+
+    protected function isGitWorkflowHelpCommand(string $name): bool
+    {
+        return str_starts_with($name, 'branch:')
+            || str_starts_with($name, 'branches:')
+            || in_array($name, [
+                'items:start',
+                'items:takeover',
+                'commit',
+                'commit:undo',
+                'push',
+                'please',
+                'flatten',
+                'submit',
+                'pr:comment',
+                'pr:comments',
+                'sync',
+                'switch',
+                'status',
+            ], true);
+    }
+
+    protected function isReleaseHelpCommand(string $name): bool
+    {
+        return in_array($name, ['release', 'deploy', 'update', 'cache:clear', 'help'], true);
+    }
+
+    /**
+     * @param array{alias: ?string, description_key: string, options: array<int, array{name: string, shortcut: ?string, description_key: string, argument: ?string}>, arguments: array<int, string>} $command
+     *
+     * @return array{name: string, alias: ?string, args: string, description: string, example: ?string}
+     */
+    protected function buildGeneralHelpCommandRow(string $name, array $command): array
+    {
+        return [
+            'name' => $name,
+            'alias' => $command['alias'],
+            'args' => implode(' ', $command['arguments']),
+            'description' => $this->translator->trans($command['description_key']),
+            'example' => $this->generalHelpExampleFor($name),
+        ];
+    }
+
+    protected function generalHelpExampleFor(string $name): ?string
+    {
+        return self::GENERAL_HELP_EXAMPLE_MAP[$name] ?? null;
     }
 
     /**
@@ -293,6 +393,22 @@ class HelpService
         '<filterName>' => '"My Filter"',
         '<version>' => '1.2.0',
         '<branch>' => 'feat/OLD-123-old',
+    ];
+
+    /** @var array<string, string> */
+    private const GENERAL_HELP_EXAMPLE_MAP = [
+        'completion' => 'stud completion bash',
+        'items:list' => 'stud ls -p PROJ -s Key',
+        'items:show' => 'stud sh PROJ-123',
+        'items:create' => 'stud ic -p PROJ -m "Summary"',
+        'items:search' => 'stud search "project = PROJ and status = Done"',
+        'items:transition' => 'stud tx PROJ-123',
+        'filters:show' => 'stud fs "My Filter"',
+        'items:start' => 'stud start PROJ-123',
+        'items:takeover' => 'stud to PROJ-123',
+        'branch:rename' => 'stud rn feat/OLD-123-old ACME-4067',
+        'release' => 'stud release 1.2.0',
+        'deploy' => 'stud deploy',
     ];
 
     /**

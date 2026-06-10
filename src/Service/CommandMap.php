@@ -360,6 +360,12 @@ class CommandMap
                     'options' => [],
                     'arguments' => [],
                 ],
+                'help' => [
+                    'alias' => null,
+                    'description_key' => 'help.command_help',
+                    'options' => [],
+                    'arguments' => ['[<command>]'],
+                ],
                 'projects:list' => [
                     'alias' => 'pj',
                     'description_key' => 'help.command_projects_list',
