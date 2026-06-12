@@ -12,7 +12,6 @@ use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class BranchRenameHandler
@@ -33,7 +32,7 @@ class BranchRenameHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, ?string $branchName, ?string $key, ?string $explicitName, bool $quiet = false): int
+    public function handle(?string $branchName, ?string $key, ?string $explicitName, bool $quiet = false): int
     {
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.section'));
 
@@ -57,7 +56,7 @@ class BranchRenameHandler
             return 1;
         }
 
-        return $this->performRename($io, $targetBranch, $newBranchName, $branchStatus, $quiet);
+        return $this->performRename($targetBranch, $newBranchName, $branchStatus, $quiet);
     }
 
     /**
@@ -77,7 +76,7 @@ class BranchRenameHandler
     /**
      * @param array{0: bool, 1: bool} $branchStatus
      */
-    protected function performRename(SymfonyStyle $io, string $targetBranch, string $newBranchName, array $branchStatus, bool $quiet = false): int
+    protected function performRename(string $targetBranch, string $newBranchName, array $branchStatus, bool $quiet = false): int
     {
         [$hasLocal, $hasRemote] = $branchStatus;
         $pr = $this->findAssociatedPullRequest();
@@ -86,7 +85,7 @@ class BranchRenameHandler
             return 0;
         }
         $this->renameBranches($targetBranch, $newBranchName, $branchStatus);
-        $this->handlePostRenameActions($io, $pr, $targetBranch, $newBranchName, $quiet);
+        $this->handlePostRenameActions($pr, $targetBranch, $newBranchName, $quiet);
 
         return 0;
     }
@@ -231,7 +230,7 @@ class BranchRenameHandler
     /**
      * @param array<string, mixed> $pr
      */
-    protected function updatePullRequestAfterRename(SymfonyStyle $io, array $pr, string $oldName, string $newName): void
+    protected function updatePullRequestAfterRename(array $pr, string $oldName, string $newName): void
     {
         if (! isset($pr['number']) || $this->githubProvider === null) {
             return;
@@ -240,7 +239,7 @@ class BranchRenameHandler
         $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'));
 
         $submitHandler = $this->createSubmitHandler();
-        $submitResult = $submitHandler->handle($io, new SubmitOptions());
+        $submitResult = $submitHandler->handle(new SubmitOptions());
         if ($submitResult !== 0) {
             $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
 
@@ -393,10 +392,10 @@ class BranchRenameHandler
     /**
      * @param array<string, mixed>|null $pr
      */
-    protected function handlePostRenameActions(SymfonyStyle $io, ?array $pr, string $targetBranch, string $newBranchName, bool $quiet = false): void
+    protected function handlePostRenameActions(?array $pr, string $targetBranch, string $newBranchName, bool $quiet = false): void
     {
         if ($pr !== null && $this->githubProvider !== null) {
-            $this->updatePullRequestAfterRename($io, $pr, $targetBranch, $newBranchName);
+            $this->updatePullRequestAfterRename($pr, $targetBranch, $newBranchName);
         }
 
         $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));

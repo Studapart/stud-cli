@@ -73,7 +73,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())->method('deleteBranchForce');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
     }
@@ -96,7 +96,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())->method('deleteBranch');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
     }
@@ -119,7 +119,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/manual');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, false);
+        $result = $this->handler->handle(false);
 
         $this->assertSame(0, $result);
     }
@@ -148,7 +148,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())->method('deleteBranchForce')->with('feat/fallback');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
     }
@@ -196,7 +196,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())->method('deleteRemoteBranch');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $handler->handle($io, true);
+        $result = $handler->handle(true);
 
         $this->assertSame(0, $result);
     }
@@ -216,7 +216,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
     }
@@ -239,7 +239,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())->method('deleteRemoteBranch')->with('origin', 'feat/remote');
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $this->handler->handle($io, false);
+        $result = $this->handler->handle(false);
 
         $this->assertSame(0, $result);
     }
@@ -325,7 +325,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->githubProvider->method('getAllPullRequests')->willReturn([]);
 
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $result = $handler->handle($io, false);
+        $result = $handler->handle(false);
         $this->assertSame(0, $result);
     }
 
@@ -346,7 +346,7 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())->method('pruneRemoteTrackingRefs');
         $this->gitRepository->expects($this->once())->method('deleteBranch')->with('feat/merged');
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
-        $this->assertSame(0, $this->handler->handle($io, true));
+        $this->assertSame(0, $this->handler->handle(true));
     }
 
     public function testAddManuallyConfirmedPlansSupportsSkipAndRemoteAppend(): void

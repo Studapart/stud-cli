@@ -9,7 +9,6 @@ use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemTransitionHandler
 {
@@ -22,7 +21,7 @@ class ItemTransitionHandler
         unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io, ?string $key = null): int
+    public function handle(?string $key = null): int
     {
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.transition.section'));
 

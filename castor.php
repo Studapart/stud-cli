@@ -1981,7 +1981,7 @@ function items_create(
     }
     $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser(), _get_prompt());
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
-    $response = $handler->handle(io(), $interactive, $input);
+    $response = $handler->handle($interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
@@ -2083,7 +2083,7 @@ function items_transition(
     }
     $output = _get_command_output_buffer();
     $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
-    $exitCode = $handler->handle(io(), $key);
+    $exitCode = $handler->handle($key);
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -2116,7 +2116,7 @@ function items_start(
     }
     $output = _get_command_output_buffer();
     $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), $output);
-    $exitCode = $handler->handle(io(), $key);
+    $exitCode = $handler->handle($key);
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -2150,7 +2150,7 @@ function items_takeover(
     $output = _get_command_output_buffer();
     $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), $output);
     $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $output);
-    $exitCode = $handler->handle(io(), $key, $quiet);
+    $exitCode = $handler->handle($key, $quiet);
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -2186,7 +2186,7 @@ function branch_rename(
     $gitProvider = _get_git_provider();
     $output = _get_command_output_buffer();
     $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), $output, _get_html_converter());
-    $exitCode = $handler->handle(io(), $branch, $key, $explicitName, $quiet);
+    $exitCode = $handler->handle($branch, $key, $explicitName, $quiet);
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -2253,7 +2253,7 @@ function branches_clean(
         _get_translation_service(),
         $output
     );
-    $exitCode = $handler->handle(io(), $quiet);
+    $exitCode = $handler->handle($quiet);
     _respond_workflow_output($output, $exitCode, $agent, $compact);
 
     return $exitCode;
@@ -2669,7 +2669,7 @@ function submit(
 
     $output = _get_command_output_buffer();
     $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), $output, _get_html_converter());
-    $exitCode = $handler->handle(io(), new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
+    $exitCode = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -3177,7 +3177,7 @@ function status(
     }
     $output = _get_command_output_buffer();
     $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
-    $exitCode = $handler->handle(io());
+    $exitCode = $handler->handle();
     _respond_workflow_output($output, $exitCode, $agent, $compact);
     exit($exitCode);
 }
@@ -3217,7 +3217,7 @@ function release(
         $quiet = true;
         $output = _get_command_output_buffer();
         $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
-        $handler->handle(io(), $version, $publish, $bumpType, $quiet);
+        $handler->handle($version, $publish, $bumpType, $quiet);
         _respond_workflow_output($output, 0, true, $compact);
 
         return;
@@ -3247,7 +3247,7 @@ function release(
 
     $output = _get_command_output_buffer();
     $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
-    $handler->handle(io(), $version, $publish, $bumpType, $quiet);
+    $handler->handle($version, $publish, $bumpType, $quiet);
     _respond_workflow_output($output, 0, false);
 }
 
@@ -3289,7 +3289,7 @@ function deploy(
             _get_translation_service(),
             $output
         );
-        $cleanHandler->handle(io(), true);
+        $cleanHandler->handle(true);
     }
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3369,7 +3369,7 @@ function update(
         _get_file_system(),
         $gitToken
     );
-    $result = $handler->handle(io(), $info, $quiet);
+    $result = $handler->handle($info, $quiet);
     _respond_workflow_output($output, $result, false);
     exit($result);
 }

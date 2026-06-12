@@ -16,7 +16,6 @@ use App\Service\JiraService;
 use App\Service\MarkdownHelper;
 use App\Service\SubmitLabelResolver;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SubmitHandler
 {
@@ -35,7 +34,7 @@ class SubmitHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, SubmitOptions $options = new SubmitOptions()): int
+    public function handle(SubmitOptions $options = new SubmitOptions()): int
     {
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.section'));
 

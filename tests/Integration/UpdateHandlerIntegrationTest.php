@@ -148,7 +148,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         // Verify update completed successfully
         $this->assertSame(0, $result);
@@ -208,7 +208,7 @@ CHANGELOG;
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         // Hash verification should pass and update should succeed
         $this->assertSame(0, $result);

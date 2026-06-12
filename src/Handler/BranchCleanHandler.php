@@ -15,7 +15,6 @@ use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchCleanHandler
 {
@@ -31,7 +30,7 @@ class BranchCleanHandler
         unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io, bool $quiet = false): int
+    public function handle(bool $quiet = false): int
     {
         $this->displayHeader();
 

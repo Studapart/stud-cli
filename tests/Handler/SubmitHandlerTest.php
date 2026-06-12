@@ -95,7 +95,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -135,7 +135,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $result = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
         $this->assertSame(0, $result);
     }
@@ -188,7 +188,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $result = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
         $this->assertSame(1, $result);
     }
@@ -241,7 +241,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -312,7 +312,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -364,7 +364,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $result = $this->handler->handle(new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -420,7 +420,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -433,7 +433,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -449,7 +449,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -467,7 +467,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -519,7 +519,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -540,7 +540,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -593,7 +593,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -642,7 +642,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -675,7 +675,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
@@ -724,7 +724,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
@@ -787,7 +787,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -838,7 +838,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -884,7 +884,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -923,7 +923,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $outputText = $output->fetch();
         $this->assertSame(1, $result);
@@ -970,7 +970,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
@@ -1011,7 +1011,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $outputText = $output->fetch();
         $this->assertSame(0, $result);
@@ -1062,7 +1062,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -1234,7 +1234,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1282,7 +1282,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         $this->assertSame(1, $result);
     }
@@ -1342,7 +1342,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         $this->assertSame(1, $result);
     }
@@ -1666,7 +1666,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Adding labels failure causes the whole operation to fail
         $this->assertSame(1, $result);
@@ -1720,7 +1720,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Labels should be ignored when no provider is configured
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1802,7 +1802,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $result);
     }
@@ -1868,7 +1868,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $result = $this->handler->handle(new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -1955,7 +1955,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
         $this->assertSame(0, $result);
     }
@@ -2020,7 +2020,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $result = $this->handler->handle(new SubmitOptions(true));
 
         $this->assertSame(0, $result);
     }
@@ -2080,7 +2080,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if finding PR fails
         $this->assertSame(0, $result);
@@ -2160,7 +2160,7 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if adding labels fails
         $this->assertSame(0, $result);
@@ -2225,7 +2225,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $result = $this->handler->handle(new SubmitOptions(true));
 
         // Should still succeed even if updating draft fails
         $this->assertSame(0, $result);
@@ -2279,7 +2279,7 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Should handle gracefully when no provider (labels/draft ignored)
-        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
+        $result = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
         $this->assertSame(0, $result);
     }
@@ -2348,7 +2348,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -2475,7 +2475,7 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $result = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
         $this->assertSame(0, $result);
     }

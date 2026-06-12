@@ -74,7 +74,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false, null);
+        $handler->handle($version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -121,7 +121,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, true, null);
+        $handler->handle($version, true, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -168,7 +168,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false, null);
+        $handler->handle($version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -213,7 +213,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false, null);
+        $handler->handle($version, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -260,7 +260,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), $version, false, null);
+        $handler->handle($version, false, null);
 
         // Verify CHANGELOG.md was updated correctly
         $updatedContent = $this->flysystem->read($changelogPath);
@@ -513,7 +513,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), null, false, 'patch');
+        $handler->handle(null, false, 'patch');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -557,7 +557,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), null, false, 'minor');
+        $handler->handle(null, false, 'minor');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -601,7 +601,7 @@ class ReleaseHandlerTest extends CommandTestCase
         $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($io->reveal(), null, false, 'major');
+        $handler->handle(null, false, 'major');
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -646,7 +646,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         // No version and no bump type - should default to patch
-        $handler->handle($io->reveal(), null, false, null);
+        $handler->handle(null, false, null);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);

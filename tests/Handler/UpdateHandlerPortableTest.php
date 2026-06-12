@@ -58,7 +58,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
             ->method('update')
             ->willReturn(0);
 
-        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle($this->io(), false, true);
+        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
 
         self::assertSame(0, $result);
     }
@@ -69,7 +69,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $this->mockReleaseFetch();
         $this->portableUpdateService->expects(self::never())->method('update');
 
-        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle($this->io(), false, true);
+        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
 
         self::assertSame(1, $result);
     }

@@ -71,7 +71,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(1, $result);
     }
@@ -98,7 +98,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(1, $result);
     }
@@ -139,7 +139,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(1, $result);
     }
@@ -194,7 +194,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -248,7 +248,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -332,7 +332,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -405,7 +405,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -478,7 +478,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -550,7 +550,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -624,7 +624,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -701,7 +701,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -778,7 +778,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -831,7 +831,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -919,7 +919,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -994,7 +994,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'PROJ-123', true);
+        $result = $this->handler->handle('PROJ-123', true);
 
         $this->assertSame(0, $result);
     }
@@ -1053,7 +1053,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $result = $this->handler->handle($io, 'PROJ-123');
+        $result = $this->handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -1103,7 +1103,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -1179,7 +1179,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -1252,7 +1252,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }
@@ -1325,7 +1325,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'PROJ-123');
+        $result = $handler->handle('PROJ-123');
 
         $this->assertSame(0, $result);
     }

@@ -10,7 +10,6 @@ use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class ItemStartHandler
@@ -30,7 +29,7 @@ class ItemStartHandler
         unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io, string $key): int
+    public function handle(string $key): int
     {
         $key = strtoupper($key);
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.start.section', ['key' => $key]));

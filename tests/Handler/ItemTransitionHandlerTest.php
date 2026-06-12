@@ -105,7 +105,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -170,7 +170,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $result = $handler->handle(null);
 
         $this->assertSame(0, $result);
     }
@@ -237,7 +237,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $result = $handler->handle(null);
 
         $this->assertSame(0, $result);
     }
@@ -302,7 +302,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $result = $handler->handle(null);
 
         $this->assertSame(0, $result);
     }
@@ -323,7 +323,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $result = $this->handler->handle(null);
 
         $this->assertSame(1, $result);
     }
@@ -344,7 +344,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $result = $this->handler->handle(null);
 
         $this->assertSame(1, $result);
     }
@@ -363,7 +363,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -388,7 +388,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -425,7 +425,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -465,7 +465,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -505,7 +505,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -547,7 +547,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -607,7 +607,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -676,7 +676,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -732,7 +732,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }

@@ -10,7 +10,6 @@ use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemTakeoverHandler
 {
@@ -32,7 +31,7 @@ class ItemTakeoverHandler
         // $jiraConfig is kept for potential future use (e.g., transition handling)
     }
 
-    public function handle(SymfonyStyle $io, string $key, bool $quiet = false): int
+    public function handle(string $key, bool $quiet = false): int
     {
         $key = strtoupper($key);
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.takeover.section', ['key' => $key]));
@@ -72,7 +71,7 @@ class ItemTakeoverHandler
 
         // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
-            return $this->handleNoBranches($io, $key, $quiet);
+            return $this->handleNoBranches($key, $quiet);
         }
 
         return $this->handleExistingBranches($key, $branches, $quiet);
@@ -103,7 +102,7 @@ class ItemTakeoverHandler
         }
     }
 
-    protected function handleNoBranches(SymfonyStyle $io, string $key, bool $quiet = false): int
+    protected function handleNoBranches(string $key, bool $quiet = false): int
     {
         $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('item.takeover.no_branches', ['key' => $key]));
 
@@ -113,7 +112,7 @@ class ItemTakeoverHandler
         );
 
         if ($startFresh) {
-            return $this->itemStartHandler->handle($io, $key);
+            return $this->itemStartHandler->handle($key);
         }
 
         return 0;
