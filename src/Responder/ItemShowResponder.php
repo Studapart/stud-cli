@@ -71,11 +71,17 @@ class ItemShowResponder
     protected function respondJson(ItemShowResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess() || $response->issue === null) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(
+                false,
+                error: $this->helper->translator->renderForAgentText($response->getErrorMessage() ?? 'Unknown error'),
+            );
         }
 
+        $issue = $this->serializer->serialize($response->issue);
+        unset($issue['renderedDescription']);
+
         return new AgentJsonResponse(true, data: [
-            'issue' => $this->serializer->serialize($response->issue),
+            'issue' => $issue,
         ]);
     }
 

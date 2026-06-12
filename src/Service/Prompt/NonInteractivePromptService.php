@@ -6,7 +6,7 @@ namespace App\Service\Prompt;
 
 use App\DTO\MessageRef;
 
-final class NonInteractivePromptService implements PromptInterface
+class NonInteractivePromptService implements PromptInterface
 {
     public function ask(MessageRef|string $question, ?string $default = null, ?callable $validator = null): ?string
     {

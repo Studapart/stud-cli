@@ -667,6 +667,31 @@ class ItemShowResponderTest extends CommandTestCase
         $this->assertSame(99, $result->data['issue']['attachments'][0]['size']);
         $this->assertSame('https://jira/rest/attachment/content/100', $result->data['issue']['attachments'][0]['contentUrl']);
         $this->assertSame('application/pdf', $result->data['issue']['attachments'][0]['mimeType']);
+        $this->assertArrayNotHasKey('renderedDescription', $result->data['issue']);
+    }
+
+    public function testRespondJsonOmitsRenderedDescriptionWhenPresent(): void
+    {
+        $issue = new WorkItem(
+            '1',
+            'PROJ-1',
+            'Test',
+            'Open',
+            'user',
+            'Plain description',
+            [],
+            'Story',
+            [],
+            null,
+            '<p>HTML rendered</p>',
+        );
+        $response = ItemShowResponse::success($issue);
+
+        $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertSame('Plain description', $result->data['issue']['description']);
+        $this->assertArrayNotHasKey('renderedDescription', $result->data['issue']);
     }
 
     public function testRespondJsonReturnsErrorWhenNotSuccess(): void

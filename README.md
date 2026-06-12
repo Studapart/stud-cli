@@ -64,12 +64,16 @@ stud help submit           # show command-specific help
 - [PHAR install](documentation/setup/phar.md)
 - [Portable install](documentation/setup/portable.md)
 - [Configuration](documentation/setup/configuration.md)
+- [GitHub integration](documentation/integrations/github.md)
+- [GitLab integration](documentation/integrations/gitlab.md)
+- [Automation and agent mode](documentation/features/automation.md)
 - [Feature overview](documentation/features/index.md)
 - [Workflow playbook](documentation/features/workflow-playbook.md)
 - [Command reference](documentation/reference/commands.md)
 - [GitHub Actions with stud-cli](documentation/github-actions.md)
 - [Development guide](documentation/development/index.md)
 - [Engineering conventions](CONVENTIONS.md)
-- [Architecture decisions](documentation/adr-005-responder-pattern-architecture.md)
+- [AI development protocol](AI.md)
+- [Documentation index and ADRs](documentation/index.md)
 
 See [CONTRIBUTING](CONTRIBUTING.md) for contribution expectations and [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for community standards.

@@ -836,7 +836,6 @@ Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-message: string
 ```
 
 Full success shape (`{"compact":false}`):
@@ -1902,7 +1901,7 @@ Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-message: string
+message: mixed
 action: string
 pullNumber: int
 target: string|null
@@ -1913,7 +1912,7 @@ Full success shape (`{"compact":false}`):
 
 ```text
 success: true
-message: string
+message: mixed
 action: string
 pullNumber: int
 target: string|null
@@ -2045,7 +2044,6 @@ Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-message: string
 ```
 
 Full success shape (`{"compact":false}`):

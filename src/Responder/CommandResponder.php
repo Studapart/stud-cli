@@ -12,7 +12,7 @@ use App\Response\CommandResponse;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
 
-final class CommandResponder
+class CommandResponder
 {
     public function __construct(
         private readonly Logger $logger,

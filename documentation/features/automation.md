@@ -19,8 +19,12 @@ Empty input returns the essential commands used in common agent workflows. Pass
 `{"command":"<name-or-alias>"}` to inspect one command regardless of whether it is
 essential.
 
-Agent mode uses compact success output by default to reduce tokens. For
-completion-only commands, compact output omits `data`:
+Agent mode uses compact success output by default to reduce tokens. The `compact`
+flag (default `true`) omits `data` only for **completion-only** commands. Commands
+that return structured `data` (for example `items:show`, `config:show`) always
+include `data` regardless of `compact`.
+
+For completion-only commands, compact output omits `data`:
 
 ```json
 {"success":true}
@@ -43,6 +47,11 @@ stud submit --labels "AI-Generated,RFR" --quiet
 stud branches:clean --quiet
 stud update --quiet
 ```
+
+## AI development protocol
+
+Agents implementing features in this repository must follow [AI.md](../../AI.md)
+(`--agent` first, four-phase protocol, `CONVENTIONS.md` compliance).
 
 ## CI Setup
 

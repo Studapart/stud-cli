@@ -1418,6 +1418,7 @@ function _agent_respond(AgentJsonResponse $agentResponse): void
 }
 
 #[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]
+#[AgentCommand(essential: true)]
 #[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira and Git provider connectivity status')]
 function config_validate(
     #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
@@ -2659,7 +2660,8 @@ function submit(
         $pushResponse = _agent_submit_run_push_phase($agentSubmitInput);
         if (! $pushResponse->isSuccess()) {
             $responder = new CommandResponder(_get_logger(), _get_agent_message_renderer());
-            _agent_respond($responder->respond($pushResponse, OutputFormat::Json));
+            $pushCompact = _agent_compact_enabled($agentSubmitInput);
+            _agent_respond($responder->respond($pushResponse, OutputFormat::Json, $pushCompact));
 
             return;
         }

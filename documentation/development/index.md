@@ -51,6 +51,12 @@ scripts/build-phar --version 1.0.0 --output stud-1.0.0.phar
 
 Portable packaging consumes the canonical PHAR and a platform runtime. See [stud-portable packaging](../stud-portable-prototype.md).
 
+## AI and agent workflows
+
+- [AI development protocol](../../AI.md)
+- [Automation and agent mode](../features/automation.md)
+- [Documentation index](../index.md)
+
 ## Architecture
 
 - [Engineering conventions](../../CONVENTIONS.md)
