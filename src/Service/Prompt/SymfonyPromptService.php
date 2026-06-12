@@ -8,7 +8,7 @@ use App\DTO\MessageRef;
 use App\Service\MessageRenderer;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-final class SymfonyPromptService implements PromptInterface
+class SymfonyPromptService implements PromptInterface
 {
     public function __construct(
         private readonly SymfonyStyle $io,

@@ -605,7 +605,7 @@ vendor/bin/phpstan analyse
 
 ### Automation and AI Usage
 
-Scripts and AI agents using `stud-cli` MUST use non-interactive flags where available (`--quiet` or `-q` on commands that support it) to avoid prompts and ensure consistent behavior. See `AI.md` for the full AI development protocol.
+Scripts and AI agents using `stud-cli` MUST use `--agent` mode on commands that support it (JSON input/output, non-interactive). Fall back to `--quiet` / `-q` only when a command lacks `--agent` support. See `AI.md` and `documentation/features/automation.md` for the full AI development protocol.
 
 ## Summary
 

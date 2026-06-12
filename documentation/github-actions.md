@@ -14,7 +14,7 @@ Path in this repository: **`.github/actions/stud-cli-setup`**.
 4. Optionally writes **`.git/stud.config`** from the `project-stud-config` input (you must **`actions/checkout`** before this action when using project config).
 5. Runs **`echo '{"skipJira":false,"skipGit":…}' | stud config:validate --agent`** when `run-config-validate` is `true` (default).
 
-Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.git/stud.config`** (see README [Configuration](../README.md#configuration)).
+Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.git/stud.config`** (see [Configuration](setup/configuration.md)).
 
 ### Pinning the install script
 

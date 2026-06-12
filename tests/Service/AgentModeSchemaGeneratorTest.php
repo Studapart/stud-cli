@@ -22,6 +22,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
     private const ESSENTIAL_COMMANDS = [
         'commit',
         'config:show',
+        'config:validate',
         'confluence:show',
         'flatten',
         'help',

@@ -83,7 +83,7 @@ class DeployHandler
             return [];
         } catch (\Exception $e) {
             if ($remoteExists) {
-                return [$this->warning('deploy.warning_branch_cleanup', [
+                return [$this->buildWarningResponse('deploy.warning_branch_cleanup', [
                     'branch' => $branchName,
                     'error' => $e->getMessage(),
                 ])];
@@ -93,9 +93,9 @@ class DeployHandler
         try {
             $this->gitRepository->deleteBranchForce($branchName);
 
-            return [$this->warning('branches.clean.force_delete_warning', ['branch' => $branchName])];
+            return [$this->buildWarningResponse('branches.clean.force_delete_warning', ['branch' => $branchName])];
         } catch (\Exception $forceException) {
-            return [$this->warning('deploy.warning_branch_cleanup', [
+            return [$this->buildWarningResponse('deploy.warning_branch_cleanup', [
                 'branch' => $branchName,
                 'error' => $forceException->getMessage(),
             ])];
@@ -105,7 +105,7 @@ class DeployHandler
     /**
      * @param array<string, mixed> $params
      */
-    private function warning(string $key, array $params): ResponseMessage
+    private function buildWarningResponse(string $key, array $params): ResponseMessage
     {
         $message = MessageRef::key($key, $params);
         $this->logger?->addWarning(WorkflowOutput::VERBOSITY_NORMAL, $message);

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Monthly maintenance (SCI-130):** doc index, link fixes, agent help wording, `config:validate` essential, slim `items:show` agent JSON, arch-test fix, remove `final` on injectables
+
 ### Fixed
 
 - **Agent JSON purity (SCI-127):** Agent mode now suppresses human logger/listener output and keeps stdout to a single structured JSON response.
