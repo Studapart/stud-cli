@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Response;
 
 use App\DTO\BranchListRow;
+use App\DTO\MessageRef;
 
 final class BranchListResponse extends AbstractResponse
 {
@@ -13,7 +14,7 @@ final class BranchListResponse extends AbstractResponse
      */
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly array $rows
     ) {
         parent::__construct($success, $error);
@@ -27,7 +28,7 @@ final class BranchListResponse extends AbstractResponse
         return new self(true, null, $rows);
     }
 
-    public static function error(string $error): self
+    public static function error(MessageRef|string $error): self
     {
         return new self(false, $error, []);
     }

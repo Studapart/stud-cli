@@ -23,9 +23,9 @@ class BranchCleanupExecutorTest extends CommandTestCase
         parent::setUp();
 
         $this->logger = $this->createMock(Logger::class);
-        $this->logger->method('text');
-        $this->logger->method('writeln');
-        $this->logger->method('warning');
+        $this->logger->method('addText');
+        $this->logger->method('addLine');
+        $this->logger->method('addWarning');
 
         $this->executor = new BranchCleanupExecutor(
             $this->gitRepository,

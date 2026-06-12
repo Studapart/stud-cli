@@ -175,15 +175,15 @@ class SubmitHandlerTest extends CommandTestCase
             ));
 
         $this->logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
+                $this->messageRefWithKey('submit.error_assign_author')
             );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addGitLine');
+        $this->logger->method('addJiraLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -406,16 +406,16 @@ class SubmitHandlerTest extends CommandTestCase
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
         $this->logger->expects($this->once())
-            ->method('note')
+            ->method('addNote')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
                 $this->translationService->trans('submit.note_dirty_working')
             );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addGitLine');
+        $this->logger->method('addJiraLine');
+        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -773,16 +773,16 @@ class SubmitHandlerTest extends CommandTestCase
             );
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_create_pr'),
+                $this->messageRefWithKey('submit.error_create_pr'),
                 $this->stringContains('GitHub API Error (Status: 500)')
             );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addGitLine');
+        $this->logger->method('addJiraLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -817,12 +817,12 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('createPullRequest')
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('warning');
-        $this->logger->method('success');
-        $this->logger->method('text')
+        $this->logger->method('addSection');
+        $this->logger->method('addJiraLine');
+        $this->logger->method('addGitLine');
+        $this->logger->method('addWarning');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls
                 if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
@@ -1322,17 +1322,17 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Failed to get labels.', 'HTTP 500: Internal Server Error', 500));
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_fetch_labels'),
+                $this->messageRefWithKey('submit.error_fetch_labels'),
                 'HTTP 500: Internal Server Error'
             );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addGitLine');
+        $this->logger->method('addJiraLine');
+        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1369,16 +1369,16 @@ class SubmitHandlerTest extends CommandTestCase
 
         // Mock the methods that will be called
         $this->logger->expects($this->exactly(2))
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
+            ->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $this->logger->expects($this->once())
-            ->method('success')
+            ->method('addSuccess')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
@@ -1411,13 +1411,13 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
+            ->willReturn('Ignore: Skip this label and remove it from the final list');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1447,13 +1447,13 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_retry_option'));
+            ->willReturn('Retry: Abort the command and re-run with a corrected list');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1478,7 +1478,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->logger->expects($this->never())
             ->method('choice');
 
-        $this->logger->method('text')
+        $this->logger->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
@@ -1510,16 +1510,16 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->exactly(2))
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
+            ->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $this->logger->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
@@ -1551,19 +1551,19 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->exactly(2))
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
+            ->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_create_label'),
+                $this->messageRefWithKey('submit.error_create_label'),
                 'HTTP 422: Validation Failed'
             );
 
@@ -1591,17 +1591,17 @@ class SubmitHandlerTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())
-            ->method('text')
+            ->method('addText')
             ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $this->logger->expects($this->once())
             ->method('choice')
             ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
+            ->willReturn('Ignore: Skip this label and remove it from the final list');
 
         $this->logger->expects($this->once())
-            ->method('writeln')
-            ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->stringContains('ignored'));
+            ->method('addLine')
+            ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->messageRefWithKey('submit.label_ignored'));
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -2322,7 +2322,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
 
         $this->logger->expects($this->once())
-            ->method('warning')
+            ->method('addWarning')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
                 [
@@ -2366,8 +2366,8 @@ class SubmitHandlerTest extends CommandTestCase
             $this->htmlConverter
         );
 
-        $this->logger->expects($this->once())->method('note');
-        $this->logger->expects($this->once())->method('success');
+        $this->logger->expects($this->once())->method('addNote');
+        $this->logger->expects($this->once())->method('addSuccess');
 
         $result = $this->callPrivateMethod($handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(), []]);
 
@@ -2391,7 +2391,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('assignPullRequestToAuthor')
             ->with($existingPr);
-        $this->logger->expects($this->once())->method('success');
+        $this->logger->expects($this->once())->method('addSuccess');
 
         $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);
 
@@ -2416,10 +2416,10 @@ class SubmitHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Assignment failed'));
         $this->logger
             ->expects($this->once())
-            ->method('error')
+            ->method('addError')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
+                $this->messageRefWithKey('submit.error_assign_author')
             );
 
         $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);

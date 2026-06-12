@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
+use App\DTO\MessageRef;
 use App\DTO\Project;
 use App\Exception\ApiException;
 use App\Response\ItemCreateResponse;
@@ -13,7 +14,8 @@ use App\Service\FieldsParser;
 use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
 use App\Service\JiraService;
-use App\Service\TranslationService;
+use App\Service\Prompt\NonInteractivePromptService;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemCreateHandler
@@ -21,11 +23,16 @@ class ItemCreateHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator,
+        mixed $_translator,
         private readonly IssueFieldResolver $fieldResolver,
-        private readonly FieldsParser $fieldsParser
+        private readonly FieldsParser $fieldsParser,
+        ?PromptInterface $prompt = null,
     ) {
+        unset($_translator);
+        $this->prompt = $prompt ?? new NonInteractivePromptService();
     }
+
+    private readonly PromptInterface $prompt;
 
     public function handle(SymfonyStyle $io, bool $interactive, ItemCreateInput $input): ItemCreateResponse
     {
@@ -38,7 +45,7 @@ class ItemCreateHandler
 
         $summary = $this->resolveSummary($io, $interactive, $input->summary);
         if ($summary === null || $summary === '') {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_no_summary'));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_no_summary'));
         }
 
         $stateOrError = $this->resolveTypeMetadata($projectKey, $type, $summary, $input);
@@ -83,13 +90,13 @@ class ItemCreateHandler
     ): IssueCreationState|ItemCreateResponse {
         $issueTypeId = $this->fieldResolver->resolveIssueTypeId($projectKey, $type);
         if ($issueTypeId === null) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
         }
 
         try {
             $allFieldsMeta = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
 
         $description = $this->getDescription($input->descriptionOption);
@@ -176,7 +183,7 @@ class ItemCreateHandler
                 $extraRequired
             );
 
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_extra_required', ['fields' => $fieldsList]));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_extra_required', ['fields' => $fieldsList]));
         }
         foreach ($prompted as $fieldId => $value) {
             $state->fields[$this->fieldResolver->getCreatePayloadFieldKey((string) $fieldId)] = $value;
@@ -199,9 +206,9 @@ class ItemCreateHandler
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
 
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $error]));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_create', ['error' => $error]));
         } catch (\Throwable $e) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_create', ['error' => $e->getMessage()]));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_create', ['error' => $e->getMessage()]));
         }
     }
 
@@ -214,11 +221,11 @@ class ItemCreateHandler
     {
         $projectKey = $this->resolveProjectKey($io, $interactive, $project);
         if ($projectKey === null) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_no_project'));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_no_project'));
         }
         $projectDto = $this->ensureProjectExists($io, $interactive, $projectKey);
         if ($projectDto === null) {
-            return ItemCreateResponse::error($this->translator->trans('item.create.error_project_not_found', ['key' => $projectKey]));
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_project_not_found', ['key' => $projectKey]));
         }
 
         return $projectDto->key;
@@ -242,7 +249,7 @@ class ItemCreateHandler
             return null;
         }
 
-        return $io->ask($this->translator->trans('item.create.prompt_project'));
+        return $this->prompt->ask(MessageRef::key('item.create.prompt_project'));
     }
 
     /**
@@ -257,7 +264,7 @@ class ItemCreateHandler
             if (! $interactive) {
                 return null;
             }
-            $newKey = $io->ask($this->translator->trans('item.create.prompt_project_not_found', ['key' => $projectKey]));
+            $newKey = $this->prompt->ask(MessageRef::key('item.create.prompt_project_not_found', ['key' => $projectKey]));
             if ($newKey === null || trim($newKey) === '') {
                 return null;
             }
@@ -280,7 +287,7 @@ class ItemCreateHandler
             return null;
         }
 
-        return $io->ask($this->translator->trans('item.create.prompt_summary'));
+        return $this->prompt->ask(MessageRef::key('item.create.prompt_summary'));
     }
 
     /**
@@ -415,7 +422,7 @@ class ItemCreateHandler
                 $allFields
             );
         }
-        $value = $io->ask($this->translator->trans('item.create.prompt_custom_field', ['name' => $name]));
+        $value = $this->prompt->ask(MessageRef::key('item.create.prompt_custom_field', ['name' => $name]));
         if ($value === null || trim($value) === '') {
             return null;
         }
@@ -484,7 +491,7 @@ class ItemCreateHandler
             return null;
         }
         $choices = array_column($issueTypes, 'name');
-        $selectedName = $io->choice($this->translator->trans('item.create.prompt_issue_type_choice'), $choices);
+        $selectedName = $this->prompt->choice(MessageRef::key('item.create.prompt_issue_type_choice'), $choices);
         foreach ($issueTypes as $it) {
             if ($it['name'] === $selectedName) {
                 return $it['id'];
@@ -503,7 +510,7 @@ class ItemCreateHandler
         if ($descriptionAdf !== null) {
             return $descriptionAdf;
         }
-        $answer = $io->ask($this->translator->trans('item.create.prompt_description_required'));
+        $answer = $this->prompt->ask(MessageRef::key('item.create.prompt_description_required'));
         if ($answer === null || trim($answer) === '') {
             return null;
         }

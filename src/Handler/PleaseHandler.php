@@ -4,33 +4,33 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class PleaseHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(): CommandResponse|int
     {
         $upstream = $this->gitRepository->getUpstreamBranch();
 
         if (null === $upstream) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('please.error_no_upstream')));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('please.error_no_upstream'));
         }
 
-        $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('please.warning_force'));
         $this->gitRepository->forcePushWithLease();
 
-        return 0;
+        return CommandResponse::success(
+            MessageRef::key('push.success'),
+            messages: [ResponseMessage::warning(MessageRef::key('please.warning_force'))],
+        );
     }
 }

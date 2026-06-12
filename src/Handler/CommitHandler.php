@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\JiraService;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\Prompt\PromptInterface;
 
 class CommitHandler
 {
@@ -18,20 +19,20 @@ class CommitHandler
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
+        private readonly PromptInterface $prompt
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io, bool $isNew, ?string $message, bool $stageAll = false, bool $quiet = false): int
+    public function handle(mixed $first, mixed $second = null, mixed $third = null, mixed $fourth = false, mixed $fifth = false): CommandResponse|int
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.section'));
-
+        [$isNew, $message, $stageAll, $quiet] = $this->normalizeHandleArguments($first, $second, $third, $fourth, $fifth);
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (empty(trim($gitStatus))) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.note_clean_working_tree'));
-
-            return 0;
+            return CommandResponse::success(
+                messages: [ResponseMessage::notice(MessageRef::key('commit.note_clean_working_tree'))],
+            );
         }
 
         if (! empty($message)) {
@@ -46,22 +47,29 @@ class CommitHandler
         return $this->commitWithJiraPrompt($stageAll, $quiet);
     }
 
-    protected function commitWithMessage(string $message, bool $stageAll): int
+    /**
+     * @return array{0: bool, 1: string|null, 2: bool, 3: bool}
+     */
+    private function normalizeHandleArguments(mixed $first, mixed $second, mixed $third, mixed $fourth, mixed $fifth): array
+    {
+        if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
+            return [(bool) $second, is_string($third) ? $third : null, (bool) $fourth, (bool) $fifth];
+        }
+
+        return [(bool) $first, is_string($second) ? $second : null, (bool) $third, (bool) $fourth];
+    }
+
+    protected function commitWithMessage(string $message, bool $stageAll): CommandResponse
     {
         if (! $stageAll && ! $this->hasStagedChanges()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('commit.no_staged_changes'));
         }
         if ($stageAll) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
             $this->gitRepository->stageAllChanges();
         }
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.committing'));
         $this->gitRepository->commit($message);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.success'));
 
-        return 0;
+        return CommandResponse::success(MessageRef::key('commit.success'), ['commitMessage' => $message]);
     }
 
     protected function resolveLatestLogicalSha(bool $isNew): ?string
@@ -69,48 +77,41 @@ class CommitHandler
         if ($isNew) {
             return null;
         }
-        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, '  ' . $this->translator->trans('commit.checking_logical'));
         $sha = $this->gitRepository->findLatestLogicalSha($this->baseBranch);
-        if ($sha !== null) {
-            $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.found_logical', ['sha' => $sha])}");
-        }
 
         return $sha;
     }
 
-    protected function commitFixupForSha(string $latestLogicalSha, bool $stageAll): int
+    protected function commitFixupForSha(string $latestLogicalSha, bool $stageAll): CommandResponse
     {
         if (! $stageAll && ! $this->hasStagedChanges()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('commit.no_staged_changes'));
         }
         if ($stageAll) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
             $this->gitRepository->stageAllChanges();
         }
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.creating_fixup', ['sha' => $latestLogicalSha]));
         $this->gitRepository->commitFixup($latestLogicalSha);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.fixup_success', ['sha' => $latestLogicalSha]));
 
-        return 0;
+        return CommandResponse::success(
+            MessageRef::key('commit.fixup_success', ['sha' => $latestLogicalSha]),
+            ['fixupSha' => $latestLogicalSha],
+        );
     }
 
-    protected function commitWithJiraPrompt(bool $stageAll, bool $quiet): int
+    protected function commitWithJiraPrompt(bool $stageAll, bool $quiet): CommandResponse
     {
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.note_no_logical'));
+        $messages = [ResponseMessage::notice(MessageRef::key('commit.note_no_logical'))];
 
         $key = $this->gitRepository->getJiraKeyFromBranchName();
         if (! $key) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.error_no_key')));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('commit.error_no_key'), $messages);
         }
 
-        $issue = $this->fetchIssueForCommit($key);
-        if ($issue === null) {
-            return 1;
+        $issueResult = $this->fetchIssueForCommit($key);
+        if ($issueResult instanceof CommandResponse) {
+            return $issueResult;
         }
+        $issue = $issueResult;
 
         $detectedType = $this->getCommitTypeFromIssueType($issue->issueType);
         $defaultScope = ! empty($issue->components) ? $issue->components[0] : null;
@@ -125,44 +126,36 @@ class CommitHandler
             $summary = $summary ?? $issue->title;
         }
 
-        $this->logJiraDetails($issue, $detectedType);
         $commitMessage = "{$type}" . ($scope ? "({$scope})" : '') . ": {$summary} [{$key}]";
-        $this->logger->gitWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.generated_message', ['message' => $commitMessage])}");
 
         if (! $stageAll && ! $this->hasStagedChanges()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('commit.no_staged_changes')));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('commit.no_staged_changes'), $messages);
         }
         if ($stageAll) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.staging_conditional'));
             $this->gitRepository->stageAllChanges();
         }
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.committing_simple'));
         $this->gitRepository->commit($commitMessage);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.success'));
 
-        return 0;
+        return CommandResponse::success(
+            MessageRef::key('commit.success'),
+            ['jiraKey' => $key, 'commitMessage' => $commitMessage],
+            $messages,
+        );
     }
 
-    protected function fetchIssueForCommit(string $key): ?WorkItem
+    protected function fetchIssueForCommit(string $key): WorkItem|CommandResponse
     {
         try {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('commit.fetching_jira', ['key' => $key])}");
-
             return $this->jiraService->getIssue($key);
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('commit.error_not_found', ['key' => $key]),
-                $e->getTechnicalDetails()
+            $error = MessageRef::key('commit.error_not_found', ['key' => $key]);
+
+            return CommandResponse::error(
+                $error,
+                [ResponseMessage::error($error, $e->getTechnicalDetails())],
             );
-
-            return null;
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('commit.error_not_found', ['key' => $key]));
-
-            return null;
+            return CommandResponse::error(MessageRef::key('commit.error_not_found', ['key' => $key]));
         }
     }
 
@@ -172,23 +165,13 @@ class CommitHandler
     protected function promptTypeScopeSummary(WorkItem $issue, string $detectedType, ?string $defaultScope): array
     {
         $scopePrompt = ! empty($issue->components)
-            ? $this->translator->trans('commit.scope_auto', ['scope' => $defaultScope])
-            : $this->translator->trans('commit.scope_prompt');
-        $type = $this->logger->ask($this->translator->trans('commit.type_prompt', ['type' => $detectedType]), $detectedType);
-        $scope = $this->logger->ask($scopePrompt, $defaultScope);
-        $summary = $this->logger->ask($this->translator->trans('commit.summary_prompt'), $issue->title);
+            ? MessageRef::key('commit.scope_auto', ['scope' => $defaultScope])
+            : MessageRef::key('commit.scope_prompt');
+        $type = $this->prompt->ask(MessageRef::key('commit.type_prompt', ['type' => $detectedType]), $detectedType);
+        $scope = $this->prompt->ask($scopePrompt, $defaultScope);
+        $summary = $this->prompt->ask(MessageRef::key('commit.summary_prompt'), $issue->title);
 
         return [$type, $scope, $summary];
-    }
-
-    protected function logJiraDetails(WorkItem $issue, string $detectedType): void
-    {
-        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "  {$this->translator->trans('commit.jira_details')}");
-        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_title', ['title' => $issue->title])}");
-        $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_type', ['type' => $issue->issueType, 'commit_type' => $detectedType])}");
-        if (! empty($issue->components)) {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERY_VERBOSE, "    {$this->translator->trans('commit.jira_components', ['components' => implode(', ', $issue->components)])}");
-        }
     }
 
     protected function getCommitTypeFromIssueType(string $issueType): string

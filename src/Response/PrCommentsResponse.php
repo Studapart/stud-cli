@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestFeedbackConversation;
 
@@ -17,7 +18,7 @@ final class PrCommentsResponse extends AbstractResponse
      */
     private function __construct(
         bool $success = true,
-        ?string $error = null,
+        MessageRef|string|null $error = null,
         public readonly array $issueComments = [],
         public readonly array $reviewComments = [],
         public readonly array $reviews = [],
@@ -52,7 +53,7 @@ final class PrCommentsResponse extends AbstractResponse
         );
     }
 
-    public static function error(string $error): self
+    public static function error(MessageRef|string $error): self
     {
         return new self(success: false, error: $error);
     }

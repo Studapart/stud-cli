@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -12,10 +13,11 @@ class PortableUpdateService
 {
     public function __construct(
         protected readonly UpdateRepositoryContext $repository,
-        protected readonly TranslationService $translator,
-        protected readonly Logger $logger,
+        mixed $translator,
+        protected readonly WorkflowOutput $logger,
         protected readonly ?HttpClientInterface $httpClient = null,
     ) {
+        unset($translator);
     }
 
     /**
@@ -50,7 +52,7 @@ class PortableUpdateService
 
     protected function fail(string $translationKey): int
     {
-        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans($translationKey)));
+        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key($translationKey));
 
         return 1;
     }
@@ -97,7 +99,7 @@ class PortableUpdateService
 
             return $this->activateBundle($context, $extractedRoot, $artifactName, $quiet);
         } catch (\Throwable $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_update_failed', ['error' => $e->getMessage()])));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_update_failed', ['error' => $e->getMessage()]));
 
             return 1;
         } finally {
@@ -159,12 +161,12 @@ class PortableUpdateService
         $expectedHash = $this->expectedChecksum($checksumsPath, $artifactName);
         $actualHash = hash_file('sha256', $archivePath);
         if ($expectedHash === null || $actualHash === false || ! hash_equals(strtolower($expectedHash), strtolower($actualHash))) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_checksum_failed')));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_checksum_failed'));
 
             return false;
         }
 
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.success_hash_verified'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
 
         return true;
     }
@@ -192,7 +194,7 @@ class PortableUpdateService
         $process = new Process(['tar', '-xzf', $workspace . '/' . $artifactName, '-C', $workspace]);
         $process->run();
         if (! $process->isSuccessful()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_extract_failed')));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_extract_failed'));
 
             return null;
         }
@@ -210,7 +212,7 @@ class PortableUpdateService
             return true;
         }
 
-        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_smoke_failed')));
+        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_smoke_failed'));
 
         return false;
     }
@@ -240,7 +242,7 @@ class PortableUpdateService
             // @codeCoverageIgnoreEnd
         }
 
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.portable_success', ['version' => $version]));
+        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_success', ['version' => $version]));
         $this->cleanupOldVersions($context, $version, $quiet);
 
         return 0;
@@ -264,7 +266,7 @@ class PortableUpdateService
         @unlink($temporaryLink);
         if (! symlink($newTarget, $temporaryLink)) {
             // @codeCoverageIgnoreStart
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_symlink_failed')));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
 
             return false;
             // @codeCoverageIgnoreEnd
@@ -278,7 +280,7 @@ class PortableUpdateService
         @unlink($temporaryLink);
         @unlink($symlinkPath);
         @symlink($previousTarget, $symlinkPath);
-        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_symlink_failed')));
+        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
 
         return false;
         // @codeCoverageIgnoreEnd
@@ -302,7 +304,7 @@ class PortableUpdateService
             return false;
         }
 
-        return $this->logger->confirm($this->translator->trans('update.portable_cleanup_prompt'), false);
+        return $this->logger->confirm(MessageRef::key('update.portable_cleanup_prompt'), false);
     }
 
     /**

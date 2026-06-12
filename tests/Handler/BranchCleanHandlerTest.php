@@ -31,12 +31,12 @@ class BranchCleanHandlerTest extends CommandTestCase
         parent::setUp();
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $this->logger = $this->createMock(Logger::class);
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('writeln');
-        $this->logger->method('warning');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addLine');
+        $this->logger->method('addWarning');
+        $this->logger->method('addSuccess');
         $this->logger->method('confirm')->willReturn(true);
         $this->logger->method('ask')->willReturn('develop');
 
@@ -156,12 +156,12 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleQuietKeepsExistingRemoteForProviderMergedBranch(): void
     {
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('note');
-        $logger->method('text');
-        $logger->method('writeln');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addSection');
+        $logger->method('addNote');
+        $logger->method('addText');
+        $logger->method('addLine');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
         $logger->expects($this->never())->method('confirm');
         $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
         $handler = new BranchCleanHandler(
@@ -275,7 +275,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->once())->method('confirm')->willReturn(false);
-        $logger->method('text');
+        $logger->method('addText');
         $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
         $handler = new BranchCleanHandler(
             $this->gitRepository,
@@ -294,12 +294,12 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testHandleReturnsEarlyWhenDeletionCancelled(): void
     {
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('note');
-        $logger->method('text');
-        $logger->method('writeln');
-        $logger->method('warning');
-        $logger->method('success');
+        $logger->method('addSection');
+        $logger->method('addNote');
+        $logger->method('addText');
+        $logger->method('addLine');
+        $logger->method('addWarning');
+        $logger->method('addSuccess');
         $logger->expects($this->once())->method('confirm')->willReturn(false);
         $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
         $handler = new BranchCleanHandler(
@@ -418,7 +418,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     public function testResolveBaseBranchInteractiveValidationAndSuccessPath(): void
     {
         $logger = $this->createMock(Logger::class);
-        $logger->method('ask')->willReturnCallback(function (string $question, string $default, callable $validator): string {
+        $logger->method('ask')->willReturnCallback(function ($question, string $default, callable $validator): string {
             try {
                 $validator('');
             } catch (\RuntimeException) {

@@ -376,14 +376,14 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_not_found'),
+                $this->messageRefWithKey('item.transition.error_not_found'),
                 'HTTP 404: Not Found'
             );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addJiraLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -415,12 +415,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->once())->method('getTransitions')->with('TPW-35')->willReturn($transitions);
         $this->jiraService->expects($this->never())->method('transitionIssue');
 
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addJiraLine');
         $this->logger->expects($this->once())
             ->method('choice')
             ->willReturn('Invalid selection without ID');
-        $this->logger->expects($this->once())->method('error');
+        $this->logger->expects($this->once())->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -535,14 +535,14 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Could not fetch transitions for issue "TPW-35".', 'HTTP 500: Internal Server Error', 500));
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_fetch'),
+                $this->messageRefWithKey('item.transition.error_fetch'),
                 'HTTP 500: Internal Server Error'
             );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addJiraLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -653,18 +653,18 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Could not execute transition 11 for issue "TPW-35".', 'HTTP 400: Bad Request', 400));
 
         $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_execute'),
+                $this->messageRefWithKey('item.transition.error_execute'),
                 'HTTP 400: Bad Request'
             );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('listing');
+        $this->logger->method('addSection');
+        $this->logger->method('addJiraLine');
+        $this->logger->method('addListing');
         $this->logger->method('choice')
             ->willReturn('Start Progress (ID: 11)');
-        $this->logger->method('success');
+        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);

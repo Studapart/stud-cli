@@ -27,7 +27,7 @@ class ConfluenceShowResponder
     {
         if ($format === OutputFormat::Json) {
             if (! $response->isSuccess()) {
-                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+                return new AgentJsonResponse(false, error: $this->helper->translator->renderForAgentText($response->getErrorMessage()));
             }
 
             return new AgentJsonResponse(true, data: [
@@ -41,7 +41,7 @@ class ConfluenceShowResponder
         $this->helper->initSection($this->logger, 'confluence.show.section', []);
 
         if (! $response->isSuccess()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $response->getError());
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->helper->translator->renderText($response->getErrorMessage()));
 
             return null;
         }

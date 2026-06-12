@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 final class ItemDownloadResponse extends AbstractResponse
 {
     /**
@@ -12,7 +14,7 @@ final class ItemDownloadResponse extends AbstractResponse
      */
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly array $files,
         public readonly array $errors
     ) {
@@ -28,7 +30,7 @@ final class ItemDownloadResponse extends AbstractResponse
         return new self(true, null, $files, $errors);
     }
 
-    public static function fatal(string $error): self
+    public static function fatal(MessageRef|string $error): self
     {
         return new self(false, $error, [], []);
     }

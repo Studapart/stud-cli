@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 final class ConfluenceShowResponse extends AbstractResponse
 {
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly ?string $id = null,
         public readonly ?string $title = null,
         public readonly ?string $url = null,
@@ -22,7 +24,7 @@ final class ConfluenceShowResponse extends AbstractResponse
         return new self(true, null, $id, $title, $url, $body);
     }
 
-    public static function error(string $error): self
+    public static function error(MessageRef|string $error): self
     {
         return new self(false, $error, null, null, null, null);
     }

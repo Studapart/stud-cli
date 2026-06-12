@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
 use App\DTO\ValidationResult;
 
 /**
@@ -35,10 +36,11 @@ class ConfigValidator
     ];
 
     public function __construct(
-        private readonly Logger $logger,
-        private readonly TranslationService $translator,
+        private readonly WorkflowOutput $logger,
+        mixed $translator,
         private readonly ?GitBranchService $gitBranchService = null
     ) {
+        unset($translator);
     }
 
     /**
@@ -82,9 +84,9 @@ class ConfigValidator
             // Try auto-detection first
             $autoDetected = $this->autoDetectKey($key);
             if ($autoDetected !== null) {
-                $this->logger->note(
-                    Logger::VERBOSITY_NORMAL,
-                    $this->translator->trans('config.auto_detected', ['key' => $key, 'value' => $autoDetected])
+                $this->logger->addNote(
+                    WorkflowOutput::VERBOSITY_NORMAL,
+                    MessageRef::key('config.auto_detected', ['key' => $key, 'value' => $autoDetected])
                 );
                 $values[$key] = $autoDetected;
 
@@ -93,8 +95,8 @@ class ConfigValidator
 
             // Prompt user
             $prompt = $scope === 'global'
-                ? $this->translator->trans('config.missing_global_key', ['key' => $key])
-                : $this->translator->trans('config.missing_project_key', ['key' => $key]);
+                ? MessageRef::key('config.missing_global_key', ['key' => $key])
+                : MessageRef::key('config.missing_project_key', ['key' => $key]);
 
             $value = $this->logger->ask($prompt, null);
             if ($value !== null && trim($value) !== '') {

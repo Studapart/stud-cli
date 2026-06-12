@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
-use App\Service\Logger;
 use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
 use App\Service\PortableUpdateService;
-use App\Service\TranslationService;
 use App\Service\UpdateFileService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
 use App\Service\UpdateRepositoryContext;
+use App\Service\WorkflowOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -28,10 +28,10 @@ class UpdateHandler
         protected readonly string $repoName,
         protected readonly string $currentVersion,
         protected readonly string $binaryPath,
-        protected readonly TranslationService $translator,
+        protected readonly mixed $translator,
         protected readonly ChangelogParser $changelogParser,
         protected readonly UpdateFileService $updateFileService,
-        protected readonly Logger $logger,
+        protected readonly WorkflowOutput $logger,
         protected readonly FileSystem $fileSystem,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null
@@ -40,12 +40,12 @@ class UpdateHandler
 
     public function handle(SymfonyStyle $io, bool $info = false, bool $quiet = false): int
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.section'));
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.section'));
 
         $binaryPath = $this->updateFileService->getBinaryPath($this->binaryPath);
-        $this->logVerbose($this->translator->trans('update.binary_path'), $binaryPath);
-        $this->logVerbose($this->translator->trans('update.repository'), "{$this->repoOwner}/{$this->repoName}");
-        $this->logVerbose($this->translator->trans('update.current_version'), $this->currentVersion);
+        $this->logVerbose('Binary path', $binaryPath);
+        $this->logVerbose('Repository', "{$this->repoOwner}/{$this->repoName}");
+        $this->logVerbose('Current version', $this->currentVersion);
 
         $installContext = (new UpdateInstallDetector())->detect($binaryPath, $this->currentVersion);
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
@@ -98,7 +98,7 @@ class UpdateHandler
         bool $quiet,
     ): int {
         if ($installContext->legacyPortableLayout) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.portable_legacy_layout')));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_legacy_layout'));
 
             return 1;
         }
@@ -164,14 +164,14 @@ class UpdateHandler
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
         } catch (ApiException $e) {
             if ($e->getStatusCode() === 404) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.warning_no_releases')));
+                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
 
                 return ['release' => null, 'is404' => true];
             }
 
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()]),
+            $this->logger->addErrorWithDetails(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
@@ -180,12 +180,12 @@ class UpdateHandler
             // @codeCoverageIgnoreStart
             // Exception handling for non-ApiException errors is difficult to test
             if (str_contains($e->getMessage(), 'Status: 404')) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.warning_no_releases')));
+                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
 
                 return ['release' => null, 'is404' => true];
             }
 
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_fetch', ['error' => $e->getMessage()])));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]));
 
             return ['release' => null, 'is404' => false];
             // @codeCoverageIgnoreEnd
@@ -224,10 +224,10 @@ class UpdateHandler
         $latestVersion = ltrim($release['tag_name'] ?? '', 'v');
         $currentVersion = ltrim($this->currentVersion, 'v');
 
-        $this->logVerbose($this->translator->trans('update.latest_version'), $latestVersion);
+        $this->logVerbose('Latest version', $latestVersion);
 
         if (version_compare($latestVersion, $currentVersion, '<=')) {
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.success_latest', ['version' => $this->currentVersion]));
+            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.success_latest', ['version' => $this->currentVersion]));
 
             return true;
         }
@@ -244,7 +244,7 @@ class UpdateHandler
     // @codeCoverageIgnoreStart
     protected function findPharAsset(array $release): ?array
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
 
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'] ?? null;
@@ -257,7 +257,7 @@ class UpdateHandler
             }
         }
 
-        $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))])));
+        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))]));
 
         return null;
     }
@@ -275,14 +275,14 @@ class UpdateHandler
         // Extract asset ID from the asset object
         $assetId = $pharAsset['id'] ?? null;
         if (! $assetId) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_asset_id')));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
 
             return null;
         }
 
         // Construct the GitHub API asset endpoint URL
         $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
-        $this->logVerbose($this->translator->trans('update.downloading_from'), $apiUrl);
+        $this->logVerbose('Downloading from', $apiUrl);
 
         try {
             $headers = [
@@ -312,7 +312,7 @@ class UpdateHandler
         } catch (\Exception $e) {
             // @codeCoverageIgnoreStart
             // Exception handling for download failures is difficult to test
-            $this->logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_download', ['error' => $e->getMessage()])));
+            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));
 
             return null;
             // @codeCoverageIgnoreEnd
@@ -325,7 +325,7 @@ class UpdateHandler
      */
     protected function logVerbose(string $label, string $value): void
     {
-        $this->logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
+        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
     }
     // @codeCoverageIgnoreEnd
 
@@ -493,42 +493,27 @@ class UpdateHandler
      */
     protected function executePendingMigrations(array $pendingMigrations, array $config, string $configPath): int
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('migration.global.running'));
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('migration.global.running'));
         $executor = new MigrationExecutor($this->logger, $this->fileSystem, $this->translator);
         $executor->executeMigrations($pendingMigrations, $config, $configPath);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('migration.global.complete'));
+        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('migration.global.complete'));
 
         return 0;
     }
 
     /**
-     * Gets a formatted error message for migration failures with fallback.
-     *
-     * Attempts to translate the error message. If translation fails (returns the key
-     * or throws an exception), returns a fallback English message.
+     * Gets a migration failure message with fallback.
      *
      * @param string $migrationId The migration ID
      * @param string $errorMessage The original error message
-     * @return string The formatted error message
      */
-    private function getErrorMessage(string $migrationId, string $errorMessage): string
+    private function getErrorMessage(string $migrationId, string $errorMessage): MessageRef
     {
-        try {
-            $translated = $this->translator->trans('migration.error', [
-                'id' => $migrationId,
-                'error' => $errorMessage,
-            ]);
-
-            // If translation returns the key itself, it means translation failed
-            if ($translated === 'migration.error') {
-                return "Migration {$migrationId} failed: {$errorMessage}";
-            }
-
-            return $translated;
-        } catch (\Throwable $e) {
-            // If translation throws an exception, use fallback
-            return "Migration {$migrationId} failed: {$errorMessage}";
-        }
+        return MessageRef::key(
+            'migration.error',
+            ['id' => $migrationId, 'error' => $errorMessage],
+            "Migration {$migrationId} failed: {$errorMessage}",
+        );
     }
 
     /**
@@ -550,9 +535,9 @@ class UpdateHandler
         // Safely log error - if logging fails, still return 1
         try {
             $errorMessage = $this->getErrorMessage('prerequisite', $e->getMessage());
-            $this->logger->error(
-                Logger::VERBOSITY_NORMAL,
-                explode("\n", $errorMessage)
+            $this->logger->addError(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                $errorMessage
             );
         } catch (\Throwable $logError) {
             // If logging fails, silently continue - we still return 1 to indicate failure
@@ -680,15 +665,15 @@ class UpdateHandler
                 return;
             }
 
-            $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.changelog_section', ['version' => $tagName]));
+            $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.changelog_section', ['version' => $tagName]));
 
             // Display breaking changes first with warning
             if ($hasBreaking) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.breaking_changes_detected'));
+                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.breaking_changes_detected'));
                 foreach ($changes['breakingChanges'] as $breakingChange) {
-                    $this->logger->writeln(Logger::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
+                    $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
                 }
-                $this->logger->newLine(Logger::VERBOSITY_NORMAL);
+                $this->logger->addNewLine(WorkflowOutput::VERBOSITY_NORMAL);
             }
 
             // Display other sections
@@ -703,17 +688,17 @@ class UpdateHandler
                 // @codeCoverageIgnoreEnd
 
                 $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
-                $this->logger->text(Logger::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
+                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
                 foreach ($items as $item) {
-                    $this->logger->writeln(Logger::VERBOSITY_NORMAL, "  • {$item}");
+                    $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "  • {$item}");
                 }
-                $this->logger->newLine(Logger::VERBOSITY_NORMAL);
+                $this->logger->addNewLine(WorkflowOutput::VERBOSITY_NORMAL);
             }
         } catch (ApiException $e) {
-            $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
-            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            $this->logVerbose('Could not fetch changelog', $e->getMessage());
+            $this->logger->addText(WorkflowOutput::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
-            $this->logVerbose($this->translator->trans('update.changelog_error'), $e->getMessage());
+            $this->logVerbose('Could not fetch changelog', $e->getMessage());
         }
     }
     // @codeCoverageIgnoreEnd

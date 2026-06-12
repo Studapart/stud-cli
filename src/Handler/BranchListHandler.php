@@ -9,7 +9,6 @@ use App\Response\BranchListResponse;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\TranslationService;
 
 class BranchListHandler
 {
@@ -18,8 +17,9 @@ class BranchListHandler
         private readonly GitBranchService $gitBranchService,
         private readonly BranchDeletionEligibilityResolver $eligibilityResolver,
         private readonly ?string $configuredBaseBranch,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(): BranchListResponse
@@ -56,8 +56,8 @@ class BranchListHandler
 
             $rows[] = new BranchListRow(
                 $branchDisplay,
-                $this->translator->trans("branches.list.status.{$eligibility->status}"),
-                $this->translator->trans("branches.list.auto_clean.{$eligibility->decision->value}"),
+                "branches.list.status.{$eligibility->status}",
+                "branches.list.auto_clean.{$eligibility->decision->value}",
                 $remoteExists ? '✓' : '✗',
                 $eligibility->hasPullRequest ? '✓' : '✗'
             );

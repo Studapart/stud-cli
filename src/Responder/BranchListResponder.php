@@ -7,7 +7,6 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\BranchListResponse;
-use App\Service\DtoSerializer;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
@@ -18,14 +17,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchListResponder
 {
-    private readonly DtoSerializer $serializer;
-
     public function __construct(
         private readonly ResponderHelper $helper,
         private readonly Logger $logger,
-        ?DtoSerializer $serializer = null,
     ) {
-        $this->serializer = $serializer ?? new DtoSerializer();
     }
 
     public function respond(SymfonyStyle $io, BranchListResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
@@ -52,8 +47,8 @@ class BranchListResponder
                 [
                     new TableBlock([
                         new Column('branch', 'branches.list.column.branch', fn ($row) => $row->branch),
-                        new Column('status', 'branches.list.column.status', fn ($row) => $row->status),
-                        new Column('autoClean', 'branches.list.column.auto_clean', fn ($row) => $row->autoClean),
+                        new Column('status', 'branches.list.column.status', fn ($row) => $this->helper->translator->trans($row->status)),
+                        new Column('autoClean', 'branches.list.column.auto_clean', fn ($row) => $this->helper->translator->trans($row->autoClean)),
                         new Column('remote', 'branches.list.column.remote', fn ($row) => $row->remote),
                         new Column('pr', 'branches.list.column.pr', fn ($row) => $row->pr),
                     ]),
@@ -69,7 +64,13 @@ class BranchListResponder
     protected function respondJson(BranchListResponse $response): AgentJsonResponse
     {
         return new AgentJsonResponse(true, data: [
-            'rows' => $this->serializer->serializeList($response->rows),
+            'rows' => array_map(fn ($row): array => [
+                'branch' => $row->branch,
+                'status' => $this->helper->translator->transForAgentText($row->status),
+                'autoClean' => $this->helper->translator->transForAgentText($row->autoClean),
+                'remote' => $row->remote,
+                'pr' => $row->pr,
+            ], $response->rows),
         ]);
     }
 }

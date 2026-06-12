@@ -4,30 +4,28 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\WorkflowOutput;
 
 class DeployHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
+        private readonly ?WorkflowOutput $logger = null,
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io): void
+    public function handle(): CommandResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.section'));
-
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         if (! str_starts_with($currentBranch, 'release/v')) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.error_not_release'));
-
-            return;
+            return CommandResponse::error(MessageRef::key('deploy.error_not_release'));
         }
 
         $version = str_replace('release/v', '', $currentBranch);
@@ -38,7 +36,6 @@ class DeployHandler
         $this->gitRepository->merge($currentBranch);
         $this->gitRepository->tag('v' . $version, 'Release v' . $version);
         $this->gitRepository->pushTags('origin');
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.deployed'));
 
         // Update base branch
         $baseBranchName = str_replace('origin/', '', $this->baseBranch);
@@ -46,46 +43,73 @@ class DeployHandler
         $this->gitRepository->pull('origin', $baseBranchName);
         $this->gitRepository->rebase('main');
         $this->gitRepository->forcePushWithLeaseRemote('origin', $baseBranchName);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.updated_develop'));
 
-        $this->cleanupReleaseBranch($currentBranch);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.cleaned'));
+        $messages = $this->cleanupReleaseBranch($currentBranch);
 
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.success', ['version' => $version]));
+        return CommandResponse::success(
+            MessageRef::key('deploy.success', ['version' => $version]),
+            ['version' => $version, 'branch' => $currentBranch, 'baseBranch' => $baseBranchName],
+            $messages,
+        );
     }
 
-    private function cleanupReleaseBranch(string $branchName): void
+    /**
+     * @return list<ResponseMessage>
+     */
+    private function cleanupReleaseBranch(string $branchName): array
     {
+        $messages = [];
         if ($this->gitRepository->localBranchExists($branchName)) {
-            $this->deleteLocalBranch($branchName);
+            $messages = array_merge($messages, $this->deleteLocalBranch($branchName));
         }
 
         if ($this->gitRepository->remoteBranchExists('origin', $branchName)) {
             $this->gitRepository->deleteRemoteBranch('origin', $branchName);
         }
+
+        return $messages;
     }
 
-    private function deleteLocalBranch(string $branchName): void
+    /**
+     * @return list<ResponseMessage>
+     */
+    private function deleteLocalBranch(string $branchName): array
     {
         $remoteExists = $this->gitRepository->remoteBranchExists('origin', $branchName);
 
         try {
             $this->gitRepository->deleteBranch($branchName, $remoteExists);
 
-            return;
+            return [];
         } catch (\Exception $e) {
             if ($remoteExists) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.warning_branch_cleanup', ['branch' => $branchName, 'error' => $e->getMessage()]));
-
-                return;
+                return [$this->warning('deploy.warning_branch_cleanup', [
+                    'branch' => $branchName,
+                    'error' => $e->getMessage(),
+                ])];
             }
         }
 
         try {
             $this->gitRepository->deleteBranchForce($branchName);
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('branches.clean.force_delete_warning', ['branch' => $branchName]));
+
+            return [$this->warning('branches.clean.force_delete_warning', ['branch' => $branchName])];
         } catch (\Exception $forceException) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('deploy.warning_branch_cleanup', ['branch' => $branchName, 'error' => $forceException->getMessage()]));
+            return [$this->warning('deploy.warning_branch_cleanup', [
+                'branch' => $branchName,
+                'error' => $forceException->getMessage(),
+            ])];
         }
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function warning(string $key, array $params): ResponseMessage
+    {
+        $message = MessageRef::key($key, $params);
+        $this->logger?->addWarning(WorkflowOutput::VERBOSITY_NORMAL, $message);
+
+        return ResponseMessage::warning($message);
     }
 }

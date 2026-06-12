@@ -40,7 +40,7 @@ class PleaseHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: warning() was called, verified by return value
     }
 
@@ -58,7 +58,7 @@ class PleaseHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 }

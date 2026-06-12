@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Response\BranchSwitchResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\TranslationService;
 
 class BranchSwitchHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     /**
@@ -25,20 +26,20 @@ class BranchSwitchHandler
     {
         $normalizedKey = strtoupper(trim($key));
         if ($normalizedKey === '') {
-            return BranchSwitchResponse::error('', $this->translator->trans('branch.switch.error_no_key'));
+            return BranchSwitchResponse::error('', MessageRef::key('branch.switch.error_no_key'));
         }
 
         if (! $this->isWorkingDirectoryClean()) {
-            return BranchSwitchResponse::error($normalizedKey, $this->translator->trans('branch.switch.error_dirty_working'));
+            return BranchSwitchResponse::error($normalizedKey, MessageRef::key('branch.switch.error_dirty_working'));
         }
 
         $matches = $this->gitBranchService->findLocalBranchesContainingIssueKey($normalizedKey);
         if ($matches === []) {
-            return BranchSwitchResponse::error($normalizedKey, $this->translator->trans('branch.switch.error_no_branch', ['key' => $normalizedKey]));
+            return BranchSwitchResponse::error($normalizedKey, MessageRef::key('branch.switch.error_no_branch', ['key' => $normalizedKey]));
         }
 
         if ($selectedBranch === null && $quiet && count($matches) > 1) {
-            return BranchSwitchResponse::error($normalizedKey, $this->translator->trans('branch.switch.error_multiple_branches', [
+            return BranchSwitchResponse::error($normalizedKey, MessageRef::key('branch.switch.error_multiple_branches', [
                 'key' => $normalizedKey,
                 'branches' => implode("\n", array_map(fn (string $branch): string => "- {$branch}", $matches)),
             ]), $matches);

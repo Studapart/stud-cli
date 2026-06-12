@@ -35,11 +35,11 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->portableUpdateService = $this->createMock(PortableUpdateService::class);
         $this->logger = $this->createMock(Logger::class);
-        $this->logger->method('section')->willReturnCallback(function (): void {
+        $this->logger->method('addSection')->willReturnCallback(function (): void {
         });
-        $this->logger->method('writeln')->willReturnCallback(function (): void {
+        $this->logger->method('addLine')->willReturnCallback(function (): void {
         });
-        $this->logger->method('error')->willReturnCallback(function (): void {
+        $this->logger->method('addError')->willReturnCallback(function (): void {
         });
     }
 

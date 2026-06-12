@@ -116,14 +116,14 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('errorWithDetails')
+            ->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.takeover.error_not_found'),
+                $this->messageRefWithKey('item.takeover.error_not_found'),
                 'HTTP 404: Not Found'
             );
-        $logger->method('section');
-        $logger->method('jiraWriteln');
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
 
         $handler = new \App\Handler\ItemTakeoverHandler(
             $this->gitRepository,
@@ -281,9 +281,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addJiraLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls
                 if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
@@ -294,7 +294,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                     return;
                 }
             });
-        $logger->method('warning');
+        $logger->method('addWarning');
         $logger->method('confirm')
             ->willReturn(true); // User confirms to start fresh
 
@@ -987,9 +987,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->logger->expects($this->never())
             ->method('choice');
 
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -1039,10 +1039,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         // extractBranchNameFromSelection returns null when no match is found
         // This simulates user canceling or invalid selection
         // Mock the logger's choice() method to return an invalid selection
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('warning');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addJiraLine');
+        $this->logger->method('addWarning');
         // Return a selection that doesn't match any branch label
         $this->logger->method('choice')
             ->willReturn('Invalid Selection That Does Not Match');

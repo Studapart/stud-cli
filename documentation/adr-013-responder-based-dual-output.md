@@ -38,7 +38,9 @@
 **Chosen Option:** `Option 2 – Dual output inside existing Responders`
 
 **Justification:**
-Adding an `OutputFormat` parameter to each Responder's `respond()` method keeps the ADR-005 one-Action-one-Responder mapping intact while eliminating all 28 inline closures. A shared `DtoSerializer` service removes duplication, and a lightweight `AgentCommandResponder` covers int/void commands that lack a dedicated Responder.
+Adding an `OutputFormat` parameter to each Responder's `respond()` method keeps the ADR-005 one-Action-one-Responder mapping intact while eliminating all 28 inline closures. A shared `DtoSerializer` service removes duplication, and a lightweight `AgentCommandResponder` covers simple `CommandResponse` DTOs that lack domain-specific presentation.
+
+ADR-017 supersedes the earlier int/void transition state: handlers should now return concrete `AbstractResponse` DTOs with diagnostics, and `AgentCommandResponder` should serialize those responses instead of deriving output from exit codes plus generic strings.
 
 ### New Infrastructure
 
@@ -47,7 +49,7 @@ Adding an `OutputFormat` parameter to each Responder's `respond()` method keeps 
 | `OutputFormat` enum (`Cli`, `Json`) | Selects the rendering path inside a Responder |
 | `AgentJsonResponse` DTO | Standard wrapper (`success`, `data`/`error`) returned by Responders in JSON mode |
 | `DtoSerializer` service | Converts any DTO (including nested objects, `DateTimeInterface`, arrays) to `array<string, mixed>` |
-| `AgentCommandResponder` | Generic Responder for int/void handlers that only need a message |
+| `AgentCommandResponder` | Generic Responder for `CommandResponse` DTOs that only need completion-style output |
 
 ### Responder Signature Change
 

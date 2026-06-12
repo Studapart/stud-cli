@@ -9,11 +9,6 @@ namespace App\Service;
  */
 class DescriptionFormatter
 {
-    public function __construct(
-        private readonly TranslationService $translator
-    ) {
-    }
-
     /**
      * Sanitizes content by collapsing multiple consecutive newlines into single newlines.
      * Replaces 2+ consecutive newlines (\n{2,}) with a single newline.
@@ -47,7 +42,7 @@ class DescriptionFormatter
      *
      * @return array<int, array{title: string, contentLines: array<string>}>
      */
-    public function parseSections(string $description): array
+    public function parseSections(string $description, string $defaultTitle): array
     {
         $description = trim($description);
         if ($description === '') {
@@ -60,7 +55,7 @@ class DescriptionFormatter
         }
         $sections = [];
         foreach ($sectionParts as $sectionLines) {
-            $sections[] = $this->processOneSectionToTitleAndContent($sectionLines);
+            $sections[] = $this->processOneSectionToTitleAndContent($sectionLines, $defaultTitle);
         }
 
         return $sections;
@@ -96,7 +91,7 @@ class DescriptionFormatter
      * @param array<int, string> $sectionLines
      * @return array{title: string, contentLines: array<string>}
      */
-    protected function processOneSectionToTitleAndContent(array $sectionLines): array
+    protected function processOneSectionToTitleAndContent(array $sectionLines, string $defaultTitle): array
     {
         $title = '';
         $contentLines = [];
@@ -115,14 +110,14 @@ class DescriptionFormatter
             }
         }
         if ($title === '') {
-            $title = $this->translator->trans('item.show.label_description');
+            $title = $defaultTitle;
         }
         if ($contentLines === [] && $title !== '') {
             $isSectionHeader = preg_match('/^[^:]+:\s*.+$/', $title)
                 || preg_match('/^(Title|User Story|Description & Implementation Logic|Acceptance Criteria)(\s*:)?$/i', $title);
             if (! $isSectionHeader) {
                 $contentLines = [$title];
-                $title = $this->translator->trans('item.show.label_description');
+                $title = $defaultTitle;
             }
         }
 

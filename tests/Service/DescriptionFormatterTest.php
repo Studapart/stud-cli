@@ -13,7 +13,15 @@ class DescriptionFormatterTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->formatter = new DescriptionFormatter($this->translationService);
+        $this->formatter = new DescriptionFormatter();
+    }
+
+    /**
+     * @return array<int, array{title: string, contentLines: array<string>}>
+     */
+    private function parseSections(string $description): array
+    {
+        return $this->formatter->parseSections($description, 'Description');
     }
 
     public function testSanitizeContentWithConsecutiveEmptyLines(): void
@@ -43,7 +51,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithNoDividers(): void
     {
         $description = "Title: Test\nContent line 1\nContent line 2";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -54,7 +62,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithDividers(): void
     {
         $description = "Section 1\n---\nSection 2\n---\nSection 3";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(3, $result);
@@ -63,7 +71,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithOnlyDividersUsesFullLinesAsOneSection(): void
     {
         $description = "---\n---\n---";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -72,7 +80,7 @@ class DescriptionFormatterTest extends CommandTestCase
 
     public function testParseSectionsWithEmptyDescription(): void
     {
-        $result = $this->formatter->parseSections('');
+        $result = $this->parseSections('');
 
         $this->assertIsArray($result);
         $this->assertEmpty($result);
@@ -80,7 +88,7 @@ class DescriptionFormatterTest extends CommandTestCase
 
     public function testParseSectionsWithWhitespaceOnly(): void
     {
-        $result = $this->formatter->parseSections('   ');
+        $result = $this->parseSections('   ');
 
         $this->assertIsArray($result);
         $this->assertEmpty($result);
@@ -89,7 +97,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithSingleLineNotHeader(): void
     {
         $description = "Just a regular line of text";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -99,7 +107,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithSectionHeaderPattern(): void
     {
         $description = "Title: This is a title\nContent here";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -109,7 +117,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithEmptyLineAfterTitle(): void
     {
         $description = "Title\n\nContent line";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -120,7 +128,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testProcessOneSectionToTitleAndContentWithEmptyLineAfterTitleAddsEmptyToContentLines(): void
     {
         $sectionLines = ['Heading', '', 'Body line'];
-        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines]);
+        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines, 'Description']);
 
         $this->assertSame('Heading', $result['title']);
         $this->assertSame(['', 'Body line'], $result['contentLines']);
@@ -129,16 +137,16 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testProcessOneSectionToTitleAndContentWithAllEmptyLinesUsesTranslatedLabel(): void
     {
         $sectionLines = ['', '   ', ''];
-        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines]);
+        $result = $this->callPrivateMethod($this->formatter, 'processOneSectionToTitleAndContent', [$sectionLines, 'Description']);
 
-        $this->assertSame('item.show.label_description', $result['title']);
-        $this->assertSame(['item.show.label_description'], $result['contentLines']);
+        $this->assertSame('Description', $result['title']);
+        $this->assertSame(['Description'], $result['contentLines']);
     }
 
     public function testParseSectionsWithDescriptionContainingDividers(): void
     {
         $description = "Title: Test Feature\n\n---\n\nUser Story\nAs a developer";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -147,7 +155,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithMultipleNewlines(): void
     {
         $description = "First paragraph\n\n\n\n\nSecond paragraph\n\n\nThird paragraph";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -156,7 +164,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithUserStoryHeader(): void
     {
         $description = "User Story";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);
@@ -166,7 +174,7 @@ class DescriptionFormatterTest extends CommandTestCase
     public function testParseSectionsWithAcceptanceCriteriaHeader(): void
     {
         $description = "Acceptance Criteria:";
-        $result = $this->formatter->parseSections($description);
+        $result = $this->parseSections($description);
 
         $this->assertIsArray($result);
         $this->assertCount(1, $result);

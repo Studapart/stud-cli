@@ -44,7 +44,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new ItemUploadInput('', ['a.txt']));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('item.upload.error_no_key', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.upload.error_no_key');
     }
 
     public function testHandleReturnsFatalWhenNoFiles(): void
@@ -52,7 +52,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', []));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('item.upload.error_no_files', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.upload.error_no_files');
     }
 
     public function testHandleRejectsPathTraversal(): void
@@ -63,7 +63,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertStringContainsString('item.upload.error_path_traversal', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_path_traversal');
     }
 
     public function testHandleRecordsErrorWhenFileMissing(): void
@@ -76,7 +76,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertSame('item.upload.error_not_found', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_not_found');
     }
 
     public function testHandleRecordsErrorWhenPathIsDirectory(): void
@@ -88,7 +88,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', ['adir']));
 
         $this->assertTrue($response->isSuccess());
-        $this->assertSame('item.upload.error_not_file', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_not_file');
     }
 
     public function testHandleUploadsOneFile(): void

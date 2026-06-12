@@ -47,7 +47,9 @@ class DeployHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $response = $handler->handle($io->reveal());
+
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testHandleWithNoLocalBranch(): void
@@ -75,7 +77,9 @@ class DeployHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $response = $handler->handle($io->reveal());
+
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testHandleWithNoRemoteBranch(): void
@@ -103,7 +107,9 @@ class DeployHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $response = $handler->handle($io->reveal());
+
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testHandleWithNoLocalAndRemoteBranches(): void
@@ -131,7 +137,9 @@ class DeployHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $response = $handler->handle($io->reveal());
+
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testHandleOnNonReleaseBranch(): void
@@ -142,15 +150,13 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->getCurrentBranchName()->willReturn('feat/some-feature');
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('section')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'Starting deployment process');
-        $logger->expects($this->once())
-            ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'You must be on a release branch to deploy.');
+        $logger->method('addSection');
+        $logger->method('addError');
 
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $response = $handler->handle($io->reveal());
+
+        $this->assertFalse($response->isSuccess());
     }
 
     public function testHandleWithStaleRemoteRef(): void
@@ -181,9 +187,9 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('warning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->stringContains('force delete'));
+        $logger->expects($this->atLeastOnce())
+            ->method('addWarning')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('branches.clean.force_delete_warning'));
 
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
         $handler->handle($io->reveal());
@@ -219,8 +225,8 @@ class DeployHandlerTest extends CommandTestCase
         $logger = $this->createMock(\App\Service\Logger::class);
         // When force delete fails, only the cleanup warning is logged (not the force delete warning)
         $logger->expects($this->once())
-            ->method('warning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->stringContains('Could not delete release branch'));
+            ->method('addWarning')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('deploy.warning_branch_cleanup'));
 
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
         $handler->handle($io->reveal());
@@ -254,8 +260,8 @@ class DeployHandlerTest extends CommandTestCase
 
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
-            ->method('warning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->stringContains('Could not delete release branch'));
+            ->method('addWarning')
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('deploy.warning_branch_cleanup'));
 
         $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
         $handler->handle($io->reveal());

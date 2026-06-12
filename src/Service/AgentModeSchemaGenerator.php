@@ -26,11 +26,15 @@ class AgentModeSchemaGenerator
         'default' => true,
     ];
 
+    public function __construct(private readonly ?TranslationService $translator = null)
+    {
+    }
+
     /**
      * @param list<string>|null $functionNames Override function list (for testing); null = all user-defined functions.
      * @return array{meta: array<string, string>, commands: list<array<string, mixed>>}
      */
-    public function generate(?array $functionNames = null, bool $essentialOnly = false): array
+    public function generate(?array $functionNames = null, bool $essentialOnly = false, bool $expandedOutput = true): array
     {
         $commands = [];
         foreach ($this->discoverTasks($functionNames) as $taskDef) {
@@ -38,21 +42,44 @@ class AgentModeSchemaGenerator
                 continue;
             }
 
+            if (! $expandedOutput) {
+                unset($taskDef['parameters']);
+                unset($taskDef['input']['properties']['compact']);
+                $taskDef['description'] = $this->agentText('agent.command.' . $taskDef['name'], (string) $taskDef['description']);
+                $taskDef['output'] = $this->compactOutputSchema($taskDef['output']);
+            }
             $commands[] = $taskDef;
         }
 
         usort($commands, fn (array $a, array $b): int => $a['name'] <=> $b['name']);
 
-        return [
+        $schema = [
             'meta' => [
-                'description' => 'Agent-mode schema — auto-generated from command signatures. When --agent is passed, input is a single JSON document (stdin or one positional file path) and output is a single JSON document.',
+                'description' => $expandedOutput
+                    ? 'Agent-mode schema — auto-generated from command signatures. When --agent is passed, input is a single JSON document (stdin or one positional file path) and output is a single JSON document.'
+                    : $this->agentText('agent.meta.description', 'Agent contract. Input is JSON via stdin/file; output is one JSON object.'),
                 'generatedBy' => 'AgentModeSchemaGenerator (runtime reflection)',
-                'defaultDiscovery' => 'help --agent with empty input returns essential command schemas only.',
-                'fullDiscovery' => 'Use {"essential": false} with help --agent to return every command schema.',
-                'commandDiscovery' => 'Use {"command": "<name-or-alias>"} with help --agent to return one command schema.',
+                'defaultDiscovery' => $expandedOutput
+                    ? 'help --agent with empty input returns essential command schemas only.'
+                    : $this->agentText('agent.meta.defaultDiscovery', 'Default lists essential commands only.'),
+                'fullDiscovery' => $expandedOutput
+                    ? 'Use {"essential": false} with help --agent to return every command schema.'
+                    : $this->agentText('agent.meta.fullDiscovery', 'Set essential=false to list every command.'),
+                'commandDiscovery' => $expandedOutput
+                    ? 'Use {"command":"<name-or-alias>"} with help --agent for expanded command response data.'
+                    : $this->agentText('agent.meta.commandDiscovery', 'Set command=name for expanded command help.'),
             ],
             'commands' => $commands,
         ];
+
+        if (! $expandedOutput) {
+            $schema['globalInput'] = [
+                'compact' => self::COMPACT_PROPERTY,
+            ];
+            $schema['responseSchemas'] = $this->responseSchemaDescriptors();
+        }
+
+        return $schema;
     }
 
     /**
@@ -106,7 +133,7 @@ class AgentModeSchemaGenerator
         $this->injectExtraInputProperties($task->name, $inputProperties);
         $inputProperties = ['compact' => self::COMPACT_PROPERTY] + $inputProperties;
 
-        $outputSchema = $this->buildOutputSchema($agentOutput);
+        $outputSchema = $this->buildOutputSchema($task->name, $agentOutput);
 
         return [
             'name' => $task->name,
@@ -173,20 +200,95 @@ class AgentModeSchemaGenerator
     /**
      * @return array<string, mixed>
      */
-    private function buildOutputSchema(?AgentOutput $agentOutput): array
+    private function buildOutputSchema(string $taskName, ?AgentOutput $agentOutput): array
     {
         $dataProperties = $this->resolveOutputProperties($agentOutput);
-        $successSchema = ['success' => true, 'data' => $dataProperties];
+        $diagnostics = [
+            'diagnostics?' => [
+                'errors?' => 'list<{message:string,technicalDetails?:string,context?:object}>',
+                'warnings?' => 'list<{message:string,technicalDetails?:string,context?:object}>',
+                'notices?' => 'list<{message:string,technicalDetails?:string,context?:object}>',
+                'info?' => 'list<{message:string,technicalDetails?:string,context?:object}>',
+            ],
+        ];
+        $successSchema = ['success' => true, 'data' => $dataProperties] + $diagnostics;
         $compactSuccessSchema = $agentOutput?->completionOnly === true
-            ? ['success' => true]
+            ? ['success' => true] + $diagnostics
             : $successSchema;
 
         return [
-            'description' => $agentOutput?->description,
+            'description' => $this->agentOutputDescription($taskName, $agentOutput?->description),
             'success' => $successSchema,
             'compactSuccess' => $compactSuccessSchema,
-            'error' => ['success' => false, 'error' => 'string'],
+            'error' => ['success' => false, 'error' => 'string'] + $diagnostics,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $outputSchema
+     * @return array<string, mixed>
+     */
+    private function compactOutputSchema(array $outputSchema): array
+    {
+        $success = $outputSchema['success'] ?? [];
+        $compactSuccess = $outputSchema['compactSuccess'] ?? $success;
+        $successData = is_array($success) ? ($success['data'] ?? null) : null;
+        $compactHasData = is_array($compactSuccess) && array_key_exists('data', $compactSuccess);
+
+        $output = [
+            'description' => $outputSchema['description'] ?? null,
+            'compact' => [$compactHasData ? 'successData' : 'successOnly', 'error'],
+            'full' => ['successData', 'error'],
+        ];
+
+        if ($successData !== null) {
+            $output['data'] = $successData;
+        }
+
+        return $output;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function responseSchemaDescriptors(): array
+    {
+        return [
+            'successOnly' => ['success' => true],
+            'successData' => ['success' => true, 'data' => 'command.output.data'],
+            'error' => ['success' => false, 'error' => 'string', 'diagnostics?' => 'diagnostics'],
+            'diagnostics' => [
+                'errors?' => 'list<message>',
+                'warnings?' => 'list<message>',
+                'notices?' => 'list<message>',
+                'info?' => 'list<message>',
+            ],
+            'message' => ['message' => 'string', 'technicalDetails?' => 'string', 'context?' => 'object'],
+            'note' => $this->agentText(
+                'agent.response.note',
+                'Use this schema for normal calls. Query command help only when data semantics are unclear. Compact success omits data only when no reusable data exists; diagnostics are included when present.'
+            ),
+        ];
+    }
+
+    private function agentText(string $key, string $fallback): string
+    {
+        if ($this->translator === null) {
+            return $fallback;
+        }
+
+        $translated = $this->translator->trans($key, domain: 'agent', locale: 'en');
+
+        return $translated === $key ? $fallback : $translated;
+    }
+
+    private function agentOutputDescription(string $taskName, ?string $fallback): ?string
+    {
+        if ($fallback === null) {
+            return null;
+        }
+
+        return $this->agentText('agent.output.' . $taskName, $fallback);
     }
 
     /**

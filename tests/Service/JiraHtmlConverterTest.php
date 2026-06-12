@@ -3,7 +3,6 @@
 namespace App\Tests\Service;
 
 use App\Service\JiraHtmlConverter;
-use App\Service\Logger;
 use PHPUnit\Framework\TestCase;
 use Stevebauman\Hypertext\Transformer;
 
@@ -226,15 +225,10 @@ class JiraHtmlConverterTest extends TestCase
         $this->assertNotEmpty($result);
     }
 
-    public function testToMarkdownWithLoggerWhenExtensionAvailable(): void
+    public function testToMarkdownWhenExtensionAvailable(): void
     {
-        // Create a mock logger - should not be called when extension is available
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->never())
-            ->method('warning');
-
-        // Create converter with logger
-        $converter = new JiraHtmlConverter(null, $logger);
+        // Create converter
+        $converter = new JiraHtmlConverter();
 
         // Test that conversion works normally when extension is available
         $html = '<p>Test content</p>';
@@ -248,17 +242,8 @@ class JiraHtmlConverterTest extends TestCase
 
     public function testToMarkdownHandlesDOMDocumentException(): void
     {
-        // Create a mock logger
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('warning')
-            ->with(
-                Logger::VERBOSITY_NORMAL,
-                'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.'
-            );
-
-        // Create converter with logger
-        $converter = new JiraHtmlConverter(null, $logger);
+        // Create converter
+        $converter = new JiraHtmlConverter();
 
         // Use reflection to inject a mock converter that throws DOMDocument exception
         $reflection = new \ReflectionClass($converter);
@@ -283,13 +268,8 @@ class JiraHtmlConverterTest extends TestCase
 
     public function testToMarkdownHandlesNonDOMDocumentException(): void
     {
-        // Create a mock logger
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->never())
-            ->method('warning');
-
-        // Create converter with logger
-        $converter = new JiraHtmlConverter(null, $logger);
+        // Create converter
+        $converter = new JiraHtmlConverter();
 
         // Use reflection to inject a mock converter that throws non-DOMDocument exception
         $reflection = new \ReflectionClass($converter);
@@ -312,10 +292,9 @@ class JiraHtmlConverterTest extends TestCase
         $this->assertSame($content, $result);
     }
 
-    public function testConstructorWithLogger(): void
+    public function testConstructorWithTransformer(): void
     {
-        $logger = $this->createMock(Logger::class);
-        $converter = new JiraHtmlConverter(null, $logger);
+        $converter = new JiraHtmlConverter(new Transformer());
 
         $this->assertInstanceOf(JiraHtmlConverter::class, $converter);
     }
@@ -374,17 +353,8 @@ class JiraHtmlConverterTest extends TestCase
 
     public function testToMarkdownHandlesDOMDocumentExceptionWithDifferentMessage(): void
     {
-        // Create a mock logger
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('warning')
-            ->with(
-                Logger::VERBOSITY_NORMAL,
-                'PHP XML extension is not available. HTML to Markdown conversion disabled. Install php-xml extension.'
-            );
-
-        // Create converter with logger
-        $converter = new JiraHtmlConverter(null, $logger);
+        // Create converter
+        $converter = new JiraHtmlConverter();
 
         // Use reflection to inject a mock converter that throws DOMDocument exception with different message
         $reflection = new \ReflectionClass($converter);

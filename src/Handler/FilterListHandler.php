@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\Filter;
+use App\DTO\MessageRef;
 use App\Response\FilterListResponse;
 use App\Service\JiraService;
-use App\Service\TranslationService;
 
 class FilterListHandler
 {
     public function __construct(
         private readonly JiraService $jiraService,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     public function handle(): FilterListResponse
@@ -23,7 +24,7 @@ class FilterListHandler
             $filters = $this->jiraService->getFilters();
         } catch (\Exception $e) {
             return FilterListResponse::error(
-                $this->translator->trans('filter.list.error_fetch', ['error' => $e->getMessage()])
+                MessageRef::key('filter.list.error_fetch', ['error' => $e->getMessage()])
             );
         }
 

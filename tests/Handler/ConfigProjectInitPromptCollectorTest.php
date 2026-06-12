@@ -38,8 +38,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('section');
-        $logger->expects($this->once())->method('text');
+        $logger->expects($this->once())->method('addSection');
+        $logger->expects($this->once())->method('addText');
         $logger->method('ask')->willReturn('');
         $logger->method('askHidden')->willReturn('');
 
@@ -67,8 +67,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
+        $logger->method('addSection');
+        $logger->method('addText');
         $logger->method('ask')->willReturnOnConsecutiveCalls(
             'SCI',
             '',
@@ -108,8 +108,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('bad-transition');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
+        $logger->method('addSection');
+        $logger->method('addText');
         $logger->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
@@ -119,7 +119,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             ''
         );
         $logger->method('choice')->willReturn('github');
-        $logger->expects($this->once())->method('error');
+        $logger->expects($this->once())->method('addError');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
@@ -145,9 +145,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('note');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->expects($this->atLeastOnce())->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->expects($this->atLeastOnce())->method('addNote');
         $logger->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
@@ -185,9 +185,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->expects($this->atLeastOnce())->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->expects($this->atLeastOnce())->method('addNote');
         $logger->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
@@ -227,9 +227,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addNote');
         $logger->method('ask')->willReturn('');
         $logger->method('askHidden')->willReturnOnConsecutiveCalls('.', '');
 
@@ -262,9 +262,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addNote');
         $logger->method('ask')->willReturn('');
         $logger->method('askHidden')->willReturnOnConsecutiveCalls('', '.');
 
@@ -292,9 +292,9 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addNote');
         $logger->method('ask')->willReturnOnConsecutiveCalls(
             '',
             'jira',
@@ -345,8 +345,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator->method('trans')->willReturn('msg');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
+        $logger->method('addSection');
+        $logger->method('addText');
         $logger->expects($this->never())->method('choice');
         $logger->method('ask')->willReturn('');
         $logger->method('askHidden')->willReturn('');

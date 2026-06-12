@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Agent JSON purity (SCI-127):** Agent mode now suppresses human logger/listener output and keeps stdout to a single structured JSON response.
+
 ### Changed
+
+- **Response-owned command output:** Command diagnostics now flow through response DTOs and responders so agent JSON can include warnings, notices, and technical errors without leaking human logger output.
 
 - **Agent compact output (SCI-126):** Agent JSON now defaults to compact success responses for completion-only commands while preserving reusable follow-up values, explicit errors, and `{"compact":false}` for full success payloads.
 

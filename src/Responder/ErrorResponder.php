@@ -36,7 +36,7 @@ class ErrorResponder
         $error = $response->getError() ?? 'Unknown error';
 
         if ($format === OutputFormat::Json) {
-            return new AgentJsonResponse(false, error: $error);
+            return new AgentJsonResponse(false, error: $this->translator->transForAgentText($error));
         }
 
         $this->logger->error(Logger::VERBOSITY_NORMAL, $error);

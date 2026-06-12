@@ -57,7 +57,7 @@ class CacheClearHandlerTest extends CommandTestCase
 
             $result = $this->handler->handle($io);
 
-            $this->assertSame(0, $result);
+            $this->assertTrue($result->isSuccess());
             $this->assertFalse($this->fileSystem->fileExists($this->tempCacheFile));
             // Test intent: success() was called, verified by return value and file deletion
         } finally {
@@ -86,7 +86,7 @@ class CacheClearHandlerTest extends CommandTestCase
 
             $result = $this->handler->handle($io);
 
-            $this->assertSame(0, $result);
+            $this->assertTrue($result->isSuccess());
             // Test intent: note() was called indicating cache was already clear, verified by return value
         } finally {
             if ($originalHome !== null) {
@@ -116,8 +116,7 @@ class CacheClearHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Delete failed'));
 
         $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())
-            ->method('error')
+        $logger->method('addError')
             ->with(Logger::VERBOSITY_NORMAL, $this->anything());
         $handler = new CacheClearHandler($this->translationService, $logger, $mockFileSystem);
 
@@ -127,7 +126,7 @@ class CacheClearHandlerTest extends CommandTestCase
 
             $result = $handler->handle($io);
 
-            $this->assertSame(1, $result);
+            $this->assertFalse($result->isSuccess());
             // Test intent: error() was called and handler returned error code, verified by return value
         } finally {
             if ($originalHome !== null) {
@@ -136,5 +135,19 @@ class CacheClearHandlerTest extends CommandTestCase
                 unset($_SERVER['HOME']);
             }
         }
+    }
+
+    public function testConstructorRequiresFileSystemWhenUsingLegacyOutputArgument(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new CacheClearHandler($this->translationService, $this->createMock(Logger::class));
+    }
+
+    public function testConstructorAcceptsFileSystemDirectly(): void
+    {
+        $handler = new CacheClearHandler($this->translationService, $this->fileSystem);
+
+        $this->assertInstanceOf(CacheClearHandler::class, $handler);
     }
 }

@@ -17,8 +17,8 @@ class MigrationRegistry
     private const PROJECT_MIGRATIONS_PATH = __DIR__ . '/../Migrations/ProjectMigrations';
 
     public function __construct(
-        private readonly Logger $logger,
-        private readonly TranslationService $translator,
+        private readonly WorkflowOutput $logger,
+        private readonly mixed $translator,
         private readonly FileSystem $fileSystem
     ) {
     }

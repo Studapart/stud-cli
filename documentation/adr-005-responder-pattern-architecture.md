@@ -213,12 +213,15 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 ### 7.6 Output and Logger
 
-- **All commands MUST use the Logger service** (obtained via `_get_logger()` in `castor.php`) for console output. Responders and any code that writes to the console must use Logger methods (e.g. `text`, `error`, `success`, `rawValue`) so that verbosity and `--quiet` are handled in one place.
-- **Direct use of `io()` (or the injected `SymfonyStyle` instance) for output is forbidden** in the output path: do not call `$io->writeln()`, `$io->text()`, `$io->error()`, etc. directly. Use the Logger instead. This ensures that `-q` / `--quiet` correctly suppresses non-essential output while still allowing primary-result output (e.g. script-friendly raw values via `Logger::rawValue()`) when required.
+- **All meaningful command output MUST be owned by Response DTOs**. Handlers and domain services return success data, errors, warnings, notices, and technical diagnostics in concrete `AbstractResponse` implementations; they do not call `Logger` for presentation.
+- **Responders MUST use the Logger service** (obtained via `_get_logger()` in `castor.php`) for CLI rendering. Logger methods (e.g. `text`, `error`, `success`, `rawValue`) keep verbosity and `--quiet` behavior in one place.
+- **Direct use of `io()` (or the injected `SymfonyStyle` instance) for output is forbidden** in the output path: do not call `$io->writeln()`, `$io->text()`, `$io->error()`, etc. directly. Use the Logger from responders/rendering helpers instead. This ensures that `-q` / `--quiet` correctly suppresses non-essential output while still allowing primary-result output (e.g. script-friendly raw values via `Logger::rawValue()`) when required.
+- **Diagnostics are serialized from responses** in agent mode. Warnings and errors must not be hidden in Logger state or dropped when JSON output is requested.
 - **Exceptions (the only allowed non-compliance):**
   1. **Code outside our codebase** (e.g. Castor framework, Composer/vendor). We do not modify third-party code.
   2. **Code that cannot use Logger for technical reasons** (e.g. runs before Logger can be created or injected). Any such code **must** be explicitly listed in this ADR or in CONVENTIONS.md with a short explanation of why it cannot conform. *(As of this update, no such code exists; all application code can obtain Logger via `_get_logger()` once the task is running.)*
 - **Cross-reference:** See CONVENTIONS.md "Command Output Conventions" for the standard output methods and their usage.
+- **Cross-reference:** See **[ADR-017] Response-Owned Output and Diagnostics** for the rule that `Logger` is a CLI rendering sink, not the owner of command output.
 
 ---
 

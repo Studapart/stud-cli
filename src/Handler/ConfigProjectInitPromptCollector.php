@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\GitTokenPromptResolver;
-use App\Service\Logger;
-use App\Service\TranslationService;
+use App\Service\WorkflowOutput;
 
 /**
  * Interactive prompts for stud config:project-init (keeps ConfigProjectInitHandler within size limits).
@@ -18,10 +18,11 @@ class ConfigProjectInitPromptCollector
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitSetupService $gitSetupService,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $_translator,
+        private readonly WorkflowOutput $logger,
         private readonly GitTokenPromptResolver $gitTokenPromptResolver,
     ) {
+        unset($_translator);
     }
 
     /**
@@ -30,8 +31,8 @@ class ConfigProjectInitPromptCollector
     public function collect(): array
     {
         $existing = $this->gitRepository->readProjectConfig();
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.project_init.interactive_title'));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.project_init.interactive_hint'));
+        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_title'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_hint'));
 
         $patches = [];
         $patches = array_merge($patches, $this->promptProjectKey($existing));
@@ -55,7 +56,7 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['projectKey']) ? (string) $existing['projectKey'] : '';
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_project_key'),
+            MessageRef::key('config.project_init.prompt_project_key'),
             $current !== '' ? $current : null
         );
         if ($answer === null || trim((string) $answer) === '') {
@@ -73,7 +74,7 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['JIRA_DEFAULT_PROJECT']) ? (string) $existing['JIRA_DEFAULT_PROJECT'] : '';
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_jira_default_project'),
+            MessageRef::key('config.project_init.prompt_jira_default_project'),
             $current !== '' ? $current : null
         );
         if ($answer === null || trim((string) $answer) === '') {
@@ -91,7 +92,7 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['CONFLUENCE_DEFAULT_SPACE']) ? (string) $existing['CONFLUENCE_DEFAULT_SPACE'] : '';
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_confluence_default_space'),
+            MessageRef::key('config.project_init.prompt_confluence_default_space'),
             $current !== '' ? $current : null
         );
         if ($answer === null || trim((string) $answer) === '') {
@@ -109,16 +110,16 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['transitionId']) ? (string) (int) $existing['transitionId'] : '';
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_transition_id'),
+            MessageRef::key('config.project_init.prompt_transition_id'),
             $current !== '' ? $current : null
         );
         if ($answer === null || trim((string) $answer) === '') {
             return [];
         }
         if (! ctype_digit(trim((string) $answer))) {
-            $this->logger->error(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('config.project_init.invalid_transition_id')
+            $this->logger->addError(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('config.project_init.invalid_transition_id')
             );
 
             return [];
@@ -136,14 +137,14 @@ class ConfigProjectInitPromptCollector
         $current = isset($existing['baseBranch']) ? (string) $existing['baseBranch'] : '';
         $detected = $this->gitSetupService->detectDefaultBaseBranchName();
         if ($detected !== null) {
-            $this->logger->note(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('config.base_branch_detected', ['branch' => $detected])
+            $this->logger->addNote(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('config.base_branch_detected', ['branch' => $detected])
             );
         }
         $default = $current !== '' ? $current : ($detected ?? 'develop');
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_base_branch'),
+            MessageRef::key('config.project_init.prompt_base_branch'),
             $default
         );
         if ($answer === null || trim((string) $answer) === '') {
@@ -166,13 +167,13 @@ class ConfigProjectInitPromptCollector
             return [];
         }
         if ($detected !== null) {
-            $this->logger->note(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('config.git_provider_detected', ['provider' => $detected])
+            $this->logger->addNote(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('config.git_provider_detected', ['provider' => $detected])
             );
         }
         $choice = $this->logger->choice(
-            $this->translator->trans('config.project_init.prompt_git_provider'),
+            MessageRef::key('config.project_init.prompt_git_provider'),
             ['github', 'gitlab'],
             in_array($detected, ['github', 'gitlab'], true) ? $detected : 'github'
         );
@@ -188,7 +189,7 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['gitlabInstanceUrl']) ? (string) $existing['gitlabInstanceUrl'] : '';
         $answer = $this->logger->ask(
-            $this->translator->trans('config.project_init.prompt_gitlab_instance_url'),
+            MessageRef::key('config.project_init.prompt_gitlab_instance_url'),
             $current !== '' ? $current : null
         );
         if ($answer === null || trim((string) $answer) === '') {
@@ -205,8 +206,8 @@ class ConfigProjectInitPromptCollector
     protected function promptGithubToken(array $existing): array
     {
         $has = isset($existing['githubToken']) && is_string($existing['githubToken']) && trim($existing['githubToken']) !== '';
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.project_init.prompt_github_token_hint'));
-        $answer = $this->logger->askHidden($this->translator->trans('config.project_init.prompt_github_token'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.project_init.prompt_github_token_hint'));
+        $answer = $this->logger->askHidden(MessageRef::key('config.project_init.prompt_github_token'));
         if ($has && $answer !== null && trim((string) $answer) === '.') {
             return [];
         }
@@ -225,8 +226,8 @@ class ConfigProjectInitPromptCollector
     protected function promptGitlabToken(array $existing): array
     {
         $has = isset($existing['gitlabToken']) && is_string($existing['gitlabToken']) && trim($existing['gitlabToken']) !== '';
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.project_init.prompt_gitlab_token_hint'));
-        $answer = $this->logger->askHidden($this->translator->trans('config.project_init.prompt_gitlab_token'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.project_init.prompt_gitlab_token_hint'));
+        $answer = $this->logger->askHidden(MessageRef::key('config.project_init.prompt_gitlab_token'));
         if ($has && $answer !== null && trim((string) $answer) === '.') {
             return [];
         }
