@@ -16,7 +16,6 @@ use App\Service\IssueFieldResolver;
 use App\Service\JiraService;
 use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemCreateHandler
 {
@@ -34,16 +33,16 @@ class ItemCreateHandler
 
     private readonly PromptInterface $prompt;
 
-    public function handle(SymfonyStyle $io, bool $interactive, ItemCreateInput $input): ItemCreateResponse
+    public function handle(bool $interactive, ItemCreateInput $input): ItemCreateResponse
     {
-        $projectKeyOrError = $this->resolveProjectKeyOrError($io, $interactive, $input->project);
+        $projectKeyOrError = $this->resolveProjectKeyOrError($interactive, $input->project);
         if ($projectKeyOrError instanceof ItemCreateResponse) {
             return $projectKeyOrError;
         }
         $projectKey = $projectKeyOrError;
         $type = $this->fieldResolver->resolveIssueTypeName($input->type, $input->parentKey);
 
-        $summary = $this->resolveSummary($io, $interactive, $input->summary);
+        $summary = $this->resolveSummary($interactive, $input->summary);
         if ($summary === null || $summary === '') {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_no_summary'));
         }
@@ -53,7 +52,7 @@ class ItemCreateHandler
             return $stateOrError;
         }
 
-        $extraError = $this->resolveExtrasAndMergeIntoFields($io, $interactive, $stateOrError, $input);
+        $extraError = $this->resolveExtrasAndMergeIntoFields($interactive, $stateOrError, $input);
         if ($extraError !== null) {
             return $extraError;
         }
@@ -110,7 +109,6 @@ class ItemCreateHandler
      * Resolve extra required fields, merge prompted values into state. Returns error response or null.
      */
     protected function resolveExtrasAndMergeIntoFields(
-        SymfonyStyle $io,
         bool $interactive,
         IssueCreationState $state,
         ItemCreateInput $input
@@ -143,7 +141,6 @@ class ItemCreateHandler
         }
 
         return $this->promptAndMergeExtraFields(
-            $io,
             $interactive,
             $state,
             $typeExplicitlyProvided,
@@ -159,7 +156,6 @@ class ItemCreateHandler
      * @param array<string, mixed>|null $descriptionAdf
      */
     protected function promptAndMergeExtraFields(
-        SymfonyStyle $io,
         bool $interactive,
         IssueCreationState $state,
         bool $typeExplicitlyProvided,
@@ -167,7 +163,6 @@ class ItemCreateHandler
         array $extraRequired
     ): ?ItemCreateResponse {
         $prompted = $this->promptForExtraRequiredFields(
-            $io,
             $interactive,
             $state->projectKey,
             $state->issueTypeId,
@@ -217,13 +212,13 @@ class ItemCreateHandler
      *
      * @return ItemCreateResponse|string Project key string, or error response to return
      */
-    protected function resolveProjectKeyOrError(SymfonyStyle $io, bool $interactive, ?string $project): ItemCreateResponse|string
+    protected function resolveProjectKeyOrError(bool $interactive, ?string $project): ItemCreateResponse|string
     {
-        $projectKey = $this->resolveProjectKey($io, $interactive, $project);
+        $projectKey = $this->resolveProjectKey($interactive, $project);
         if ($projectKey === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_no_project'));
         }
-        $projectDto = $this->ensureProjectExists($io, $interactive, $projectKey);
+        $projectDto = $this->ensureProjectExists($interactive, $projectKey);
         if ($projectDto === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_project_not_found', ['key' => $projectKey]));
         }
@@ -234,7 +229,7 @@ class ItemCreateHandler
     /**
      * Resolves project key from option, config, or interactive prompt. Does not validate against Jira.
      */
-    protected function resolveProjectKey(SymfonyStyle $io, bool $interactive, ?string $project): ?string
+    protected function resolveProjectKey(bool $interactive, ?string $project): ?string
     {
         if ($project !== null && trim($project) !== '') {
             return trim($project);
@@ -256,7 +251,7 @@ class ItemCreateHandler
      * Fetches project by key. If not found and interactive, prompts for a new key and retries once.
      * Returns the Project DTO (key, name) so all subsequent logic uses data from Jira.
      */
-    protected function ensureProjectExists(SymfonyStyle $io, bool $interactive, string $projectKey): ?Project
+    protected function ensureProjectExists(bool $interactive, string $projectKey): ?Project
     {
         try {
             return $this->jiraService->getProject($projectKey);
@@ -277,7 +272,7 @@ class ItemCreateHandler
         }
     }
 
-    protected function resolveSummary(SymfonyStyle $io, bool $interactive, ?string $summary): ?string
+    protected function resolveSummary(bool $interactive, ?string $summary): ?string
     {
         $normalized = $summary !== null ? trim((string) $summary) : '';
         if ($normalized !== '') {
@@ -349,7 +344,6 @@ class ItemCreateHandler
      * @return array<string, mixed>|null Map of fieldId => value, or null when not interactive
      */
     protected function promptForExtraRequiredFields(
-        SymfonyStyle $io,
         bool $interactive,
         string $projectKey,
         string $issueTypeId,
@@ -372,7 +366,6 @@ class ItemCreateHandler
             $fieldId = (string) $fieldId;
             $name = (string) ($allFields[$fieldId]['name'] ?? $fieldId);
             $value = $this->getPromptedValueForExtraField(
-                $io,
                 $fieldId,
                 $name,
                 $projectKey,
@@ -398,7 +391,6 @@ class ItemCreateHandler
      * @return array<string, mixed>|null
      */
     protected function getPromptedValueForExtraField(
-        SymfonyStyle $io,
         string $fieldId,
         string $name,
         string $projectKey,
@@ -412,7 +404,6 @@ class ItemCreateHandler
         if ($standardKind !== null) {
             return $this->getValueForStandardExtraField(
                 $standardKind,
-                $io,
                 $fieldId,
                 $projectKey,
                 $issueTypeId,
@@ -437,7 +428,6 @@ class ItemCreateHandler
      */
     protected function getValueForStandardExtraField(
         string $kind,
-        SymfonyStyle $io,
         string $fieldId,
         string $projectKey,
         string $issueTypeId,
@@ -450,9 +440,9 @@ class ItemCreateHandler
             'project' => [$fieldId => ['key' => $projectKey]],
             'reporter' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
             'assignee' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
-            'issuetype' => $this->promptIssueTypeValue($io, $projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
+            'issuetype' => $this->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
             'summary' => [$fieldId => $summary],
-            'description' => ($v = $this->promptDescriptionValue($io, $descriptionAdf)) !== null ? [$fieldId => $v] : null,
+            'description' => ($v = $this->promptDescriptionValue($descriptionAdf)) !== null ? [$fieldId => $v] : null,
             default => null,
         };
     }
@@ -462,13 +452,12 @@ class ItemCreateHandler
      * @return array<string, mixed>|null Map of fieldId => ['id' => $chosenId] for all issuetype fields, or null
      */
     protected function promptIssueTypeValue(
-        SymfonyStyle $io,
         string $projectKey,
         string $issueTypeId,
         bool $typeExplicitlyProvided,
         array $allFields
     ): ?array {
-        $chosenId = $typeExplicitlyProvided ? $issueTypeId : $this->chooseIssueTypeInteractively($io, $projectKey);
+        $chosenId = $typeExplicitlyProvided ? $issueTypeId : $this->chooseIssueTypeInteractively($projectKey);
         if ($chosenId === null) {
             return null;
         }
@@ -484,7 +473,7 @@ class ItemCreateHandler
         return $result;
     }
 
-    protected function chooseIssueTypeInteractively(SymfonyStyle $io, string $projectKey): ?string
+    protected function chooseIssueTypeInteractively(string $projectKey): ?string
     {
         $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
         if ($issueTypes === []) {
@@ -505,7 +494,7 @@ class ItemCreateHandler
      * @param array<string, mixed>|null $descriptionAdf
      * @return array<string, mixed>|string|null
      */
-    protected function promptDescriptionValue(SymfonyStyle $io, ?array $descriptionAdf): array|string|null
+    protected function promptDescriptionValue(?array $descriptionAdf): array|string|null
     {
         if ($descriptionAdf !== null) {
             return $descriptionAdf;

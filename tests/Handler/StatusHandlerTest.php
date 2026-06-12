@@ -48,7 +48,7 @@ class StatusHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -62,7 +62,7 @@ class StatusHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -78,7 +78,7 @@ class StatusHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -103,7 +103,7 @@ class StatusHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -130,7 +130,7 @@ class StatusHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -158,7 +158,7 @@ class StatusHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }

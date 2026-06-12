@@ -8,7 +8,6 @@ use App\DTO\MessageRef;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandler
 {
@@ -72,7 +71,7 @@ class ReleaseHandler
         return $composerJson['version'];
     }
 
-    public function handle(SymfonyStyle $io, ?string $version = null, bool $publish = false, ?string $bumpType = null, bool $quiet = false): void
+    public function handle(?string $version = null, bool $publish = false, ?string $bumpType = null, bool $quiet = false): void
     {
         // Determine the target version
         if ($version !== null) {

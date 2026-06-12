@@ -17,7 +17,6 @@ use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
 use App\Service\UpdateRepositoryContext;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -38,7 +37,7 @@ class UpdateHandler
     ) {
     }
 
-    public function handle(SymfonyStyle $io, bool $info = false, bool $quiet = false): int
+    public function handle(bool $info = false, bool $quiet = false): int
     {
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.section'));
 
@@ -60,7 +59,7 @@ class UpdateHandler
         }
 
         if ($installContext->mode === UpdateInstallContext::MODE_PORTABLE) {
-            return $this->handlePortableUpdate($io, $installContext, $release, $quiet);
+            return $this->handlePortableUpdate($installContext, $release, $quiet);
         }
 
         $pharAsset = $this->findPharAsset($release);
@@ -78,7 +77,7 @@ class UpdateHandler
             return $this->cleanupAndReturn($tempFile, 1);
         }
 
-        $migrationResult = $this->runPrerequisiteMigrations($io);
+        $migrationResult = $this->runPrerequisiteMigrations();
         // @codeCoverageIgnoreStart
         if ($migrationResult !== 0) {
             return $this->cleanupAndReturn($tempFile, $migrationResult);
@@ -92,7 +91,6 @@ class UpdateHandler
      * @param array<string, mixed> $release
      */
     protected function handlePortableUpdate(
-        SymfonyStyle $io,
         UpdateInstallContext $installContext,
         array $release,
         bool $quiet,
@@ -103,7 +101,7 @@ class UpdateHandler
             return 1;
         }
 
-        $migrationResult = $this->runPrerequisiteMigrations($io);
+        $migrationResult = $this->runPrerequisiteMigrations();
         // @codeCoverageIgnoreStart
         if ($migrationResult !== 0) {
             return $migrationResult;
@@ -335,7 +333,7 @@ class UpdateHandler
      *
      * @return int 0 on success, 1 on failure
      */
-    protected function runPrerequisiteMigrations(SymfonyStyle $io): int
+    protected function runPrerequisiteMigrations(): int
     {
         // Direct constant check (most reliable - set in tests/bootstrap.php)
         // This bypasses all detection logic for maximum reliability

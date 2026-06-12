@@ -66,7 +66,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
         // Test intent: success() was called, verified by return value
@@ -82,7 +82,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
         // Test intent: error() was called, verified by return value
@@ -111,7 +111,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(1, $result);
     }
@@ -151,7 +151,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $fetchedOutput = $output->fetch();
 
@@ -239,7 +239,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -313,7 +313,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         // Not setting verbose mode - tests the else block without verbose output
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -412,7 +412,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-35', 11);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -514,7 +514,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -588,7 +588,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -662,7 +662,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -737,7 +737,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -811,7 +811,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -885,7 +885,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -965,7 +965,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1045,7 +1045,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1125,7 +1125,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1202,7 +1202,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1303,7 +1303,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1405,7 +1405,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1507,7 +1507,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1610,7 +1610,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1721,7 +1721,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1763,7 +1763,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1808,7 +1808,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1850,7 +1850,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1892,7 +1892,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $result = $this->handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -1947,7 +1947,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }
@@ -2005,7 +2005,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $result = $handler->handle('TPW-35');
 
         $this->assertSame(0, $result);
     }

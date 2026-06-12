@@ -9,7 +9,6 @@ use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\WorkflowOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class StatusHandler
 {
@@ -22,7 +21,7 @@ class StatusHandler
         unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(): int
     {
         $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.section'));
         $key = $this->gitRepository->getJiraKeyFromBranchName();

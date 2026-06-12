@@ -225,7 +225,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -278,7 +278,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Note: Success message removed to avoid zlib error after PHAR replacement
@@ -346,7 +346,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -391,7 +391,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -413,7 +413,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -467,7 +467,7 @@ class UpdateHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -520,7 +520,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -589,7 +589,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -632,7 +632,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -704,7 +704,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         $this->assertSame(0, $result);
 
@@ -733,7 +733,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -779,7 +779,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -856,7 +856,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should fail because file operations fail (tested via in-memory filesystem)
         $this->assertSame(1, $result);
@@ -878,7 +878,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         // 404 means no releases found - this is a success case
         $this->assertSame(0, $result);
@@ -901,7 +901,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -945,7 +945,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         $this->assertSame(0, $result);
         // Token should be used in the request (verified by the mock expectation)
@@ -972,7 +972,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
     }
@@ -1105,7 +1105,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1184,7 +1184,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         // Update should succeed
         $this->assertSame(0, $result);
@@ -1242,7 +1242,7 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
     }
@@ -1309,7 +1309,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1379,7 +1379,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1455,7 +1455,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
         $this->assertSame(0, $result);
@@ -1541,7 +1541,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
         $this->assertSame(0, $result);
@@ -1710,7 +1710,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1777,7 +1777,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1850,7 +1850,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -1904,7 +1904,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -2044,7 +2044,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -2109,7 +2109,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -2139,7 +2139,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         $this->assertSame(0, $result);
         // Test intent: handler completed successfully, verified by return value
@@ -2184,7 +2184,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $result = $this->handler->handle(true);
 
         // Should still exit successfully even if changelog fetch fails
         $this->assertSame(0, $result);
@@ -2230,7 +2230,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should succeed even if release fetch fails with 404
         $this->assertSame(0, $result);
@@ -2273,7 +2273,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should fail if release fetch fails (non-404 error)
         $this->assertSame(1, $result);
@@ -2353,7 +2353,7 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
         $this->assertSame(0, $result);
@@ -2409,7 +2409,7 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -2474,7 +2474,7 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
 
@@ -2575,7 +2575,7 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $result = $handlerWithConfirmLogger->handle($io);
+        $result = $handlerWithConfirmLogger->handle();
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -2640,7 +2640,7 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertSame(1, $result);
 
@@ -2755,7 +2755,7 @@ CHANGELOG;
             $this->httpClient
         );
 
-        $result = $handlerWithConfirmLogger->handle($io);
+        $result = $handlerWithConfirmLogger->handle();
 
         $this->assertSame(0, $result);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
@@ -3347,7 +3347,7 @@ CHANGELOG;
             // Execute handle - this should trigger runPrerequisiteMigrations which will fail
             // In test environment, exceptions are gracefully handled and return 0
             // This prevents test failures due to filesystem or migration discovery issues
-            $result = $testHandlerWithDownload->handle($io);
+            $result = $testHandlerWithDownload->handle();
 
             // In test environment, exceptions are gracefully handled and return 0
             $this->assertSame(0, $result);
@@ -4073,7 +4073,7 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $handler->handle($io);
+        $result = $handler->handle();
 
         // Should return 1 (error) even though cleanup failed
         // The cleanup error is caught and ignored (line 87-89)

@@ -14,7 +14,6 @@ use App\Service\IssueFieldResolver;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemCreateHandlerTest extends CommandTestCase
 {
@@ -72,10 +71,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertInstanceOf(ItemCreateResponse::class, $response);
         $this->assertTrue($response->isSuccess());
@@ -108,10 +106,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('createIssue')
             ->willReturn(['key' => 'CONF-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput(null, null, 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput(null, null, 'Summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('CONF-1', $response->key);
@@ -124,10 +121,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn([]);
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput(null, null, 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput(null, null, 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_no_project', $response->getError() ?? '');
@@ -144,10 +140,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(new Project('PROJ', 'Project'));
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput(null, null, null, null));
+        $response = $handler->handle(false, new ItemCreateInput(null, null, null, null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_no_summary', $response->getError() ?? '');
@@ -175,10 +170,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn($fieldsMeta);
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $message = $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required');
@@ -198,10 +192,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('getCreateMetaFields');
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -220,10 +213,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('getCreateMetaFields');
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -245,10 +237,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Fields API error'));
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
@@ -276,10 +267,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('createIssue')
             ->willThrowException(new \RuntimeException('Network error'));
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
@@ -307,10 +297,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('createIssue')
             ->willThrowException(new ApiException('API error', 'details', 400));
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
@@ -347,10 +336,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
 
         $this->assertTrue($response->isSuccess());
     }
@@ -384,10 +372,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-101', 'self' => 'https://jira/issue/101']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput(project: 'PROJ', type: null, summary: 'Sub-task summary', descriptionOption: null, parentKey: 'PROJ-100'));
+        $response = $handler->handle(false, new ItemCreateInput(project: 'PROJ', type: null, summary: 'Sub-task summary', descriptionOption: null, parentKey: 'PROJ-100'));
 
         $this->assertTrue($response->isSuccess());
     }
@@ -417,7 +404,6 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('createIssue')
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $callCount = 0;
         $this->prompt->expects($this->exactly(2))
             ->method('ask')
@@ -428,7 +414,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             });
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput(null, 'Story', null, null));
+        $response = $handler->handle(true, new ItemCreateInput(null, 'Story', null, null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -465,14 +451,13 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->anything())
             ->willReturn('Alpha');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -504,9 +489,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             );
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
@@ -543,14 +527,13 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->anything())
             ->willReturn('Alpha');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Task', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Task', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -589,7 +572,6 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $callCount = 0;
         $this->prompt->expects($this->exactly(2))
             ->method('ask')
@@ -600,7 +582,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             });
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -632,12 +614,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -674,12 +655,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -715,9 +695,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -753,9 +732,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=custom-assignee-account-id'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=custom-assignee-account-id'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -791,9 +769,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -829,9 +806,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=optional-assignee-id'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'assignee=optional-assignee-id'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -866,12 +842,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $this->prompt->expects($this->never())->method('choice');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -905,7 +880,6 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $this->prompt->expects($this->once())
             ->method('choice')
@@ -913,7 +887,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn('Task');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', null, 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', null, 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -928,10 +902,9 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('getCreateMetaIssueTypes');
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $response = $handler->handle($io, false, new ItemCreateInput('INVALID', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('INVALID', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -964,15 +937,14 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('createIssue')
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
-                && $message->key === 'item.create.prompt_project_not_found'))
+        && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('PROJ');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -987,15 +959,14 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('getCreateMetaFields');
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
-                && $message->key === 'item.create.prompt_project_not_found'))
+        && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -1015,15 +986,14 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->never())->method('getCreateMetaFields');
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
-                && $message->key === 'item.create.prompt_project_not_found'))
+        && $message->key === 'item.create.prompt_project_not_found'))
             ->willReturn('ALSO_BAD');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
@@ -1059,9 +1029,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
         $this->jiraService->expects($this->never())->method('createIssue');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
@@ -1098,15 +1067,14 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
-                && $message->key === 'item.create.prompt_description_required'))
+        && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('Typed description');
 
         $handler = $this->createHandler();
-        $response = $handler->handle($io, true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+        $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1118,10 +1086,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['project' => ['required' => true, 'name' => 'Project']]);
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', false, 'Summary', null, ['project'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['project'],
         ]);
         $this->assertIsArray($result);
         $this->assertSame(['project' => ['key' => 'PROJ']], $result);
@@ -1136,10 +1102,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', false, 'Summary', null, ['reporter'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['reporter'],
         ]);
         $this->assertIsArray($result);
         $this->assertSame(['reporter' => ['accountId' => 'current-user-id']], $result);
@@ -1154,10 +1118,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', false, 'Summary', null, ['assignee'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', null, ['assignee'],
         ]);
         $this->assertIsArray($result);
         $this->assertSame(['assignee' => ['accountId' => 'current-user-id']], $result);
@@ -1172,10 +1134,8 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
             ]);
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
         ]);
         $this->assertIsArray($result);
         $this->assertArrayHasKey('issuetype', $result);
@@ -1188,11 +1148,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
         ]);
         $this->assertIsArray($result);
         $this->assertSame(['summary' => 'My Title'], $result);
@@ -1205,11 +1163,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->never())->method('ask');
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io, true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'Summary', $descriptionAdf, ['description'],
         ]);
         $this->assertIsArray($result);
         $this->assertSame(['description' => $descriptionAdf], $result);
@@ -1227,17 +1183,13 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('plainTextToDescriptionAdf')
             ->with('User typed description')
             ->willReturn(['type' => 'doc', 'content' => []]);
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->with($this->callback(fn (mixed $message): bool => $message instanceof \App\DTO\MessageRef
-                && $message->key === 'item.create.prompt_description_required'))
+        && $message->key === 'item.create.prompt_description_required'))
             ->willReturn('User typed description');
         $handler = $this->createHandler();
-        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [
-            $io,
-            true,
-            'PROJ',
+        $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ',
             '10001',
             false,
             'Summary',
@@ -1279,9 +1231,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', 'Body text'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1308,9 +1259,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1337,9 +1287,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=a,b'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1368,9 +1317,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1397,9 +1345,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=1d'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('PROJ-1', $response->key);
@@ -1429,9 +1376,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
-        $response = $handler->handle($io, false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=invalid'));
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'timeoriginalestimate=invalid'));
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->skippedOptionalFields ?? []);
@@ -1444,11 +1390,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ')
             ->willReturn([]);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
         $result = $this->callPrivateMethod($handler, 'promptIssueTypeValue', [
-            $io,
             'PROJ',
             '10001',
             false,
@@ -1465,10 +1409,9 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ')
             ->willReturn([]);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $handler = $this->createHandler();
 
-        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', ['PROJ']);
 
         $this->assertNull($result);
     }
@@ -1480,28 +1423,26 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('choice')
             ->willReturn('Other');
 
         $handler = $this->createHandler();
 
-        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', [$io, 'PROJ']);
+        $result = $this->callPrivateMethod($handler, 'chooseIssueTypeInteractively', ['PROJ']);
 
         $this->assertNull($result);
     }
 
     public function testPromptDescriptionValueReturnsNullWhenAskReturnsEmpty(): void
     {
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->expects($this->once())
             ->method('ask')
             ->willReturn('   ');
 
         $handler = $this->createHandler();
 
-        $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [$io, null]);
+        $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [null]);
 
         $this->assertNull($result);
     }
