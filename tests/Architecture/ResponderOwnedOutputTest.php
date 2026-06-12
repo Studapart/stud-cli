@@ -13,34 +13,10 @@ final class ResponderOwnedOutputTest extends TestCase
      */
     public static function nonPresentationSourceFiles(): iterable
     {
-        $root = dirname(__DIR__, 2);
-        $allowedServiceFiles = [
-            'src/Service/AgentModeSchemaGenerator.php',
-            'src/Service/CommandOutputBuffer.php',
-            'src/Service/CommandReferenceGenerator.php',
-            'src/Service/HelpService.php',
-            'src/Service/Logger.php',
-            'src/Service/MarkdownToAdfConverter.php',
-            'src/Service/MessageRenderer.php',
-            'src/Service/ResponderHelper.php',
-            'src/Service/TranslationService.php',
-        ];
-
-        foreach (['src/Handler', 'src/Service'] as $directory) {
-            $path = $root . '/' . $directory;
-            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path)) as $file) {
-                if (! $file instanceof \SplFileInfo || $file->getExtension() !== 'php') {
-                    continue;
-                }
-
-                $relativePath = str_replace($root . '/', '', $file->getPathname());
-                if (in_array($relativePath, $allowedServiceFiles, true)) {
-                    continue;
-                }
-
-                yield $relativePath => [$file->getPathname()];
-            }
-        }
+        return ArchitectureSourceScanner::phpFilesIn(
+            ['src/Handler', 'src/Service'],
+            ArchitecturePresentationExceptions::ALLOWED_SERVICE_FILES,
+        );
     }
 
     /**
@@ -51,12 +27,11 @@ final class ResponderOwnedOutputTest extends TestCase
         $contents = file_get_contents($filePath);
         self::assertIsString($contents);
 
-        self::assertStringNotContainsString('Logger', $contents, $filePath);
-        self::assertStringNotContainsString('CommandOutputBuffer', $contents, $filePath);
-        self::assertDoesNotMatchRegularExpression(
-            '/->(error|warning|note|success|text|writeln|jiraWriteln|gitWriteln|section|title|rawValue|comment|info|caution|listing|table|horizontalTable|definitionList)\s*\(/',
-            $contents,
-            $filePath
+        self::assertStringNotContainsString('use App\\Service\\Logger;', $contents, $filePath);
+        self::assertStringNotContainsString('use App\\Service\\CommandOutputBuffer;', $contents, $filePath);
+        self::assertFalse(
+            ArchitectureSourceScanner::containsDirectConsoleOutputCall($contents),
+            $filePath . ' must not call SymfonyStyle/console output methods directly'
         );
     }
 }

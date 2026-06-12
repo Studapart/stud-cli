@@ -20,9 +20,12 @@ composer install
 
 ```bash
 vendor/bin/phpunit
+vendor/bin/phpunit tests/Architecture/
 vendor/bin/phpstan analyse
 vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
+
+`tests/Architecture/` guards presentation boundaries: no direct Logger, console `$io->` output, or ad-hoc translation in handlers/services; frozen allow lists track legacy `WorkflowOutput` usage pending responder migration.
 
 For coverage:
 

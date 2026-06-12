@@ -8,6 +8,7 @@
          failOnWarning="false">
     <testsuites>
         <testsuite name="Unit Tests">
+            <directory>tests/Architecture</directory>
             <directory>tests/Config</directory>
             <directory>tests/Handler</directory>
             <directory>tests/Service</directory>
