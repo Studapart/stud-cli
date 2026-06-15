@@ -13,31 +13,10 @@ final class PresentationOwnedTranslationTest extends TestCase
      */
     public static function nonPresentationSourceFiles(): iterable
     {
-        $root = dirname(__DIR__, 2);
-        $allowedServiceFiles = [
-            'src/Service/AgentModeSchemaGenerator.php',
-            'src/Service/CommandReferenceGenerator.php',
-            'src/Service/HelpService.php',
-            'src/Service/MessageRenderer.php',
-            'src/Service/ResponderHelper.php',
-            'src/Service/TranslationService.php',
-        ];
-
-        foreach (['src/Handler', 'src/Service'] as $directory) {
-            $path = $root . '/' . $directory;
-            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path)) as $file) {
-                if (! $file instanceof \SplFileInfo || $file->getExtension() !== 'php') {
-                    continue;
-                }
-
-                $relativePath = str_replace($root . '/', '', $file->getPathname());
-                if (in_array($relativePath, $allowedServiceFiles, true)) {
-                    continue;
-                }
-
-                yield $relativePath => [$file->getPathname()];
-            }
-        }
+        return ArchitectureSourceScanner::phpFilesIn(
+            ['src/Handler', 'src/Service'],
+            ArchitecturePresentationExceptions::ALLOWED_SERVICE_FILES,
+        );
     }
 
     /**
