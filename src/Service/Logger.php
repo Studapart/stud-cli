@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\MessageRef;
+use App\Enum\WorkflowChannel;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -129,10 +130,21 @@ class Logger extends CommandOutputBuffer implements PromptInterface
     /**
      * Logs informational text.
      *
-     * @param int $verbosity Minimum verbosity level to display (VERBOSITY_NORMAL by default)
      * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function text(int $verbosity, MessageRef|string|array $message): void
+    public function text(int $verbosity, MessageRef|string|array $message, WorkflowChannel $channel = WorkflowChannel::Default): void
+    {
+        match ($channel) {
+            WorkflowChannel::Jira => $this->jiraText($verbosity, $this->renderLogMessage($message)),
+            WorkflowChannel::Git => $this->gitText($verbosity, $this->renderLogMessage($message)),
+            WorkflowChannel::Default => $this->renderDefaultText($verbosity, $message),
+        };
+    }
+
+    /**
+     * @param MessageRef|string|array<MessageRef|string> $message
+     */
+    private function renderDefaultText(int $verbosity, MessageRef|string|array $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
             $this->io->text($this->renderLogMessage($message));
@@ -157,11 +169,17 @@ class Logger extends CommandOutputBuffer implements PromptInterface
 
     /**
      * Logs a writeln message with optional color formatting.
-     *
-     * @param int $verbosity Minimum verbosity level to display
-     * @param MessageRef|string $message Message to display (can include color tags)
      */
-    public function writeln(int $verbosity, MessageRef|string $message): void
+    public function writeln(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void
+    {
+        match ($channel) {
+            WorkflowChannel::Jira => $this->jiraWriteln($verbosity, $message),
+            WorkflowChannel::Git => $this->gitWriteln($verbosity, $message),
+            WorkflowChannel::Default => $this->renderDefaultWriteln($verbosity, $message),
+        };
+    }
+
+    private function renderDefaultWriteln(int $verbosity, MessageRef|string $message): void
     {
         if ($this->shouldDisplay($verbosity)) {
             $this->io->writeln((string) $message);

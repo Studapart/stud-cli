@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Migrations\AbstractMigration;
 use App\Migrations\MigrationScope;
@@ -19,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 class MigrationExecutorTest extends TestCase
 {
     private MigrationExecutor $executor;
+    private WorkflowEntryRecorder&MockObject $recorder;
     private Logger&MockObject $logger;
     private FileSystem $fileSystem;
     private TranslationService&MockObject $translator;
@@ -28,13 +30,14 @@ class MigrationExecutorTest extends TestCase
     {
         parent::setUp();
 
+        $this->recorder = $this->createMock(WorkflowEntryRecorder::class);
         $this->logger = $this->createMock(Logger::class);
         // Use in-memory filesystem instead of mocking
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
         $this->fileSystem = new FileSystem($flysystem);
         $this->translator = $this->createMock(TranslationService::class);
-        $this->executor = new MigrationExecutor($this->logger, $this->fileSystem, $this->translator);
+        $this->executor = new MigrationExecutor($this->recorder, $this->fileSystem, $this->translator);
 
         $this->testConfigPath = '/test/config.yml';
     }
@@ -89,7 +92,7 @@ class MigrationExecutorTest extends TestCase
                 return $key . (empty($params) ? '' : ' ' . json_encode($params));
             });
 
-        $this->logger->expects($this->atLeastOnce())
+        $this->recorder->expects($this->atLeastOnce())
             ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
@@ -144,7 +147,7 @@ class MigrationExecutorTest extends TestCase
                 return $key . (empty($params) ? '' : ' ' . json_encode($params));
             });
 
-        $this->logger->expects($this->atLeastOnce())
+        $this->recorder->expects($this->atLeastOnce())
             ->method('addError');
 
         $this->expectException(\RuntimeException::class);
@@ -194,7 +197,7 @@ class MigrationExecutorTest extends TestCase
                 return $key . (empty($params) ? '' : ' ' . json_encode($params));
             });
 
-        $this->logger->expects($this->atLeastOnce())
+        $this->recorder->expects($this->atLeastOnce())
             ->method('addWarning');
 
         // Non-prerequisite failures should not throw, just log
@@ -301,7 +304,7 @@ class MigrationExecutorTest extends TestCase
                 return $key . (empty($params) ? '' : ' ' . json_encode($params));
             });
 
-        $this->logger->expects($this->atLeastOnce())
+        $this->recorder->expects($this->atLeastOnce())
             ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration1, $migration2], $config, $this->testConfigPath);
@@ -346,7 +349,7 @@ class MigrationExecutorTest extends TestCase
                 return $key . (empty($params) ? '' : ' ' . json_encode($params));
             });
 
-        $this->logger->expects($this->atLeastOnce())
+        $this->recorder->expects($this->atLeastOnce())
             ->method('addText');
 
         $result = $this->executor->executeMigrations([$migration], $config, $this->testConfigPath);
@@ -408,10 +411,10 @@ class MigrationExecutorTest extends TestCase
             });
 
         // Verify that error is called with fallback message
-        $this->logger->expects($this->once())
+        $this->recorder->expects($this->once())
             ->method('addError')
             ->with(
-                Logger::VERBOSITY_NORMAL,
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $this->callback(function ($message) {
                     return $message instanceof MessageRef
                         && $message->key === 'migration.error'
@@ -474,10 +477,10 @@ class MigrationExecutorTest extends TestCase
             });
 
         // Verify that warning is called with fallback message
-        $this->logger->expects($this->once())
+        $this->recorder->expects($this->once())
             ->method('addWarning')
             ->with(
-                Logger::VERBOSITY_NORMAL,
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $this->callback(function ($message) {
                     return $message instanceof MessageRef
                         && $message->key === 'migration.error'
@@ -539,10 +542,10 @@ class MigrationExecutorTest extends TestCase
             });
 
         // Verify that error is called with fallback message
-        $this->logger->expects($this->once())
+        $this->recorder->expects($this->once())
             ->method('addError')
             ->with(
-                Logger::VERBOSITY_NORMAL,
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $this->callback(function ($message) {
                     return $message instanceof MessageRef
                         && $message->key === 'migration.error'
@@ -604,10 +607,10 @@ class MigrationExecutorTest extends TestCase
             });
 
         // Verify that warning is called with fallback message
-        $this->logger->expects($this->once())
+        $this->recorder->expects($this->once())
             ->method('addWarning')
             ->with(
-                Logger::VERBOSITY_NORMAL,
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $this->callback(function ($message) {
                     return $message instanceof MessageRef
                         && $message->key === 'migration.error'

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Monthly maintenance (SCI-130):** doc index, link fixes, agent help wording, `config:validate` essential, slim `items:show` agent JSON, arch-test fix, remove `final` on injectables
 - **Monthly follow-up (SCI-142):** remove unused handler console params
 - **Monthly follow-up (SCI-141):** hardened architecture tests, WorkflowOutput allow list, console output regex
+- **Monthly follow-up (SCI-138):** migrate workflow handlers to WorkflowRecorder + WorkflowResponse responder path
 
 ### Fixed
 

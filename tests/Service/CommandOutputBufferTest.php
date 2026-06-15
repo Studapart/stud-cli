@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\DTO\MessageRef;
 use App\Enum\ResponseMessageLevel;
+use App\Enum\WorkflowChannel;
 use App\Service\CommandOutputBuffer;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
@@ -82,10 +83,10 @@ final class CommandOutputBufferTest extends TestCase
         $buffer->text(CommandOutputBuffer::VERBOSITY_NORMAL, 'Text');
         $buffer->rawValue('raw');
         $buffer->writeln(CommandOutputBuffer::VERBOSITY_NORMAL, 'Line');
-        $buffer->jiraWriteln(CommandOutputBuffer::VERBOSITY_NORMAL, 'Jira');
-        $buffer->gitWriteln(CommandOutputBuffer::VERBOSITY_NORMAL, 'Git');
-        $buffer->jiraText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Jira']);
-        $buffer->gitText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Git']);
+        $buffer->writeln(CommandOutputBuffer::VERBOSITY_NORMAL, 'Jira', WorkflowChannel::Jira);
+        $buffer->writeln(CommandOutputBuffer::VERBOSITY_NORMAL, 'Git', WorkflowChannel::Git);
+        $buffer->text(CommandOutputBuffer::VERBOSITY_NORMAL, ['Jira'], WorkflowChannel::Jira);
+        $buffer->text(CommandOutputBuffer::VERBOSITY_NORMAL, ['Git'], WorkflowChannel::Git);
         $buffer->section(CommandOutputBuffer::VERBOSITY_NORMAL, 'Section');
         $buffer->title(CommandOutputBuffer::VERBOSITY_NORMAL, 'Title');
         $buffer->listing(CommandOutputBuffer::VERBOSITY_NORMAL, ['item']);
@@ -137,10 +138,10 @@ final class CommandOutputBufferTest extends TestCase
         $buffer->addText(CommandOutputBuffer::VERBOSITY_NORMAL, 'Text');
         $buffer->addRawValue('raw');
         $buffer->addLine(CommandOutputBuffer::VERBOSITY_NORMAL, 'Line');
-        $buffer->addJiraLine(CommandOutputBuffer::VERBOSITY_NORMAL, 'Jira');
-        $buffer->addGitLine(CommandOutputBuffer::VERBOSITY_NORMAL, 'Git');
-        $buffer->addJiraText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Jira']);
-        $buffer->addGitText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Git']);
+        $buffer->addLine(CommandOutputBuffer::VERBOSITY_NORMAL, 'Jira', WorkflowChannel::Jira);
+        $buffer->addLine(CommandOutputBuffer::VERBOSITY_NORMAL, 'Git', WorkflowChannel::Git);
+        $buffer->addText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Jira'], WorkflowChannel::Jira);
+        $buffer->addText(CommandOutputBuffer::VERBOSITY_NORMAL, ['Git'], WorkflowChannel::Git);
         $buffer->addSection(CommandOutputBuffer::VERBOSITY_NORMAL, 'Section');
         $buffer->addTitle(CommandOutputBuffer::VERBOSITY_NORMAL, 'Title');
         $buffer->addListing(CommandOutputBuffer::VERBOSITY_NORMAL, ['item']);

@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
 use App\Enum\OutputFormat;
 use App\Handler\ConfigProjectInitHandler;
 use App\Responder\ConfigProjectInitResponder;
+use App\Response\WorkflowResponse;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -22,46 +26,45 @@ class InitProjectConfigFollowUpService
         private readonly ConfigProjectInitHandler $projectInitHandler,
         private readonly ConfigProjectInitResponder $projectInitResponder,
         mixed $translator,
-        private readonly WorkflowOutput $logger,
+        private readonly PromptInterface $prompt,
     ) {
         unset($translator);
     }
 
     /**
      * Runs only in CLI wizard mode (`config:init` without `--agent`).
-     *
-     * @param bool $isInteractiveCli From Castor/Symfony input (whether prompts are allowed).
      */
-    public function runAfterGlobalSave(SymfonyStyle $io, bool $isAgentMode, bool $isInteractiveCli): void
+    public function augmentAfterGlobalSave(WorkflowResponse $response, bool $isInteractiveCli, SymfonyStyle $io): WorkflowResponse
     {
-        if ($isAgentMode) {
-            return;
-        }
+        $recorder = new WorkflowRecorder();
+        $recorder->absorbResponse($response);
 
         if (! $this->isInsideGitRepository()) {
-            $this->emitRunLaterHint();
+            $this->emitRunLaterHint($recorder);
 
-            return;
+            return $recorder->toResponse($response->exitCode);
         }
 
         $projectConfig = $this->gitRepository->readProjectConfig();
         if ($this->adequacyChecker->isAdequate($projectConfig)) {
-            return;
+            return $recorder->toResponse($response->exitCode);
         }
 
         if ($isInteractiveCli) {
-            $confirmed = $this->logger->confirm(
+            $confirmed = $this->prompt->confirm(
                 MessageRef::key('config.init.project_follow_up.prompt_configure_now'),
                 false
             );
             if ($confirmed) {
-                $this->runInteractiveProjectInit($io);
+                $this->runInteractiveProjectInit($recorder, $io);
 
-                return;
+                return $recorder->toResponse($response->exitCode);
             }
         }
 
-        $this->emitRunLaterHint();
+        $this->emitRunLaterHint($recorder);
+
+        return $recorder->toResponse($response->exitCode);
     }
 
     private function isInsideGitRepository(): bool
@@ -75,19 +78,19 @@ class InitProjectConfigFollowUpService
         }
     }
 
-    private function emitRunLaterHint(): void
+    private function emitRunLaterHint(WorkflowEntryRecorder $recorder): void
     {
-        $this->logger->addNote(
-            WorkflowOutput::VERBOSITY_NORMAL,
+        $recorder->addNote(
+            WorkflowEntryRecorder::VERBOSITY_NORMAL,
             MessageRef::key('config.init.project_follow_up.hint_run_later')
         );
     }
 
-    private function runInteractiveProjectInit(SymfonyStyle $io): void
+    private function runInteractiveProjectInit(WorkflowEntryRecorder $recorder, SymfonyStyle $io): void
     {
-        $response = $this->projectInitHandler->handle([], [], false, true, false);
-        $this->projectInitResponder->respond($io, $response, OutputFormat::Cli);
-        if (! $response->isSuccess()) {
+        $initResponse = $this->projectInitHandler->handle([], [], false, true, false, $recorder);
+        $this->projectInitResponder->respond($io, $initResponse, OutputFormat::Cli);
+        if (! $initResponse->isSuccess()) {
             // @codeCoverageIgnoreStart
             // Process exit cannot be asserted in unit tests without a separate process.
             exit(1);

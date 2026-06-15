@@ -4,59 +4,74 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
 use App\Service\JiraService;
-use App\Service\WorkflowOutput;
 
 class StatusHandler
 {
+    private WorkflowEntryRecorder $recorder;
+
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly JiraService $jiraService,
         mixed $_translator,
-        private readonly WorkflowOutput $logger
     ) {
         unset($_translator);
     }
 
-    public function handle(): int
+    public function handle(): WorkflowResponse
     {
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.section'));
+        $this->recorder = new WorkflowRecorder();
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.section'));
         $key = $this->gitRepository->getJiraKeyFromBranchName();
         $branch = $this->gitRepository->getCurrentBranchName();
 
-        // Jira Status
         if ($key) {
-            $this->logger->addJiraLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('status.fetching', ['key' => $key]));
-
-            try {
-                $issue = $this->jiraService->getIssue($key);
-                $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}");
-            } catch (ApiException $e) {
-                $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
-                $this->logger->addText(WorkflowOutput::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-            } catch (\Exception $e) {
-                $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
-            }
+            $this->recordJiraStatus($key);
         } else {
-            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.jira_no_key'));
+            $this->recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_no_key'));
         }
 
-        // Git Status
-        $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "Git:    {$branch}");
+        $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, "Git:    {$branch}");
+        $this->recordLocalStatus();
 
-        // Local Status
+        return $this->recorder->toResponse(0);
+    }
+
+    protected function recordJiraStatus(string $key): void
+    {
+        $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('status.fetching', ['key' => $key]), WorkflowChannel::Jira);
+
+        try {
+            $issue = $this->jiraService->getIssue($key);
+            $this->recorder->addLine(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}",
+                WorkflowChannel::Jira,
+            );
+        } catch (ApiException $e) {
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+        } catch (\Exception $e) {
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+        }
+    }
+
+    protected function recordLocalStatus(): void
+    {
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         $changeCount = count(array_filter(explode("\n", $gitStatus)));
 
         if ($changeCount > 0) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.local_changes', ['count' => $changeCount]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.local_changes', ['count' => $changeCount]));
         } else {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('status.local_clean'));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.local_clean'));
         }
-
-        return 0;
     }
 }

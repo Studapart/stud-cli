@@ -4,7 +4,6 @@ namespace App\Tests\Handler;
 
 use App\Handler\InitHandler;
 use App\Service\FileSystem;
-use App\Service\InitProjectConfigFollowUpService;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -16,7 +15,7 @@ class InitHandlerTest extends CommandTestCase
     private InitHandler $handler;
     private FileSystem $fileSystem;
     private ?string $originalShell = null;
-    private \App\Service\Logger $logger;
+    private \App\Service\Prompt\PromptInterface $prompt;
 
     protected function setUp(): void
     {
@@ -32,8 +31,8 @@ class InitHandlerTest extends CommandTestCase
 
         $this->fileSystem = $this->createMock(FileSystem::class);
         // Logger will be created per test with real $io for interactive methods
-        $this->logger = $this->createMock(\App\Service\Logger::class);
-        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->logger, new \App\Service\GitTokenPromptResolver());
+        $this->prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
+        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->prompt, new \App\Service\GitTokenPromptResolver());
     }
 
     /**
@@ -46,6 +45,11 @@ class InitHandlerTest extends CommandTestCase
         return new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
     }
 
+    private function isMigrationsDirectory(string $path): bool
+    {
+        return str_contains($path, 'Migrations/GlobalMigrations');
+    }
+
     /**
      * Sets up mocks for migration discovery.
      * This is needed because InitHandler calls MigrationRegistry::discoverGlobalMigrations().
@@ -56,8 +60,13 @@ class InitHandlerTest extends CommandTestCase
         // Use the actual migration filename
         $this->fileSystem->expects($this->any())
             ->method('listDirectory')
-            ->with('src/Service/../Migrations/GlobalMigrations')
-            ->willReturn(['Migration202501150000001_GitTokenFormat.php']);
+            ->willReturnCallback(function (string $path) {
+                if ($this->isMigrationsDirectory($path)) {
+                    return ['Migration202501150000001_GitTokenFormat.php'];
+                }
+
+                return [];
+            });
 
         // Mock read for migration file - return the actual class content so it can be instantiated
         $this->fileSystem->expects($this->any())
@@ -102,7 +111,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -126,63 +135,9 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: title() was called, verified by mocked fileSystem->filePutContents() being called
-    }
-
-    public function testHandleRunsProjectConfigFollowUpWhenInjected(): void
-    {
-        $this->fileSystem->expects($this->once())
-            ->method('fileExists')
-            ->with('/tmp/config.yml')
-            ->willReturn(false);
-
-        $this->fileSystem->expects($this->once())
-            ->method('dirname')
-            ->with('/tmp/config.yml')
-            ->willReturn('/tmp');
-
-        $this->fileSystem->expects($this->exactly(2))
-            ->method('isDir')
-            ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
-            });
-
-        $this->fileSystem->expects($this->once())
-            ->method('filePutContents');
-
-        $followUp = $this->createMock(InitProjectConfigFollowUpService::class);
-        $followUp->expects($this->once())
-            ->method('runAfterGlobalSave')
-            ->with($this->isInstanceOf(SymfonyStyle::class), false, true);
-
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "0\n");
-        fwrite($inputStream, "jira_url\n");
-        fwrite($inputStream, "jira_email\n");
-        fwrite($inputStream, "jira_token\n");
-        fwrite($inputStream, "github_token\n");
-        fwrite($inputStream, "\n");
-        fwrite($inputStream, "n\n");
-        fwrite($inputStream, "1\n");
-        rewind($inputStream);
-
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
-
-        $realLogger = new \App\Service\Logger($io, []);
-        $handler = new InitHandler(
-            $this->fileSystem,
-            '/tmp/config.yml',
-            $this->translationService,
-            $realLogger,
-            new \App\Service\GitTokenPromptResolver(),
-            $followUp
-        );
-        $handler->handle($io, false, true);
     }
 
     public function testHandleWithExistingConfig(): void
@@ -212,8 +167,7 @@ class InitHandlerTest extends CommandTestCase
                         && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'new@example.com'
                         && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'existing_jira_token'
                         && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'new_github_token'
-                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token'
-                        && isset($config['migration_version']);
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token';
                 })
             );
 
@@ -226,7 +180,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         // Setup migration mocks
@@ -250,6 +204,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden)
         fwrite($inputStream, "new_github_token\n"); // GitHub token (askHidden)
         fwrite($inputStream, "\n"); // GitLab token (skip, should preserve existing)
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -257,7 +212,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -298,7 +253,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->setupMigrationMocks();
@@ -317,6 +272,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "\n"); // Jira token empty -> keep existing
         fwrite($inputStream, "\n"); // GitHub token empty -> should use GIT_TOKEN
         fwrite($inputStream, "\n"); // GitLab token empty
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion: No
         rewind($inputStream);
 
@@ -324,7 +280,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
     }
 
     public function testHandleWithNewConfigAndDirectoryCreation(): void
@@ -346,7 +302,7 @@ class InitHandlerTest extends CommandTestCase
                 if ($path === '/tmp/nonexistent_dir') {
                     return false;
                 }
-                if ($path === 'src/Service/../Migrations/GlobalMigrations') {
+                if ($this->isMigrationsDirectory($path)) {
                     return true;
                 }
 
@@ -378,7 +334,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -410,8 +366,7 @@ class InitHandlerTest extends CommandTestCase
                         && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'existing@example.com'
                         && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'existing_jira_token'
                         && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'existing_github_token'
-                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token'
-                        && isset($config['migration_version']);
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'existing_gitlab_token';
                 })
             );
 
@@ -424,7 +379,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         // Setup migration mocks
@@ -445,6 +400,7 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "\n"); // Press Enter without input for Jira token (askHidden returns null/empty, should preserve existing)
         fwrite($inputStream, "\n"); // Press Enter without input for GitHub token (askHidden returns null/empty, should preserve existing)
         fwrite($inputStream, "\n"); // Press Enter without input for GitLab token (askHidden returns null/empty, should preserve existing)
+        fwrite($inputStream, "n\n"); // Jira transition enabled: No
         fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
         rewind($inputStream);
 
@@ -452,7 +408,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
         // When user presses Enter without input, askHidden() returns null/empty, and existing tokens are preserved via ?: operator
@@ -477,8 +433,7 @@ class InitHandlerTest extends CommandTestCase
                         && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
                         && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
                         && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
-                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token'
-                        && isset($config['migration_version']);
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token';
                 })
             );
 
@@ -491,7 +446,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         // Setup migration mocks
@@ -514,7 +469,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -538,8 +493,7 @@ class InitHandlerTest extends CommandTestCase
                         && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
                         && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
                         && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
-                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token'
-                        && isset($config['migration_version']);
+                        && isset($config['GITLAB_TOKEN']) && $config['GITLAB_TOKEN'] === 'gitlab_token';
                 })
             );
 
@@ -552,7 +506,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         // Setup migration mocks
@@ -575,7 +529,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -598,8 +552,7 @@ class InitHandlerTest extends CommandTestCase
                         && isset($config['JIRA_URL']) && $config['JIRA_URL'] === 'jira_url'
                         && isset($config['JIRA_EMAIL']) && $config['JIRA_EMAIL'] === 'jira_email'
                         && isset($config['JIRA_API_TOKEN']) && $config['JIRA_API_TOKEN'] === 'jira_token'
-                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token'
-                        && isset($config['migration_version']);
+                        && isset($config['GITHUB_TOKEN']) && $config['GITHUB_TOKEN'] === 'github_token';
                 })
             );
 
@@ -612,7 +565,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         // Setup migration mocks
@@ -636,7 +589,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -661,7 +614,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -684,7 +637,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -720,7 +673,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -743,7 +696,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -779,7 +732,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -804,7 +757,7 @@ class InitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -870,7 +823,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -901,7 +854,7 @@ class InitHandlerTest extends CommandTestCase
         );
         $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
 
-        $handlerWithRealLogger->handle($io);
+        $response = $handlerWithRealLogger->handle();
 
         // Restore original SHELL
         if ($originalShell !== false) {
@@ -910,9 +863,16 @@ class InitHandlerTest extends CommandTestCase
             putenv('SHELL');
         }
 
-        // Test intent: verbose message is shown when user chooses No and verbose is enabled
-        $outputContent = $output->fetch();
-        $this->assertStringContainsString('Shell auto-completion setup skipped', $outputContent);
+        $foundSkippedEntry = false;
+        foreach ($response->entries as $entry) {
+            if ($entry->message instanceof \App\DTO\MessageRef
+                && $entry->message->key === 'config.init.completion.skipped') {
+                $foundSkippedEntry = true;
+
+                break;
+            }
+        }
+        $this->assertTrue($foundSkippedEntry);
     }
 
     public function testDetectSystemLocaleFromLcAll(): void
@@ -1057,6 +1017,22 @@ class InitHandlerTest extends CommandTestCase
         $this->assertNull($result);
     }
 
+    public function testGetLatestMigrationIdReturnsLexicographicallyLatest(): void
+    {
+        $older = $this->createMock(\App\Migrations\MigrationInterface::class);
+        $older->method('getId')->willReturn('202501010000001');
+        $newer = $this->createMock(\App\Migrations\MigrationInterface::class);
+        $newer->method('getId')->willReturn('202501150000001');
+
+        $reflection = new \ReflectionClass($this->handler);
+        $method = $reflection->getMethod('getLatestMigrationId');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->handler, [$older, $newer]);
+
+        $this->assertSame('202501150000001', $result);
+    }
+
     public function testHandleThrowsExceptionWhenMkdirFails(): void
     {
         $configPath = '/nonexistent/path/config.yml';
@@ -1113,7 +1089,7 @@ class InitHandlerTest extends CommandTestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to create config directory: ' . $configDir);
-        $handler->handle($io);
+        $handler->handle();
     }
 
     public function testHandleFiltersOutEmptyStringsFromConfig(): void
@@ -1133,7 +1109,7 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem->expects($this->exactly(2))
             ->method('isDir')
             ->willReturnCallback(function ($path) {
-                return in_array($path, ['/tmp', 'src/Service/../Migrations/GlobalMigrations'], true);
+                return in_array($path, ['/tmp'], true) || $this->isMigrationsDirectory($path);
             });
 
         $this->fileSystem->expects($this->once())
@@ -1151,7 +1127,7 @@ class InitHandlerTest extends CommandTestCase
                     }
 
                     // Verify required fields are present
-                    return isset($config['LANGUAGE']) && isset($config['migration_version']);
+                    return isset($config['LANGUAGE']) && isset($config['JIRA_EMAIL']);
                 })
             );
 
@@ -1167,12 +1143,13 @@ class InitHandlerTest extends CommandTestCase
         fwrite($inputStream, "github_token\n");
         fwrite($inputStream, "gitlab_token\n");
         fwrite($inputStream, "n\n");
+        fwrite($inputStream, "1\n"); // Completion: No
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle($io);
+        $handler->handle();
     }
 
     public function testFilterEmptyStrings(): void

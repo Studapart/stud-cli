@@ -31,6 +31,7 @@ class UpdateHandlerIntegrationTest extends TestCase
     private HttpClientInterface $httpClient;
     private FileSystem $fileSystem;
     private TranslationService $translationService;
+    private Logger $prompt;
     private string $tempBinaryPath;
 
     protected function setUp(): void
@@ -48,6 +49,7 @@ class UpdateHandlerIntegrationTest extends TestCase
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
+        $this->prompt = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
 
         // Create handler with real services but mocked HTTP client
         $this->handler = new UpdateHandler(
@@ -57,8 +59,8 @@ class UpdateHandlerIntegrationTest extends TestCase
             $this->tempBinaryPath,
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
-            new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []),
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $this->fileSystem,
             null,
             $this->httpClient
@@ -148,10 +150,10 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle();
+        $response = $this->handler->handle();
 
         // Verify update completed successfully
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertFileExists($this->tempBinaryPath);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
     }
@@ -208,10 +210,10 @@ CHANGELOG;
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle();
+        $response = $this->handler->handle();
 
         // Hash verification should pass and update should succeed
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertFileExists($this->tempBinaryPath);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
     }

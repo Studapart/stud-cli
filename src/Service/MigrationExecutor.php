@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Migrations\MigrationInterface;
 
@@ -14,7 +15,7 @@ use App\Migrations\MigrationInterface;
 class MigrationExecutor
 {
     public function __construct(
-        private readonly WorkflowOutput $logger,
+        private readonly WorkflowEntryRecorder $recorder,
         private readonly FileSystem $fileSystem,
         mixed $translator
     ) {
@@ -71,8 +72,8 @@ class MigrationExecutor
      */
     private function runSingleMigration(MigrationInterface $migration, array $config): array
     {
-        $this->logger->addText(
-            WorkflowOutput::VERBOSITY_NORMAL,
+        $this->recorder->addText(
+            WorkflowEntryRecorder::VERBOSITY_NORMAL,
             MessageRef::key('migration.running', [
                 'id' => $migration->getId(),
                 'description' => $migration->getDescription(),
@@ -87,8 +88,8 @@ class MigrationExecutor
 
         $config['migration_version'] = $migration->getId();
 
-        $this->logger->addText(
-            WorkflowOutput::VERBOSITY_NORMAL,
+        $this->recorder->addText(
+            WorkflowEntryRecorder::VERBOSITY_NORMAL,
             MessageRef::key('migration.version_updated', [
                 'version' => $migration->getId(),
             ])
@@ -105,8 +106,8 @@ class MigrationExecutor
         $errorMessage = $this->getErrorMessage($migration->getId(), $e->getMessage());
 
         if ($migration->isPrerequisite()) {
-            $this->logger->addError(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $this->recorder->addError(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $errorMessage
             );
 
@@ -117,8 +118,8 @@ class MigrationExecutor
             );
         }
 
-        $this->logger->addWarning(
-            WorkflowOutput::VERBOSITY_NORMAL,
+        $this->recorder->addWarning(
+            WorkflowEntryRecorder::VERBOSITY_NORMAL,
             $errorMessage
         );
     }

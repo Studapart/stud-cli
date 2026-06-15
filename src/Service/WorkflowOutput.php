@@ -4,32 +4,28 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\DTO\WorkflowOutputEntry;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
 use App\Response\WorkflowResponse;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Helper\TableSeparator;
 
-class WorkflowOutput
+class WorkflowOutput implements WorkflowEntryRecorder
 {
-    public const VERBOSITY_NORMAL = 0;
-    public const VERBOSITY_VERBOSE = 1;
-    public const VERBOSITY_VERY_VERBOSE = 2;
-    public const VERBOSITY_DEBUG = 3;
+    public const VERBOSITY_NORMAL = WorkflowEntryRecorder::VERBOSITY_NORMAL;
+    public const VERBOSITY_VERBOSE = WorkflowEntryRecorder::VERBOSITY_VERBOSE;
+    public const VERBOSITY_VERY_VERBOSE = WorkflowEntryRecorder::VERBOSITY_VERY_VERBOSE;
+    public const VERBOSITY_DEBUG = WorkflowEntryRecorder::VERBOSITY_DEBUG;
 
-    /**
-     * @var list<WorkflowOutputEntry>
-     */
-    private array $entries = [];
-
-    /**
-     * @var list<ResponseMessage>
-     */
-    private array $messages = [];
+    private readonly WorkflowRecorder $recorder;
 
     public function __construct(private readonly PromptInterface $prompt)
     {
+        $this->recorder = new WorkflowRecorder();
     }
 
     /**
@@ -37,7 +33,7 @@ class WorkflowOutput
      */
     public function getEntries(): array
     {
-        return $this->entries;
+        return $this->recorder->getEntries();
     }
 
     /**
@@ -45,7 +41,7 @@ class WorkflowOutput
      */
     public function getMessages(): array
     {
-        return $this->messages;
+        return $this->recorder->getMessages();
     }
 
     /**
@@ -53,14 +49,12 @@ class WorkflowOutput
      */
     public function addError(int $verbosity, MessageRef|string|array $message): void
     {
-        $this->messages[] = ResponseMessage::error($this->stringify($message));
-        $this->add('error', $verbosity, $message);
+        $this->recorder->addError($verbosity, $message);
     }
 
     public function addErrorWithDetails(int $verbosity, MessageRef|string $userMessage, string $technicalDetails): void
     {
-        $this->messages[] = ResponseMessage::error($userMessage, $technicalDetails !== '' ? $technicalDetails : null);
-        $this->add('errorWithDetails', $verbosity, $userMessage, $technicalDetails);
+        $this->recorder->addErrorWithDetails($verbosity, $userMessage, $technicalDetails);
     }
 
     /**
@@ -68,8 +62,7 @@ class WorkflowOutput
      */
     public function addWarning(int $verbosity, MessageRef|string|array $message): void
     {
-        $this->messages[] = ResponseMessage::warning($this->stringify($message));
-        $this->add('warning', $verbosity, $message);
+        $this->recorder->addWarning($verbosity, $message);
     }
 
     /**
@@ -77,8 +70,7 @@ class WorkflowOutput
      */
     public function addNote(int $verbosity, MessageRef|string|array $message): void
     {
-        $this->messages[] = ResponseMessage::notice($this->stringify($message));
-        $this->add('note', $verbosity, $message);
+        $this->recorder->addNote($verbosity, $message);
     }
 
     /**
@@ -86,61 +78,35 @@ class WorkflowOutput
      */
     public function addSuccess(int $verbosity, MessageRef|string|array $message): void
     {
-        $this->add('success', $verbosity, $message);
+        $this->recorder->addSuccess($verbosity, $message);
     }
 
     /**
      * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function addText(int $verbosity, MessageRef|string|array $message): void
+    public function addText(int $verbosity, MessageRef|string|array $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->add('text', $verbosity, $message);
+        $this->recorder->addText($verbosity, $message, $channel);
     }
 
     public function addRawValue(string $message): void
     {
-        $this->add('rawValue', self::VERBOSITY_NORMAL, $message);
+        $this->recorder->addRawValue($message);
     }
 
-    public function addLine(int $verbosity, MessageRef|string $message): void
+    public function addLine(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->add('writeln', $verbosity, $message);
-    }
-
-    public function addJiraLine(int $verbosity, MessageRef|string $message): void
-    {
-        $this->add('jiraWriteln', $verbosity, $message);
-    }
-
-    public function addGitLine(int $verbosity, MessageRef|string $message): void
-    {
-        $this->add('gitWriteln', $verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function addJiraText(int $verbosity, string|array $message): void
-    {
-        $this->add('jiraText', $verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function addGitText(int $verbosity, string|array $message): void
-    {
-        $this->add('gitText', $verbosity, $message);
+        $this->recorder->addLine($verbosity, $message, $channel);
     }
 
     public function addSection(int $verbosity, MessageRef|string $message): void
     {
-        $this->add('section', $verbosity, $message);
+        $this->recorder->addSection($verbosity, $message);
     }
 
     public function addTitle(int $verbosity, MessageRef|string $message): void
     {
-        $this->add('title', $verbosity, $message);
+        $this->recorder->addTitle($verbosity, $message);
     }
 
     /**
@@ -148,7 +114,7 @@ class WorkflowOutput
      */
     public function addListing(int $verbosity, array $elements): void
     {
-        $this->entries[] = new WorkflowOutputEntry('listing', $verbosity, elements: $elements);
+        $this->recorder->addListing($verbosity, $elements);
     }
 
     /**
@@ -156,7 +122,7 @@ class WorkflowOutput
      */
     public function addComment(int $verbosity, string|array $message): void
     {
-        $this->add('comment', $verbosity, $message);
+        $this->recorder->addComment($verbosity, $message);
     }
 
     /**
@@ -164,7 +130,7 @@ class WorkflowOutput
      */
     public function addInfo(int $verbosity, string|array $message): void
     {
-        $this->add('info', $verbosity, $message);
+        $this->recorder->addInfo($verbosity, $message);
     }
 
     /**
@@ -172,7 +138,7 @@ class WorkflowOutput
      */
     public function addCaution(int $verbosity, string|array $message): void
     {
-        $this->add('caution', $verbosity, $message);
+        $this->recorder->addCaution($verbosity, $message);
     }
 
     /**
@@ -181,7 +147,7 @@ class WorkflowOutput
      */
     public function addTable(int $verbosity, array $headers, array $rows): void
     {
-        $this->entries[] = new WorkflowOutputEntry('table', $verbosity, headers: $headers, rows: $rows);
+        $this->recorder->addTable($verbosity, $headers, $rows);
     }
 
     /**
@@ -190,7 +156,7 @@ class WorkflowOutput
      */
     public function addHorizontalTable(int $verbosity, array $headers, array $rows): void
     {
-        $this->entries[] = new WorkflowOutputEntry('horizontalTable', $verbosity, headers: $headers, rows: $rows);
+        $this->recorder->addHorizontalTable($verbosity, $headers, $rows);
     }
 
     /**
@@ -198,12 +164,12 @@ class WorkflowOutput
      */
     public function addDefinitionList(int $verbosity, string|array|TableSeparator ...$list): void
     {
-        $this->entries[] = new WorkflowOutputEntry('definitionList', $verbosity, definitionList: $list);
+        $this->recorder->addDefinitionList($verbosity, ...$list);
     }
 
     public function addNewLine(int $verbosity, int $count = 1): void
     {
-        $this->entries[] = new WorkflowOutputEntry('newLine', $verbosity, count: $count);
+        $this->recorder->addNewLine($verbosity, $count);
     }
 
     public function ask(MessageRef|string $question, ?string $default = null, ?callable $validator = null): ?string
@@ -231,26 +197,6 @@ class WorkflowOutput
 
     public function toResponse(int $exitCode): WorkflowResponse
     {
-        return WorkflowResponse::fromExitCode($exitCode, $this->entries, $this->messages);
-    }
-
-    /**
-     * @param MessageRef|string|array<MessageRef|string> $message
-     */
-    private function add(string $type, int $verbosity, MessageRef|string|array $message, ?string $technicalDetails = null): void
-    {
-        $this->entries[] = new WorkflowOutputEntry($type, $verbosity, $message, $technicalDetails);
-    }
-
-    /**
-     * @param MessageRef|string|array<MessageRef|string> $message
-     */
-    private function stringify(MessageRef|string|array $message): MessageRef|string
-    {
-        if (! is_array($message)) {
-            return $message;
-        }
-
-        return implode("\n", array_map(static fn (MessageRef|string $line): string => (string) $line, $message));
+        return $this->recorder->toResponse($exitCode);
     }
 }

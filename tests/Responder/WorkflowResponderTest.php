@@ -8,6 +8,7 @@ use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\DTO\WorkflowOutputEntry;
 use App\Enum\OutputFormat;
+use App\Enum\WorkflowChannel;
 use App\Responder\WorkflowResponder;
 use App\Response\WorkflowResponse;
 use App\Service\Logger;
@@ -32,10 +33,10 @@ final class WorkflowResponderTest extends TestCase
             new WorkflowOutputEntry('text', 0, [MessageRef::key('table.key')]),
             new WorkflowOutputEntry('rawValue', 0, 'raw'),
             new WorkflowOutputEntry('writeln', 0, 'line'),
-            new WorkflowOutputEntry('jiraWriteln', 0, 'jira'),
-            new WorkflowOutputEntry('gitWriteln', 0, 'git'),
-            new WorkflowOutputEntry('jiraText', 0, ['jira']),
-            new WorkflowOutputEntry('gitText', 0, ['git']),
+            new WorkflowOutputEntry('writeln', 0, 'jira', channel: WorkflowChannel::Jira),
+            new WorkflowOutputEntry('writeln', 0, 'git', channel: WorkflowChannel::Git),
+            new WorkflowOutputEntry('text', 0, ['jira'], channel: WorkflowChannel::Jira),
+            new WorkflowOutputEntry('text', 0, ['git'], channel: WorkflowChannel::Git),
             new WorkflowOutputEntry('section', 0, 'section'),
             new WorkflowOutputEntry('title', 0, 'title'),
             new WorkflowOutputEntry('listing', 0, elements: ['item']),

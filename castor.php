@@ -103,6 +103,7 @@ use App\Responder\WorkflowResponder;
 use App\Response\AgentJsonResponse;
 use App\Response\BranchSwitchResponse;
 use App\Response\CommandResponse;
+use App\Response\WorkflowResponse;
 use App\Service\AgentModeHelper;
 use App\Service\AgentModeSchemaGenerator;
 use App\Service\ChangelogParser;
@@ -116,6 +117,7 @@ use App\Service\GitBranchService;
 use App\Service\GithubProvider;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
+use App\Service\GlobalMigrationService;
 use App\Service\InitProjectConfigFollowUpService;
 use App\Service\JiraAttachmentService;
 use App\Service\JiraService;
@@ -412,7 +414,7 @@ function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUp
         $gitRepository,
         $gitSetup,
         _get_translation_service(),
-        _get_command_output_buffer(),
+        _get_prompt(),
         new \App\Service\GitTokenPromptResolver()
     );
     $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
@@ -423,7 +425,7 @@ function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUp
         $projectInitHandler,
         new ConfigProjectInitResponder(_get_responder_helper(), _get_logger()),
         _get_translation_service(),
-        _get_command_output_buffer(),
+        _get_prompt(),
     );
 }
 
@@ -630,6 +632,20 @@ function _get_prompt(): PromptInterface
     return new SymfonyPromptService(io(), _get_message_renderer());
 }
 
+function _get_global_migration_service(): GlobalMigrationService
+{
+    static $service = null;
+    if ($service === null) {
+        $service = new GlobalMigrationService(
+            _get_file_system(),
+            _get_translation_service(),
+            _get_logger(),
+        );
+    }
+
+    return $service;
+}
+
 function _get_command_output_buffer(): WorkflowOutput
 {
     return new WorkflowOutput(_get_prompt());
@@ -642,7 +658,11 @@ function _get_workflow_responder(bool $agent = false): WorkflowResponder
 
 function _respond_workflow_output(WorkflowOutput $output, int $exitCode, bool $agent, bool $compact = true): void
 {
-    $response = $output->toResponse($exitCode);
+    _respond_workflow_response($output->toResponse($exitCode), $agent, $compact);
+}
+
+function _respond_workflow_response(WorkflowResponse $response, bool $agent, bool $compact = true): void
+{
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     $agentResponse = _get_workflow_responder($agent)->respond(io(), $response, $format, $compact);
 
@@ -1104,13 +1124,13 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         $currentVersion = $config['migration_version'] ?? '0';
 
         // Step 1: Run global migrations if pending
-        $registry = new MigrationRegistry(new CommandOutputBuffer($logger, _get_prompt()), $translator, $fileSystem);
+        $registry = new MigrationRegistry($logger, $translator, $fileSystem);
         $globalMigrations = $registry->discoverGlobalMigrations();
         $pendingGlobalMigrations = $registry->getPendingMigrations($globalMigrations, $currentVersion);
 
         if (! empty($pendingGlobalMigrations)) {
             $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.running'));
-            $executor = new MigrationExecutor(new CommandOutputBuffer($logger, _get_prompt()), $fileSystem, $translator);
+            $executor = new MigrationExecutor(_get_command_output_buffer(), $fileSystem, $translator);
             $config = $executor->executeMigrations($pendingGlobalMigrations, $config, $configPath);
             $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.global.complete'));
             $currentVersion = $config['migration_version'] ?? $currentVersion;
@@ -1130,7 +1150,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
 
                 if (! empty($pendingProjectMigrations)) {
                     $logger->section(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.running'));
-                    $executor = new MigrationExecutor(new CommandOutputBuffer($logger, _get_prompt()), $fileSystem, $translator);
+                    $executor = new MigrationExecutor(_get_command_output_buffer(), $fileSystem, $translator);
                     $projectConfig = $executor->executeMigrations($pendingProjectMigrations, $projectConfig, $projectConfigPath);
                     $logger->success(Logger::VERBOSITY_NORMAL, $translator->trans('migration.project.complete'));
                 }
@@ -1277,17 +1297,20 @@ function config_init(
         _get_file_system(),
         _get_config_path(),
         _get_translation_service(),
-        _get_command_output_buffer(),
+        _get_prompt(),
         new \App\Service\GitTokenPromptResolver(),
-        _get_init_project_config_follow_up_service()
     );
-    $handler->handle(io(), $agent, input()->isInteractive());
+    $response = $handler->handle();
+    if (! $agent) {
+        $response = _get_init_project_config_follow_up_service()->augmentAfterGlobalSave($response, input()->isInteractive(), io());
+    }
     if ($format === OutputFormat::Json) {
         $cmdResponder = new AgentCommandResponder(_get_agent_message_renderer());
         _agent_respond($cmdResponder->respondSuccess('Configuration initialized', $compact));
 
         return;
     }
+    _respond_workflow_response($response, false);
 }
 
 #[AsTask(name: 'config:show', description: 'Display current configuration (global and project) with secrets redacted; safe for sharing with support')]
@@ -1553,18 +1576,23 @@ function config_project_init(
     $hasExplicitCli = $cliPatches !== [] || ($skipBaseBranchRemoteCheck && ! $agent);
     $interactive = ! $agent && ! $hasExplicitCli;
 
+    $workflowRecorder = $interactive ? new \App\DTO\WorkflowRecorder() : null;
+
     $gitRepository = _get_git_repository();
     $gitSetup = _get_git_setup_service();
     $promptCollector = new ConfigProjectInitPromptCollector(
         $gitRepository,
         $gitSetup,
         _get_translation_service(),
-        _get_command_output_buffer(),
+        _get_prompt(),
         new \App\Service\GitTokenPromptResolver()
     );
     $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
-    $response = $handler->handle($rawAgentInput, $cliPatches, $skipRemote, $interactive, $agent);
+    $response = $handler->handle($rawAgentInput, $cliPatches, $skipRemote, $interactive, $agent, $workflowRecorder);
     $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
+    if ($format !== OutputFormat::Json && $workflowRecorder !== null) {
+        _respond_workflow_response($workflowRecorder->toResponse($response->isSuccess() ? 0 : 1), false);
+    }
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2081,11 +2109,10 @@ function items_transition(
         $compact = _agent_compact_enabled($input);
         $key = isset($input['key']) ? (string) $input['key'] : null;
     }
-    $output = _get_command_output_buffer();
-    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
-    $exitCode = $handler->handle($key);
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_prompt());
+    $response = $handler->handle($key);
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 // =================================================================================
@@ -2114,11 +2141,10 @@ function items_start(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $output = _get_command_output_buffer();
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), $output);
-    $exitCode = $handler->handle($key);
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt());
+    $response = $handler->handle($key);
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 #[AsTask(name: 'items:takeover', aliases: ['to'], description: 'Takes over an issue from another user')]
@@ -2147,12 +2173,12 @@ function items_takeover(
     }
     $baseBranch = _get_base_branch();
     $gitBranchService = _get_git_branch_service();
-    $output = _get_command_output_buffer();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), $output);
-    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $output);
-    $exitCode = $handler->handle($key, $quiet);
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $prompt = _get_prompt();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $response = $handler->handle($key, $quiet);
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 #[AsTask(name: 'branch:rename', aliases: ['rn'], description: 'Renames a branch, optionally regenerating name from Jira issue')]
@@ -2184,11 +2210,10 @@ function branch_rename(
     }
     $gitRepository = _get_git_repository();
     $gitProvider = _get_git_provider();
-    $output = _get_command_output_buffer();
-    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), $output, _get_html_converter());
-    $exitCode = $handler->handle($branch, $key, $explicitName, $quiet);
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_prompt(), _get_html_converter());
+    $response = $handler->handle($branch, $key, $explicitName, $quiet);
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 #[AsTask(name: 'branches:list', aliases: ['bl'], description: 'List branches with status and auto-clean eligibility')]
@@ -2242,21 +2267,20 @@ function branches_clean(
     $gitRepository = _get_git_repository();
     $gitBranchService = _get_git_branch_service();
     $gitProvider = _get_git_provider();
-    $output = _get_command_output_buffer();
     $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
     $handler = new BranchCleanHandler(
         $gitRepository,
         $gitBranchService,
         $resolver,
-        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), $output),
+        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_prompt()),
         _get_configured_base_branch_or_null(),
         _get_translation_service(),
-        $output
+        _get_prompt()
     );
-    $exitCode = $handler->handle($quiet);
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
+    $response = $handler->handle($quiet);
+    _respond_workflow_response($response, $agent, $compact);
 
-    return $exitCode;
+    return $response->exitCode;
 }
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
@@ -2667,11 +2691,10 @@ function submit(
         }
     }
 
-    $output = _get_command_output_buffer();
-    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), $output, _get_html_converter());
-    $exitCode = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_prompt(), _get_html_converter());
+    $response = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 #[AsTask(name: 'pr:comment', aliases: ['pc'], description: 'Posts a comment to the active Pull Request')]
@@ -3175,11 +3198,10 @@ function status(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $output = _get_command_output_buffer();
-    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), $output);
-    $exitCode = $handler->handle();
-    _respond_workflow_output($output, $exitCode, $agent, $compact);
-    exit($exitCode);
+    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $response = $handler->handle();
+    _respond_workflow_response($response, $agent, $compact);
+    exit($response->exitCode);
 }
 
 // =================================================================================
@@ -3215,10 +3237,9 @@ function release(
         $bumpType = $input['bumpType'] ?? ($version === null ? 'patch' : null);
         $publish = (bool) ($input['publish'] ?? false);
         $quiet = true;
-        $output = _get_command_output_buffer();
-        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
-        $handler->handle($version, $publish, $bumpType, $quiet);
-        _respond_workflow_output($output, 0, true, $compact);
+        $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_prompt(), _get_file_system());
+        $response = $handler->handle($version, $publish, $bumpType, $quiet);
+        _respond_workflow_response($response, true, $compact);
 
         return;
     }
@@ -3245,10 +3266,9 @@ function release(
         exit(1);
     }
 
-    $output = _get_command_output_buffer();
-    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), $output, _get_file_system());
-    $handler->handle($version, $publish, $bumpType, $quiet);
-    _respond_workflow_output($output, 0, false);
+    $handler = new ReleaseHandler(_get_git_repository(), _get_translation_service(), _get_prompt(), _get_file_system());
+    $response = $handler->handle($version, $publish, $bumpType, $quiet);
+    _respond_workflow_response($response, false);
 }
 
 #[AsTask(name: 'deploy', aliases: ['mep'], description: 'Deploys the current release branch')]
@@ -3271,8 +3291,7 @@ function deploy(
         $compact = _agent_compact_enabled($input);
         $clean = (bool) ($input['clean'] ?? false);
     }
-    $output = _get_command_output_buffer();
-    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service(), $output);
+    $handler = new DeployHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
     $response = $handler->handle();
 
     if ($response->isSuccess() && $clean) {
@@ -3284,12 +3303,15 @@ function deploy(
             $gitRepository,
             $gitBranchService,
             $resolver,
-            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), $output),
+            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_prompt()),
             _get_configured_base_branch_or_null(),
             _get_translation_service(),
-            $output
+            _get_prompt()
         );
-        $cleanHandler->handle(true);
+        $cleanResponse = $cleanHandler->handle(true);
+        if (! $agent) {
+            _respond_workflow_response($cleanResponse, false);
+        }
     }
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
@@ -3297,7 +3319,6 @@ function deploy(
 
         return;
     }
-    _respond_workflow_output($output, $response->isSuccess() ? 0 : 1, false);
     $responder->respond($response);
     exit($response->isSuccess() ? 0 : 1);
 }
@@ -3356,7 +3377,6 @@ function update(
 
     [$repoOwner, $repoName] = $nameParts;
 
-    $output = _get_command_output_buffer();
     $handler = new UpdateHandler(
         $repoOwner,
         $repoName,
@@ -3364,12 +3384,14 @@ function update(
         $binaryPath,
         _get_translation_service(),
         new ChangelogParser(),
-        new UpdateFileService(_get_translation_service()),
-        $output,
+        new UpdateFileService(_get_translation_service(), _get_prompt()),
+        _get_prompt(),
         _get_file_system(),
-        $gitToken
+        $gitToken,
+        null,
+        _get_global_migration_service(),
     );
-    $result = $handler->handle($info, $quiet);
-    _respond_workflow_output($output, $result, false);
-    exit($result);
+    $response = $handler->handle($info, $quiet);
+    _respond_workflow_response($response, false);
+    exit($response->exitCode);
 }

@@ -16,8 +16,7 @@ final class WorkflowOutputLegacyAllowListTest extends TestCase
             ArchitecturePresentationExceptions::LEGACY_WORKFLOW_OUTPUT_HANDLERS,
             $found,
             'Unexpected WorkflowOutput usage in handlers. '
-            . 'New usage is blocked until migrated to Response/WorkflowResponder (SCI-138). '
-            . 'Shrink the allow list when removing legacy recording.'
+            . 'Record via WorkflowRecorder and return WorkflowResponse from the handler.'
         );
     }
 

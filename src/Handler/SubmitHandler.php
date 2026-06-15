@@ -4,21 +4,27 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
 use App\DTO\SubmitOptions;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
+use App\Response\WorkflowResponse;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\MarkdownHelper;
+use App\Service\Prompt\PromptInterface;
 use App\Service\SubmitLabelResolver;
-use App\Service\WorkflowOutput;
 
 class SubmitHandler
 {
+    private ?WorkflowEntryRecorder $recorder = null;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
@@ -29,18 +35,24 @@ class SubmitHandler
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly mixed $translator,
-        private readonly WorkflowOutput $logger,
+        private readonly PromptInterface $prompt,
         private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
-    public function handle(SubmitOptions $options = new SubmitOptions()): int
+    private function recorder(): WorkflowEntryRecorder
     {
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.section'));
+        return $this->recorder ??= new WorkflowRecorder();
+    }
+
+    public function handle(SubmitOptions $options = new SubmitOptions()): WorkflowResponse
+    {
+        $this->recorder = new WorkflowRecorder();
+        $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.section'));
 
         $preflight = $this->runSubmitPreflight();
         if ($preflight['exitCode'] !== 0) {
-            return $preflight['exitCode'];
+            return $this->recorder()->toResponse($preflight['exitCode']);
         }
         /** @var array{exitCode: 0, branch: string, jiraKey: string, prTitle: string} $preflight */
         $branch = $preflight['branch'];
@@ -51,14 +63,14 @@ class SubmitHandler
 
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = ($remoteOwner !== null && $remoteOwner !== '') ? "{$remoteOwner}:{$branch}" : $branch;
-        $this->logger->addGitLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('submit.using_head', ['head' => $headBranch]));
+        $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.using_head', ['head' => $headBranch]), WorkflowChannel::Git);
 
         $finalLabels = $this->resolveLabels($options->labels, $options->quiet);
         if ($finalLabels === null) {
-            return 1;
+            return $this->recorder()->toResponse(1);
         }
 
-        return $this->createPullRequest($prTitle, $headBranch, $prBody, $options, $finalLabels);
+        return $this->recorder()->toResponse($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $finalLabels));
     }
 
     /**
@@ -70,30 +82,30 @@ class SubmitHandler
     {
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
-            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.note_dirty_working'));
+            $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.note_dirty_working'));
         }
 
         $branch = $this->gitRepository->getCurrentBranchName();
         $baseBranchName = str_replace('origin/', '', $this->baseBranch);
         if ($branch === $baseBranchName || in_array($branch, ['main', 'master'], true)) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_base_branch'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_base_branch'));
 
             return ['exitCode' => 1];
         }
 
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]));
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
         $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if (! $pushProcess->isSuccessful()) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
 
             return ['exitCode' => 1];
         }
 
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.finding_commit'));
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.finding_commit'), WorkflowChannel::Git);
         $ancestorSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
         $firstCommitSha = $this->gitRepository->findFirstLogicalSha($ancestorSha);
         if ($firstCommitSha === null) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_logical'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_logical'));
 
             return ['exitCode' => 1];
         }
@@ -101,7 +113,7 @@ class SubmitHandler
         $firstLogicalMessage = $this->gitRepository->getCommitMessage($firstCommitSha);
         $jiraKey = $this->resolveJiraKey($firstLogicalMessage);
         if ($jiraKey === null) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_jira_key'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_no_jira_key'));
 
             return ['exitCode' => 1];
         }
@@ -164,17 +176,17 @@ class SubmitHandler
     protected function fetchJiraDescription(string $jiraKey): ?string
     {
         try {
-            $this->logger->addJiraLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('submit.fetching_jira', ['key' => $jiraKey]));
+            $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.fetching_jira', ['key' => $jiraKey]), WorkflowChannel::Jira);
             $issue = $this->jiraService->getIssue($jiraKey, true);
 
             return $issue->renderedDescription;
         } catch (ApiException $e) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
-            $this->logger->addText(WorkflowOutput::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
+            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
+            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
 
             return null;
         }
@@ -188,13 +200,13 @@ class SubmitHandler
         try {
             $markdown = $this->htmlConverter->toMarkdown($html);
             $markdown = MarkdownHelper::unescapeCheckboxMarkdown($markdown);
-            $this->logger->addJiraLine(WorkflowOutput::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description');
+            $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description', WorkflowChannel::Jira);
 
             return $markdown;
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
             if (str_contains($errorMessage, 'DOMDocument') || str_contains($errorMessage, "Class 'DOMDocument' not found")) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, [
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, [
                     'HTML to Markdown conversion failed: PHP XML extension is missing.',
                     'Install it using:',
                     '  Ubuntu/Debian: sudo apt-get install php-xml',
@@ -204,7 +216,7 @@ class SubmitHandler
                 ]);
             } else {
                 // @codeCoverageIgnoreStart
-                $this->logger->addJiraLine(WorkflowOutput::VERBOSITY_VERBOSE, "  HTML to Markdown conversion failed, using raw HTML: {$errorMessage}");
+                $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  HTML to Markdown conversion failed, using raw HTML: {$errorMessage}", WorkflowChannel::Jira);
                 // @codeCoverageIgnoreEnd
             }
 
@@ -233,11 +245,11 @@ class SubmitHandler
      */
     protected function createPullRequest(string $prTitle, string $headBranch, string $prBody, SubmitOptions $options, array $finalLabels): int
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.creating'));
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.creating'), WorkflowChannel::Git);
 
         try {
             if (! $this->githubProvider) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.warning_no_provider'));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_no_provider'));
 
                 return 0;
             }
@@ -247,14 +259,14 @@ class SubmitHandler
             $prData = $this->githubProvider->createPullRequest($prRequestData);
 
             if (! empty($finalLabels)) {
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'));
+                $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
                 $this->githubProvider->addLabelsToPullRequest($prData['number'], $finalLabels);
             }
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.success_created', ['url' => $prData['html_url']]));
+            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_created', ['url' => $prData['html_url']]));
 
             return 0;
         } catch (PullRequestAssignmentException $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
                 'url' => $e->getPullRequestUrl(),
                 'error' => $e->getMessage(),
             ]));
@@ -264,15 +276,15 @@ class SubmitHandler
             if ($e->getStatusCode() === 422 && str_contains(strtolower($e->getTechnicalDetails()), 'pull request already exists')) {
                 return $this->handleExistingPr($headBranch, $options, $finalLabels);
             }
-            $this->logger->addErrorWithDetails(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $this->recorder()->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 MessageRef::key('submit.error_create_pr', ['error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
             return 1;
         } catch (\Exception $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_create_pr', ['error' => $e->getMessage()]));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_create_pr', ['error' => $e->getMessage()]));
 
             return 1;
         }
@@ -285,9 +297,9 @@ class SubmitHandler
      */
     protected function handleExistingPr(string $headBranch, SubmitOptions $options, array $finalLabels): int
     {
-        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.note_pr_exists'));
+        $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.note_pr_exists'));
         if (! $this->githubProvider) {
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
+            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
             return 0;
         }
@@ -295,42 +307,42 @@ class SubmitHandler
         try {
             $existingPr = $this->githubProvider->findPullRequestByBranch($headBranch);
         } catch (\Exception $findError) {
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, "  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>");
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
+            $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  <fg=gray>Could not find existing PR: {$findError->getMessage()}</>", WorkflowChannel::Git);
+            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
             return 0;
         }
 
         if ($existingPr === null) {
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
+            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
             return 0;
         }
 
         $prNumber = $existingPr['number'];
         if (! empty($finalLabels)) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'));
+            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
 
             try {
                 $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
             } catch (\Exception $labelError) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_add_labels', ['error' => $labelError->getMessage()]));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_add_labels', ['error' => $labelError->getMessage()]));
             }
         }
         if ($options->draft && ! $existingPr['draft']) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.updating_to_draft'));
+            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.updating_to_draft'));
 
             try {
                 $this->githubProvider->updatePullRequest($prNumber, true);
             } catch (\Exception $draftError) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_update_draft', ['error' => $draftError->getMessage()]));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_update_draft', ['error' => $draftError->getMessage()]));
             }
         }
         if ($options->assignToAuthor) {
             try {
                 $this->githubProvider->assignPullRequestToAuthor($existingPr);
             } catch (\Throwable $assignmentError) {
-                $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
+                $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
                     'url' => (string) ($existingPr['html_url'] ?? $existingPr['web_url'] ?? ''),
                     'error' => $assignmentError->getMessage(),
                 ]));
@@ -338,7 +350,7 @@ class SubmitHandler
                 return 1;
             }
         }
-        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
+        $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
         return 0;
     }
@@ -358,7 +370,7 @@ class SubmitHandler
      */
     protected function validateAndProcessLabels(string $labelsInput, bool $quiet = false): ?array
     {
-        return $this->createLabelResolver()->validateAndProcessLabels($labelsInput, $quiet);
+        return $this->createLabelResolver()->validateAndProcessLabels($this->recorder(), $labelsInput, $quiet);
     }
 
     protected function createLabelResolver(): SubmitLabelResolver
@@ -367,6 +379,6 @@ class SubmitHandler
             throw new \LogicException('A Git provider is required to resolve submit labels.');
         }
 
-        return new SubmitLabelResolver($this->githubProvider, $this->translator, $this->logger);
+        return new SubmitLabelResolver($this->githubProvider, $this->translator, $this->prompt);
     }
 }

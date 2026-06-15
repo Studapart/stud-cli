@@ -3,14 +3,15 @@
 namespace App\Tests\Handler;
 
 use App\Handler\ReleaseHandler;
+use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
+use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ReleaseHandlerTest extends CommandTestCase
 {
@@ -37,33 +38,19 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandle(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $releaseBranch = 'release/v' . $version;
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         // Create files in in-memory filesystem
         $changelogPath = '/CHANGELOG.md';
@@ -73,8 +60,10 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($version, false, null);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle($version, false, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -83,34 +72,19 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithPublishOption(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $releaseBranch = 'release/v' . $version;
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->pushToOrigin($releaseBranch)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(\App\Service\Logger::VERBOSITY_NORMAL, 'Would you like to publish the release branch to remote?', false)->shouldNotBeCalled();
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
+        $prompt->confirm(Argument::any(), false)->shouldNotBeCalled();
 
         // Create files in in-memory filesystem
         $changelogPath = '/CHANGELOG.md';
@@ -120,8 +94,10 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($version, true, null);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle($version, true, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 12);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -130,34 +106,19 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithoutPublishOptionAndUserConfirms(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
-        $this->allowReleaseLoggerOutput($logger, true);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $releaseBranch = 'release/v' . $version;
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(true);
+        $prompt->confirm(Argument::any(), false)->willReturn(true);
         $gitRepository->pushToOrigin($releaseBranch)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         // Create files in in-memory filesystem
         $changelogPath = '/CHANGELOG.md';
@@ -167,8 +128,10 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($version, false, null);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle($version, false, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 12);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -177,32 +140,19 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithoutPublishOptionAndUserDeclines(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $releaseBranch = 'release/v' . $version;
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
         // Create files in in-memory filesystem
         $changelogPath = '/CHANGELOG.md';
@@ -212,8 +162,10 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($version, false, null);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle($version, false, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($version, $composerJson['version']);
@@ -222,9 +174,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateChangelog(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.0';
         $releaseBranch = 'release/v' . $version;
@@ -239,28 +189,19 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
         $this->flysystem->write('README.md', "stud-1.0.0.phar\n");
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
         $gitRepository->pushToOrigin($releaseBranch)->shouldNotBeCalled();
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle($version, false, null);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle($version, false, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         // Verify CHANGELOG.md was updated correctly
         $updatedContent = $this->flysystem->read($changelogPath);
@@ -275,15 +216,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateComposerVersionWithFileReadError(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $composerJsonPath = '/nonexistent/composer.json';
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -294,16 +232,13 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateComposerVersionWithInvalidJson(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $composerJsonPath = '/composer.json';
         $this->flysystem->write($composerJsonPath, 'invalid json');
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format');
@@ -314,9 +249,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateChangelogWithFileReadError(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $version = '1.2.3';
         $changelogPath = '/nonexistent/CHANGELOG.md';
@@ -324,8 +257,7 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $this->flysystem->write($composerJsonPath, json_encode(['version' => '1.0.0']));
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read CHANGELOG.md');
@@ -336,12 +268,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeReplacesMarkedPharFilename(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/README.md';
         $content = "<!-- release-version:start -->Download stud-3.4.1.phar and stud-3.4.1.phar again.<!-- release-version:end -->\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['3.5.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -351,12 +283,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeReplacesMarkedDownloadUrl(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/README.md';
         $content = "<!-- release-version:start -->https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar<!-- release-version:end -->\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -366,12 +298,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeLeavesUnmarkedVersionReferencesUnchanged(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/README.md';
         $content = "https://github.com/Studapart/stud-cli/releases/download/v2.1.0/stud-2.1.0.phar\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['3.0.0']);
 
         $this->assertSame($content, $this->flysystem->read($readmePath));
@@ -380,12 +312,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeLeavesNonMatchingContentUnchanged(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/README.md';
         $content = "Some text without version patterns. stud-1.2.phar invalid.\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['2.0.0']);
 
         $updated = $this->flysystem->read($readmePath);
@@ -395,12 +327,12 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeHandlesReadmeWithoutVersionReferences(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/README.md';
         $content = "# Title\n\nNo version here.\n";
         $this->flysystem->write($readmePath, $content);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
         $this->callPrivateMethod($handler, 'updateReadme', ['1.0.0']);
 
         $this->assertSame($content, $this->flysystem->read($readmePath));
@@ -409,10 +341,10 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testUpdateReadmeWithFileReadError(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
         $readmePath = '/nonexistent/README.md';
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, '/composer.json', '/CHANGELOG.md', $readmePath);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read README.md');
@@ -423,8 +355,8 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testCalculateNextVersionPatch(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, 'composer.json', 'CHANGELOG.md');
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, 'composer.json', 'CHANGELOG.md');
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'patch']);
         $this->assertSame('2.6.3', $result);
@@ -433,8 +365,8 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testCalculateNextVersionMinor(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'minor']);
         $this->assertSame('2.7.0', $result);
@@ -443,8 +375,8 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testCalculateNextVersionMajor(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem);
 
         $result = $this->callPrivateMethod($handler, 'calculateNextVersion', ['2.6.2', 'major']);
         $this->assertSame('3.0.0', $result);
@@ -453,8 +385,8 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testCalculateNextVersionInvalidFormat(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid version format: invalid. Expected format: X.Y.Z");
@@ -465,8 +397,8 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testCalculateNextVersionInvalidBumpType(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem);
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Invalid bump type: invalid. Must be 'major', 'minor', or 'patch'");
@@ -477,9 +409,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithPatchBump(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $this->allowReleaseLoggerOutput($logger, false);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $currentVersion = '2.6.2';
         $targetVersion = '2.6.3';
@@ -493,27 +423,18 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle(null, false, 'patch');
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle(null, false, 'patch');
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -522,8 +443,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithMinorBump(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $currentVersion = '2.6.2';
         $targetVersion = '2.7.0';
@@ -537,27 +457,18 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle(null, false, 'minor');
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle(null, false, 'minor');
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -566,8 +477,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithMajorBump(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $currentVersion = '2.6.2';
         $targetVersion = '3.0.0';
@@ -581,27 +491,18 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
-        $handler->handle(null, false, 'major');
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $response = $handler->handle(null, false, 'major');
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -610,8 +511,7 @@ class ReleaseHandlerTest extends CommandTestCase
     public function testHandleWithDefaultPatchBump(): void
     {
         $gitRepository = $this->prophesize(GitRepository::class);
-        $io = $this->prophesize(SymfonyStyle::class);
-        $logger = $this->prophesize(\App\Service\Logger::class);
+        $prompt = $this->prophesize(PromptInterface::class);
 
         $currentVersion = '2.6.2';
         $targetVersion = '2.6.3';
@@ -625,28 +525,19 @@ class ReleaseHandlerTest extends CommandTestCase
         $this->flysystem->write($changelogPath, "# Changelog\n\n## [Unreleased]\n\n");
         $this->flysystem->write('README.md', "stud-2.6.2.phar\n");
 
-        $logger->addSection(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->fetch()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->run('composer dump-config')->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
-        $logger->addText(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
-        $logger->confirm(Argument::any(), false)->willReturn(false);
-        $logger->addSuccess(\App\Service\Logger::VERBOSITY_NORMAL, Argument::any())->shouldBeCalled();
+        $prompt->confirm(Argument::any(), false)->willReturn(false);
 
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
         // No version and no bump type - should default to patch
-        $handler->handle(null, false, null);
+        $response = $handler->handle(null, false, null);
+
+        $this->assertSuccessfulReleaseResponse($response, 11);
 
         $composerJson = json_decode($this->flysystem->read($composerJsonPath), true);
         $this->assertSame($targetVersion, $composerJson['version']);
@@ -661,8 +552,8 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/composer.json';
         $this->flysystem->write($composerJsonPath, json_encode(['version' => $currentVersion]));
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
         $result = $this->callPrivateMethod($handler, 'getCurrentVersion');
 
         $this->assertSame($currentVersion, $result);
@@ -675,8 +566,8 @@ class ReleaseHandlerTest extends CommandTestCase
         // Use a non-existent file path to trigger file_get_contents failure
         $composerJsonPath = '/nonexistent/composer_' . uniqid() . '.json';
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unable to read composer.json');
@@ -692,8 +583,8 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/composer.json';
         $this->flysystem->write($composerJsonPath, json_encode(['name' => 'test/package']));
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, 'CHANGELOG.md');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid composer.json format or missing version field');
@@ -707,17 +598,20 @@ class ReleaseHandlerTest extends CommandTestCase
         $composerJsonPath = '/composer.json';
         $changelogPath = '/CHANGELOG.md';
 
-        $logger = $this->prophesize(\App\Service\Logger::class);
-        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $logger->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
+        $prompt = $this->prophesize(PromptInterface::class);
+        $handler = new ReleaseHandler($gitRepository->reveal(), $this->translationService, $prompt->reveal(), $this->fileSystem, $composerJsonPath, $changelogPath);
 
         $this->assertInstanceOf(ReleaseHandler::class, $handler);
     }
 
-    private function allowReleaseLoggerOutput(object $logger, bool $confirm): void
+    private function assertSuccessfulReleaseResponse(WorkflowResponse $response, ?int $expectedEntryCount = null): void
     {
-        $logger->addSection(Argument::any(), Argument::any());
-        $logger->addText(Argument::any(), Argument::any());
-        $logger->addSuccess(Argument::any(), Argument::any());
-        $logger->confirm(Argument::any(), false)->willReturn($confirm);
+        $this->assertInstanceOf(WorkflowResponse::class, $response);
+        $this->assertSame(0, $response->exitCode);
+        $this->assertTrue($response->isSuccess());
+
+        if ($expectedEntryCount !== null) {
+            $this->assertCount($expectedEntryCount, $response->entries);
+        }
     }
 }

@@ -4,18 +4,24 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
+use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
-use App\Service\WorkflowOutput;
+use App\Service\Prompt\PromptInterface;
 
 class ReleaseHandler
 {
+    private WorkflowEntryRecorder $recorder;
+
     // @codeCoverageIgnoreStart
     public function __construct(
         private readonly GitRepository $gitRepository,
         mixed $_translator,
-        private readonly WorkflowOutput $logger,
+        private readonly PromptInterface $prompt,
         private readonly FileSystem $fileSystem,
         private readonly string $composerJsonPath = 'composer.json',
         private readonly string $changelogPath = 'CHANGELOG.md',
@@ -71,63 +77,61 @@ class ReleaseHandler
         return $composerJson['version'];
     }
 
-    public function handle(?string $version = null, bool $publish = false, ?string $bumpType = null, bool $quiet = false): void
+    public function handle(?string $version = null, bool $publish = false, ?string $bumpType = null, bool $quiet = false): WorkflowResponse
     {
-        // Determine the target version
+        $this->recorder = new WorkflowRecorder();
+
         if ($version !== null) {
-            // Explicit version provided, use it
             $targetVersion = $version;
         } elseif ($bumpType !== null) {
-            // Bump type provided, calculate from current version
             $currentVersion = $this->getCurrentVersion();
             $targetVersion = $this->calculateNextVersion($currentVersion, $bumpType);
         } else {
-            // Default to patch bump
             $currentVersion = $this->getCurrentVersion();
             $targetVersion = $this->calculateNextVersion($currentVersion, 'patch');
         }
 
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.section', ['version' => $targetVersion]));
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.section', ['version' => $targetVersion]));
 
         $this->gitRepository->fetch();
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.fetched'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.fetched'), WorkflowChannel::Git);
 
         $releaseBranch = 'release/v' . $targetVersion;
         $this->gitRepository->createBranch($releaseBranch, 'origin/develop');
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.created_branch', ['branch' => $releaseBranch]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.created_branch', ['branch' => $releaseBranch]), WorkflowChannel::Git);
 
         $this->updateComposerVersion($targetVersion);
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_composer', ['version' => $targetVersion]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_composer', ['version' => $targetVersion]));
 
         $this->gitRepository->run('composer update --lock');
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_lock'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_lock'));
 
         $this->gitRepository->run('composer dump-config');
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.dumped_config'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.dumped_config'));
 
         $this->updateChangelog($targetVersion);
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_changelog', ['version' => $targetVersion]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_changelog', ['version' => $targetVersion]));
 
         $this->updateReadme($targetVersion);
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.updated_readme', ['version' => $targetVersion]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_readme', ['version' => $targetVersion]));
 
         $this->gitRepository->stageAllChanges();
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.staged'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.staged'), WorkflowChannel::Git);
 
         $this->gitRepository->commit('chore(Version): Bump version to ' . $targetVersion);
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.committed'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.committed'), WorkflowChannel::Git);
 
         if ($publish) {
             $this->gitRepository->pushToOrigin($releaseBranch);
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.published'));
-        } else {
-            if (! $quiet && $this->logger->confirm(MessageRef::key('release.confirm_publish'), false)) {
-                $this->gitRepository->pushToOrigin($releaseBranch);
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.published'));
-            }
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.published'), WorkflowChannel::Git);
+        } elseif (! $quiet && $this->prompt->confirm(MessageRef::key('release.confirm_publish'), false)) {
+            $this->gitRepository->pushToOrigin($releaseBranch);
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.published'), WorkflowChannel::Git);
         }
 
-        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('release.success', ['version' => $targetVersion]));
+        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.success', ['version' => $targetVersion]));
+
+        return $this->recorder->toResponse(0);
     }
 
     protected function updateComposerVersion(string $version): void
@@ -146,8 +150,6 @@ class ReleaseHandler
         $composerJson['version'] = $version;
         $encoded = json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         // @codeCoverageIgnoreStart
-        // json_encode returning false is extremely rare (only with circular references or invalid UTF-8)
-        // and is difficult to test in isolation
         if ($encoded === false) {
             throw new \RuntimeException('Failed to encode composer.json');
         }
@@ -167,7 +169,6 @@ class ReleaseHandler
         $newVersionHeader = "## [{$version}] - {$currentDate}";
         $unreleasedHeader = '## [Unreleased]';
 
-        // Replace ## [Unreleased] with ## [Unreleased] followed by the new version header
         $replacement = $unreleasedHeader . "\n\n" . $newVersionHeader;
         $updatedContent = str_replace($unreleasedHeader, $replacement, $content);
 

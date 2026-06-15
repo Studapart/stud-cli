@@ -19,6 +19,9 @@ final class ArchitectureSourceScannerTest extends TestCase
         self::assertFalse(ArchitectureSourceScanner::usesWorkflowOutput(
             'class Foo { public function buildWarningResponse(): void {} }'
         ));
+        self::assertTrue(ArchitectureSourceScanner::usesWorkflowOutput(
+            'new \\App\\Service\\WorkflowOutput($prompt);'
+        ));
     }
 
     public function testDirectConsoleOutputCallMatchesIoOnly(): void

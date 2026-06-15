@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\DTO\MessageRef;
 use App\Enum\ResponseMessageLevel;
+use App\Enum\WorkflowChannel;
 use App\Service\Prompt\PromptInterface;
 use App\Service\WorkflowOutput;
 use PHPUnit\Framework\TestCase;
@@ -26,10 +27,10 @@ final class WorkflowOutputTest extends TestCase
         $output->addText(WorkflowOutput::VERBOSITY_NORMAL, [MessageRef::key('line.one'), 'line two']);
         $output->addRawValue('raw');
         $output->addLine(WorkflowOutput::VERBOSITY_NORMAL, 'line');
-        $output->addJiraLine(WorkflowOutput::VERBOSITY_NORMAL, 'jira');
-        $output->addGitLine(WorkflowOutput::VERBOSITY_NORMAL, 'git');
-        $output->addJiraText(WorkflowOutput::VERBOSITY_NORMAL, ['jira text']);
-        $output->addGitText(WorkflowOutput::VERBOSITY_NORMAL, ['git text']);
+        $output->addLine(WorkflowOutput::VERBOSITY_NORMAL, 'jira', WorkflowChannel::Jira);
+        $output->addLine(WorkflowOutput::VERBOSITY_NORMAL, 'git', WorkflowChannel::Git);
+        $output->addText(WorkflowOutput::VERBOSITY_NORMAL, ['jira text'], WorkflowChannel::Jira);
+        $output->addText(WorkflowOutput::VERBOSITY_NORMAL, ['git text'], WorkflowChannel::Git);
         $output->addSection(WorkflowOutput::VERBOSITY_NORMAL, 'section');
         $output->addTitle(WorkflowOutput::VERBOSITY_NORMAL, 'title');
         $output->addListing(WorkflowOutput::VERBOSITY_NORMAL, ['item']);
