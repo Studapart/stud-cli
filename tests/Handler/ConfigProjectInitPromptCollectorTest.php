@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\WorkflowRecorder;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\GitTokenPromptResolver;
-use App\Service\Logger;
+use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 
@@ -37,21 +38,21 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('addSection');
-        $logger->expects($this->once())->method('addText');
-        $logger->method('ask')->willReturn('');
-        $logger->method('askHidden')->willReturn('');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturn('');
+        $prompt->method('askHidden')->willReturn('');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame([], $collector->collect());
+        $recorder = new WorkflowRecorder();
+        $this->assertSame([], $collector->collect($recorder));
+        $this->assertNotEmpty($recorder->getEntries());
     }
 
     public function testCollectMergesProjectKeyAndGitProviderFromPrompts(): void
@@ -66,10 +67,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('ask')->willReturnOnConsecutiveCalls(
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturnOnConsecutiveCalls(
             'SCI',
             '',
             '',
@@ -77,13 +76,13 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             ''
         );
-        $logger->method('choice')->willReturn('github');
+        $prompt->method('choice')->willReturn('github');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
@@ -92,7 +91,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
                 'projectKey' => 'SCI',
                 'gitProvider' => 'github',
             ],
-            $collector->collect()
+            $collector->collect(new WorkflowRecorder())
         );
     }
 
@@ -107,10 +106,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('bad-transition');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('ask')->willReturnOnConsecutiveCalls(
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
             '',
@@ -118,18 +115,27 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             ''
         );
-        $logger->method('choice')->willReturn('github');
-        $logger->expects($this->once())->method('addError');
+        $prompt->method('choice')->willReturn('github');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame(['gitProvider' => 'github'], $collector->collect());
+        $recorder = new WorkflowRecorder();
+        $this->assertSame(['gitProvider' => 'github'], $collector->collect($recorder));
+        $hasError = false;
+        foreach ($recorder->getEntries() as $entry) {
+            if ($entry->type === 'error') {
+                $hasError = true;
+
+                break;
+            }
+        }
+        $this->assertTrue($hasError);
     }
 
     public function testCollectNotesDetectedBaseBranchWhenPresent(): void
@@ -144,11 +150,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('note');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->expects($this->atLeastOnce())->method('addNote');
-        $logger->method('ask')->willReturnOnConsecutiveCalls(
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
             '',
@@ -156,20 +159,30 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'develop',
             ''
         );
-        $logger->method('choice')->willReturn('github');
+        $prompt->method('choice')->willReturn('github');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
+        $recorder = new WorkflowRecorder();
         $this->assertSame(
             ['baseBranch' => 'develop', 'gitProvider' => 'github'],
-            $collector->collect()
+            $collector->collect($recorder)
         );
+        $hasNote = false;
+        foreach ($recorder->getEntries() as $entry) {
+            if ($entry->type === 'note') {
+                $hasNote = true;
+
+                break;
+            }
+        }
+        $this->assertTrue($hasNote);
     }
 
     public function testCollectNotesDetectedGitProviderFromRemote(): void
@@ -184,11 +197,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->expects($this->atLeastOnce())->method('addNote');
-        $logger->method('ask')->willReturnOnConsecutiveCalls(
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturnOnConsecutiveCalls(
             '',
             '',
             '',
@@ -196,17 +206,27 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             ''
         );
-        $logger->method('choice')->willReturn('gitlab');
+        $prompt->method('choice')->willReturn('gitlab');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame(['gitProvider' => 'gitlab'], $collector->collect());
+        $recorder = new WorkflowRecorder();
+        $this->assertSame(['gitProvider' => 'gitlab'], $collector->collect($recorder));
+        $hasNote = false;
+        foreach ($recorder->getEntries() as $entry) {
+            if ($entry->type === 'note') {
+                $hasNote = true;
+
+                break;
+            }
+        }
+        $this->assertTrue($hasNote);
     }
 
     public function testCollectSkipsGithubTokenWhenUserEntersDotToKeepExisting(): void
@@ -226,22 +246,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('addNote');
-        $logger->method('ask')->willReturn('');
-        $logger->method('askHidden')->willReturnOnConsecutiveCalls('.', '');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturn('');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('.', '');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame([], $collector->collect());
+        $this->assertSame([], $collector->collect(new WorkflowRecorder()));
     }
 
     public function testCollectSkipsGitlabTokenWhenUserEntersDotToKeepExisting(): void
@@ -261,22 +278,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('addNote');
-        $logger->method('ask')->willReturn('');
-        $logger->method('askHidden')->willReturnOnConsecutiveCalls('', '.');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturn('');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('', '.');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame([], $collector->collect());
+        $this->assertSame([], $collector->collect(new WorkflowRecorder()));
     }
 
     public function testCollectReturnsJiraConfluenceGitlabUrlAndTokensWhenProvided(): void
@@ -291,11 +305,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->method('addNote');
-        $logger->method('ask')->willReturnOnConsecutiveCalls(
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturnOnConsecutiveCalls(
             '',
             'jira',
             '  myspace  ',
@@ -303,14 +314,14 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             'https://gitlab.example/'
         );
-        $logger->method('choice')->willReturn('gitlab');
-        $logger->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret');
+        $prompt->method('choice')->willReturn('gitlab');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
@@ -324,7 +335,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
                 'githubToken' => 'gh-secret',
                 'gitlabToken' => 'gl-secret',
             ],
-            $collector->collect()
+            $collector->collect(new WorkflowRecorder())
         );
     }
 
@@ -344,21 +355,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturn('msg');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addText');
-        $logger->expects($this->never())->method('choice');
-        $logger->method('ask')->willReturn('');
-        $logger->method('askHidden')->willReturn('');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('choice');
+        $prompt->method('ask')->willReturn('');
+        $prompt->method('askHidden')->willReturn('');
 
         $collector = new ConfigProjectInitPromptCollector(
             $gitRepository,
             $gitSetup,
             $translator,
-            $logger,
+            $prompt,
             new GitTokenPromptResolver()
         );
 
-        $this->assertSame([], $collector->collect());
+        $this->assertSame([], $collector->collect(new WorkflowRecorder()));
     }
 }

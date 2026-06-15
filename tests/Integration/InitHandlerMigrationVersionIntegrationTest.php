@@ -118,6 +118,7 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         fwrite($inputStream, "github_token\n");
         fwrite($inputStream, "gitlab_token\n");
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
+        fwrite($inputStream, "1\n"); // Completion: No
         rewind($inputStream);
 
         // Create input and output
@@ -131,7 +132,9 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         $handler = new InitHandler($this->fileSystem, 'config.yml', $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
 
         // Execute handler
-        $handler->handle($io);
+        $response = $handler->handle();
+
+        $this->assertSame(0, $response->exitCode);
 
         // Verify config was updated but migration_version was preserved
         $updatedConfig = $this->fileSystem->parseFile('config.yml');

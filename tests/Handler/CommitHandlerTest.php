@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
+use App\Enum\WorkflowChannel;
 use App\Handler\CommitHandler;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
@@ -189,7 +190,7 @@ class CommitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $loggerCalls = [];
-        $this->logger->method('addGitLine')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
             $loggerCalls[] = $message;
         });
 
@@ -225,7 +226,7 @@ class CommitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $loggerCalls = [];
-        $this->logger->method('addGitLine')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
             $loggerCalls[] = $message;
         });
 
@@ -267,7 +268,7 @@ class CommitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $this->logger->method('addSection');
-        $this->logger->method('addGitLine');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
@@ -318,7 +319,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -389,7 +390,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
@@ -446,8 +447,8 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
-        $this->logger->method('addGitLine');
+        $this->logger->method('addLine');
+        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -513,7 +514,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, true);
 
@@ -569,7 +570,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $this->logger->method('addSection');
         $this->logger->method('addNote');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
@@ -737,9 +738,9 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
             if ($verbosity <= Logger::VERBOSITY_VERY_VERBOSE) {
-                $output->addLine($message);
+                $output->writeln($message);
             }
         });
 
@@ -810,7 +811,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
@@ -878,14 +879,9 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
             if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
-                $output->addLine($message);
-            }
-        });
-        $this->logger->method('addGitLine')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
-            if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
-                $output->addLine($message);
+                $output->writeln($message);
             }
         });
 
@@ -956,7 +952,7 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->method('addNote');
         $this->logger->method('addText');
         $this->logger->method('addSuccess');
-        $this->logger->method('addJiraLine');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 

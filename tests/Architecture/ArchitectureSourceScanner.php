@@ -62,7 +62,8 @@ final class ArchitectureSourceScanner
     {
         return str_contains($contents, 'use App\\Service\\WorkflowOutput;')
             || preg_match('/\bWorkflowOutput\s+\$/', $contents) === 1
-            || preg_match('/\?WorkflowOutput\s+\$/', $contents) === 1;
+            || preg_match('/\?WorkflowOutput\s+\$/', $contents) === 1
+            || preg_match('/new\s+(?:\\\\App\\\\Service\\\\)?WorkflowOutput\s*\(/', $contents) === 1;
     }
 
     public static function containsDirectConsoleOutputCall(string $contents): bool

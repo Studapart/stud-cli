@@ -27,25 +27,11 @@ final class ArchitecturePresentationExceptions
     ];
 
     /**
-     * Handlers still recording via WorkflowOutput pending responder migration (SCI-138).
+     * Handlers must not record via WorkflowOutput (use WorkflowRecorder + WorkflowResponse).
      *
      * @var list<string>
      */
-    public const LEGACY_WORKFLOW_OUTPUT_HANDLERS = [
-        'src/Handler/BranchCleanHandler.php',
-        'src/Handler/BranchRenameHandler.php',
-        'src/Handler/CacheClearHandler.php',
-        'src/Handler/ConfigProjectInitPromptCollector.php',
-        'src/Handler/DeployHandler.php',
-        'src/Handler/InitHandler.php',
-        'src/Handler/ItemStartHandler.php',
-        'src/Handler/ItemTakeoverHandler.php',
-        'src/Handler/ItemTransitionHandler.php',
-        'src/Handler/ReleaseHandler.php',
-        'src/Handler/StatusHandler.php',
-        'src/Handler/SubmitHandler.php',
-        'src/Handler/UpdateHandler.php',
-    ];
+    public const LEGACY_WORKFLOW_OUTPUT_HANDLERS = [];
 
     /**
      * Domain services still recording via WorkflowOutput pending layering cleanup.
@@ -53,14 +39,7 @@ final class ArchitecturePresentationExceptions
      * @var list<string>
      */
     public const LEGACY_WORKFLOW_OUTPUT_SERVICES = [
-        'src/Service/BranchCleanupExecutor.php',
         'src/Service/ConfigValidator.php',
         'src/Service/GitSetupService.php',
-        'src/Service/InitProjectConfigFollowUpService.php',
-        'src/Service/MigrationExecutor.php',
-        'src/Service/MigrationRegistry.php',
-        'src/Service/PortableUpdateService.php',
-        'src/Service/SubmitLabelResolver.php',
-        'src/Service/UpdateFileService.php',
     ];
 }

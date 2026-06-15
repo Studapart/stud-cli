@@ -6,6 +6,8 @@ namespace App\Handler;
 
 use App\Config\ProjectStudConfigFieldMap;
 use App\Config\SecretKeyPolicy;
+use App\Contract\WorkflowEntryRecorder;
+use App\DTO\WorkflowRecorder;
 use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -32,6 +34,7 @@ class ConfigProjectInitHandler
         bool $skipBaseBranchRemoteCheck,
         bool $interactive,
         bool $isAgent,
+        ?WorkflowEntryRecorder $recorder = null,
     ): ConfigProjectInitResponse {
         try {
             $this->gitRepository->getProjectConfigPath();
@@ -59,7 +62,7 @@ class ConfigProjectInitHandler
         }
 
         $patches = $interactive
-            ? $this->gatherInteractivePatches()
+            ? $this->gatherInteractivePatches($recorder ?? new WorkflowRecorder())
             : $this->mergePatchSources($isAgent, $rawAgentInput, $cliPatches);
         $this->normalizeInputKeyPatches($patches);
 
@@ -244,9 +247,9 @@ class ConfigProjectInitHandler
     /**
      * @return array<string, mixed> input-keyed patches
      */
-    protected function gatherInteractivePatches(): array
+    protected function gatherInteractivePatches(WorkflowEntryRecorder $recorder): array
     {
-        return $this->promptCollector->collect();
+        return $this->promptCollector->collect($recorder);
     }
 
     /**

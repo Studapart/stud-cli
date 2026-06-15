@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Enum\WorkflowChannel;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Console\Helper\TableSeparator;
 
@@ -118,17 +119,22 @@ class CommandOutputBuffer extends WorkflowOutput
     /**
      * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function text(int $verbosity, MessageRef|string|array $message): void
+    public function text(int $verbosity, MessageRef|string|array $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->logger?->text($verbosity, $this->renderForLogger($message));
+        $rendered = $this->renderForLogger($message);
+        match ($channel) {
+            WorkflowChannel::Jira => $this->logger?->jiraText($verbosity, $rendered),
+            WorkflowChannel::Git => $this->logger?->gitText($verbosity, $rendered),
+            WorkflowChannel::Default => $this->logger?->text($verbosity, $rendered),
+        };
     }
 
     /**
      * @param MessageRef|string|array<MessageRef|string> $message
      */
-    public function addText(int $verbosity, MessageRef|string|array $message): void
+    public function addText(int $verbosity, MessageRef|string|array $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->text($verbosity, $message);
+        $this->text($verbosity, $message, $channel);
     }
 
     public function rawValue(string $message): void
@@ -141,66 +147,19 @@ class CommandOutputBuffer extends WorkflowOutput
         $this->rawValue($message);
     }
 
-    public function writeln(int $verbosity, MessageRef|string $message): void
+    public function writeln(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->logger?->writeln($verbosity, $this->renderStringForLogger($message));
+        $rendered = $this->renderStringForLogger($message);
+        match ($channel) {
+            WorkflowChannel::Jira => $this->logger?->jiraWriteln($verbosity, $rendered),
+            WorkflowChannel::Git => $this->logger?->gitWriteln($verbosity, $rendered),
+            WorkflowChannel::Default => $this->logger?->writeln($verbosity, $rendered),
+        };
     }
 
-    public function addLine(int $verbosity, MessageRef|string $message): void
+    public function addLine(int $verbosity, MessageRef|string $message, WorkflowChannel $channel = WorkflowChannel::Default): void
     {
-        $this->writeln($verbosity, $message);
-    }
-
-    public function jiraWriteln(int $verbosity, MessageRef|string $message): void
-    {
-        $this->logger?->jiraWriteln($verbosity, $this->renderStringForLogger($message));
-    }
-
-    public function addJiraLine(int $verbosity, MessageRef|string $message): void
-    {
-        $this->jiraWriteln($verbosity, $message);
-    }
-
-    public function gitWriteln(int $verbosity, MessageRef|string $message): void
-    {
-        $this->logger?->gitWriteln($verbosity, $this->renderStringForLogger($message));
-    }
-
-    public function addGitLine(int $verbosity, MessageRef|string $message): void
-    {
-        $this->gitWriteln($verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function jiraText(int $verbosity, string|array $message): void
-    {
-        $this->logger?->jiraText($verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function addJiraText(int $verbosity, string|array $message): void
-    {
-        $this->jiraText($verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function gitText(int $verbosity, string|array $message): void
-    {
-        $this->logger?->gitText($verbosity, $message);
-    }
-
-    /**
-     * @param string|array<string> $message
-     */
-    public function addGitText(int $verbosity, string|array $message): void
-    {
-        $this->gitText($verbosity, $message);
+        $this->writeln($verbosity, $message, $channel);
     }
 
     public function section(int $verbosity, MessageRef|string $message): void

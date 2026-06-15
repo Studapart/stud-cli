@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Service\Prompt\PromptInterface;
 
 class SubmitLabelResolver
 {
@@ -16,7 +19,7 @@ class SubmitLabelResolver
     public function __construct(
         private readonly GitProviderInterface $gitProvider,
         mixed $translator,
-        private readonly WorkflowOutput $logger,
+        private readonly PromptInterface $prompt,
     ) {
         unset($translator);
     }
@@ -24,14 +27,14 @@ class SubmitLabelResolver
     /**
      * @return array<int, string>|null
      */
-    public function validateAndProcessLabels(string $labelsInput, bool $quiet = false): ?array
+    public function validateAndProcessLabels(WorkflowEntryRecorder $recorder, string $labelsInput, bool $quiet = false): ?array
     {
         $requestedLabels = $this->parseLabelInput($labelsInput);
         if ($requestedLabels === []) {
             return [];
         }
 
-        $remoteLabels = $this->fetchRemoteLabels();
+        $remoteLabels = $this->fetchRemoteLabels($recorder);
         if ($remoteLabels === null) {
             return null;
         }
@@ -40,7 +43,7 @@ class SubmitLabelResolver
         [$finalLabels, $unknownLabels] = $this->partitionKnownAndUnknownLabels($requestedLabels, $existingLabelsMap);
 
         foreach ($unknownLabels as $unknownLabel) {
-            $result = $this->resolveUnknownLabel($unknownLabel, $quiet, $finalLabels);
+            $result = $this->resolveUnknownLabel($recorder, $unknownLabel, $quiet, $finalLabels);
             if ($result === null) {
                 return null;
             }
@@ -64,22 +67,22 @@ class SubmitLabelResolver
     /**
      * @return array<int, array<string, mixed>>|null
      */
-    public function fetchRemoteLabels(): ?array
+    public function fetchRemoteLabels(WorkflowEntryRecorder $recorder): ?array
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.fetching_labels'));
+        $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.fetching_labels'), WorkflowChannel::Git);
 
         try {
             return $this->gitProvider->getLabels();
         } catch (ApiException $e) {
-            $this->logger->addErrorWithDetails(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $recorder->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 MessageRef::key('submit.error_fetch_labels', ['error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_fetch_labels', ['error' => $e->getMessage()]));
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_fetch_labels', ['error' => $e->getMessage()]));
 
             return null;
         }
@@ -129,13 +132,13 @@ class SubmitLabelResolver
      *
      * @return array<int, string>|null
      */
-    public function resolveUnknownLabel(string $unknownLabel, bool $quiet, array $finalLabels): ?array
+    public function resolveUnknownLabel(WorkflowEntryRecorder $recorder, string $unknownLabel, bool $quiet, array $finalLabels): ?array
     {
         if ($quiet) {
             return $finalLabels;
         }
 
-        $choice = $this->logger->choice(
+        $choice = $this->prompt->choice(
             MessageRef::key('submit.label_unknown_prompt', ['label' => $unknownLabel]),
             [
                 self::LABEL_CREATE_OPTION,
@@ -150,36 +153,36 @@ class SubmitLabelResolver
         }
 
         if ($choice === self::LABEL_CREATE_OPTION) {
-            $created = $this->createLabelOnProvider($unknownLabel);
+            $created = $this->createLabelOnProvider($recorder, $unknownLabel);
 
             return $created === null ? null : array_merge($finalLabels, [$created]);
         }
 
-        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('submit.label_ignored', ['label' => $unknownLabel]));
+        $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.label_ignored', ['label' => $unknownLabel]), WorkflowChannel::Git);
 
         return $finalLabels;
     }
 
-    public function createLabelOnProvider(string $unknownLabel): ?string
+    public function createLabelOnProvider(WorkflowEntryRecorder $recorder, string $unknownLabel): ?string
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.label_creating', ['label' => $unknownLabel]));
+        $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.label_creating', ['label' => $unknownLabel]), WorkflowChannel::Git);
 
         try {
             $color = sprintf('%06x', mt_rand(0, 0xffffff));
             $this->gitProvider->createLabel($unknownLabel, $color);
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.label_created', ['label' => $unknownLabel]));
+            $recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.label_created', ['label' => $unknownLabel]));
 
             return $unknownLabel;
         } catch (ApiException $e) {
-            $this->logger->addErrorWithDetails(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $recorder->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 MessageRef::key('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
 
             return null;
         } catch (\Exception $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]));
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_create_label', ['label' => $unknownLabel, 'error' => $e->getMessage()]));
 
             return null;
         }

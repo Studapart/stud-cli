@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DTO;
 
+use App\Enum\WorkflowChannel;
+
 final class WorkflowOutputEntry
 {
     /**
@@ -23,6 +25,7 @@ final class WorkflowOutputEntry
         public readonly array $elements = [],
         public readonly array $definitionList = [],
         public readonly int $count = 1,
+        public readonly WorkflowChannel $channel = WorkflowChannel::Default,
     ) {
     }
 }

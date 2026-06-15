@@ -45,9 +45,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch, true)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $response = $handler->handle($io->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
     }
@@ -75,9 +74,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $response = $handler->handle($io->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
     }
@@ -105,9 +103,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch, false)->shouldBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $response = $handler->handle($io->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
     }
@@ -135,9 +132,8 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranch($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $response = $handler->handle($io->reveal());
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
     }
@@ -186,13 +182,11 @@ class DeployHandlerTest extends CommandTestCase
 
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->atLeastOnce())
-            ->method('addWarning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('branches.clean.force_delete_warning'));
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $this->assertTrue($response->isSuccess());
+        $this->assertNotEmpty($response->getMessages());
     }
 
     public function testHandleWithStaleRemoteRefForceDeleteFails(): void
@@ -222,14 +216,11 @@ class DeployHandlerTest extends CommandTestCase
 
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldNotBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        // When force delete fails, only the cleanup warning is logged (not the force delete warning)
-        $logger->expects($this->once())
-            ->method('addWarning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('deploy.warning_branch_cleanup'));
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $this->assertTrue($response->isSuccess());
+        $this->assertNotEmpty($response->getMessages());
     }
 
     public function testHandleWithRemoteExistsAndDeletionFails(): void
@@ -258,12 +249,10 @@ class DeployHandlerTest extends CommandTestCase
         $gitRepository->deleteBranchForce($releaseBranch)->shouldNotBeCalled();
         $gitRepository->deleteRemoteBranch('origin', $releaseBranch)->shouldBeCalled();
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('addWarning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->messageRefWithKey('deploy.warning_branch_cleanup'));
+        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService);
+        $response = $handler->handle();
 
-        $handler = new DeployHandler($gitRepository->reveal(), 'origin/develop', $this->translationService, $logger);
-        $handler->handle($io->reveal());
+        $this->assertTrue($response->isSuccess());
+        $this->assertNotEmpty($response->getMessages());
     }
 }

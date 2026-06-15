@@ -4,12 +4,8 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\StatusHandler;
-use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class StatusHandlerTest extends CommandTestCase
 {
@@ -22,8 +18,7 @@ class StatusHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $logger = $this->createMock(Logger::class);
-        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService, $logger);
+        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService);
     }
 
     public function testHandle(): void
@@ -45,74 +40,55 @@ class StatusHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testHandleWithNoJiraKey(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
-        $this->gitRepository->method('getPorcelainStatus')->willReturn("");
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithJiraServiceException(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getPorcelainStatus')->willReturn("");
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
         $this->jiraService->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithJiraServiceApiException(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getPorcelainStatus')->willReturn("");
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
         $this->jiraService->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addSection');
-        $logger->method('addJiraLine');
-        $logger->method('addLine');
-        $logger->method('addText');
+        $response = $this->handler->handle();
 
-        $handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService, $logger);
-
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
-
-        $result = $handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
+        $this->assertNotEmpty($response->entries);
     }
 
     public function testHandleWithCleanWorkingDirectory(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
-        $this->gitRepository->method('getPorcelainStatus')->willReturn("");
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
         $workItem = new WorkItem(
             id: '10001',
@@ -127,12 +103,9 @@ class StatusHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -154,12 +127,8 @@ class StatusHandlerTest extends CommandTestCase
         );
         $this->jiraService->method('getIssue')->willReturn($workItem);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
+        $response = $this->handler->handle();
 
-        $result = $this->handler->handle();
-
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 }

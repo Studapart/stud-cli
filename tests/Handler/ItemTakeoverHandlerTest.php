@@ -5,8 +5,11 @@ namespace App\Tests\Handler;
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
 use App\Handler\ItemTakeoverHandler;
-use App\Service\Logger;
+use App\Response\WorkflowResponse;
+use App\Service\Prompt\PromptInterface;
+use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -15,13 +18,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 {
     private ItemTakeoverHandler $handler;
     private ItemStartHandler $itemStartHandler;
-    private Logger $logger;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
         $this->itemStartHandler = $this->createMock(ItemStartHandler::class);
         $this->handler = new ItemTakeoverHandler(
             $this->gitRepository,
@@ -31,16 +34,22 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             'origin/develop',
             $this->translationService,
             [],
-            $this->logger
+            $this->prompt
         );
     }
 
-    /**
-     * Creates a handler with a real Logger instance for interactive tests.
-     */
-    private function createHandlerWithRealLogger(SymfonyStyle $io): ItemTakeoverHandler
+    private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
     {
-        $realLogger = new Logger($io, []);
+        $this->assertInstanceOf(WorkflowResponse::class, $response);
+        $this->assertSame($expectedExitCode, $response->exitCode);
+    }
+
+    /**
+     * Creates a handler with a real prompt service for interactive tests.
+     */
+    private function createHandlerWithRealPrompt(SymfonyStyle $io): ItemTakeoverHandler
+    {
+        $prompt = new SymfonyPromptService($io);
 
         return new ItemTakeoverHandler(
             $this->gitRepository,
@@ -50,7 +59,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             'origin/develop',
             $this->translationService,
             [],
-            $realLogger
+            $prompt
         );
     }
 
@@ -70,10 +79,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFound(): void
@@ -97,10 +106,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFoundApiException(): void
@@ -114,18 +123,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('addErrorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->messageRefWithKey('item.takeover.error_not_found'),
-                'HTTP 404: Not Found'
-            );
-        $logger->method('addSection');
-        $logger->method('addJiraLine');
-
-        $handler = new \App\Handler\ItemTakeoverHandler(
+        $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
             $this->jiraService,
@@ -133,15 +131,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             'origin/develop',
             $this->translationService,
             [],
-            $logger
+            $this->prompt
         );
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $handler->handle('PROJ-123');
 
-        $result = $handler->handle('PROJ-123');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWithAssignmentFailure(): void
@@ -181,7 +177,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $this->itemStartHandler->expects($this->once())
             ->method('handle')
-            ->willReturn(0);
+            ->willReturn(WorkflowResponse::fromExitCode(0));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -193,10 +189,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithNoBranchesAndStartFresh(): void
@@ -235,7 +231,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $this->itemStartHandler->expects($this->once())
             ->method('handle')
-            ->willReturn(0);
+            ->willReturn(WorkflowResponse::fromExitCode(0));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -247,10 +243,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithAssignmentApiExceptionVerbose(): void
@@ -280,25 +276,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('addSection');
-        $logger->method('addJiraLine');
-        $logger->method('addText')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Allow normal verbosity calls
-                if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
-                    return;
-                }
-                // Check for verbose technical details
-                if ($verbosity === \App\Service\Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
-                    return;
-                }
-            });
-        $logger->method('addWarning');
-        $logger->method('confirm')
+        $this->prompt->method('confirm')
             ->willReturn(true); // User confirms to start fresh
 
-        $handler = new \App\Handler\ItemTakeoverHandler(
+        $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
             $this->jiraService,
@@ -306,7 +287,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             'origin/develop',
             $this->translationService,
             [],
-            $logger
+            $this->prompt
         );
 
         $this->gitRepository->expects($this->once())
@@ -319,7 +300,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $this->itemStartHandler->expects($this->once())
             ->method('handle')
-            ->willReturn(0);
+            ->willReturn(WorkflowResponse::fromExitCode(0));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -332,9 +313,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle('PROJ-123');
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithSingleRemoteBranch(): void
@@ -404,10 +385,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithSingleLocalBranch(): void
@@ -477,10 +458,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleAlreadyOnBranch(): void
@@ -549,10 +530,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithWrongBaseBranch(): void
@@ -623,10 +604,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithBranchBehindRemote(): void
@@ -700,10 +681,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithDivergedBranch(): void
@@ -777,10 +758,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithNoBranchesAndUserDeclinesStartFresh(): void
@@ -830,10 +811,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithMultipleBranches(): void
@@ -918,10 +899,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithMultipleBranchesQuietSelectsFirstWithoutPrompting(): void
@@ -984,19 +965,15 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('feat/PROJ-123-branch2', 'origin/develop')
             ->willReturn(true);
 
-        $this->logger->expects($this->never())
+        $this->prompt->expects($this->never())
             ->method('choice');
-
-        $this->logger->method('addSection');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle('PROJ-123', true);
+        $response = $this->handler->handle('PROJ-123', true);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithMultipleBranchesUserCancels(): void
@@ -1038,13 +1015,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         // extractBranchNameFromSelection returns null when no match is found
         // This simulates user canceling or invalid selection
-        // Mock the logger's choice() method to return an invalid selection
-        $this->logger->method('addSection');
-        $this->logger->method('addText');
-        $this->logger->method('addJiraLine');
-        $this->logger->method('addWarning');
         // Return a selection that doesn't match any branch label
-        $this->logger->method('choice')
+        $this->prompt->method('choice')
             ->willReturn('Invalid Selection That Does Not Match');
 
         // When selection doesn't match, getCurrentBranchName is never called
@@ -1053,9 +1025,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
-        $result = $this->handler->handle('PROJ-123');
+        $response = $this->handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithSingleRemoteBranchUserDeclines(): void
@@ -1102,10 +1074,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithBranchAheadOfRemote(): void
@@ -1178,10 +1150,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithBranchBehindBase(): void
@@ -1251,10 +1223,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithBranchSyncWithBase(): void
@@ -1324,9 +1296,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle('PROJ-123');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('PROJ-123');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 }

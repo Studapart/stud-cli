@@ -8,7 +8,6 @@ use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\WorkflowOutput;
 
 class DeployHandler
 {
@@ -16,7 +15,6 @@ class DeployHandler
         private readonly GitRepository $gitRepository,
         private readonly string $baseBranch,
         mixed $_translator,
-        private readonly ?WorkflowOutput $logger = null,
     ) {
         unset($_translator);
     }
@@ -107,9 +105,6 @@ class DeployHandler
      */
     private function buildWarningResponse(string $key, array $params): ResponseMessage
     {
-        $message = MessageRef::key($key, $params);
-        $this->logger?->addWarning(WorkflowOutput::VERBOSITY_NORMAL, $message);
-
-        return ResponseMessage::warning($message);
+        return ResponseMessage::warning(MessageRef::key($key, $params));
     }
 }

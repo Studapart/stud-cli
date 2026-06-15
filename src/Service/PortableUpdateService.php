@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class PortableUpdateService
 {
+    private WorkflowEntryRecorder $recorder;
+
     public function __construct(
         protected readonly UpdateRepositoryContext $repository,
         mixed $translator,
-        protected readonly WorkflowOutput $logger,
+        protected readonly PromptInterface $prompt,
         protected readonly ?HttpClientInterface $httpClient = null,
     ) {
         unset($translator);
@@ -25,8 +29,9 @@ class PortableUpdateService
      *
      * @param array<string, mixed> $release
      */
-    public function update(UpdateInstallContext $context, array $release, bool $quiet): int
+    public function update(UpdateInstallContext $context, array $release, bool $quiet, WorkflowEntryRecorder $recorder): int
     {
+        $this->recorder = $recorder;
         if ($context->legacyPortableLayout) {
             return $this->fail('update.portable_legacy_layout');
         }
@@ -52,7 +57,7 @@ class PortableUpdateService
 
     protected function fail(string $translationKey): int
     {
-        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key($translationKey));
+        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key($translationKey));
 
         return 1;
     }
@@ -99,7 +104,7 @@ class PortableUpdateService
 
             return $this->activateBundle($context, $extractedRoot, $artifactName, $quiet);
         } catch (\Throwable $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_update_failed', ['error' => $e->getMessage()]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_update_failed', ['error' => $e->getMessage()]));
 
             return 1;
         } finally {
@@ -161,12 +166,12 @@ class PortableUpdateService
         $expectedHash = $this->expectedChecksum($checksumsPath, $artifactName);
         $actualHash = hash_file('sha256', $archivePath);
         if ($expectedHash === null || $actualHash === false || ! hash_equals(strtolower($expectedHash), strtolower($actualHash))) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_checksum_failed'));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_checksum_failed'));
 
             return false;
         }
 
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
 
         return true;
     }
@@ -194,7 +199,7 @@ class PortableUpdateService
         $process = new Process(['tar', '-xzf', $workspace . '/' . $artifactName, '-C', $workspace]);
         $process->run();
         if (! $process->isSuccessful()) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_extract_failed'));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_extract_failed'));
 
             return null;
         }
@@ -212,7 +217,7 @@ class PortableUpdateService
             return true;
         }
 
-        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_smoke_failed'));
+        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_smoke_failed'));
 
         return false;
     }
@@ -242,7 +247,7 @@ class PortableUpdateService
             // @codeCoverageIgnoreEnd
         }
 
-        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_success', ['version' => $version]));
+        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_success', ['version' => $version]));
         $this->cleanupOldVersions($context, $version, $quiet);
 
         return 0;
@@ -266,7 +271,7 @@ class PortableUpdateService
         @unlink($temporaryLink);
         if (! symlink($newTarget, $temporaryLink)) {
             // @codeCoverageIgnoreStart
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
 
             return false;
             // @codeCoverageIgnoreEnd
@@ -280,7 +285,7 @@ class PortableUpdateService
         @unlink($temporaryLink);
         @unlink($symlinkPath);
         @symlink($previousTarget, $symlinkPath);
-        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
+        $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_symlink_failed'));
 
         return false;
         // @codeCoverageIgnoreEnd
@@ -304,7 +309,7 @@ class PortableUpdateService
             return false;
         }
 
-        return $this->logger->confirm(MessageRef::key('update.portable_cleanup_prompt'), false);
+        return $this->prompt->confirm(MessageRef::key('update.portable_cleanup_prompt'), false);
     }
 
     /**

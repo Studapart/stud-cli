@@ -85,7 +85,7 @@ All features that display user-facing output **must** follow the Action–Domain
 - **Handler:** Pure workflow/business logic only. It may collect input through `PromptInterface`, but it must not render output, call `Logger`, or translate user-facing messages.
 - **Service:** Domain services must return domain results or append to non-rendering response/diagnostic collectors. They must not depend on `Logger` or `CommandOutputBuffer`.
 - **Response:** Owns user-visible result data and diagnostics (`Error`, `Warning`, `Notice`, `Info`) as `MessageRef` keys plus parameters.
-- **WorkflowOutput:** A non-rendering recorder for imperative workflows that still need ordered CLI progress entries. It records `WorkflowOutputEntry` values and `ResponseMessage` diagnostics, then produces a `WorkflowResponse`.
+- **WorkflowRecorder:** Handlers record ordered CLI progress via `WorkflowEntryRecorder` (typically `WorkflowRecorder`), then return `WorkflowResponse`. `WorkflowOutput` remains a transitional recorder for castor/service bridges that also handle prompts.
 - **Responder:** All presentation logic. It translates message references and uses `PageViewConfig` and `Logger` for CLI output, or serializes the same response through `AgentJsonResponse` for JSON.
 - **Task (`castor.php`):** Wires input parsing, Handler, Response, Responder, and exit code handling.
 
@@ -94,10 +94,10 @@ flowchart LR
   castor["castor.php task"] --> handler["Handler"]
   prompt["PromptInterface"] --> handler
   handler --> response["Concrete Response DTO"]
-  handler --> workflowOutput["WorkflowOutput recorder"]
+  handler --> workflowRecorder["WorkflowRecorder"]
   service["Domain Service"] --> response
-  service --> workflowOutput
-  workflowOutput --> workflowResponse["WorkflowResponse"]
+  service --> workflowRecorder
+  workflowRecorder --> workflowResponse["WorkflowResponse"]
   response --> responder["Responder"]
   workflowResponse --> workflowResponder["WorkflowResponder"]
   responder --> logger["Logger (CLI renderer)"]
@@ -545,11 +545,13 @@ The following table defines the standard output intents. Handlers/services recor
    ```
 4. **Use `WorkflowOutput` for ordered workflow views**: when an existing command needs progress sections, verbose lines, tables, or raw values, record them without rendering:
    ```php
-   $output->addGitLine(
+   $output->addLine(
        WorkflowOutput::VERBOSITY_VERBOSE,
        MessageRef::key('item.start.generated_branch', ['branch' => $branch]),
+       WorkflowChannel::Git,
    );
    ```
+   Use `WorkflowChannel::Git` for in-flight git/gh operation traces (fetch, push, checkout, branch create/delete, PR API calls). Use `WorkflowChannel::Jira` for in-flight Jira API traces (fetch issue, assign, transition). Omit the channel (default) for command response output: formatted results, summaries, confirmations, and mixed workflow narration. Channels affect CLI coloring only; they do not change verbosity or agent JSON.
 5. **Respect compact JSON**: keep decorative/progress output out of compact agent responses. Include diagnostics only when they are meaningful for automated callers.
 
 ## CHANGELOG.md Format

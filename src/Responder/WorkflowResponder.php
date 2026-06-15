@@ -6,6 +6,7 @@ namespace App\Responder;
 
 use App\DTO\WorkflowOutputEntry;
 use App\Enum\OutputFormat;
+use App\Enum\WorkflowChannel;
 use App\Response\AgentJsonResponse;
 use App\Response\WorkflowResponse;
 use App\Service\Logger;
@@ -56,13 +57,9 @@ class WorkflowResponder
             'warning' => $this->logger->warning($entry->verbosity, $this->message($entry)),
             'note' => $this->logger->note($entry->verbosity, $this->message($entry)),
             'success' => $this->logger->success($entry->verbosity, $this->message($entry)),
-            'text' => $this->logger->text($entry->verbosity, $this->message($entry)),
+            'text' => $this->renderText($entry),
             'rawValue' => $this->logger->rawValue($this->renderedString($entry)),
-            'writeln' => $this->logger->writeln($entry->verbosity, $this->renderedString($entry)),
-            'jiraWriteln' => $this->logger->jiraWriteln($entry->verbosity, $this->renderedString($entry)),
-            'gitWriteln' => $this->logger->gitWriteln($entry->verbosity, $this->renderedString($entry)),
-            'jiraText' => $this->logger->jiraText($entry->verbosity, $this->stringMessage($entry)),
-            'gitText' => $this->logger->gitText($entry->verbosity, $this->stringMessage($entry)),
+            'writeln' => $this->renderLine($entry),
             'section' => $this->logger->section($entry->verbosity, $this->renderedString($entry)),
             'title' => $this->logger->title($entry->verbosity, $this->renderedString($entry)),
             'listing' => $this->logger->listing($entry->verbosity, $entry->elements),
@@ -74,6 +71,26 @@ class WorkflowResponder
             'definitionList' => $this->logger->definitionList($entry->verbosity, ...$entry->definitionList),
             'newLine' => $this->logger->newLine($entry->verbosity, $entry->count),
             default => null,
+        };
+    }
+
+    private function renderLine(WorkflowOutputEntry $entry): void
+    {
+        $message = $this->renderedString($entry);
+        match ($entry->channel) {
+            WorkflowChannel::Jira => $this->logger->jiraWriteln($entry->verbosity, $message),
+            WorkflowChannel::Git => $this->logger->gitWriteln($entry->verbosity, $message),
+            WorkflowChannel::Default => $this->logger->writeln($entry->verbosity, $message),
+        };
+    }
+
+    private function renderText(WorkflowOutputEntry $entry): void
+    {
+        $message = $this->stringMessage($entry);
+        match ($entry->channel) {
+            WorkflowChannel::Jira => $this->logger->jiraText($entry->verbosity, $message),
+            WorkflowChannel::Git => $this->logger->gitText($entry->verbosity, $message),
+            WorkflowChannel::Default => $this->logger->text($entry->verbosity, $this->message($entry)),
         };
     }
 

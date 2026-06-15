@@ -4,18 +4,24 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\SubmitOptions;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
+use App\Response\WorkflowResponse;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitBranchService;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\JiraService;
-use App\Service\WorkflowOutput;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class BranchRenameHandler
 {
+    private WorkflowEntryRecorder $recorder;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
@@ -27,36 +33,37 @@ class BranchRenameHandler
         private readonly mixed $translator,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
-        private readonly WorkflowOutput $logger,
+        private readonly PromptInterface $prompt,
         private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
-    public function handle(?string $branchName, ?string $key, ?string $explicitName, bool $quiet = false): int
+    public function handle(?string $branchName, ?string $key, ?string $explicitName, bool $quiet = false): WorkflowResponse
     {
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.section'));
+        $this->recorder = new WorkflowRecorder();
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.section'));
 
         if (! $this->validateWorkingDirectory()) {
-            return 1;
+            return $this->recorder->toResponse(1);
         }
 
         [$targetBranch, $key] = $this->normalizeBranchAndKey($branchName, $key);
         $newBranchName = $this->determineNewBranchName($targetBranch, $key, $explicitName);
         if ($newBranchName === null || $this->validateNewBranchNameExists($newBranchName)) {
-            return 1;
+            return $this->recorder->toResponse(1);
         }
 
         $branchStatus = $this->checkBranchExistence($targetBranch, $quiet);
         if ($branchStatus === null || $branchStatus === false) {
-            return $branchStatus === false ? 0 : 1;
+            return $this->recorder->toResponse($branchStatus === false ? 0 : 1);
         }
 
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($this->handleBranchSynchronization($targetBranch, $hasLocal, $hasRemote, $quiet) === 1) {
-            return 1;
+            return $this->recorder->toResponse(1);
         }
 
-        return $this->performRename($targetBranch, $newBranchName, $branchStatus, $quiet);
+        return $this->recorder->toResponse($this->performRename($targetBranch, $newBranchName, $branchStatus, $quiet));
     }
 
     /**
@@ -81,7 +88,7 @@ class BranchRenameHandler
         [$hasLocal, $hasRemote] = $branchStatus;
         $pr = $this->findAssociatedPullRequest();
         $this->showConfirmationMessage([$targetBranch, $newBranchName], $branchStatus, $pr);
-        if (! $quiet && ! $this->logger->confirm(MessageRef::key('branch.rename.confirm_prompt'), true)) {
+        if (! $quiet && ! $this->prompt->confirm(MessageRef::key('branch.rename.confirm_prompt'), true)) {
             return 0;
         }
         $this->renameBranches($targetBranch, $newBranchName, $branchStatus);
@@ -94,7 +101,7 @@ class BranchRenameHandler
     {
         $status = $this->gitRepository->getPorcelainStatus();
         if (! empty($status)) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_dirty_working'));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_dirty_working'));
 
             return false;
         }
@@ -181,12 +188,6 @@ class BranchRenameHandler
     }
 
     /**
-     * @param array<string, mixed>|null $pr
-     */
-    /**
-     * @param array{0: bool, 1: bool} $branchStatus
-     */
-    /**
      * @param array{0: string, 1: string} $names
      * @param array{0: bool, 1: bool} $branchStatus
      * @param array<string, mixed>|null $pr
@@ -194,9 +195,9 @@ class BranchRenameHandler
     protected function showConfirmationMessage(array $names, array $branchStatus, ?array $pr): void
     {
         [$oldName, $newName] = $names;
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_header', ['oldName' => $oldName]));
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_new', ['newName' => $newName]));
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_actions'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_header', ['oldName' => $oldName]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_new', ['newName' => $newName]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_actions'));
 
         $this->showBranchConfirmationDetails($oldName, $newName, $branchStatus);
         $this->showPrConfirmation($pr);
@@ -209,11 +210,11 @@ class BranchRenameHandler
     {
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_local', ['oldName' => $oldName, 'newName' => $newName]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_local', ['oldName' => $oldName, 'newName' => $newName]));
         }
 
         if ($hasRemote) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_remote', ['oldName' => $oldName, 'newName' => $newName]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_remote', ['oldName' => $oldName, 'newName' => $newName]));
         }
     }
 
@@ -223,7 +224,7 @@ class BranchRenameHandler
     protected function showPrConfirmation(?array $pr): void
     {
         if ($pr !== null && isset($pr['number'])) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_pr', ['number' => $pr['number']]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.confirmation_pr', ['number' => $pr['number']]));
         }
     }
 
@@ -236,12 +237,12 @@ class BranchRenameHandler
             return;
         }
 
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'), WorkflowChannel::Git);
 
         $submitHandler = $this->createSubmitHandler();
         $submitResult = $submitHandler->handle(new SubmitOptions());
-        if ($submitResult !== 0) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
+        if ($submitResult->exitCode !== 0) {
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
 
             return;
         }
@@ -258,14 +259,14 @@ class BranchRenameHandler
             $this->jiraConfig,
             $this->baseBranch,
             $this->translator,
-            $this->logger,
+            $this->prompt,
             $this->htmlConverter
         );
     }
 
     protected function commentOnNewPullRequest(string $oldName, string $newName): void
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.commenting_pr'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.commenting_pr'), WorkflowChannel::Git);
 
         try {
             $currentBranch = $this->gitRepository->getCurrentBranchName();
@@ -286,7 +287,7 @@ class BranchRenameHandler
     {
         if ($this->gitRepository->localBranchExists($newBranchName) ||
             $this->gitRepository->remoteBranchExists('origin', $newBranchName)) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_new_name_exists', ['name' => $newBranchName]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_new_name_exists', ['name' => $newBranchName]));
 
             return true;
         }
@@ -303,14 +304,14 @@ class BranchRenameHandler
         $hasRemote = $this->gitRepository->remoteBranchExists('origin', $targetBranch);
 
         if (! $hasLocal && ! $hasRemote) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_branch_not_found', ['branch' => $targetBranch]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_branch_not_found', ['branch' => $targetBranch]));
 
             return null;
         }
 
         if ($hasRemote && ! $hasLocal) {
-            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.local_not_found_remote_exists', ['branch' => $targetBranch]));
-            if (! $quiet && ! $this->logger->confirm(MessageRef::key('branch.rename.rename_remote_only_prompt'), true)) {
+            $this->recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.local_not_found_remote_exists', ['branch' => $targetBranch]));
+            if (! $quiet && ! $this->prompt->confirm(MessageRef::key('branch.rename.rename_remote_only_prompt'), true)) {
                 return false;
             }
         }
@@ -326,16 +327,16 @@ class BranchRenameHandler
 
         $syncResult = $this->checkBranchSync($targetBranch, "origin/{$targetBranch}");
         if ($syncResult['behind'] > 0) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.checking_sync'));
-            $doRebase = $quiet || $this->logger->confirm(MessageRef::key('branch.rename.remote_ahead_prompt', ['count' => $syncResult['behind']]), true);
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.checking_sync'), WorkflowChannel::Git);
+            $doRebase = $quiet || $this->prompt->confirm(MessageRef::key('branch.rename.remote_ahead_prompt', ['count' => $syncResult['behind']]), true);
             if ($doRebase) {
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebasing'));
+                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebasing'), WorkflowChannel::Git);
 
                 try {
                     $this->gitRepository->rebase("origin/{$targetBranch}");
                 } catch (\Exception $e) {
-                    $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_failed'));
-                    $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_suggestion', ['branch' => $targetBranch]));
+                    $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_failed'));
+                    $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.rebase_suggestion', ['branch' => $targetBranch]));
 
                     return 1;
                 }
@@ -354,7 +355,7 @@ class BranchRenameHandler
             return null;
         }
 
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.finding_pr'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.finding_pr'), WorkflowChannel::Git);
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
         $headBranch = $remoteOwner ? "{$remoteOwner}:{$currentBranch}" : $currentBranch;
@@ -374,17 +375,17 @@ class BranchRenameHandler
     {
         [$hasLocal, $hasRemote] = $branchStatus;
         if ($hasLocal) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_local'));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_local'), WorkflowChannel::Git);
             $this->gitBranchService->renameLocalBranch($targetBranch, $newBranchName);
         }
 
         if ($hasRemote) {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_remote'));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.renaming_remote'), WorkflowChannel::Git);
 
             try {
                 $this->gitBranchService->renameRemoteBranch($targetBranch, $newBranchName, 'origin');
             } catch (\Exception $e) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.remote_not_found'));
+                $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.remote_not_found'));
             }
         }
     }
@@ -398,13 +399,13 @@ class BranchRenameHandler
             $this->updatePullRequestAfterRename($pr, $targetBranch, $newBranchName);
         }
 
-        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
+        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
 
         if ($pr === null && $this->githubProvider !== null) {
-            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.no_pr_found'));
-            if ($quiet || $this->logger->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.switching_for_submit'));
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
+            $this->recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.no_pr_found'));
+            if ($quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
+                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.switching_for_submit'), WorkflowChannel::Git);
+                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
             }
         }
     }
@@ -412,7 +413,7 @@ class BranchRenameHandler
     protected function handleExplicitName(string $explicitName): ?string
     {
         if (! $this->validateBranchName($explicitName)) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_invalid_name', ['name' => $explicitName]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_invalid_name', ['name' => $explicitName]));
 
             return null;
         }
@@ -422,14 +423,14 @@ class BranchRenameHandler
 
     protected function generateBranchNameFromKeyWithErrorHandling(string $key): ?string
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.fetching_issue'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.fetching_issue'), WorkflowChannel::Jira);
 
         try {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.generating_name'));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.generating_name'), WorkflowChannel::Jira);
 
             return $this->generateBranchNameFromKey($key);
         } catch (\Exception $e) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_key_not_found', ['key' => $key]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_key_not_found', ['key' => $key]));
 
             return null;
         }
@@ -439,7 +440,7 @@ class BranchRenameHandler
     {
         $extractedKey = $this->gitRepository->getJiraKeyFromBranchName();
         if ($extractedKey === null) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
 
             return null;
         }

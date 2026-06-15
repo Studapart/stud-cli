@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\BranchCleanupPlan;
 use App\DTO\MessageRef;
 use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
+use App\Enum\WorkflowChannel;
+use App\Service\Prompt\PromptInterface;
 
 class BranchCleanupExecutor
 {
@@ -16,7 +19,7 @@ class BranchCleanupExecutor
     public function __construct(
         private readonly GitRepository $gitRepository,
         mixed $translator,
-        private readonly WorkflowOutput $logger
+        private readonly PromptInterface $prompt,
     ) {
         unset($translator);
     }
@@ -26,13 +29,13 @@ class BranchCleanupExecutor
      *
      * @param array<BranchCleanupPlan> $cleanupPlans
      */
-    public function execute(array $cleanupPlans, bool $quiet): int
+    public function execute(array $cleanupPlans, bool $quiet, WorkflowEntryRecorder $recorder): int
     {
         $this->remoteTrackingRefsPruned = false;
         $deletedCount = 0;
 
         foreach ($cleanupPlans as $plan) {
-            if ($this->executeCleanupPlan($plan, $quiet)) {
+            if ($this->executeCleanupPlan($plan, $quiet, $recorder)) {
                 $deletedCount++;
             }
         }
@@ -40,72 +43,72 @@ class BranchCleanupExecutor
         return $deletedCount;
     }
 
-    protected function executeCleanupPlan(BranchCleanupPlan $plan, bool $quiet): bool
+    protected function executeCleanupPlan(BranchCleanupPlan $plan, bool $quiet, WorkflowEntryRecorder $recorder): bool
     {
         if ($plan->localAction === BranchCleanupLocalAction::SafeDelete) {
-            return $this->safeDeleteLocalBranch($plan, $quiet);
+            return $this->safeDeleteLocalBranch($plan, $quiet, $recorder);
         }
 
         if ($plan->localAction === BranchCleanupLocalAction::ForceDelete) {
-            return $this->forceDeleteLocalBranch($plan, $quiet);
+            return $this->forceDeleteLocalBranch($plan, $quiet, $recorder);
         }
 
         return false;
     }
 
-    protected function safeDeleteLocalBranch(BranchCleanupPlan $plan, bool $quiet): bool
+    protected function safeDeleteLocalBranch(BranchCleanupPlan $plan, bool $quiet, WorkflowEntryRecorder $recorder): bool
     {
         $branch = $plan->branch;
 
         try {
-            $this->pruneRemoteTrackingRefsIfNeeded($plan);
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Deleting local branch: {$branch}</>");
+            $this->pruneRemoteTrackingRefsIfNeeded($plan, $recorder);
+            $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]), WorkflowChannel::Git);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=gray>Deleting local branch: {$branch}</>", WorkflowChannel::Git);
             $this->gitRepository->deleteBranch($branch);
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted local branch: {$branch}</>");
-            $this->handleRemoteBranchDeletion($plan, $quiet);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted local branch: {$branch}</>", WorkflowChannel::Git);
+            $this->handleRemoteBranchDeletion($plan, $quiet, $recorder);
 
             return true;
         } catch (\Exception $e) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $e->getMessage()]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Deletion failed: {$e->getMessage()}</>");
+            $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $e->getMessage()]));
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=red>Deletion failed: {$e->getMessage()}</>", WorkflowChannel::Git);
 
             return false;
         }
     }
 
-    protected function forceDeleteLocalBranch(BranchCleanupPlan $plan, bool $quiet): bool
+    protected function forceDeleteLocalBranch(BranchCleanupPlan $plan, bool $quiet, WorkflowEntryRecorder $recorder): bool
     {
         $branch = $plan->branch;
 
         try {
-            $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Force deleting local branch: {$branch}</>");
+            $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleting', ['branch' => $branch]), WorkflowChannel::Git);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=gray>Force deleting local branch: {$branch}</>", WorkflowChannel::Git);
             $this->gitRepository->deleteBranchForce($branch);
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully force-deleted local branch: {$branch}</>");
-            $this->handleRemoteBranchDeletion($plan, $quiet);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=green>Successfully force-deleted local branch: {$branch}</>", WorkflowChannel::Git);
+            $this->handleRemoteBranchDeletion($plan, $quiet, $recorder);
 
             return true;
         } catch (\Exception $forceException) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $forceException->getMessage()]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Force deletion also failed: {$forceException->getMessage()}</>");
+            $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error', ['branch' => $branch, 'error' => $forceException->getMessage()]));
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=red>Force deletion also failed: {$forceException->getMessage()}</>", WorkflowChannel::Git);
 
             return false;
         }
     }
 
-    protected function pruneRemoteTrackingRefsIfNeeded(BranchCleanupPlan $plan): void
+    protected function pruneRemoteTrackingRefsIfNeeded(BranchCleanupPlan $plan, WorkflowEntryRecorder $recorder): void
     {
         if ($plan->remoteExists || $this->remoteTrackingRefsPruned) {
             return;
         }
 
-        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.pruning_refs'));
+        $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.pruning_refs'), WorkflowChannel::Git);
         $this->gitRepository->pruneRemoteTrackingRefs();
         $this->remoteTrackingRefsPruned = true;
     }
 
-    protected function handleRemoteBranchDeletion(BranchCleanupPlan $plan, bool $quiet): void
+    protected function handleRemoteBranchDeletion(BranchCleanupPlan $plan, bool $quiet, WorkflowEntryRecorder $recorder): void
     {
         if ($plan->remoteAction === BranchCleanupRemoteAction::Skip) {
             return;
@@ -113,7 +116,7 @@ class BranchCleanupExecutor
 
         $branch = $plan->branch;
         if ($quiet || $plan->remoteAction === BranchCleanupRemoteAction::KeepQuiet) {
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept_quiet', ['branch' => $branch]));
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept_quiet', ['branch' => $branch]), WorkflowChannel::Git);
 
             return;
         }
@@ -122,28 +125,28 @@ class BranchCleanupExecutor
             return;
         }
 
-        $deleteRemote = $this->logger->confirm(
+        $deleteRemote = $this->prompt->confirm(
             MessageRef::key('branches.clean.delete_remote_confirm', ['branch' => $branch]),
             false
         );
 
         if ($deleteRemote) {
-            $this->deleteRemoteBranch($branch);
+            $this->deleteRemoteBranch($branch, $recorder);
         } else {
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept', ['branch' => $branch]));
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('branches.clean.remote_kept', ['branch' => $branch]), WorkflowChannel::Git);
         }
     }
 
-    protected function deleteRemoteBranch(string $branch): void
+    protected function deleteRemoteBranch(string $branch, WorkflowEntryRecorder $recorder): void
     {
         try {
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=gray>Deleting remote branch: origin/{$branch}</>");
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=gray>Deleting remote branch: origin/{$branch}</>", WorkflowChannel::Git);
             $this->gitRepository->deleteRemoteBranch('origin', $branch);
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleted_remote', ['branch' => $branch]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted remote branch: origin/{$branch}</>");
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.deleted_remote', ['branch' => $branch]), WorkflowChannel::Git);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=green>Successfully deleted remote branch: origin/{$branch}</>", WorkflowChannel::Git);
         } catch (\Exception $e) {
-            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error_remote', ['branch' => $branch, 'error' => $e->getMessage()]));
-            $this->logger->addLine(WorkflowOutput::VERBOSITY_DEBUG, "    <fg=red>Remote deletion failed: {$e->getMessage()}</>");
+            $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branches.clean.error_remote', ['branch' => $branch, 'error' => $e->getMessage()]));
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_DEBUG, "    <fg=red>Remote deletion failed: {$e->getMessage()}</>", WorkflowChannel::Git);
         }
     }
 }

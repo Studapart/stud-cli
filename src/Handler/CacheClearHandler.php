@@ -8,7 +8,6 @@ use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Response\CommandResponse;
 use App\Service\FileSystem;
-use App\Service\WorkflowOutput;
 
 class CacheClearHandler
 {
@@ -16,24 +15,10 @@ class CacheClearHandler
 
     public function __construct(
         mixed $_translator,
-        FileSystem|WorkflowOutput $fileSystem,
-        ?FileSystem $legacyFileSystem = null,
+        private readonly FileSystem $fileSystem,
     ) {
         unset($_translator);
-        if ($fileSystem instanceof FileSystem) {
-            $this->fileSystem = $fileSystem;
-
-            return;
-        }
-
-        if ($legacyFileSystem === null) {
-            throw new \InvalidArgumentException('FileSystem is required.');
-        }
-
-        $this->fileSystem = $legacyFileSystem;
     }
-
-    private readonly FileSystem $fileSystem;
 
     public function handle(): CommandResponse
     {

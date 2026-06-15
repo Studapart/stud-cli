@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
 use App\Exception\ApiException;
+use App\Response\WorkflowResponse;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GithubProvider;
-use App\Service\MigrationExecutor;
-use App\Service\MigrationRegistry;
+use App\Service\GlobalMigrationService;
 use App\Service\PortableUpdateService;
+use App\Service\Prompt\PromptInterface;
 use App\Service\UpdateFileService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
 use App\Service\UpdateRepositoryContext;
-use App\Service\WorkflowOutput;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateHandler
 {
+    private ?WorkflowEntryRecorder $recorder = null;
+
     public function __construct(
         protected readonly string $repoOwner,
         protected readonly string $repoName,
@@ -30,16 +34,41 @@ class UpdateHandler
         protected readonly mixed $translator,
         protected readonly ChangelogParser $changelogParser,
         protected readonly UpdateFileService $updateFileService,
-        protected readonly WorkflowOutput $logger,
+        protected readonly PromptInterface $prompt,
         protected readonly FileSystem $fileSystem,
         protected ?string $gitToken = null,
-        protected ?HttpClientInterface $httpClient = null
+        protected ?HttpClientInterface $httpClient = null,
+        protected ?GlobalMigrationService $globalMigrationService = null,
     ) {
     }
 
-    public function handle(bool $info = false, bool $quiet = false): int
+    private function globalMigrationService(): GlobalMigrationService
     {
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.section'));
+        if ($this->globalMigrationService !== null) {
+            return $this->globalMigrationService;
+        }
+
+        $io = new \Symfony\Component\Console\Style\SymfonyStyle(
+            new \Symfony\Component\Console\Input\ArrayInput([]),
+            new \Symfony\Component\Console\Output\BufferedOutput(),
+        );
+
+        return new GlobalMigrationService(
+            $this->fileSystem,
+            $this->translator,
+            new \App\Service\Logger($io, [], true),
+        );
+    }
+
+    private function recorder(): WorkflowEntryRecorder
+    {
+        return $this->recorder ??= new WorkflowRecorder();
+    }
+
+    public function handle(bool $info = false, bool $quiet = false): WorkflowResponse
+    {
+        $this->recorder = new WorkflowRecorder();
+        $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.section'));
 
         $binaryPath = $this->updateFileService->getBinaryPath($this->binaryPath);
         $this->logVerbose('Binary path', $binaryPath);
@@ -50,41 +79,41 @@ class UpdateHandler
         $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
         $release = $this->getReleaseOrExitCode($githubProvider);
         if (is_int($release)) {
-            return $release;
+            return $this->recorder()->toResponse($release);
         }
         $this->displayChangelog($githubProvider, $release);
 
         if ($info) {
-            return 0;
+            return $this->recorder()->toResponse(0);
         }
 
         if ($installContext->mode === UpdateInstallContext::MODE_PORTABLE) {
-            return $this->handlePortableUpdate($installContext, $release, $quiet);
+            return $this->recorder()->toResponse($this->handlePortableUpdate($installContext, $release, $quiet));
         }
 
         $pharAsset = $this->findPharAsset($release);
         if (! $pharAsset) {
-            return 1;
+            return $this->recorder()->toResponse(1);
         }
 
         $tempFile = $this->downloadPhar($pharAsset, $this->repoOwner, $this->repoName);
         if ($tempFile === null) {
-            return 1;
+            return $this->recorder()->toResponse(1);
         }
 
-        $verificationResult = $this->updateFileService->verifyHash($this->logger, $tempFile, $pharAsset, $quiet);
+        $verificationResult = $this->updateFileService->verifyHash($this->recorder, $tempFile, $pharAsset, $quiet);
         if ($verificationResult === false) {
-            return $this->cleanupAndReturn($tempFile, 1);
+            return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, 1));
         }
 
         $migrationResult = $this->runPrerequisiteMigrations();
         // @codeCoverageIgnoreStart
         if ($migrationResult !== 0) {
-            return $this->cleanupAndReturn($tempFile, $migrationResult);
+            return $this->recorder()->toResponse($this->cleanupAndReturn($tempFile, $migrationResult));
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->updateFileService->replaceBinary($this->logger, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown');
+        return $this->recorder()->toResponse($this->updateFileService->replaceBinary($this->recorder, $tempFile, $binaryPath, $this->currentVersion, $release['tag_name'] ?? 'unknown'));
     }
 
     /**
@@ -96,7 +125,7 @@ class UpdateHandler
         bool $quiet,
     ): int {
         if ($installContext->legacyPortableLayout) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.portable_legacy_layout'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_legacy_layout'));
 
             return 1;
         }
@@ -108,7 +137,7 @@ class UpdateHandler
         }
         // @codeCoverageIgnoreEnd
 
-        return $this->createPortableUpdateService()->update($installContext, $release, $quiet);
+        return $this->createPortableUpdateService()->update($installContext, $release, $quiet, $this->recorder);
     }
 
     /**
@@ -121,7 +150,7 @@ class UpdateHandler
         return new PortableUpdateService(
             new UpdateRepositoryContext($this->repoOwner, $this->repoName, $this->gitToken),
             $this->translator,
-            $this->logger,
+            $this->prompt,
             $this->httpClient
         );
     }
@@ -162,13 +191,13 @@ class UpdateHandler
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
         } catch (ApiException $e) {
             if ($e->getStatusCode() === 404) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
 
                 return ['release' => null, 'is404' => true];
             }
 
-            $this->logger->addErrorWithDetails(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $this->recorder()->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]),
                 $e->getTechnicalDetails()
             );
@@ -178,12 +207,12 @@ class UpdateHandler
             // @codeCoverageIgnoreStart
             // Exception handling for non-ApiException errors is difficult to test
             if (str_contains($e->getMessage(), 'Status: 404')) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
 
                 return ['release' => null, 'is404' => true];
             }
 
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]));
 
             return ['release' => null, 'is404' => false];
             // @codeCoverageIgnoreEnd
@@ -225,7 +254,7 @@ class UpdateHandler
         $this->logVerbose('Latest version', $latestVersion);
 
         if (version_compare($latestVersion, $currentVersion, '<=')) {
-            $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.success_latest', ['version' => $this->currentVersion]));
+            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_latest', ['version' => $this->currentVersion]));
 
             return true;
         }
@@ -242,7 +271,7 @@ class UpdateHandler
     // @codeCoverageIgnoreStart
     protected function findPharAsset(array $release): ?array
     {
-        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
 
         foreach ($release['assets'] ?? [] as $asset) {
             $assetName = $asset['name'] ?? null;
@@ -255,7 +284,7 @@ class UpdateHandler
             }
         }
 
-        $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))]));
+        $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))]));
 
         return null;
     }
@@ -273,7 +302,7 @@ class UpdateHandler
         // Extract asset ID from the asset object
         $assetId = $pharAsset['id'] ?? null;
         if (! $assetId) {
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
 
             return null;
         }
@@ -310,7 +339,7 @@ class UpdateHandler
         } catch (\Exception $e) {
             // @codeCoverageIgnoreStart
             // Exception handling for download failures is difficult to test
-            $this->logger->addError(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));
 
             return null;
             // @codeCoverageIgnoreEnd
@@ -323,7 +352,7 @@ class UpdateHandler
      */
     protected function logVerbose(string $label, string $value): void
     {
-        $this->logger->addLine(WorkflowOutput::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
+        $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
     }
     // @codeCoverageIgnoreEnd
 
@@ -437,46 +466,15 @@ class UpdateHandler
      */
     protected function discoverPrerequisiteMigrations(string $currentVersion): array
     {
-        // MigrationRegistry needs to discover migrations from the real filesystem
-        // Use the injected FileSystem for consistency
-        // In test environment, if migration discovery fails, skip migrations gracefully
         try {
-            $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
-            $globalMigrations = $registry->discoverGlobalMigrations();
-            // @codeCoverageIgnoreStart
+            return $this->globalMigrationService()->discoverPrerequisiteMigrations($currentVersion);
         } catch (\Throwable $e) {
             // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
             if ($this->isTestEnvironment()) {
                 return [];
             }
-            // @codeCoverageIgnoreEnd
 
-            // @codeCoverageIgnoreStart
-            // Production path: re-throwing exception is difficult to test without breaking test environment
-            // In production, re-throw the exception
             throw $e;
-            // @codeCoverageIgnoreEnd
-        }
-
-        // Filter to only prerequisite migrations
-        // In test environment, if filtering fails, skip migrations gracefully
-        try {
-            $prerequisiteMigrations = array_filter($globalMigrations, fn (\App\Migrations\MigrationInterface $m) => $m->isPrerequisite());
-
-            return $registry->getPendingMigrations($prerequisiteMigrations, $currentVersion);
-            // @codeCoverageIgnoreStart
-        } catch (\Throwable $e) {
-            // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
-            if ($this->isTestEnvironment()) {
-                return [];
-            }
-            // @codeCoverageIgnoreEnd
-
-            // @codeCoverageIgnoreStart
-            // Production path: re-throwing exception is difficult to test without breaking test environment
-            // In production, re-throw the exception
-            throw $e;
-            // @codeCoverageIgnoreEnd
         }
     }
 
@@ -491,10 +489,9 @@ class UpdateHandler
      */
     protected function executePendingMigrations(array $pendingMigrations, array $config, string $configPath): int
     {
-        $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('migration.global.running'));
-        $executor = new MigrationExecutor($this->logger, $this->fileSystem, $this->translator);
-        $executor->executeMigrations($pendingMigrations, $config, $configPath);
-        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('migration.global.complete'));
+        $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.running'));
+        $this->globalMigrationService()->executePendingMigrations($pendingMigrations, $config, $configPath, $this->recorder());
+        $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.complete'));
 
         return 0;
     }
@@ -533,8 +530,8 @@ class UpdateHandler
         // Safely log error - if logging fails, still return 1
         try {
             $errorMessage = $this->getErrorMessage('prerequisite', $e->getMessage());
-            $this->logger->addError(
-                WorkflowOutput::VERBOSITY_NORMAL,
+            $this->recorder()->addError(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 $errorMessage
             );
         } catch (\Throwable $logError) {
@@ -663,15 +660,15 @@ class UpdateHandler
                 return;
             }
 
-            $this->logger->addSection(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.changelog_section', ['version' => $tagName]));
+            $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.changelog_section', ['version' => $tagName]));
 
             // Display breaking changes first with warning
             if ($hasBreaking) {
-                $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('update.breaking_changes_detected'));
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.breaking_changes_detected'));
                 foreach ($changes['breakingChanges'] as $breakingChange) {
-                    $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
+                    $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
                 }
-                $this->logger->addNewLine(WorkflowOutput::VERBOSITY_NORMAL);
+                $this->recorder()->addNewLine(WorkflowEntryRecorder::VERBOSITY_NORMAL);
             }
 
             // Display other sections
@@ -686,15 +683,15 @@ class UpdateHandler
                 // @codeCoverageIgnoreEnd
 
                 $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
-                $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
+                $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
                 foreach ($items as $item) {
-                    $this->logger->addLine(WorkflowOutput::VERBOSITY_NORMAL, "  • {$item}");
+                    $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, "  • {$item}");
                 }
-                $this->logger->addNewLine(WorkflowOutput::VERBOSITY_NORMAL);
+                $this->recorder()->addNewLine(WorkflowEntryRecorder::VERBOSITY_NORMAL);
             }
         } catch (ApiException $e) {
             $this->logVerbose('Could not fetch changelog', $e->getMessage());
-            $this->logger->addText(WorkflowOutput::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             $this->logVerbose('Could not fetch changelog', $e->getMessage());
         }

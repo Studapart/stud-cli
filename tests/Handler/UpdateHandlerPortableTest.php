@@ -7,8 +7,8 @@ namespace App\Tests\Handler;
 use App\Handler\UpdateHandler;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
-use App\Service\Logger;
 use App\Service\PortableUpdateService;
+use App\Service\Prompt\PromptInterface;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -23,7 +23,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
     private string $workspace;
     private HttpClientInterface&MockObject $httpClient;
     private PortableUpdateService&MockObject $portableUpdateService;
-    private Logger&MockObject $logger;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
@@ -34,13 +34,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $_SERVER['HOME'] = $this->workspace . '/home';
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->portableUpdateService = $this->createMock(PortableUpdateService::class);
-        $this->logger = $this->createMock(Logger::class);
-        $this->logger->method('addSection')->willReturnCallback(function (): void {
-        });
-        $this->logger->method('addLine')->willReturnCallback(function (): void {
-        });
-        $this->logger->method('addError')->willReturnCallback(function (): void {
-        });
+        $this->prompt = $this->createMock(PromptInterface::class);
     }
 
     protected function tearDown(): void
@@ -58,9 +52,9 @@ class UpdateHandlerPortableTest extends CommandTestCase
             ->method('update')
             ->willReturn(0);
 
-        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
+        $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
 
-        self::assertSame(0, $result);
+        self::assertSame(0, $response->exitCode);
     }
 
     public function testLegacyPortableInstallIsRejectedBeforePortableUpdate(): void
@@ -69,9 +63,9 @@ class UpdateHandlerPortableTest extends CommandTestCase
         $this->mockReleaseFetch();
         $this->portableUpdateService->expects(self::never())->method('update');
 
-        $result = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
+        $response = $this->createHandler($bundleRoot . '/app/stud.phar')->handle(false, true);
 
-        self::assertSame(1, $result);
+        self::assertSame(1, $response->exitCode);
     }
 
     protected function createHandler(string $binaryPath): UpdateHandler
@@ -85,8 +79,8 @@ class UpdateHandlerPortableTest extends CommandTestCase
             $binaryPath,
             $this->translationService,
             $this->createMock(ChangelogParser::class),
-            new UpdateFileService($this->translationService),
-            $this->logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $this->createMock(FileSystem::class),
             null,
             $this->httpClient,
@@ -100,7 +94,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
                 \App\Service\TranslationService $translator,
                 ChangelogParser $changelogParser,
                 UpdateFileService $updateFileService,
-                Logger $logger,
+                PromptInterface $prompt,
                 FileSystem $fileSystem,
                 ?string $gitToken,
                 ?HttpClientInterface $httpClient,
@@ -114,7 +108,7 @@ class UpdateHandlerPortableTest extends CommandTestCase
                     $translator,
                     $changelogParser,
                     $updateFileService,
-                    $logger,
+                    $prompt,
                     $fileSystem,
                     $gitToken,
                     $httpClient
