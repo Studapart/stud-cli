@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\WorkflowRecorder;
 use App\Enum\BranchAutoCleanDecision;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
@@ -37,6 +38,19 @@ class BranchDeletionEligibilityResolverTest extends TestCase
         $snapshot = $resolver->buildPullRequestSnapshot();
         $this->assertFalse($snapshot['available']);
         $this->assertSame([], $snapshot['map']);
+    }
+
+    public function testBuildPullRequestSnapshotLogsRecoverableFailureWhenRecorderProvided(): void
+    {
+        $provider = $this->createMock(GitProviderInterface::class);
+        $provider->method('getAllPullRequests')->willThrowException(new \RuntimeException('api'));
+        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
+        $recorder = new WorkflowRecorder();
+
+        $snapshot = $resolver->buildPullRequestSnapshot($recorder);
+
+        $this->assertFalse($snapshot['available']);
+        $this->assertNotEmpty($recorder->toResponse(0)->entries);
     }
 
     public function testBuildPullRequestSnapshotFiltersForkPullRequests(): void
@@ -158,5 +172,19 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
         $this->assertSame(BranchAutoCleanDecision::Manual, $eligibility->decision);
         $this->assertSame('merge_check_failed', $eligibility->reason);
+    }
+
+    public function testEvaluateLogsRecoverableFailureWhenMergeCheckThrowsAndRecorderProvided(): void
+    {
+        $gitBranchService = $this->createMock(GitBranchService::class);
+        $gitBranchService->method('isBranchMergedInto')->willThrowException(new \RuntimeException('boom'));
+        $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $gitBranchService, null);
+        $recorder = new WorkflowRecorder();
+
+        $eligibility = $resolver->evaluate('feat/ex', 'main', false, 'origin/develop', [], true, $recorder);
+
+        $this->assertSame(BranchAutoCleanDecision::Manual, $eligibility->decision);
+        $this->assertSame('merge_check_failed', $eligibility->reason);
+        $this->assertNotEmpty($recorder->toResponse(0)->entries);
     }
 }

@@ -7,6 +7,7 @@ use App\DTO\Project;
 use App\DTO\WorkItem;
 use App\Service\CanConvertToPlainTextInterface;
 use App\Service\JiraService;
+use App\Tests\Support\JiraServiceTestKit;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -22,7 +23,7 @@ class JiraServiceTest extends TestCase
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
         $this->htmlConverterMock = $this->createMock(CanConvertToPlainTextInterface::class);
-        $this->jiraService = new JiraService($this->httpClientMock, $this->htmlConverterMock);
+        $this->jiraService = JiraServiceTestKit::create($this->httpClientMock, $this->htmlConverterMock);
     }
 
     public function testGetIssueSuccess(): void

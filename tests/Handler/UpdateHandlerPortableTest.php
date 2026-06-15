@@ -11,6 +11,7 @@ use App\Service\PortableUpdateService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\UpdateHandlerTestKit;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -100,6 +101,15 @@ class UpdateHandlerPortableTest extends CommandTestCase
                 ?HttpClientInterface $httpClient,
                 private readonly PortableUpdateService $portableUpdateService,
             ) {
+                [$detector, $fetcher, $presenter, $runner] = UpdateHandlerTestKit::services(
+                    $repoOwner,
+                    $repoName,
+                    $currentVersion,
+                    $fileSystem,
+                    $changelogParser,
+                    $gitToken,
+                    $httpClient,
+                );
                 parent::__construct(
                     $repoOwner,
                     $repoName,
@@ -110,6 +120,10 @@ class UpdateHandlerPortableTest extends CommandTestCase
                     $updateFileService,
                     $prompt,
                     $fileSystem,
+                    $detector,
+                    $fetcher,
+                    $presenter,
+                    $runner,
                     $gitToken,
                     $httpClient
                 );

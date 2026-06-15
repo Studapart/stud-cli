@@ -63,6 +63,8 @@ config:
     section_global: "Global configuration"
     section_project: "Project configuration"
     no_config_found: "No configuration file found. Run 'stud config:init' to create one. Output is safe for sharing (secrets are redacted)."
+    global_config_unreadable: "Global configuration file exists but could not be parsed; showing empty global config."
+    project_config_unreadable: "Project configuration file exists but could not be parsed; project config is omitted."
     key_not_found: "Configuration key '%key%' not found."
     key_not_allowed: "Configuration key '%key%' cannot be shown."
   validate:

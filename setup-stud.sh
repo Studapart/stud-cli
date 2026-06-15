@@ -87,14 +87,51 @@ detect_portable_platform() {
     esac
 }
 
-# Get latest release version from GitHub API (strip leading v and any carriage return)
-get_latest_version() {
-    local tag_name
-    tag_name=$(curl -sSfL "$API_LATEST" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 | sed 's/^v//' | tr -d '\r')
-    if [ -z "$tag_name" ]; then
-        die "Could not determine latest release version from GitHub API."
+normalize_version() {
+    echo "$1" | sed 's/^v//' | tr -d '\r'
+}
+
+# Prefer an explicit CI pin (STUD_INSTALL_VERSION / semver STUD_INSTALL_REF) before hitting the API.
+resolve_install_version() {
+    if [ -n "${STUD_INSTALL_VERSION:-}" ]; then
+        normalize_version "${STUD_INSTALL_VERSION}"
+        return
     fi
-    echo "$tag_name"
+    if [ -n "${STUD_INSTALL_REF:-}" ]; then
+        local ref="${STUD_INSTALL_REF}"
+        if [[ "$ref" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            normalize_version "$ref"
+            return
+        fi
+    fi
+    get_latest_version
+}
+
+# Get latest release version from GitHub API (strip leading v and any carriage return).
+get_latest_version() {
+    local tag_name=""
+    local attempt
+    local max_attempts="${STUD_INSTALL_API_ATTEMPTS:-5}"
+    local curl_auth=()
+    if [ -n "${GH_TOKEN:-}" ]; then
+        curl_auth=(-H "Authorization: Bearer ${GH_TOKEN}")
+    fi
+    for attempt in $(seq 1 "$max_attempts"); do
+        if tag_name=$(curl -sSfL "${curl_auth[@]}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "$API_LATEST" \
+            | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 | sed 's/^v//' | tr -d '\r'); then
+            if [ -n "$tag_name" ]; then
+                echo "$tag_name"
+                return
+            fi
+        fi
+        if [ "$attempt" -lt "$max_attempts" ]; then
+            sleep $((attempt * 3))
+        fi
+    done
+    die "Could not determine latest release version from GitHub API."
 }
 
 # Get version from existing stud (stud --version may print "stud 3.8.1" or similar)
@@ -385,7 +422,7 @@ command -v tar >/dev/null 2>&1 || die "tar is required but not installed. Please
 # Detect platform early so unsupported OS/architecture fails before any install work.
 detect_platform >/dev/null
 
-LATEST_VERSION=$(get_latest_version)
+LATEST_VERSION=$(resolve_install_version)
 
 case "$INSTALL_MODE" in
     phar)

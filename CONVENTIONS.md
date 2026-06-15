@@ -553,6 +553,10 @@ The following table defines the standard output intents. Handlers/services recor
    ```
    Use `WorkflowChannel::Git` for in-flight git/gh operation traces (fetch, push, checkout, branch create/delete, PR API calls). Use `WorkflowChannel::Jira` for in-flight Jira API traces (fetch issue, assign, transition). Omit the channel (default) for command response output: formatted results, summaries, confirmations, and mixed workflow narration. Channels affect CLI coloring only; they do not change verbosity or agent JSON.
 5. **Respect compact JSON**: keep decorative/progress output out of compact agent responses. Include diagnostics only when they are meaningful for automated callers.
+6. **Recoverable failures** ([ADR-017 §6](documentation/adr-017-response-owned-output-and-diagnostics.md#6-recoverable-failures-and-service-boundary-exceptions)):
+   * Do **not** push `Logger` into handlers or domain services; responders (and workflow recorders) own presentation.
+   * **Swallow** at the service boundary for ambient best-effort reads when an empty/neutral fallback is correct domain behavior.
+   * **Surface** parse failures and similar issues as response diagnostics when the user is explicitly inspecting that state (for example `config:show`).
 
 ## CHANGELOG.md Format
 

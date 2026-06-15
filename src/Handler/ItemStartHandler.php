@@ -10,6 +10,7 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Response\WorkflowResponse;
+use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
@@ -171,12 +172,7 @@ class ItemStartHandler
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
-        return match (strtolower($issueType)) {
-            'bug' => 'fix',
-            'story', 'epic' => 'feat',
-            'task', 'sub-task' => 'chore',
-            default => 'feat',
-        };
+        return BranchNameGenerator::prefixForIssueType($issueType);
     }
 
     /**

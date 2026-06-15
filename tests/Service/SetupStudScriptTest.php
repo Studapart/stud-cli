@@ -193,18 +193,28 @@ JSON);
         self::assertStringNotContainsString('releases/download', file_get_contents($this->curlLog) ?: '');
     }
 
+    public function testSemverStudInstallRefSkipsLatestReleaseApi(): void
+    {
+        $process = $this->runSetup(['--skip-init'], ['STUD_INSTALL_REF' => 'v9.8.7']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertStringNotContainsString('api.github.com', file_get_contents($this->curlLog) ?: '');
+        self::assertStringContainsString('stud-9.8.7.phar', file_get_contents($this->curlLog) ?: '');
+    }
+
     /**
      * @param list<string> $arguments
+     * @param array<string, string> $extraEnv
      */
-    protected function runSetup(array $arguments): Process
+    protected function runSetup(array $arguments, array $extraEnv = []): Process
     {
         $root = dirname(__DIR__, 2);
         $path = $this->fakeBin . ':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
-        $process = new Process(array_merge(['bash', $root . '/setup-stud.sh'], $arguments), $root, [
+        $process = new Process(array_merge(['bash', $root . '/setup-stud.sh'], $arguments), $root, array_merge([
             'PATH' => $path,
             'HOME' => $this->home,
             'SHELL' => '/bin/bash',
-        ]);
+        ], $extraEnv));
         $process->run();
 
         return $process;

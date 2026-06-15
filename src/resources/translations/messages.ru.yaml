@@ -62,6 +62,8 @@ config:
     section_global: "Глобальная конфигурация"
     section_project: "Конфигурация проекта"
     no_config_found: "Файл конфигурации не найден. Запустите 'stud config:init' для создания. Вывод безопасен для обмена (секреты скрыты)."
+    global_config_unreadable: "Global configuration file exists but could not be parsed; showing empty global config."
+    project_config_unreadable: "Project configuration file exists but could not be parsed; project config is omitted."
     key_not_found: "Ключ конфигурации '%key%' не найден."
     key_not_allowed: "Ключ конфигурации '%key%' не может быть показан."
   validate:

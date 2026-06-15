@@ -62,6 +62,8 @@ config:
     section_global: "Cấu hình toàn cục"
     section_project: "Cấu hình dự án"
     no_config_found: "Không tìm thấy tệp cấu hình. Chạy 'stud config:init' để tạo. Đầu ra an toàn để chia sẻ (bí mật được ẩn)."
+    global_config_unreadable: "Global configuration file exists but could not be parsed; showing empty global config."
+    project_config_unreadable: "Project configuration file exists but could not be parsed; project config is omitted."
     key_not_found: "Không tìm thấy khóa cấu hình '%key%'."
     key_not_allowed: "Không thể hiển thị khóa cấu hình '%key%'."
   validate:

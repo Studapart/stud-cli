@@ -4,29 +4,18 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\ConfigFileReadResult;
 use App\Exception\GitException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class GitRepository
 {
-    private const REBASE_AUTOSQUASH_SCRIPT = <<<'SCRIPT'
-#!/bin/sh
-# Process the rebase plan file passed as $1
-# Change 'pick' to 'fixup' for fixup! commits and 'squash' for squash! commits
-sed -i.bak -E '
-    /^pick [a-f0-9]+ fixup!/ {
-        s/^pick/fixup/
-    }
-    /^pick [a-f0-9]+ squash!/ {
-        s/^pick/squash/
-    }
-' "$1"
-SCRIPT;
-
     public function __construct(
         private readonly ProcessFactory $processFactory,
-        private readonly FileSystem $fileSystem
+        private readonly GitProjectConfigService $projectConfigService,
+        private readonly GitRemoteUrlParser $remoteUrlParser,
+        private readonly GitRebaseAutosquashService $rebaseAutosquashService,
     ) {
     }
 
@@ -178,57 +167,12 @@ SCRIPT;
 
     public function hasFixupCommits(string $baseSha): bool
     {
-        $process = $this->runQuietly(
-            "git log {$baseSha}..HEAD --format=%s --grep='^fixup!' --grep='^squash!'"
-        );
-
-        if (! $process->isSuccessful()) {
-            return false;
-        }
-
-        $output = trim($process->getOutput());
-
-        return ! empty($output);
+        return $this->rebaseAutosquashService->hasFixupCommits($baseSha);
     }
 
     public function rebaseAutosquash(string $baseSha): void
     {
-        $scriptContent = self::REBASE_AUTOSQUASH_SCRIPT;
-
-        $tempScript = tempnam(sys_get_temp_dir(), 'stud-rebase-');
-        // @codeCoverageIgnoreStart
-        // tempnam() failure is extremely rare and difficult to simulate in tests
-        if ($tempScript === false) {
-            throw new \RuntimeException('Failed to create temporary script file');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $this->fileSystem->write($tempScript, $scriptContent);
-        $this->fileSystem->chmod($tempScript, 0755);
-
-        try {
-            // Set GIT_SEQUENCE_EDITOR to our script and run rebase
-            $env = $_ENV;
-            $env['GIT_SEQUENCE_EDITOR'] = $tempScript;
-
-            $process = $this->processFactory->create("git rebase -i --autosquash {$baseSha}");
-            $process->setEnv($env);
-            $process->mustRun();
-        } finally {
-            try {
-                $this->fileSystem->delete($tempScript);
-            } catch (\RuntimeException $e) {
-                // Ignore cleanup errors - file may already be deleted
-            }
-            $backupFile = $tempScript . '.bak';
-            if ($this->fileSystem->fileExists($backupFile)) {
-                try {
-                    $this->fileSystem->delete($backupFile);
-                } catch (\RuntimeException $e) {
-                    // Ignore cleanup errors - file may already be deleted
-                }
-            }
-        }
+        $this->rebaseAutosquashService->rebaseAutosquash($baseSha);
     }
 
     public function deleteBranch(string $branch, ?bool $remoteExists = null): void
@@ -264,20 +208,7 @@ SCRIPT;
 
     public function findLatestLogicalSha(string $baseBranch): ?string
     {
-        $process = $this->runQuietly(
-            'git log ' . $baseBranch . '..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1'
-        );
-
-        if (! $process->isSuccessful()) {
-            return null;
-        }
-
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return null;
-        }
-
-        return $output;
+        return $this->rebaseAutosquashService->findLatestLogicalSha($baseBranch);
     }
 
     public function stageAllChanges(): void
@@ -343,20 +274,7 @@ SCRIPT;
 
     public function findFirstLogicalSha(string $ancestorSha): ?string
     {
-        $process = $this->runQuietly(
-            "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1"
-        );
-
-        if (! $process->isSuccessful()) {
-            return null;
-        }
-
-        $output = trim($process->getOutput());
-        if (empty($output)) {
-            return null;
-        }
-
-        return $output;
+        return $this->rebaseAutosquashService->findFirstLogicalSha($ancestorSha);
     }
 
     public function getCommitMessage(string $sha): string
@@ -393,77 +311,11 @@ SCRIPT;
     }
 
     /**
-     * Parses repository owner and name from a remote URL (supports GitHub and GitLab).
-     *
-     * @param string $remote The remote name (default: 'origin')
-     * @return array{owner?: string, name?: string, provider?: string} Array with 'owner', 'name', and 'provider' keys, or empty array if parsing fails
+     * @return array{owner?: string, name?: string, provider?: string}
      */
     public function parseGitUrl(string $remote = 'origin'): array
     {
-        $remoteUrl = $this->getRemoteUrl($remote);
-
-        if (! $remoteUrl) {
-            return [];
-        }
-
-        // Parse GitHub URLs
-        // SSH format: git@github.com:owner/repo.git
-        // HTTPS format: https://github.com/owner/repo.git
-        if (preg_match('#github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
-            return [
-                'owner' => $matches[1],
-                'name' => $matches[2],
-                'provider' => 'github',
-            ];
-        }
-
-        // Parse GitLab URLs (supports nested groups)
-        // SSH format: git@gitlab.com:owner/repo.git or git@gitlab.com:group/subgroup/repo.git
-        // HTTPS format: https://gitlab.com/owner/repo.git or https://gitlab.com/group/subgroup/repo.git
-        // Custom instance: https://git.example.com/owner/repo.git or https://git.example.com/group/subgroup/repo.git
-        // For nested groups, capture all path segments except the last one as owner
-        if (preg_match('#gitlab\.com[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
-            return [
-                'owner' => $matches[1],
-                'name' => $matches[2],
-                'provider' => 'gitlab',
-            ];
-        }
-
-        // Parse custom GitLab instance URLs (e.g., self-hosted, supports nested groups)
-        // Pattern: https://git.example.com/owner/repo.git or git@git.example.com:owner/repo.git
-        // Pattern: https://git.example.com/group/subgroup/repo.git or git@git.example.com:group/subgroup/repo.git
-        // This is a fallback that matches any host that isn't github.com
-        // We check for the common GitLab URL structure: host/path/to/repo
-        // For nested groups, capture all path segments except the last one as owner
-        if (preg_match('#(?:git@|https?://)([^/:]+)[:/](.+)/([^/]+?)(?:\.git)?$#', $remoteUrl, $matches)) {
-            $host = $matches[1];
-            // Only treat as GitLab if it's not github.com (already handled above)
-            if ($host !== 'github.com') {
-                return [
-                    'owner' => $matches[2],
-                    'name' => $matches[3],
-                    'provider' => 'gitlab',
-                ];
-            }
-        }
-
-        return [];
-    }
-
-    protected function getRemoteUrl(string $remote = 'origin'): ?string
-    {
-        $process = $this->runQuietly("git config --get remote.{$remote}.url");
-
-        if (! $process->isSuccessful()) {
-            return null;
-        }
-
-        // Trim whitespace and any trailing dots/periods that might be present
-        $remoteUrl = trim($process->getOutput());
-        $remoteUrl = rtrim($remoteUrl, '.');
-
-        return empty($remoteUrl) ? null : $remoteUrl;
+        return $this->remoteUrlParser->parseRemote($remote);
     }
 
     public function run(string $command): Process
@@ -499,98 +351,37 @@ SCRIPT;
      */
     public function getProjectConfigPath(): string
     {
-        $process = $this->runQuietly('git rev-parse --git-dir');
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException('Not in a git repository.');
-        }
-        $gitDir = trim($process->getOutput());
-
-        return rtrim($gitDir, '/') . '/stud.config';
+        return $this->projectConfigService->getProjectConfigPath();
     }
 
     /**
-     * Reads the project-specific config file.
-     * Returns an empty array if the file doesn't exist.
-     *
      * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string}
      */
     public function readProjectConfig(): array
     {
-        $configPath = $this->getProjectConfigPath();
+        return $this->projectConfigService->readProjectConfig();
+    }
 
-        if (! $this->fileSystem->fileExists($configPath)) {
-            return [];
-        }
-
-        try {
-            $config = $this->fileSystem->parseFile($configPath);
-
-            return $config;
-        } catch (\Exception $e) {
-            return [];
-        }
+    public function readProjectConfigResult(): ConfigFileReadResult
+    {
+        return $this->projectConfigService->readProjectConfigResult();
     }
 
     /**
-     * Writes the project-specific config file.
-     * Preserves migration_version if it exists in the current config.
-     *
      * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string} $config
      */
     public function writeProjectConfig(array $config): void
     {
-        $configPath = $this->getProjectConfigPath();
-        $configDir = dirname($configPath);
-
-        if (! $this->fileSystem->isDir($configDir)) {
-            throw new \RuntimeException("Git directory not found: {$configDir}");
-        }
-
-        // Preserve migration_version if it exists in current config
-        if ($this->fileSystem->fileExists($configPath)) {
-            $existingConfig = $this->readProjectConfig();
-            if (isset($existingConfig['migration_version'])) {
-                $config['migration_version'] = $existingConfig['migration_version'];
-            }
-        }
-
-        $this->fileSystem->backupFileIfExists($configPath);
-        $this->fileSystem->dumpFile($configPath, $config);
+        $this->projectConfigService->writeProjectConfig($config);
     }
 
-    /**
-     * Gets the project key from a Jira issue key (e.g., "PROJ-123" -> "PROJ").
-     */
     public function getProjectKeyFromIssueKey(string $issueKey): string
     {
-        if (preg_match('/^([A-Z]+)-\d+$/', strtoupper($issueKey), $matches)) {
-            return $matches[1];
-        }
-
-        throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
+        return $this->projectConfigService->getProjectKeyFromIssueKey($issueKey);
     }
 
-    /**
-     * Gets the configured git provider from project config.
-     * Attempts auto-detection from remote URL if not configured.
-     *
-     * @return string|null The provider type ('github' or 'gitlab'), or null if not configured and cannot be detected
-     */
     public function getGitProvider(): ?string
     {
-        $config = $this->readProjectConfig();
-        $provider = $config['gitProvider'] ?? null;
-
-        if ($provider !== null && in_array($provider, ['github', 'gitlab'], true)) {
-            return $provider;
-        }
-
-        // Try auto-detection from remote URL
-        $parsed = $this->parseGitUrl('origin');
-        if (isset($parsed['provider'])) {
-            return $parsed['provider'];
-        }
-
-        return null;
+        return $this->projectConfigService->getGitProvider();
     }
 }

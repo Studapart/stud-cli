@@ -6,35 +6,27 @@ namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
-use App\DTO\SubmitOptions;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Response\WorkflowResponse;
-use App\Service\CanConvertToMarkdownInterface;
+use App\Service\BranchNameGenerator;
+use App\Service\BranchNameValidator;
+use App\Service\BranchRenamePrCoordinator;
 use App\Service\GitBranchService;
-use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
-use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
-use Symfony\Component\String\Slugger\AsciiSlugger;
 
 class BranchRenameHandler
 {
     private WorkflowEntryRecorder $recorder;
 
-    /**
-     * @param array<string, mixed> $jiraConfig
-     */
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly JiraService $jiraService,
-        private readonly ?GitProviderInterface $githubProvider,
-        private readonly mixed $translator,
-        private readonly array $jiraConfig,
-        private readonly string $baseBranch,
+        private readonly BranchNameGenerator $branchNameGenerator,
+        private readonly BranchNameValidator $branchNameValidator,
+        private readonly BranchRenamePrCoordinator $prCoordinator,
         private readonly PromptInterface $prompt,
-        private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
@@ -111,51 +103,17 @@ class BranchRenameHandler
 
     protected function validateBranchName(string $name): bool
     {
-        // Git branch name rules: no spaces, no special chars except -/_/., no .., no .lock, no @{, no backslash, no consecutive dots
-        if (preg_match('/^[a-zA-Z0-9._\/-]+$/', $name) === 0) {
-            return false;
-        }
-        if (str_contains($name, '..')) {
-            return false;
-        }
-        if (str_ends_with($name, '.lock')) {
-            return false;
-        }
-        // @codeCoverageIgnoreStart
-        // Defensive checks: these patterns would fail the regex above, but kept for safety
-        if (str_contains($name, '@{')) {
-            return false;
-        }
-        if (str_contains($name, '\\')) {
-            return false;
-        }
-        // Redundant check (already covered by str_contains above), but kept for consistency
-        if (preg_match('/\.\./', $name)) {
-            return false;
-        }
-        // @codeCoverageIgnoreEnd
-
-        return true;
+        return $this->branchNameValidator->validateBranchName($name);
     }
 
     protected function generateBranchNameFromKey(string $key): string
     {
-        $issue = $this->jiraService->getIssue($key);
-        $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
-        $slugger = new AsciiSlugger();
-        $slugValue = $slugger->slug($issue->title)->lower()->toString();
-
-        return "{$prefix}/{$key}-{$slugValue}";
+        return $this->branchNameGenerator->generateBranchNameFromKey($key);
     }
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
-        return match (strtolower($issueType)) {
-            'bug' => 'fix',
-            'story', 'epic' => 'feat',
-            'task', 'sub-task' => 'chore',
-            default => 'feat',
-        };
+        return $this->branchNameGenerator->getBranchPrefixFromIssueType($issueType);
     }
 
     protected function determineNewBranchName(string $targetBranch, ?string $key, ?string $explicitName): ?string
@@ -233,54 +191,17 @@ class BranchRenameHandler
      */
     protected function updatePullRequestAfterRename(array $pr, string $oldName, string $newName): void
     {
-        if (! isset($pr['number']) || $this->githubProvider === null) {
-            return;
-        }
-
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.creating_new_pr'), WorkflowChannel::Git);
-
-        $submitHandler = $this->createSubmitHandler();
-        $submitResult = $submitHandler->handle(new SubmitOptions());
-        if ($submitResult->exitCode !== 0) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.pr_creation_failed'));
-
-            return;
-        }
-
-        $this->commentOnNewPullRequest($oldName, $newName);
+        $this->prCoordinator->updatePullRequestAfterRename($this->recorder, $pr, $oldName, $newName);
     }
 
     protected function createSubmitHandler(): SubmitHandler
     {
-        return new SubmitHandler(
-            $this->gitRepository,
-            $this->jiraService,
-            $this->githubProvider,
-            $this->jiraConfig,
-            $this->baseBranch,
-            $this->translator,
-            $this->prompt,
-            $this->htmlConverter
-        );
+        return $this->prCoordinator->createSubmitHandler();
     }
 
     protected function commentOnNewPullRequest(string $oldName, string $newName): void
     {
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.commenting_pr'), WorkflowChannel::Git);
-
-        try {
-            $currentBranch = $this->gitRepository->getCurrentBranchName();
-            $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
-            $headBranch = $remoteOwner ? "{$remoteOwner}:{$currentBranch}" : $currentBranch;
-            $newPr = $this->githubProvider->findPullRequestByBranch($headBranch);
-
-            if ($newPr !== null && isset($newPr['number'])) {
-                $comment = "Branch renamed from `{$oldName}` to `{$newName}`";
-                $this->githubProvider->createComment($newPr['number'], $comment);
-            }
-        } catch (\Exception $e) {
-            // Comment failure is not critical, continue
-        }
+        $this->prCoordinator->commentOnNewPullRequest($this->recorder, $oldName, $newName);
     }
 
     protected function validateNewBranchNameExists(string $newBranchName): bool
@@ -296,7 +217,7 @@ class BranchRenameHandler
     }
 
     /**
-     * @return array{0: bool, 1: bool}|false|null Returns [hasLocal, hasRemote], false if user declined, or null if branch not found
+     * @return array{0: bool, 1: bool}|false|null
      */
     protected function checkBranchExistence(string $targetBranch, bool $quiet = false): array|false|null
     {
@@ -351,21 +272,7 @@ class BranchRenameHandler
      */
     protected function findAssociatedPullRequest(): ?array
     {
-        if ($this->githubProvider === null) {
-            return null;
-        }
-
-        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.finding_pr'), WorkflowChannel::Git);
-        $currentBranch = $this->gitRepository->getCurrentBranchName();
-        $remoteOwner = $this->gitRepository->getRepositoryOwner('origin');
-        $headBranch = $remoteOwner ? "{$remoteOwner}:{$currentBranch}" : $currentBranch;
-
-        try {
-            return $this->githubProvider->findPullRequestByBranch($headBranch);
-        } catch (\Exception $e) {
-            // PR not found or error - continue without PR
-            return null;
-        }
+        return $this->prCoordinator->findAssociatedPullRequest($this->recorder);
     }
 
     /**
@@ -395,19 +302,7 @@ class BranchRenameHandler
      */
     protected function handlePostRenameActions(?array $pr, string $targetBranch, string $newBranchName, bool $quiet = false): void
     {
-        if ($pr !== null && $this->githubProvider !== null) {
-            $this->updatePullRequestAfterRename($pr, $targetBranch, $newBranchName);
-        }
-
-        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.success', ['oldName' => $targetBranch, 'newName' => $newBranchName]));
-
-        if ($pr === null && $this->githubProvider !== null) {
-            $this->recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.no_pr_found'));
-            if ($quiet || $this->prompt->confirm(MessageRef::key('branch.rename.create_pr_prompt'), true)) {
-                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.switching_for_submit'), WorkflowChannel::Git);
-                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "Run 'stud submit' to create a Pull Request.");
-            }
-        }
+        $this->prCoordinator->handlePostRenameActions($this->recorder, $pr, $targetBranch, $newBranchName, $quiet);
     }
 
     protected function handleExplicitName(string $explicitName): ?string
@@ -450,7 +345,6 @@ class BranchRenameHandler
 
     protected function looksLikeJiraKey(string $value): bool
     {
-        // Jira keys follow the pattern: PROJECT-123 (e.g., SCI-34, PROJ-123)
-        return (bool) preg_match('/^[A-Z]+-\d+$/', strtoupper($value));
+        return $this->branchNameValidator->looksLikeJiraKey($value);
     }
 }

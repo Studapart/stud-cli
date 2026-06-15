@@ -52,13 +52,58 @@ Progress text and decorative CLI structure should not become diagnostics unless 
 * Direct `AgentJsonResponse` construction is reserved for bootstrap-level failures where a normal response/responder path cannot safely be built.
 * Prompting is input collection, not output rendering. Interactive prompts should use a prompt abstraction rather than `Logger`.
 
-## 6. Consequences
+## 6. Recoverable Failures and Service-Boundary Exceptions
+
+Domain code often hits non-fatal failures: a corrupt config file, a provider API timeout, a temp file already deleted during cleanup. These are recoverable outcomes, not reasons to abort the command. How they are surfaced depends on whether the caller is ambient or user-facing.
+
+### Logger stays in presentation
+
+* Do **not** inject `Logger` into handlers or domain services to report recoverable failures.
+* Do **not** add optional `?Logger` service parameters as a debug workaround.
+* CLI verbosity (`-v`, `-vv`, `-vvv`) is a responder concern. `WorkflowEntryRecorder` debug lines are workflow response records, not `Logger` calls.
+
+Architecture tests enforce that handlers and non-presentation services must not `use App\Service\Logger`.
+
+### Swallow at the service boundary for ambient reads
+
+When many callers only need a best-effort result to continue, map recoverable failures to a neutral domain value at the service boundary:
+
+* Example: `readProjectConfig()` returns `[]` when the file is missing or unparsable; callers treat that as “no project config”.
+* Example: `deleteIfExists()` ignores cleanup errors after rebase temp scripts are no longer needed.
+
+No diagnostics are required on these paths unless a specific command exposes the data to the user.
+
+When callers may need to distinguish states without presentation side effects, return a structured domain result instead of logging:
+
+* Example: `ConfigFileReadResult` separates missing, readable, and unreadable reads, while `readProjectConfig()` keeps the backward-compatible `[]` fallback.
+
+### Surface diagnostics on inspect commands
+
+When the user explicitly inspects state (`config:show`, `config:validate`, status-style commands), recoverable failures that would otherwise look like empty or missing data must become response diagnostics:
+
+* Handlers attach `ResponseMessage::warning()` (or similar) with a `MessageRef` key and optional `technicalDetails` (parse error, API message).
+* Responders render warnings at normal verbosity and `technicalDetails` at debug verbosity (`-vvv`); agent JSON includes the same diagnostics payload.
+
+Example: `config:show` warns when global or project config exists but cannot be parsed, instead of silently showing empty config.
+
+For workflow-style commands (`branches:clean`, `branches:rename`), record recoverable provider or git failures on `WorkflowEntryRecorder` at `VERBOSITY_DEBUG` (for example via `RecoverableExceptionLogger::logToRecorder()`), not via `Logger`.
+
+### Decision summary
+
+| Situation | Pattern |
+|-----------|---------|
+| Ambient read; empty fallback is correct | Swallow / neutral return at service boundary |
+| User inspecting explicit state | Response diagnostics on the command response DTO |
+| Workflow command with recorder in scope | Debug line on `WorkflowEntryRecorder` |
+| Post-operation cleanup with no user impact | Swallow silently |
+
+## 7. Consequences
 
 * Agent JSON no longer loses warnings/errors that were formerly only visible through human logger output.
 * CLI output remains responder-controlled and can continue to use `Logger` and `PageViewConfig`.
 * Handler tests become more stable because they assert response state instead of output side effects.
 * Migrating legacy commands requires broad but mechanical updates to handlers, responders, tests, and task wiring.
 
-## 7. Cross-References
+## 8. Cross-References
 
 This ADR clarifies the output ownership model described in ADR-005 and extends the dual-output responder model from ADR-013. ADR-014 schemas should reflect response DTO fields and diagnostics where applicable.

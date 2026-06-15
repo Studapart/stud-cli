@@ -11,6 +11,8 @@ use App\Service\DurationParser;
 use App\Service\FieldsParser;
 use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
+use App\Service\ItemCreateProjectResolver;
+use App\Service\ItemCreatePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -33,12 +35,12 @@ class ItemCreateHandlerTest extends CommandTestCase
     private function createHandler(): ItemCreateHandler
     {
         return new ItemCreateHandler(
-            $this->gitRepository,
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraService, $this->prompt),
+            new ItemCreatePromptService($this->jiraService, $this->fieldResolver, $this->prompt),
             $this->jiraService,
-            $this->translationService,
             $this->fieldResolver,
             $this->fieldsParser,
-            $this->prompt
+            $this->prompt,
         );
     }
 

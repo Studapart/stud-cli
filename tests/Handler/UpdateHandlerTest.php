@@ -6,8 +6,10 @@ use App\Handler\UpdateHandler;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
 use App\Service\GlobalMigrationService;
+use App\Service\TestEnvironmentDetector;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\UpdateHandlerTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -140,7 +142,7 @@ class UpdateHandlerTest extends CommandTestCase
         // Set up migration discovery mocks to prevent migration execution
         $this->setupMigrationMocks($fileSystem);
 
-        $this->handler = new UpdateHandler(
+        $this->handler = UpdateHandlerTestKit::create(
             'studapart', // repoOwner
             'stud-cli',  // repoName
             '1.0.0',     // currentVersion
@@ -631,7 +633,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             'v1.0.0',
@@ -787,7 +789,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -898,7 +900,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -970,7 +972,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -1001,7 +1003,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -1027,7 +1029,7 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -1409,7 +1411,7 @@ CHANGELOG;
         $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -1495,7 +1497,7 @@ CHANGELOG;
         $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2193,7 +2195,7 @@ CHANGELOG;
             ->willReturn($errorResponse);
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2231,7 +2233,7 @@ CHANGELOG;
             ->willReturn($errorResponse);
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2297,7 +2299,7 @@ CHANGELOG;
         $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2538,7 +2540,7 @@ CHANGELOG;
                 @file_put_contents($path, $contents);
             }
         });
-        $handlerWithConfirmLogger = new UpdateHandler(
+        $handlerWithConfirmLogger = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2718,7 +2720,7 @@ CHANGELOG;
                 @file_put_contents($path, $contents);
             }
         });
-        $handlerWithConfirmLogger = new UpdateHandler(
+        $handlerWithConfirmLogger = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2899,7 +2901,7 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2923,7 +2925,7 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -2955,7 +2957,7 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3041,7 +3043,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3116,7 +3119,8 @@ CHANGELOG;
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
                 $this->testFileSystem = $testFileSystem;
             }
@@ -3205,7 +3209,7 @@ CHANGELOG;
             });
 
             $inMemoryFileSystem = $this->createInMemoryFileSystem();
-            $handler = new UpdateHandler(
+            $handler = UpdateHandlerTestKit::create(
                 'studapart',
                 'stud-cli',
                 '1.0.0',
@@ -3251,7 +3255,8 @@ CHANGELOG;
                     string $testConfigPath,
                     FileSystem $testFileSystem
                 ) {
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                     $this->testConfigPath = $testConfigPath;
                     $this->testFileSystem = $testFileSystem;
                 }
@@ -3307,7 +3312,8 @@ CHANGELOG;
                     \App\Service\FileSystem $testFileSystem,
                     string $tempFile
                 ) {
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                     $this->testConfigPath = $testConfigPath;
                     $this->tempFile = $tempFile;
                 }
@@ -3400,7 +3406,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3430,7 +3437,7 @@ CHANGELOG;
         $flysystem = new FlysystemFilesystem($adapter);
         $fileSystem = new FileSystem($flysystem);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3464,7 +3471,7 @@ CHANGELOG;
         $flysystem = new FlysystemFilesystem($adapter);
         $fileSystem = new FileSystem($flysystem);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3491,7 +3498,7 @@ CHANGELOG;
 
         try {
             $inMemoryFileSystem = $this->createInMemoryFileSystem();
-            $handler = new UpdateHandler(
+            $handler = UpdateHandlerTestKit::create(
                 'studapart',
                 'stud-cli',
                 '1.0.0',
@@ -3573,7 +3580,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3598,7 +3606,7 @@ CHANGELOG;
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $testConfigPath = '/test/config.yml';
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3643,7 +3651,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3701,7 +3710,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3762,7 +3772,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3787,7 +3798,7 @@ CHANGELOG;
             ->with('0')
             ->willThrowException(new \RuntimeException('discovery failed'));
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3817,7 +3828,7 @@ CHANGELOG;
             ->with('1.2.3')
             ->willReturn([]);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3843,8 +3854,9 @@ CHANGELOG;
         $migrationService = $this->createMock(GlobalMigrationService::class);
         $migrationService->method('discoverPrerequisiteMigrations')
             ->willThrowException(new \RuntimeException('discovery failed'));
+        $detector = $this->createNonTestEnvironmentDetector();
 
-        $handler = new class (
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3857,12 +3869,8 @@ CHANGELOG;
             null,
             $this->httpClient,
             $migrationService,
-        ) extends UpdateHandler {
-            protected function isTestEnvironment(): bool
-            {
-                return false;
-            }
-        };
+            $detector,
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('discovery failed');
@@ -3874,7 +3882,7 @@ CHANGELOG;
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3910,7 +3918,7 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3948,7 +3956,7 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -3987,7 +3995,7 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -4081,7 +4089,7 @@ CHANGELOG;
             ->method('delete')
             ->willThrowException(new \RuntimeException('Cleanup error'));
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
@@ -4225,9 +4233,7 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsFalseWhenNotInTest(): void
     {
-        // Test line 578: return false when none of the conditions match.
-        // Use a subclass that forces all three detectors to return false.
-        $handler = new class (
+        $handler = UpdateHandlerTestKit::create(
             'owner',
             'repo',
             '1.0.0',
@@ -4236,23 +4242,9 @@ CHANGELOG;
             $this->createMock(ChangelogParser::class),
             $this->createMock(\App\Service\UpdateFileService::class),
             $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class)
-        ) extends UpdateHandler {
-            protected function isTestEnvironmentByConstant(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByBacktrace(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByClassOrEnv(): bool
-            {
-                return false;
-            }
-        };
+            $this->createMock(\App\Service\FileSystem::class),
+            testEnvironmentDetector: $this->createNonTestEnvironmentDetector(),
+        );
 
         $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
 
@@ -4261,7 +4253,12 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsTrueWhenOnlyClassOrEnvDetectorReturnsTrue(): void
     {
-        $handler = new class (
+        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector->method('isTestEnvironmentByConstant')->willReturn(false);
+        $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
+        $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(true);
+
+        $handler = UpdateHandlerTestKit::create(
             'owner',
             'repo',
             '1.0.0',
@@ -4270,26 +4267,22 @@ CHANGELOG;
             $this->createMock(ChangelogParser::class),
             $this->createMock(\App\Service\UpdateFileService::class),
             $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class)
-        ) extends UpdateHandler {
-            protected function isTestEnvironmentByConstant(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByBacktrace(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByClassOrEnv(): bool
-            {
-                return true;
-            }
-        };
+            $this->createMock(\App\Service\FileSystem::class),
+            testEnvironmentDetector: $detector,
+        );
 
         $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
 
         $this->assertTrue($result);
+    }
+
+    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&MockObject
+    {
+        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector->method('isTestEnvironmentByConstant')->willReturn(false);
+        $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
+        $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(false);
+
+        return $detector;
     }
 }
