@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
 use App\DTO\BranchDeletionEligibility;
 use App\Enum\BranchAutoCleanDecision;
+use App\Enum\WorkflowChannel;
 
 class BranchDeletionEligibilityResolver
 {
@@ -22,7 +24,7 @@ class BranchDeletionEligibilityResolver
     /**
      * @return array{map: array<string, array<string, mixed>>, available: bool}
      */
-    public function buildPullRequestSnapshot(): array
+    public function buildPullRequestSnapshot(?WorkflowEntryRecorder $recorder = null): array
     {
         if ($this->gitProvider === null) {
             return ['map' => [], 'available' => false];
@@ -30,7 +32,15 @@ class BranchDeletionEligibilityResolver
 
         try {
             $allPrs = $this->gitProvider->getAllPullRequests('all');
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            if ($recorder !== null) {
+                RecoverableExceptionLogger::logToRecorder(
+                    $recorder,
+                    $e,
+                    'Failed to fetch pull requests for branch cleanup',
+                );
+            }
+
             return ['map' => [], 'available' => false];
         }
 
@@ -84,7 +94,8 @@ class BranchDeletionEligibilityResolver
         bool $remoteExists,
         ?string $baseBranch,
         array $prMap,
-        bool $providerDataAvailable
+        bool $providerDataAvailable,
+        ?WorkflowEntryRecorder $recorder = null,
     ): BranchDeletionEligibility {
         $pr = $prMap[$branch] ?? null;
         $hasPullRequest = $pr !== null;
@@ -93,7 +104,7 @@ class BranchDeletionEligibilityResolver
             return $blockingDecision;
         }
 
-        $mergedByGit = $this->checkMergedByGit($branch, (string) $baseBranch);
+        $mergedByGit = $this->checkMergedByGit($branch, (string) $baseBranch, $recorder);
         if ($mergedByGit === null) {
             return new BranchDeletionEligibility(BranchAutoCleanDecision::Manual, 'merge_check_failed', 'active', $hasPullRequest);
         }
@@ -178,11 +189,20 @@ class BranchDeletionEligibilityResolver
         return null;
     }
 
-    protected function checkMergedByGit(string $branch, string $baseBranch): ?bool
+    protected function checkMergedByGit(string $branch, string $baseBranch, ?WorkflowEntryRecorder $recorder = null): ?bool
     {
         try {
             return $this->gitBranchService->isBranchMergedInto($branch, $baseBranch);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            if ($recorder !== null) {
+                RecoverableExceptionLogger::logToRecorder(
+                    $recorder,
+                    $e,
+                    'Failed to check whether branch is merged',
+                    WorkflowChannel::Git,
+                );
+            }
+
             return null;
         }
     }

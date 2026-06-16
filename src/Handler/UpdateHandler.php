@@ -7,7 +7,6 @@ namespace App\Handler;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
-use App\Exception\ApiException;
 use App\Response\WorkflowResponse;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
@@ -15,11 +14,14 @@ use App\Service\GithubProvider;
 use App\Service\GlobalMigrationService;
 use App\Service\PortableUpdateService;
 use App\Service\Prompt\PromptInterface;
+use App\Service\TestEnvironmentDetector;
+use App\Service\UpdateChangelogPresenter;
 use App\Service\UpdateFileService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateInstallDetector;
+use App\Service\UpdatePrerequisiteMigrationRunner;
+use App\Service\UpdateReleaseFetcher;
 use App\Service\UpdateRepositoryContext;
-use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class UpdateHandler
@@ -36,6 +38,10 @@ class UpdateHandler
         protected readonly UpdateFileService $updateFileService,
         protected readonly PromptInterface $prompt,
         protected readonly FileSystem $fileSystem,
+        protected readonly TestEnvironmentDetector $testEnvironmentDetector,
+        protected readonly UpdateReleaseFetcher $releaseFetcher,
+        protected readonly UpdateChangelogPresenter $changelogPresenter,
+        protected readonly UpdatePrerequisiteMigrationRunner $migrationRunner,
         protected ?string $gitToken = null,
         protected ?HttpClientInterface $httpClient = null,
         protected ?GlobalMigrationService $globalMigrationService = null,
@@ -141,8 +147,6 @@ class UpdateHandler
     }
 
     /**
-     * Factory method for the portable updater. Tested through portable update service tests.
-     *
      * @codeCoverageIgnore
      */
     protected function createPortableUpdateService(): PortableUpdateService
@@ -156,428 +160,151 @@ class UpdateHandler
     }
 
     /**
-     * Factory method that creates real HTTP client, tested via integration tests
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
     {
-        $headers = [
-            'Accept' => 'application/vnd.github.v3+json',
-            'User-Agent' => 'stud-cli',
-        ];
-
-        if ($this->gitToken) {
-            $headers['Authorization'] = 'Bearer ' . $this->gitToken;
-        }
-
-        // HttpClient::createForBaseUri is a factory method that creates a real HTTP client
-        // Testing this requires actual network calls, which is not feasible in unit tests
-        $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', [
-            'headers' => $headers,
-        ]);
-
-        return new GithubProvider($this->gitToken ?? '', $repoOwner, $repoName, $client);
+        return $this->releaseFetcher->createGithubProvider();
     }
-    // @codeCoverageIgnoreEnd
 
     /**
      * @return array{release: array<string, mixed>|null, is404: bool}
-     * Requires real GitHub API calls, tested via integration tests
+     *
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function fetchLatestRelease(GithubProvider $githubProvider): array
     {
-        try {
-            return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
-        } catch (ApiException $e) {
-            if ($e->getStatusCode() === 404) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
-
-                return ['release' => null, 'is404' => true];
-            }
-
-            $this->recorder()->addErrorWithDetails(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]),
-                $e->getTechnicalDetails()
-            );
-
-            return ['release' => null, 'is404' => false];
-        } catch (\Exception $e) {
-            // @codeCoverageIgnoreStart
-            // Exception handling for non-ApiException errors is difficult to test
-            if (str_contains($e->getMessage(), 'Status: 404')) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.warning_no_releases'));
-
-                return ['release' => null, 'is404' => true];
-            }
-
-            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_fetch', ['error' => $e->getMessage()]));
-
-            return ['release' => null, 'is404' => false];
-            // @codeCoverageIgnoreEnd
-        }
+        return $this->releaseFetcher->fetchLatestRelease($githubProvider, $this->recorder());
     }
-    // @codeCoverageIgnoreEnd
 
     /**
-     * Returns the release array to use, or an exit code (0 or 1) if the command should exit.
-     *
      * @return int|array<string, mixed>
      */
     protected function getReleaseOrExitCode(GithubProvider $githubProvider): int|array
     {
-        $releaseResult = $this->fetchLatestRelease($githubProvider);
-        if ($releaseResult['is404']) {
-            return 0;
-        }
-        if ($releaseResult['release'] === null) {
-            return 1;
-        }
-        if ($this->isAlreadyLatestVersion($releaseResult['release'])) {
-            return 0;
-        }
-
-        return $releaseResult['release'];
+        return $this->releaseFetcher->getReleaseOrExitCode($githubProvider, $this->recorder());
     }
 
     /**
      * @param array<string, mixed> $release
-     * Tested indirectly through handle() method
+     *
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function isAlreadyLatestVersion(array $release): bool
     {
-        $latestVersion = ltrim($release['tag_name'] ?? '', 'v');
-        $currentVersion = ltrim($this->currentVersion, 'v');
-
-        $this->logVerbose('Latest version', $latestVersion);
-
-        if (version_compare($latestVersion, $currentVersion, '<=')) {
-            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_latest', ['version' => $this->currentVersion]));
-
-            return true;
-        }
-
-        return false;
+        return $this->releaseFetcher->isAlreadyLatestVersion($release, $this->recorder());
     }
-    // @codeCoverageIgnoreEnd
 
     /**
      * @param array<string, mixed> $release
+     *
      * @return array<string, mixed>|null
-     * Tested indirectly through handle() method
+     *
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function findPharAsset(array $release): ?array
     {
-        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.new_version', ['version' => $release['tag_name'] ?? 'unknown']));
-
-        foreach ($release['assets'] ?? [] as $asset) {
-            $assetName = $asset['name'] ?? null;
-            if ($assetName === null) {
-                continue;
-            }
-            if ($assetName === 'stud.phar' ||
-                (str_starts_with($assetName, 'stud-') && str_ends_with($assetName, '.phar'))) {
-                return $asset;
-            }
-        }
-
-        $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_no_phar', ['assets' => implode(', ', array_column($release['assets'] ?? [], 'name'))]));
-
-        return null;
+        return $this->releaseFetcher->findPharAsset($release, $this->recorder());
     }
-    // @codeCoverageIgnoreEnd
 
     /**
      * @param array<string, mixed> $pharAsset
-     * Requires real HTTP downloads, tested via integration tests
+     *
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function downloadPhar(array $pharAsset, string $repoOwner, string $repoName): ?string
     {
-        $tempFile = sys_get_temp_dir() . '/stud.phar.new';
-
-        // Extract asset ID from the asset object
-        $assetId = $pharAsset['id'] ?? null;
-        if (! $assetId) {
-            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_asset_id'));
-
-            return null;
-        }
-
-        // Construct the GitHub API asset endpoint URL
-        $apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/assets/{$assetId}";
-        $this->logVerbose('Downloading from', $apiUrl);
-
-        try {
-            $headers = [
-                'User-Agent' => 'stud-cli',
-                'Accept' => 'application/octet-stream',
-            ];
-
-            if ($this->gitToken) {
-                $headers['Authorization'] = 'Bearer ' . $this->gitToken;
-            }
-
-            // If httpClient is provided (e.g., in tests), use it
-            // Otherwise, create a new client with auth headers for downloads
-            // This ensures private repositories can be accessed with authentication
-            // @codeCoverageIgnoreStart
-            // HttpClient::create is a factory method that creates a real HTTP client
-            // Testing this requires actual network calls, which is not feasible in unit tests
-            $downloadClient = $this->httpClient ?? HttpClient::create([
-                'headers' => $headers,
-            ]);
-            // @codeCoverageIgnoreEnd
-
-            $response = $downloadClient->request('GET', $apiUrl);
-            $this->fileSystem->filePutContents($tempFile, $response->getContent());
-
-            return $tempFile;
-        } catch (\Exception $e) {
-            // @codeCoverageIgnoreStart
-            // Exception handling for download failures is difficult to test
-            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_download', ['error' => $e->getMessage()]));
-
-            return null;
-            // @codeCoverageIgnoreEnd
-        }
+        return $this->releaseFetcher->downloadPhar($pharAsset, $this->recorder(), $this->logVerbose(...));
     }
 
     /**
      * @codeCoverageIgnore
-     * Tested indirectly through other methods that call it
      */
     protected function logVerbose(string $label, string $value): void
     {
         $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  <fg=gray>{$label}: {$value}</>");
     }
-    // @codeCoverageIgnoreEnd
 
-    /**
-     * Runs prerequisite global migrations before binary replacement.
-     * Prerequisite migrations that fail will prevent update completion.
-     *
-     * @return int 0 on success, 1 on failure
-     */
     protected function runPrerequisiteMigrations(): int
     {
-        // Direct constant check (most reliable - set in tests/bootstrap.php)
-        // This bypasses all detection logic for maximum reliability
-        if (defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true) {
-            return 0;
-        }
-
-        // In test environment, skip migrations entirely to avoid filesystem issues
-        // This is a unit test, so we don't need to run actual migrations
-        // @codeCoverageIgnoreStart
-        // These lines are difficult to test because:
-        // 1. The constant check above (STUD_CLI_TEST_MODE) will always return early in tests
-        // 2. Even if we override isTestEnvironment(), the constant check prevents reaching these lines
-        // 3. Testing the full migration execution path requires bypassing both checks, which
-        //    would require undefining the constant, which is not possible in PHP
-        if ($this->isTestEnvironment()) {
-            return 0;
-        }
-
-        try {
-            $configData = $this->loadConfigAndVersion();
-            if ($configData === null) {
-                // Config doesn't exist, nothing to migrate
-                return 0;
-            }
-
-            [$config, $configPath, $currentVersion] = $configData;
-
-            $pendingMigrations = $this->discoverPrerequisiteMigrations($currentVersion);
-            if (empty($pendingMigrations)) {
-                // No pending prerequisite migrations
-                return 0;
-            }
-
-            return $this->executePendingMigrations($pendingMigrations, $config, $configPath);
-        } catch (\Throwable $e) {
-            return $this->handleMigrationError($e);
-        }
-        // @codeCoverageIgnoreEnd
-    }
-
-    /**
-     * Loads the config file and extracts the current migration version.
-     *
-     * @return array{0: array<string, mixed>, 1: string, 2: string}|null Returns [config, configPath, currentVersion] or null if config doesn't exist
-     * @throws \Throwable If config path cannot be determined or config cannot be loaded
-     */
-    protected function loadConfigAndVersion(): ?array
-    {
-        // In test environment, if getting config path or filesystem fails, skip migrations gracefully
-        try {
-            $configPath = $this->getConfigPath();
-            // @codeCoverageIgnoreStart
-        } catch (\Throwable $e) {
-            // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
-            if ($this->isTestEnvironment()) {
-                return null;
-            }
-            // @codeCoverageIgnoreEnd
-
-            // @codeCoverageIgnoreStart
-            // Production path: re-throwing exception is difficult to test without breaking test environment
-            // In production, re-throw the exception
-            throw $e;
-            // @codeCoverageIgnoreEnd
-        }
-
-        // In test environment with in-memory filesystem, if config doesn't exist, skip migrations
-        try {
-            if (! $this->fileSystem->fileExists($configPath)) {
-                // Config doesn't exist, nothing to migrate
-                return null;
-            }
-            // @codeCoverageIgnoreStart
-        } catch (\Throwable $e) {
-            // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
-            if ($this->isTestEnvironment()) {
-                return null;
-            }
-            // @codeCoverageIgnoreEnd
-
-            // @codeCoverageIgnoreStart
-            // Production path: re-throwing exception is difficult to test without breaking test environment
-            // In production, re-throw the exception
-            throw $e;
-            // @codeCoverageIgnoreEnd
-        }
-
-        $config = $this->fileSystem->parseFile($configPath);
-        $currentVersion = $config['migration_version'] ?? '0';
-
-        return [$config, $configPath, $currentVersion];
-    }
-
-    /**
-     * Discovers prerequisite migrations and returns pending ones.
-     *
-     * @param string $currentVersion The current migration version
-     * @return array<\App\Migrations\MigrationInterface> Array of pending prerequisite migrations
-     * @throws \Throwable If migration discovery fails
-     */
-    protected function discoverPrerequisiteMigrations(string $currentVersion): array
-    {
-        try {
-            return $this->globalMigrationService()->discoverPrerequisiteMigrations($currentVersion);
-        } catch (\Throwable $e) {
-            // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
-            if ($this->isTestEnvironment()) {
-                return [];
-            }
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Executes pending migrations.
-     *
-     * @param array<\App\Migrations\MigrationInterface> $pendingMigrations The migrations to execute
-     * @param array<string, mixed> $config The current config
-     * @param string $configPath The path to the config file
-     * @return int 0 on success
-     * Tested via integration tests (UpdateHandlerMigrationIntegrationTest) using real migration instances
-     */
-    protected function executePendingMigrations(array $pendingMigrations, array $config, string $configPath): int
-    {
-        $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.running'));
-        $this->globalMigrationService()->executePendingMigrations($pendingMigrations, $config, $configPath, $this->recorder());
-        $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('migration.global.complete'));
-
-        return 0;
-    }
-
-    /**
-     * Gets a migration failure message with fallback.
-     *
-     * @param string $migrationId The migration ID
-     * @param string $errorMessage The original error message
-     */
-    private function getErrorMessage(string $migrationId, string $errorMessage): MessageRef
-    {
-        return MessageRef::key(
-            'migration.error',
-            ['id' => $migrationId, 'error' => $errorMessage],
-            "Migration {$migrationId} failed: {$errorMessage}",
+        return $this->migrationRunner->run(
+            $this->recorder(),
+            $this->globalMigrationService(),
+            fn (): string => $this->getConfigPath(),
+            fn (): bool => $this->isTestEnvironment(),
+            fn (string $id, string $msg): MessageRef => $this->getErrorMessage($id, $msg),
         );
     }
 
     /**
-     * Handles errors that occur during migration execution.
-     *
-     * @param \Throwable $e The exception that occurred
-     * @return int 0 in test environment, 1 in production
+     * @return array{0: array<string, mixed>, 1: string, 2: string}|null
      */
-    protected function handleMigrationError(\Throwable $e): int
+    protected function loadConfigAndVersion(): ?array
     {
-        // In test environment, if any exception occurs, skip migrations gracefully
-        // This prevents test failures due to filesystem or migration discovery issues
-        // @phpstan-ignore-next-line - This condition is defensive and only executes in edge cases
-        if ($this->isTestEnvironment()) {
-            return 0;
-        }
-
-        // @codeCoverageIgnoreStart
-        // Safely log error - if logging fails, still return 1
-        try {
-            $errorMessage = $this->getErrorMessage('prerequisite', $e->getMessage());
-            $this->recorder()->addError(
-                WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                $errorMessage
-            );
-        } catch (\Throwable $logError) {
-            // If logging fails, silently continue - we still return 1 to indicate failure
-        }
-
-        return 1;
-        // @codeCoverageIgnoreEnd
+        return $this->migrationRunner->loadConfigAndVersion(
+            fn (): string => $this->getConfigPath(),
+            fn (): bool => $this->isTestEnvironment(),
+        );
     }
 
     /**
-     * Gets the global config file path.
-     * In test environment, returns a test path to prevent writing to real config files.
-     * Tested indirectly through runPrerequisiteMigrations()
+     * @return array<\App\Migrations\MigrationInterface>
      */
-    // @codeCoverageIgnoreStart
+    protected function discoverPrerequisiteMigrations(string $currentVersion): array
+    {
+        return $this->migrationRunner->discoverPrerequisiteMigrations(
+            $this->globalMigrationService(),
+            $currentVersion,
+            fn (): bool => $this->isTestEnvironment(),
+        );
+    }
+
+    /**
+     * @param array<\App\Migrations\MigrationInterface> $pendingMigrations
+     * @param array<string, mixed> $config
+     */
+    protected function executePendingMigrations(array $pendingMigrations, array $config, string $configPath): int
+    {
+        return $this->migrationRunner->executePendingMigrations(
+            $this->recorder(),
+            $this->globalMigrationService(),
+            $pendingMigrations,
+            $config,
+            $configPath,
+        );
+    }
+
+    protected function handleMigrationError(\Throwable $e): int
+    {
+        return $this->migrationRunner->handleMigrationError(
+            $this->recorder(),
+            $e,
+            fn (): bool => $this->isTestEnvironment(),
+            fn (string $id, string $msg): MessageRef => $this->getErrorMessage($id, $msg),
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     */
     protected function getConfigPath(): string
     {
-        // In test environment, always use a test path to prevent writing to real config files
         if ($this->isTestEnvironment()) {
             return '/test/.config/stud/config.yml';
         }
 
         // @codeCoverageIgnoreStart
-        // $_SERVER['HOME'] not set is extremely rare and difficult to test
         $home = $_SERVER['HOME'] ?? throw new \RuntimeException('Could not determine home directory.');
-        // @codeCoverageIgnoreEnd
 
         return rtrim($home, '/') . '/.config/stud/config.yml';
+        // @codeCoverageIgnoreEnd
     }
-    // @codeCoverageIgnoreEnd
 
-    /**
-     * Checks if we're running in a test environment.
-     * This prevents accidental writes to real config files during tests.
-     * Uses multiple detection mechanisms for reliability, with explicit constant check first.
-     *
-     * @return bool True if in test environment
-     * Tested indirectly through getConfigPath() and runPrerequisiteMigrations()
-     */
     protected function isTestEnvironment(): bool
     {
         if ($this->isTestEnvironmentByConstant()) {
             return true;
         }
-        // Unreachable when STUD_CLI_TEST_MODE is set (always true in test bootstrap)
         // @codeCoverageIgnoreStart
         if ($this->isTestEnvironmentByBacktrace()) {
             return true;
@@ -592,111 +319,34 @@ class UpdateHandler
 
     protected function isTestEnvironmentByConstant(): bool
     {
-        return defined('STUD_CLI_TEST_MODE') && STUD_CLI_TEST_MODE === true;
+        return $this->testEnvironmentDetector->isTestEnvironmentByConstant();
     }
 
     /**
-     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
+     * @codeCoverageIgnore
      */
     protected function isTestEnvironmentByBacktrace(): bool
     {
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 30);
-        foreach ($backtrace as $frame) {
-            if (! isset($frame['class'])) {
-                continue;
-            }
-            if (str_contains($frame['class'], 'PHPUnit')) {
-                return true;
-            }
-            if ($this->isTestCaseSubclass($frame['class'])) {
-                return true;
-            }
-            if (str_starts_with($frame['function'], 'test')
-                && str_contains($frame['class'], 'Test')) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->testEnvironmentDetector->isTestEnvironmentByBacktrace();
     }
 
     /**
-     * @codeCoverageIgnore Fallback detection when backtrace does not hit
+     * @codeCoverageIgnore
      */
     protected function isTestEnvironmentByClassOrEnv(): bool
     {
-        if (class_exists(\PHPUnit\Framework\TestCase::class, true)) {
-            return true;
-        }
-        if (defined('PHPUNIT')) {
-            return true;
-        }
-        if (getenv('PHPUNIT') !== false) {
-            return true;
-        }
-        $appEnv = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? null);
-
-        return $appEnv !== null && strtolower($appEnv) === 'test';
+        return $this->testEnvironmentDetector->isTestEnvironmentByClassOrEnv();
     }
 
     /**
      * @param array<string, mixed> $release
-     * Displaying changelog requires real GitHub API calls and is tested via integration tests
+     *
+     * @codeCoverageIgnore
      */
-    // @codeCoverageIgnoreStart
     protected function displayChangelog(GithubProvider $githubProvider, array $release): void
     {
-        try {
-            $tagName = $release['tag_name'] ?? 'unknown';
-            $latestVersion = ltrim($tagName, 'v');
-            $changelogContent = $githubProvider->getChangelogContent($tagName);
-            $changes = $this->changelogParser->parse($changelogContent, $this->currentVersion, $latestVersion);
-
-            $sections = $changes['sections'];
-            $hasBreaking = $changes['hasBreaking'];
-
-            if (empty($sections) && ! $hasBreaking) {
-                // No changes found or already up to date
-                return;
-            }
-
-            $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.changelog_section', ['version' => $tagName]));
-
-            // Display breaking changes first with warning
-            if ($hasBreaking) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.breaking_changes_detected'));
-                foreach ($changes['breakingChanges'] as $breakingChange) {
-                    $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, "  <fg=red>⚠️  {$breakingChange}</>");
-                }
-                $this->recorder()->addNewLine(WorkflowEntryRecorder::VERBOSITY_NORMAL);
-            }
-
-            // Display other sections
-            foreach ($sections as $sectionType => $items) {
-                // Defensive check: ChangelogParser should not produce empty sections, but check anyway
-                // ChangelogParser guarantees non-empty sections
-                // @codeCoverageIgnoreStart
-                // Empty sections are defensive checks that ChangelogParser should never produce
-                if (empty($items)) {
-                    continue;
-                }
-                // @codeCoverageIgnoreEnd
-
-                $sectionTitle = $this->changelogParser->getSectionTitle($sectionType);
-                $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, "<fg=cyan>{$sectionTitle}</>");
-                foreach ($items as $item) {
-                    $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, "  • {$item}");
-                }
-                $this->recorder()->addNewLine(WorkflowEntryRecorder::VERBOSITY_NORMAL);
-            }
-        } catch (ApiException $e) {
-            $this->logVerbose('Could not fetch changelog', $e->getMessage());
-            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
-        } catch (\Exception $e) {
-            $this->logVerbose('Could not fetch changelog', $e->getMessage());
-        }
+        $this->changelogPresenter->display($this->recorder(), $githubProvider, $release, $this->logVerbose(...));
     }
-    // @codeCoverageIgnoreEnd
 
     private function cleanupAndReturn(string $tempFile, int $exitCode): int
     {
@@ -708,16 +358,12 @@ class UpdateHandler
         return $exitCode;
     }
 
-    /**
-     * @codeCoverageIgnore Backtrace/env detection not reachable when running from PHPUnit
-     */
-    private function isTestCaseSubclass(string $className): bool
+    protected function getErrorMessage(string $migrationId, string $errorMessage): MessageRef
     {
-        try {
-            /** @var class-string $className */
-            return (new \ReflectionClass($className))->isSubclassOf(\PHPUnit\Framework\TestCase::class);
-        } catch (\ReflectionException) {
-            return false;
-        }
+        return MessageRef::key(
+            'migration.error',
+            ['id' => $migrationId, 'error' => $errorMessage],
+            "Migration {$migrationId} failed: {$errorMessage}",
+        );
     }
 }

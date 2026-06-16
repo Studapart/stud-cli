@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\ResponseMessage;
+
 final class ConfigShowResponse extends AbstractResponse
 {
     /**
      * @param array<string, mixed> $globalConfig Redacted global configuration
      * @param array<string, mixed>|null $projectConfig Redacted project configuration, null when not in a git repo
      * @param 'global'|'project'|null $singleKeySection Section that provided the value when single-key mode is used
+     * @param list<ResponseMessage> $messages
      */
     private function __construct(
         bool $success,
@@ -18,28 +21,31 @@ final class ConfigShowResponse extends AbstractResponse
         public readonly ?array $projectConfig,
         public readonly ?string $singleKey = null,
         public readonly mixed $singleKeyValue = null,
-        public readonly ?string $singleKeySection = null
+        public readonly ?string $singleKeySection = null,
+        array $messages = [],
     ) {
-        parent::__construct($success, $error);
+        parent::__construct($success, $error, $messages);
     }
 
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed>|null $projectConfig
+     * @param list<ResponseMessage> $messages
      */
-    public static function success(array $globalConfig, ?array $projectConfig = null): self
+    public static function success(array $globalConfig, ?array $projectConfig = null, array $messages = []): self
     {
-        return new self(true, null, $globalConfig, $projectConfig, null, null, null);
+        return new self(true, null, $globalConfig, $projectConfig, null, null, null, $messages);
     }
 
     /**
      * Success response for a single key lookup. Value is the effective (project-over-global) value.
      *
      * @param 'global'|'project' $section Section where the effective value comes from
+     * @param list<ResponseMessage> $messages
      */
-    public static function successSingleKey(string $key, mixed $value, string $section): self
+    public static function successSingleKey(string $key, mixed $value, string $section, array $messages = []): self
     {
-        return new self(true, null, [], null, $key, $value, $section);
+        return new self(true, null, [], null, $key, $value, $section, $messages);
     }
 
     /**

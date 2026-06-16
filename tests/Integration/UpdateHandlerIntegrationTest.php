@@ -10,6 +10,7 @@ use App\Service\FileSystem;
 use App\Service\Logger;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
+use App\Tests\Support\UpdateHandlerTestKit;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -52,7 +53,7 @@ class UpdateHandlerIntegrationTest extends TestCase
         $this->prompt = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
 
         // Create handler with real services but mocked HTTP client
-        $this->handler = new UpdateHandler(
+        $this->handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',

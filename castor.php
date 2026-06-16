@@ -106,6 +106,12 @@ use App\Response\CommandResponse;
 use App\Response\WorkflowResponse;
 use App\Service\AgentModeHelper;
 use App\Service\AgentModeSchemaGenerator;
+use App\Service\BranchCleanupExecutor;
+use App\Service\BranchCleanupPlanner;
+use App\Service\BranchDeletionEligibilityResolver;
+use App\Service\BranchNameGenerator;
+use App\Service\BranchNameValidator;
+use App\Service\BranchRenamePrCoordinator;
 use App\Service\ChangelogParser;
 use App\Service\CommandMap;
 use App\Service\CommandOutputBuffer;
@@ -115,12 +121,20 @@ use App\Service\ConfluenceService;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
 use App\Service\GithubProvider;
+use App\Service\GitProjectConfigService;
+use App\Service\GitRebaseAutosquashService;
+use App\Service\GitRemoteUrlParser;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\GlobalMigrationService;
 use App\Service\InitProjectConfigFollowUpService;
+use App\Service\ItemCreateProjectResolver;
+use App\Service\ItemCreatePromptService;
 use App\Service\JiraAttachmentService;
+use App\Service\JiraFieldMetadataService;
+use App\Service\JiraIssueMapper;
 use App\Service\JiraService;
+use App\Service\JiraUserSearchService;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
 use App\Service\MigrationExecutor;
@@ -131,9 +145,13 @@ use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
+use App\Service\TestEnvironmentDetector;
 use App\Service\ThemeDetector;
 use App\Service\TranslationService;
+use App\Service\UpdateChangelogPresenter;
 use App\Service\UpdateFileService;
+use App\Service\UpdatePrerequisiteMigrationRunner;
+use App\Service\UpdateReleaseFetcher;
 use App\Service\VersionCheckService;
 use App\Service\WorkflowOutput;
 use Castor\Attribute\AsArgument;
@@ -301,7 +319,14 @@ function _get_jira_service(): JiraService
         return \App\Tests\TestKernel::$jiraService;
     }
 
-    return new JiraService(_get_jira_http_client(), _get_html_converter());
+    $client = _get_jira_http_client();
+
+    return new JiraService(
+        $client,
+        new JiraIssueMapper(_get_html_converter()),
+        new JiraFieldMetadataService($client),
+        new JiraUserSearchService($client),
+    );
 }
 
 function _get_jira_attachment_service(): JiraAttachmentService
@@ -384,7 +409,13 @@ function _get_git_repository(): GitRepository
         return \App\Tests\TestKernel::$gitRepository;
     }
 
-    return new GitRepository(_get_process_factory(), _get_file_system());
+    $processFactory = _get_process_factory();
+    $fileSystem = _get_file_system();
+    $remoteUrlParser = new GitRemoteUrlParser($processFactory);
+    $projectConfigService = new GitProjectConfigService($processFactory, $fileSystem, $remoteUrlParser);
+    $rebaseAutosquashService = new GitRebaseAutosquashService($processFactory, $fileSystem);
+
+    return new GitRepository($processFactory, $projectConfigService, $remoteUrlParser, $rebaseAutosquashService);
 }
 
 function _get_git_branch_service(): GitBranchService
@@ -394,6 +425,104 @@ function _get_git_branch_service(): GitBranchService
     }
 
     return new GitBranchService(_get_git_repository());
+}
+
+function _get_branch_deletion_eligibility_resolver(): BranchDeletionEligibilityResolver
+{
+    return new BranchDeletionEligibilityResolver(_get_git_repository(), _get_git_branch_service(), _get_git_provider());
+}
+
+function _get_branch_cleanup_executor(): BranchCleanupExecutor
+{
+    return new BranchCleanupExecutor(_get_git_repository(), _get_translation_service(), _get_prompt());
+}
+
+function _get_branch_cleanup_planner(): BranchCleanupPlanner
+{
+    return new BranchCleanupPlanner(_get_git_repository(), _get_git_branch_service(), _get_branch_deletion_eligibility_resolver());
+}
+
+function _get_branch_clean_handler(): BranchCleanHandler
+{
+    return new BranchCleanHandler(
+        _get_git_repository(),
+        _get_branch_deletion_eligibility_resolver(),
+        _get_branch_cleanup_executor(),
+        _get_branch_cleanup_planner(),
+        _get_configured_base_branch_or_null(),
+        _get_prompt(),
+    );
+}
+
+function _get_item_create_handler(): ItemCreateHandler
+{
+    $prompt = _get_prompt();
+    $jiraService = _get_jira_service();
+
+    return new ItemCreateHandler(
+        new ItemCreateProjectResolver(_get_git_repository(), $jiraService, $prompt),
+        new ItemCreatePromptService($jiraService, _get_issue_field_resolver(), $prompt),
+        $jiraService,
+        _get_issue_field_resolver(),
+        _get_fields_parser(),
+        $prompt,
+    );
+}
+
+function _get_branch_rename_handler(): BranchRenameHandler
+{
+    $gitRepository = _get_git_repository();
+    $jiraService = _get_jira_service();
+    $prompt = _get_prompt();
+
+    return new BranchRenameHandler(
+        $gitRepository,
+        _get_git_branch_service(),
+        new BranchNameGenerator($jiraService),
+        new BranchNameValidator(),
+        new BranchRenamePrCoordinator(
+            $gitRepository,
+            $jiraService,
+            _get_git_provider(),
+            _get_jira_config(),
+            _get_base_branch(),
+            _get_translation_service(),
+            $prompt,
+            _get_html_converter(),
+        ),
+        $prompt,
+    );
+}
+
+function _build_update_handler(
+    string $repoOwner,
+    string $repoName,
+    string $currentVersion,
+    string $binaryPath,
+    ?string $gitToken = null,
+    ?\Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null,
+): UpdateHandler {
+    $fileSystem = _get_file_system();
+    $changelogParser = new ChangelogParser();
+
+    return new UpdateHandler(
+        $repoOwner,
+        $repoName,
+        $currentVersion,
+        $binaryPath,
+        _get_translation_service(),
+        $changelogParser,
+        new UpdateFileService(_get_translation_service(), _get_prompt()),
+        _get_prompt(),
+        $fileSystem,
+        new TestEnvironmentDetector(),
+        new UpdateReleaseFetcher($repoOwner, $repoName, $currentVersion, $fileSystem, $gitToken, $httpClient),
+        new UpdateChangelogPresenter($changelogParser, $currentVersion),
+        new UpdatePrerequisiteMigrationRunner($fileSystem),
+        $gitToken,
+        $httpClient,
+        _get_global_migration_service(),
+    );
 }
 
 function _get_git_setup_service(): GitSetupService
@@ -2007,7 +2136,7 @@ function items_create(
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
-    $handler = new ItemCreateHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_issue_field_resolver(), _get_fields_parser(), _get_prompt());
+    $handler = _get_item_create_handler();
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle($interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
@@ -2208,9 +2337,7 @@ function branch_rename(
         $explicitName = $input['explicitName'] ?? null;
         $quiet = true; // agent mode is non-interactive; no need to read from input
     }
-    $gitRepository = _get_git_repository();
-    $gitProvider = _get_git_provider();
-    $handler = new BranchRenameHandler($gitRepository, _get_git_branch_service(), _get_jira_service(), $gitProvider, _get_translation_service(), _get_jira_config(), _get_base_branch(), _get_prompt(), _get_html_converter());
+    $handler = _get_branch_rename_handler();
     $response = $handler->handle($branch, $key, $explicitName, $quiet);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2264,19 +2391,7 @@ function branches_clean(
         $compact = _agent_compact_enabled($input);
         $quiet = true;
     }
-    $gitRepository = _get_git_repository();
-    $gitBranchService = _get_git_branch_service();
-    $gitProvider = _get_git_provider();
-    $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $gitProvider);
-    $handler = new BranchCleanHandler(
-        $gitRepository,
-        $gitBranchService,
-        $resolver,
-        new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_prompt()),
-        _get_configured_base_branch_or_null(),
-        _get_translation_service(),
-        _get_prompt()
-    );
+    $handler = _get_branch_clean_handler();
     $response = $handler->handle($quiet);
     _respond_workflow_response($response, $agent, $compact);
 
@@ -3295,19 +3410,7 @@ function deploy(
     $response = $handler->handle();
 
     if ($response->isSuccess() && $clean) {
-        $gitRepository = _get_git_repository();
-        $gitBranchService = _get_git_branch_service();
-        $githubProvider = _get_github_provider();
-        $resolver = new \App\Service\BranchDeletionEligibilityResolver($gitRepository, $gitBranchService, $githubProvider);
-        $cleanHandler = new BranchCleanHandler(
-            $gitRepository,
-            $gitBranchService,
-            $resolver,
-            new \App\Service\BranchCleanupExecutor($gitRepository, _get_translation_service(), _get_prompt()),
-            _get_configured_base_branch_or_null(),
-            _get_translation_service(),
-            _get_prompt()
-        );
+        $cleanHandler = _get_branch_clean_handler();
         $cleanResponse = $cleanHandler->handle(true);
         if (! $agent) {
             _respond_workflow_response($cleanResponse, false);
@@ -3377,20 +3480,7 @@ function update(
 
     [$repoOwner, $repoName] = $nameParts;
 
-    $handler = new UpdateHandler(
-        $repoOwner,
-        $repoName,
-        APP_VERSION,
-        $binaryPath,
-        _get_translation_service(),
-        new ChangelogParser(),
-        new UpdateFileService(_get_translation_service(), _get_prompt()),
-        _get_prompt(),
-        _get_file_system(),
-        $gitToken,
-        null,
-        _get_global_migration_service(),
-    );
+    $handler = _build_update_handler($repoOwner, $repoName, APP_VERSION, $binaryPath, $gitToken);
     $response = $handler->handle($info, $quiet);
     _respond_workflow_response($response, false);
     exit($response->exitCode);

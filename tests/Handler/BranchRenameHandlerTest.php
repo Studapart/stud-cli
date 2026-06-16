@@ -4,6 +4,9 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\BranchRenameHandler;
+use App\Service\BranchNameGenerator;
+use App\Service\BranchNameValidator;
+use App\Service\BranchRenamePrCoordinator;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GithubProvider;
 use App\Service\Prompt\PromptInterface;
@@ -25,17 +28,33 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $this->prompt = $this->createMock(PromptInterface::class);
+        $this->handler = $this->createBranchRenameHandler();
+    }
+
+    private function createBranchRenameHandler(
+        ?PromptInterface $prompt = null,
+        bool $withGithubProvider = true,
+    ): BranchRenameHandler {
+        $prompt ??= $this->prompt;
+        $githubProvider = $withGithubProvider ? $this->githubProvider : null;
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        $this->handler = new BranchRenameHandler(
+
+        return new BranchRenameHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->jiraService,
-            $this->githubProvider,
-            $this->translationService,
-            ['JIRA_URL' => 'https://jira.example.com'],
-            'origin/develop',
-            $this->prompt,
-            $htmlConverter
+            new BranchNameGenerator($this->jiraService),
+            new BranchNameValidator(),
+            new BranchRenamePrCoordinator(
+                $this->gitRepository,
+                $this->jiraService,
+                $githubProvider,
+                ['JIRA_URL' => 'https://jira.example.com'],
+                'origin/develop',
+                $this->translationService,
+                $prompt,
+                $htmlConverter,
+            ),
+            $prompt,
         );
     }
 
@@ -1074,18 +1093,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('confirm')->willReturn(true);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        $handler = new BranchRenameHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->jiraService,
-            null, // No GitHub provider
-            $this->translationService,
-            ['JIRA_URL' => 'https://jira.example.com'],
-            'origin/develop',
-            $prompt,
-            $htmlConverter
-        );
+        $handler = $this->createBranchRenameHandler($prompt, false);
 
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
@@ -1118,18 +1126,7 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('confirm')->willReturn(true);
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
-        $handler = new BranchRenameHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $this->jiraService,
-            null, // No GitHub provider
-            $this->translationService,
-            ['JIRA_URL' => 'https://jira.example.com'],
-            'origin/develop',
-            $prompt,
-            $htmlConverter
-        );
+        $handler = $this->createBranchRenameHandler($prompt, false);
 
         $handlerReflection = new \ReflectionClass($handler);
         $method = $handlerReflection->getMethod('updatePullRequestAfterRename');
@@ -1141,5 +1138,28 @@ class BranchRenameHandlerTest extends CommandTestCase
         // Should return early without error
         $method->invoke($handler, $pr, 'old-branch', 'new-branch');
         $this->assertTrue(true); // If we get here, no exception was thrown
+    }
+
+    public function testCreateSubmitHandlerReturnsSubmitHandler(): void
+    {
+        $handler = $this->callPrivateMethod($this->handler, 'createSubmitHandler');
+
+        $this->assertInstanceOf(\App\Handler\SubmitHandler::class, $handler);
+    }
+
+    public function testCommentOnNewPullRequestDelegatesToCoordinator(): void
+    {
+        $recorder = new \App\DTO\WorkflowRecorder();
+        $reflection = new \ReflectionClass($this->handler);
+        $recorderProperty = $reflection->getProperty('recorder');
+        $recorderProperty->setAccessible(true);
+        $recorderProperty->setValue($this->handler, $recorder);
+
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/test');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('owner');
+        $this->githubProvider->method('findPullRequestByBranch')->willReturn(null);
+
+        $this->callPrivateMethod($this->handler, 'commentOnNewPullRequest', ['old', 'new']);
+        $this->assertTrue(true);
     }
 }

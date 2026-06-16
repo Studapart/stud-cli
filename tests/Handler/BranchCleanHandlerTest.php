@@ -12,6 +12,7 @@ use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
 use App\Handler\BranchCleanHandler;
 use App\Service\BranchCleanupExecutor;
+use App\Service\BranchCleanupPlanner;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GithubProvider;
 use App\Service\Prompt\PromptInterface;
@@ -35,15 +36,24 @@ class BranchCleanHandlerTest extends CommandTestCase
         $this->prompt->method('confirm')->willReturn(true);
         $this->prompt->method('ask')->willReturn('develop');
 
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $this->handler = new BranchCleanHandler(
+        $this->handler = $this->createBranchCleanHandler();
+    }
+
+    private function createBranchCleanHandler(
+        ?string $configuredBaseBranch = 'origin/develop',
+        ?PromptInterface $prompt = null,
+        ?BranchDeletionEligibilityResolver $resolver = null,
+    ): BranchCleanHandler {
+        $prompt ??= $this->prompt;
+        $resolver ??= new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
+
+        return new BranchCleanHandler(
             $this->gitRepository,
-            $this->gitBranchService,
             $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $this->prompt),
-            'origin/develop',
-            $this->translationService,
-            $this->prompt
+            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
+            new BranchCleanupPlanner($this->gitRepository, $this->gitBranchService, $resolver),
+            $configuredBaseBranch,
+            $prompt,
         );
     }
 
@@ -152,16 +162,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->never())->method('confirm');
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            'origin/develop',
-            $this->translationService,
-            $prompt
-        );
+        $handler = $this->createBranchCleanHandler('origin/develop', $prompt);
 
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/provider-remote']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn(['feat/provider-remote']);
@@ -264,16 +265,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->once())->method('confirm')->willReturn(false);
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            'origin/develop',
-            $this->translationService,
-            $prompt
-        );
+        $handler = $this->createBranchCleanHandler('origin/develop', $prompt);
 
         $this->initializeRecorder($handler);
 
@@ -285,16 +277,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->once())->method('confirm')->willReturn(false);
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            'origin/develop',
-            $this->translationService,
-            $prompt
-        );
+        $handler = $this->createBranchCleanHandler('origin/develop', $prompt);
 
         $this->gitBranchService->method('getAllLocalBranches')->willReturn(['feat/cancel']);
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
@@ -337,16 +320,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->exactly(2))->method('confirm')->willReturnOnConsecutiveCalls(false, true);
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            'origin/develop',
-            $this->translationService,
-            $prompt
-        );
+        $handler = $this->createBranchCleanHandler('origin/develop', $prompt);
 
         $cleanupPlans = [];
         $manual = [
@@ -413,16 +387,7 @@ class BranchCleanHandlerTest extends CommandTestCase
 
             return $validator('develop');
         });
-        $resolver = new BranchDeletionEligibilityResolver($this->gitRepository, $this->gitBranchService, $this->githubProvider);
-        $handler = new BranchCleanHandler(
-            $this->gitRepository,
-            $this->gitBranchService,
-            $resolver,
-            new BranchCleanupExecutor($this->gitRepository, $this->translationService, $prompt),
-            null,
-            $this->translationService,
-            $prompt
-        );
+        $handler = $this->createBranchCleanHandler(null, $prompt);
 
         $this->gitRepository->expects($this->exactly(4))
             ->method('remoteBranchExists')
@@ -476,5 +441,21 @@ class BranchCleanHandlerTest extends CommandTestCase
             BranchCleanupLocalAction::Manual,
             BranchCleanupRemoteAction::Manual
         );
+    }
+
+    public function testFetchAllBranchesDelegatesToPlanner(): void
+    {
+        $this->initializeRecorder($this->handler);
+        $branches = $this->callPrivateMethod($this->handler, 'fetchAllBranches');
+
+        $this->assertIsArray($branches);
+    }
+
+    public function testFetchRemoteBranchesSetDelegatesToPlanner(): void
+    {
+        $this->initializeRecorder($this->handler);
+        $set = $this->callPrivateMethod($this->handler, 'fetchRemoteBranchesSet');
+
+        $this->assertIsArray($set);
     }
 }
