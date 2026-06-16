@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-06-16
+
 ### Changed
 
 - **Agent list/search discovery (SCI-140):** Agent JSON for `items:list`, `items:search`, and `filters:show` now returns slim issue summaries (key, status, title, url, and priority where applicable) instead of full work item records. Use `items:show` for full issue details.
