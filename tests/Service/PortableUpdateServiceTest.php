@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Service\Logger;
+use App\DTO\WorkflowRecorder;
 use App\Service\PortableUpdateService;
+use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use App\Service\UpdateInstallContext;
 use App\Service\UpdateRepositoryContext;
@@ -21,7 +22,7 @@ class PortableUpdateServiceTest extends TestCase
     private string $portableRoot;
     private string $managedSymlink;
     private HttpClientInterface&MockObject $httpClient;
-    private Logger&MockObject $logger;
+    private PromptInterface&MockObject $prompt;
     private TranslationService&MockObject $translator;
 
     protected function setUp(): void
@@ -33,7 +34,7 @@ class PortableUpdateServiceTest extends TestCase
         $this->managedSymlink = $this->workspace . '/home/.local/bin/stud';
         mkdir(dirname($this->managedSymlink), 0777, true);
         $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->logger = $this->createMock(Logger::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
             fn (string $key, array $parameters = []): string => strtr($key, array_map('strval', $parameters))
@@ -53,9 +54,9 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
         $this->mockDownloads(file_get_contents($archive) ?: '', $checksums);
-        $this->logger->expects(self::never())->method('confirm');
+        $this->prompt->expects(self::never())->method('confirm');
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(0, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.1/stud', readlink($this->managedSymlink));
@@ -69,7 +70,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', str_repeat('0', 64) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -82,7 +83,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  another-file.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -93,9 +94,9 @@ class PortableUpdateServiceTest extends TestCase
         $context = $this->createInstalledPortableContext();
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
-        $this->logger->expects(self::once())->method('confirm')->willReturn(true);
+        $this->prompt->expects(self::once())->method('confirm')->willReturn(true);
 
-        $result = $this->createService()->update($context, $this->releaseData(), false);
+        $result = $this->createService()->update($context, $this->releaseData(), false, new WorkflowRecorder());
 
         self::assertSame(0, $result);
         self::assertFileDoesNotExist($this->portableRoot . '/linux-amd64/1.0.0/stud');
@@ -108,7 +109,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', false);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -120,7 +121,7 @@ class PortableUpdateServiceTest extends TestCase
         $archiveContent = 'not a tar archive';
         $this->mockDownloads($archiveContent, hash('sha256', $archiveContent) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
@@ -137,7 +138,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
         self::assertSame($unmanaged, readlink($this->managedSymlink));
@@ -157,7 +158,7 @@ class PortableUpdateServiceTest extends TestCase
             true
         );
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -166,7 +167,7 @@ class PortableUpdateServiceTest extends TestCase
     {
         $context = new UpdateInstallContext(UpdateInstallContext::MODE_PORTABLE, '1.0.0', '/tmp/stud.phar');
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -175,7 +176,7 @@ class PortableUpdateServiceTest extends TestCase
     {
         $context = $this->createInstalledPortableContext();
 
-        $result = $this->createService()->update($context, ['tag_name' => 'v1.0.1', 'assets' => []], true);
+        $result = $this->createService()->update($context, ['tag_name' => 'v1.0.1', 'assets' => []], true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -192,7 +193,7 @@ class PortableUpdateServiceTest extends TestCase
         ];
         $this->httpClient->expects(self::never())->method('request');
 
-        $result = $this->createService()->update($context, $release, true);
+        $result = $this->createService()->update($context, $release, true, new WorkflowRecorder());
 
         self::assertSame(1, $result);
     }
@@ -203,7 +204,7 @@ class PortableUpdateServiceTest extends TestCase
         $archive = $this->createPortableArchive('1.0.1', true);
         $this->mockDownloads(file_get_contents($archive) ?: '', hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n");
 
-        $result = $this->createService()->update($context, $this->releaseData(), true);
+        $result = $this->createService()->update($context, $this->releaseData(), true, new WorkflowRecorder());
 
         self::assertSame(0, $result);
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.1/stud', readlink($this->managedSymlink));
@@ -211,7 +212,7 @@ class PortableUpdateServiceTest extends TestCase
 
     public function testCanCreateRealHttpClientWhenNoClientIsInjected(): void
     {
-        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->translator, $this->logger) extends PortableUpdateService {
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->translator, $this->prompt) extends PortableUpdateService {
             public function exposedClient(): HttpClientInterface
             {
                 return $this->client();
@@ -226,7 +227,7 @@ class PortableUpdateServiceTest extends TestCase
         return new PortableUpdateService(
             new UpdateRepositoryContext('studapart', 'stud-cli'),
             $this->translator,
-            $this->logger,
+            $this->prompt,
             $this->httpClient
         );
     }

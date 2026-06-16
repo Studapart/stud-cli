@@ -20,9 +20,12 @@ composer install
 
 ```bash
 vendor/bin/phpunit
+vendor/bin/phpunit tests/Architecture/
 vendor/bin/phpstan analyse
 vendor/bin/php-cs-fixer fix --dry-run --diff
 ```
+
+`tests/Architecture/` guards presentation boundaries: no direct Logger, console `$io->` output, or ad-hoc translation in handlers/services; frozen allow lists track legacy `WorkflowOutput` usage pending responder migration.
 
 For coverage:
 
@@ -50,6 +53,12 @@ scripts/build-phar --version 1.0.0 --output stud-1.0.0.phar
 ## Portable Packaging
 
 Portable packaging consumes the canonical PHAR and a platform runtime. See [stud-portable packaging](../stud-portable-prototype.md).
+
+## AI and agent workflows
+
+- [AI development protocol](../../AI.md)
+- [Automation and agent mode](../features/automation.md)
+- [Documentation index](../index.md)
 
 ## Architecture
 

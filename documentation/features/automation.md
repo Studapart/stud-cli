@@ -8,11 +8,37 @@ Commands that support `--agent` accept JSON on stdin and return structured JSON.
 
 ```bash
 echo '{}' | stud help --agent
-echo '{"commandName":"config:validate"}' | stud help --agent
+echo '{"essential":false}' | stud help --agent
+echo '{"command":"config:validate"}' | stud help --agent
 echo '{"skipGit":true}' | stud config:validate --agent
 ```
 
 Use the generated schema from `stud help --agent` as the source of truth for JSON properties.
+Empty input returns the essential commands used in common agent workflows. Pass
+`{"essential":false}` to return every command schema, or
+`{"command":"<name-or-alias>"}` to inspect one command regardless of whether it is
+essential.
+
+Agent mode uses compact success output by default to reduce tokens. The `compact`
+flag (default `true`) omits `data` only for **completion-only** commands. Commands
+that return structured `data` (for example `items:show`, `config:show`) always
+include `data` regardless of `compact`.
+
+List, search, and filter discovery commands (`items:list`, `items:search`,
+`filters:show`) return slim issue summaries in agent mode (`key`, `status`, `title`,
+`url`, and `priority` where shown in the CLI table). Call `items:show` when you need
+the full description or attachments.
+
+For completion-only commands, compact output omits `data`:
+
+```json
+{"success":true}
+```
+
+Commands that return follow-up values keep the smallest useful `data` value, and
+errors always include an explicit `error` string. Send `{"compact":false}` when
+you need the full success payload. Use `compact` for this mode; `zip` is not
+supported.
 
 ## Quiet Mode
 
@@ -26,6 +52,11 @@ stud submit --labels "AI-Generated,RFR" --quiet
 stud branches:clean --quiet
 stud update --quiet
 ```
+
+## AI development protocol
+
+Agents implementing features in this repository must follow [AI.md](../../AI.md)
+(`--agent` first, four-phase protocol, `CONVENTIONS.md` compliance).
 
 ## CI Setup
 

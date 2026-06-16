@@ -2,10 +2,14 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
 use App\Handler\ItemTransitionHandler;
-use App\Service\Logger;
+use App\Response\WorkflowResponse;
+use App\Service\Prompt\PromptInterface;
+use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -13,34 +17,48 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ItemTransitionHandlerTest extends CommandTestCase
 {
     private ItemTransitionHandler $handler;
-    private Logger $logger;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
             $this->jiraService,
             $this->translationService,
-            $this->logger
+            $this->prompt
         );
     }
 
-    /**
-     * Creates a handler with a real Logger instance for interactive tests.
-     */
-    private function createHandlerWithRealLogger(SymfonyStyle $io): ItemTransitionHandler
+    private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
     {
-        $realLogger = new Logger($io, []);
+        $this->assertInstanceOf(WorkflowResponse::class, $response);
+        $this->assertSame($expectedExitCode, $response->exitCode);
+    }
+
+    /**
+     * Creates a handler with a real prompt service for interactive tests.
+     */
+    private function createHandlerWithRealPrompt(SymfonyStyle $io): ItemTransitionHandler
+    {
+        $prompt = new SymfonyPromptService($io);
 
         return new ItemTransitionHandler(
             $this->gitRepository,
             $this->jiraService,
             $this->translationService,
-            $realLogger
+            $prompt
         );
+    }
+
+    private function initializeRecorder(ItemTransitionHandler $handler): void
+    {
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new WorkflowRecorder());
     }
 
     public function testHandleWithProvidedKey(): void
@@ -90,24 +108,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-35', 11);
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithKeyDetectionFromBranchAndConfirmation(): void
@@ -153,26 +169,23 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-35', 11);
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // confirm() for detected key - yes
         fwrite($inputStream, "y\n");
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle(null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithKeyDetectionFromBranchAndRejection(): void
@@ -218,28 +231,24 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-36', 11);
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // confirm() for detected key - no
         fwrite($inputStream, "n\n");
-        // ask() for key - TPW-36
         fwrite($inputStream, "TPW-36\n");
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle(null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithKeyPromptWhenNotDetected(): void
@@ -285,26 +294,23 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-37', 11);
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // ask() for key - TPW-37
         fwrite($inputStream, "TPW-37\n");
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, null);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle(null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithInvalidKeyFormat(): void
@@ -316,16 +322,16 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // ask() for key - invalid key
         fwrite($inputStream, "INVALID-KEY\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle(null);
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithEmptyKeyPrompt(): void
@@ -337,16 +343,16 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // ask() for key - empty string
         fwrite($inputStream, "\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, null);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle(null);
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFound(): void
@@ -356,16 +362,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle('TPW-35');
 
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFoundApiException(): void
@@ -375,22 +377,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_not_found'),
-                'HTTP 404: Not Found'
-            );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
+        $response = $this->handler->handle('TPW-35');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWhenTransitionChoiceDoesNotParseReturnsOne(): void
@@ -415,19 +405,13 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->jiraService->expects($this->once())->method('getTransitions')->with('TPW-35')->willReturn($transitions);
         $this->jiraService->expects($this->never())->method('transitionIssue');
 
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
-        $this->logger->expects($this->once())
+        $this->prompt->expects($this->once())
             ->method('choice')
             ->willReturn('Invalid selection without ID');
-        $this->logger->expects($this->once())->method('error');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle('TPW-35');
 
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithNoTransitions(): void
@@ -454,20 +438,15 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn([]);
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
-        // Verify transitionIssue is never called
         $this->jiraService->expects($this->never())
             ->method('transitionIssue');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle('TPW-35');
 
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithTransitionFetchError(): void
@@ -494,20 +473,15 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \Exception('Failed to fetch transitions'));
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
-        // Verify transitionIssue is never called
         $this->jiraService->expects($this->never())
             ->method('transitionIssue');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $response = $this->handler->handle('TPW-35');
 
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithTransitionFetchErrorApiException(): void
@@ -534,22 +508,10 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not fetch transitions for issue "TPW-35".', 'HTTP 500: Internal Server Error', 500));
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_fetch'),
-                'HTTP 500: Internal Server Error'
-            );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
+        $response = $this->handler->handle('TPW-35');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWithTransitionExecutionError(): void
@@ -592,24 +554,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35', 11)
             ->willThrowException(new \Exception('Failed to execute transition'));
 
-        // Verify assignIssue is never called
         $this->jiraService->expects($this->never())
             ->method('assignIssue');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithTransitionExecutionErrorApiException(): void
@@ -652,33 +612,14 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->with('TPW-35', 11)
             ->willThrowException(new \App\Exception\ApiException('Could not execute transition 11 for issue "TPW-35".', 'HTTP 400: Bad Request', 400));
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.transition.error_execute'),
-                'HTTP 400: Bad Request'
-            );
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('listing');
-        $this->logger->method('choice')
+        $this->prompt->expects($this->once())
+            ->method('choice')
             ->willReturn('Start Progress (ID: 11)');
-        $this->logger->method('success');
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $inputStream = fopen('php://memory', 'r+');
-        // choice() for transition selection - select first option (index 0)
-        fwrite($inputStream, "0\n");
-        rewind($inputStream);
+        $response = $this->handler->handle('TPW-35');
 
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
-
-        $result = $this->handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -723,7 +664,6 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // choice() for transition selection - select first option (index 0)
         fwrite($inputStream, "0\n");
         rewind($inputStream);
 
@@ -731,28 +671,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $result = $handler->handle($io, 'TPW-35');
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testResolveKeyWithProvidedKey(): void
     {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ 'tpw-35']);
+        $key = $this->callPrivateMethod($this->handler, 'resolveKey', ['tpw-35']);
 
         $this->assertSame('TPW-35', $key);
     }
 
     public function testResolveKeyWithLowercaseKey(): void
     {
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ 'proj-123']);
+        $key = $this->callPrivateMethod($this->handler, 'resolveKey', ['proj-123']);
 
         $this->assertSame('PROJ-123', $key);
     }
@@ -766,14 +700,15 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // ask() for key - null (simulated by empty input that gets trimmed)
         fwrite($inputStream, "\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $key = $this->callPrivateMethod($this->handler, 'resolveKey', [ null]);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $this->initializeRecorder($handler);
+        $key = $this->callPrivateMethod($handler, 'resolveKey', [null]);
 
         $this->assertNull($key);
     }
@@ -787,15 +722,15 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
-        // ask() for key - provide invalid format (doesn't match /^[A-Z]+-\d+$/)
         fwrite($inputStream, "invalid-key-format\n");
         rewind($inputStream);
 
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $handler = $this->createHandlerWithRealLogger($io);
-        $key = $this->callPrivateMethod($handler, 'resolveKey', [ null]);
+        $handler = $this->createHandlerWithRealPrompt($io);
+        $this->initializeRecorder($handler);
+        $key = $this->callPrivateMethod($handler, 'resolveKey', [null]);
 
         $this->assertNull($key);
     }

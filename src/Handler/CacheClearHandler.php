@@ -4,43 +4,43 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\FileSystem;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class CacheClearHandler
 {
     private const CACHE_FILE_PATH = '~/.cache/stud/last_update_check.json';
 
     public function __construct(
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
-        private readonly FileSystem $fileSystem
+        mixed $_translator,
+        private readonly FileSystem $fileSystem,
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io): int
+    public function handle(): CommandResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('cache.clear.section'));
-
         $cachePath = $this->getCachePath();
 
         if (! $this->fileSystem->fileExists($cachePath)) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('cache.clear.already_clear'));
-
-            return 0;
+            return CommandResponse::success(
+                messages: [ResponseMessage::notice(MessageRef::key('cache.clear.already_clear'))],
+            );
         }
 
         try {
             $this->fileSystem->delete($cachePath);
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('cache.clear.success'));
 
-            return 0;
+            return CommandResponse::success(MessageRef::key('cache.clear.success'));
         } catch (\RuntimeException $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('cache.clear.error_delete'));
+            $error = MessageRef::key('cache.clear.error_delete');
 
-            return 1;
+            return CommandResponse::error(
+                $error,
+                [ResponseMessage::error($error, $e->getMessage())],
+            );
         }
     }
 

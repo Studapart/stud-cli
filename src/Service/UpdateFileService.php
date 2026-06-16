@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Contract\WorkflowEntryRecorder;
+use App\DTO\MessageRef;
+use App\Service\Prompt\PromptInterface;
+
 class UpdateFileService
 {
     public function __construct(
-        private readonly TranslationService $translator
+        mixed $translator,
+        private readonly PromptInterface $prompt,
     ) {
+        unset($translator);
     }
 
     /**
@@ -21,10 +27,10 @@ class UpdateFileService
      * 3. We need atomic operations that work with the running process
      * 4. Flysystem cannot handle this special case
      */
-    public function replaceBinary(Logger $logger, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
+    public function replaceBinary(WorkflowEntryRecorder $recorder, string $tempFile, string $binaryPath, string $currentVersion, string $tagName): int
     {
         if (! is_writable($binaryPath)) {
-            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_not_writable')));
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_not_writable'));
             @unlink($tempFile);
 
             return 1;
@@ -46,7 +52,7 @@ class UpdateFileService
                 throw new \RuntimeException($errorMessage);
             }
         } catch (\Exception $e) {
-            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_backup', ['error' => $e->getMessage()])));
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_backup', ['error' => $e->getMessage()]));
             @unlink($tempFile);
 
             return 1;
@@ -68,14 +74,14 @@ class UpdateFileService
         } catch (\Exception $e) {
             try {
                 rename($backupPath, $binaryPath);
-                $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_rollback', ['error' => $e->getMessage()])));
+                $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_rollback', ['error' => $e->getMessage()]));
             } catch (\Exception $rollbackException) {
                 // Rollback also failed - this is a critical state
-                $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_rollback_failed', [
+                $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_rollback_failed', [
                     'original_error' => $e->getMessage(),
                     'rollback_error' => $rollbackException->getMessage(),
                     'backup_path' => $backupPath,
-                ])));
+                ]));
             }
             @unlink($tempFile);
 
@@ -124,7 +130,7 @@ class UpdateFileService
      * @param array<string, mixed> $pharAsset
      * @param bool $quiet When true, on verification failure do not prompt; return false (abort)
      */
-    public function verifyHash(Logger $logger, string $tempFile, array $pharAsset, bool $quiet = false): bool
+    public function verifyHash(WorkflowEntryRecorder $recorder, string $tempFile, array $pharAsset, bool $quiet = false): bool
     {
         // Extract digest from the asset's JSON object (format: "sha256:...")
         $digest = $pharAsset['digest'] ?? null;
@@ -132,7 +138,7 @@ class UpdateFileService
         // Calculate the local file's SHA-256 hash
         $calculatedHash = @hash_file('sha256', $tempFile);
         if ($calculatedHash === false) {
-            $logger->error(Logger::VERBOSITY_NORMAL, explode("\n", $this->translator->trans('update.error_hash_calculation')));
+            $recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.error_hash_calculation'));
 
             return false;
         }
@@ -149,7 +155,7 @@ class UpdateFileService
             }
 
             if (strtolower($calculatedHash) === strtolower($expectedHash)) {
-                $logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('update.success_hash_verified'));
+                $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.success_hash_verified'));
 
                 return true;
             }
@@ -157,20 +163,20 @@ class UpdateFileService
 
         // Case B: Mismatch or Missing Digest (Failed) - in quiet mode abort without prompting
         $errorMessage = $digest === null
-            ? $this->translator->trans('update.error_digest_not_found')
-            : $this->translator->trans('update.error_hash_mismatch', [
+            ? MessageRef::key('update.error_digest_not_found')
+            : MessageRef::key('update.error_hash_mismatch', [
                 'expected' => $digest,
                 'calculated' => $calculatedHash,
             ]);
 
-        $logger->warning(Logger::VERBOSITY_NORMAL, explode("\n", $errorMessage));
+        $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $errorMessage);
 
         if ($quiet) {
             return false;
         }
 
-        $continue = $logger->confirm(
-            $this->translator->trans('update.prompt_continue_on_verification_failure'),
+        $continue = $this->prompt->confirm(
+            MessageRef::key('update.prompt_continue_on_verification_failure'),
             false
         );
 

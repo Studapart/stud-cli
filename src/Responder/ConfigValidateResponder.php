@@ -61,7 +61,9 @@ class ConfigValidateResponder
     protected function respondJson(ConfigValidateResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Validation failed');
+            $error = $response->getError() ?? 'Validation failed';
+
+            return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error));
         }
 
         return new AgentJsonResponse(true, data: [

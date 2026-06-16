@@ -5,8 +5,11 @@ namespace App\Tests\Handler;
 use App\Handler\UpdateHandler;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
+use App\Service\GlobalMigrationService;
+use App\Service\TestEnvironmentDetector;
 use App\Service\UpdateFileService;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\UpdateHandlerTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -19,6 +22,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class UpdateHandlerTest extends CommandTestCase
 {
     private UpdateHandler $handler;
+    private \App\Service\Prompt\PromptInterface $prompt;
     private HttpClientInterface&MockObject $httpClient;
     private ChangelogParser&MockObject $changelogParser;
     private string $tempBinaryPath;
@@ -102,22 +106,7 @@ class UpdateHandlerTest extends CommandTestCase
 
         // Use mocked TranslationService from CommandTestCase
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        // Set up logger methods that might be called during migrations
-        // Use callbacks to handle multiple calls with different arguments
-        $logger->method('section')->willReturnCallback(function () {
-        });
-        $logger->method('text')->willReturnCallback(function () {
-        });
-        $logger->method('success')->willReturnCallback(function () {
-        });
-        $logger->method('error')->willReturnCallback(function ($verbosity, $message) {
-            // Accept any verbosity and message format (string or array)
-        });
-        $logger->method('writeln')->willReturnCallback(function () {
-        });
-        $logger->method('warning')->willReturnCallback(function () {
-        });
+        $this->prompt = $this->createMock(\App\Service\Logger::class);
 
         // Create mocked FileSystem for unit testing
         // This allows us to control behavior of filesystem operations
@@ -153,15 +142,15 @@ class UpdateHandlerTest extends CommandTestCase
         // Set up migration discovery mocks to prevent migration execution
         $this->setupMigrationMocks($fileSystem);
 
-        $this->handler = new UpdateHandler(
+        $this->handler = UpdateHandlerTestKit::create(
             'studapart', // repoOwner
             'stud-cli',  // repoName
             '1.0.0',     // currentVersion
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $fileSystem, // FileSystem (position 9) - now mocked
             null,        // gitToken
             $this->httpClient
@@ -225,9 +214,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNewerVersionAvailable(): void
@@ -278,9 +267,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Note: Success message removed to avoid zlib error after PHAR replacement
         // Success is indicated by exit code 0
 
@@ -346,9 +335,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoPharAsset(): void
@@ -391,9 +380,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoReleasesFound(): void
@@ -413,9 +402,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -467,9 +456,9 @@ class UpdateHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithVersionedAssetName(): void
@@ -520,9 +509,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
 
@@ -589,9 +578,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
 
         // Clean up backup file
@@ -632,9 +621,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithVersionPrefixHandling(): void
@@ -644,15 +633,15 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             'v1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -704,9 +693,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         // Clean up backup file
         @unlink($this->tempBinaryPath . '-v1.0.0.bak');
@@ -733,9 +722,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithDownloadFailure(): void
@@ -779,9 +768,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithBinaryReplacementFailure(): void
@@ -800,15 +789,15 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $badBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -856,10 +845,10 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should fail because file operations fail (tested via in-memory filesystem)
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWith404NoReleases(): void
@@ -878,10 +867,10 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         // 404 means no releases found - this is a success case
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNon404ApiError(): void
@@ -901,9 +890,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithGitTokenProvided(): void
@@ -911,15 +900,15 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             'test-token-123',
             $this->httpClient
@@ -945,9 +934,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Token should be used in the request (verified by the mock expectation)
     }
 
@@ -972,9 +961,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testGetBinaryPathUsesProvidedPath(): void
@@ -983,21 +972,21 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
         );
 
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $this->prompt);
         $binaryPath = $updateFileService->getBinaryPath($testPath);
 
         // In test environment, Phar::running() won't return a value and ReflectionClass will work
@@ -1014,21 +1003,21 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $testPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
         );
 
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $this->prompt);
         $binaryPath = $updateFileService->getBinaryPath($testPath);
 
         // In test environment without PHAR, it should use the provided path
@@ -1040,15 +1029,15 @@ class UpdateHandlerTest extends CommandTestCase
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             'test-token-123',
             $this->httpClient
@@ -1105,9 +1094,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         // Verify the binary was updated
@@ -1184,10 +1173,10 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         // Update should succeed
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         // Verify backup was created
         $this->assertFileExists($backupPath);
@@ -1242,9 +1231,9 @@ class UpdateHandlerTest extends CommandTestCase
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testDisplayChangelogWithBreakingChanges(): void
@@ -1309,9 +1298,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1379,9 +1368,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1415,22 +1404,22 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln');
-        $logger->method('text');
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSection');
+        $logger->method('addLine');
+        $logger->method('addText');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -1455,10 +1444,10 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
@@ -1491,9 +1480,9 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln');
-        $logger->method('text')
+        $logger->method('addSection');
+        $logger->method('addLine');
+        $logger->method('addText')
             ->willReturnCallback(function ($verbosity, $message) {
                 // Allow normal verbosity calls
                 if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
@@ -1504,19 +1493,19 @@ CHANGELOG;
                     return;
                 }
             });
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -1541,10 +1530,10 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
@@ -1710,9 +1699,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1777,9 +1766,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1850,9 +1839,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -1904,9 +1893,9 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -2044,9 +2033,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $response = $this->handler->handle(true);
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         // Verify binary was NOT updated
@@ -2109,9 +2098,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $response = $this->handler->handle(true);
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
 
         // Verify binary was NOT updated
@@ -2139,9 +2128,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $response = $this->handler->handle(true);
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         // Test intent: handler completed successfully, verified by return value
     }
 
@@ -2184,10 +2173,10 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, true);
+        $response = $this->handler->handle(true);
 
         // Should still exit successfully even if changelog fetch fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         // Verify binary was NOT updated
         $this->assertFileDoesNotExist($this->tempBinaryPath . '-1.0.0.bak');
@@ -2205,21 +2194,16 @@ CHANGELOG;
             ->with('GET', '/repos/studapart/stud-cli/releases/latest')
             ->willReturn($errorResponse);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('warning')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -2230,10 +2214,10 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should succeed even if release fetch fails with 404
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithGetLatestReleaseGenericExceptionWithout404Message(): void
@@ -2248,21 +2232,16 @@ CHANGELOG;
             ->with('GET', '/repos/studapart/stud-cli/releases/latest')
             ->willReturn($errorResponse);
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -2273,10 +2252,10 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should fail if release fetch fails (non-404 error)
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testDisplayChangelogWhenFetchFailsGenericException(): void
@@ -2313,22 +2292,22 @@ CHANGELOG;
         $downloadResponse->method('getContent')->willReturn($pharContent);
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section');
-        $logger->method('writeln'); // Allow all writeln calls (including logVerbose which calls writeln)
-        $logger->method('text');
-        $logger->method('success');
-        $logger->method('error');
+        $logger->method('addSection');
+        $logger->method('addLine'); // Allow all writeln calls (including logVerbose which calls writeln)
+        $logger->method('addText');
+        $logger->method('addSuccess');
+        $logger->method('addError');
 
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -2353,10 +2332,10 @@ CHANGELOG;
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should still succeed even if changelog fetch fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
     }
@@ -2409,9 +2388,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
 
         @unlink($this->tempBinaryPath . '-1.0.0.bak');
@@ -2474,9 +2453,9 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
 
         // Verify binary was NOT updated (tested via in-memory filesystem)
         // Temp file cleanup is handled by FileSystem in-memory abstraction
@@ -2541,17 +2520,17 @@ CHANGELOG;
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
-        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSection')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addText')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSuccess')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        $loggerWithConfirm->method('addError')->willReturnCallback(function ($verbosity, $message) {
         });
-        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addLine')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
         $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
         $fileSystem = $this->createMock(FileSystem::class);
@@ -2561,23 +2540,23 @@ CHANGELOG;
                 @file_put_contents($path, $contents);
             }
         });
-        $handlerWithConfirmLogger = new UpdateHandler(
+        $handlerWithConfirmLogger = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $loggerWithConfirm),
             $loggerWithConfirm,
             $fileSystem,
             null,
             $this->httpClient
         );
 
-        $result = $handlerWithConfirmLogger->handle($io);
+        $result = $handlerWithConfirmLogger->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $result->exitCode);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
 
         // Clean up backup file
@@ -2640,9 +2619,9 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
 
         // Verify binary was NOT updated (tested via in-memory filesystem)
         // Temp file cleanup is handled by FileSystem in-memory abstraction
@@ -2721,17 +2700,17 @@ CHANGELOG;
 
         // Handler uses $this->logger for verifyHash/replaceBinary; use a handler with logger that confirms
         $loggerWithConfirm = $this->createMock(\App\Service\Logger::class);
-        $loggerWithConfirm->method('section')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSection')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('text')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addText')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('success')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addSuccess')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('error')->willReturnCallback(function ($verbosity, $message) {
+        $loggerWithConfirm->method('addError')->willReturnCallback(function ($verbosity, $message) {
         });
-        $loggerWithConfirm->method('writeln')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addLine')->willReturnCallback(function () {
         });
-        $loggerWithConfirm->method('warning')->willReturnCallback(function () {
+        $loggerWithConfirm->method('addWarning')->willReturnCallback(function () {
         });
         $loggerWithConfirm->method('confirm')->with($this->anything(), $this->anything())->willReturn(true);
         $fileSystem = $this->createMock(FileSystem::class);
@@ -2741,23 +2720,23 @@ CHANGELOG;
                 @file_put_contents($path, $contents);
             }
         });
-        $handlerWithConfirmLogger = new UpdateHandler(
+        $handlerWithConfirmLogger = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $loggerWithConfirm),
             $loggerWithConfirm,
             $fileSystem,
             null,
             $this->httpClient
         );
 
-        $result = $handlerWithConfirmLogger->handle($io);
+        $result = $handlerWithConfirmLogger->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $result->exitCode);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
 
         // Clean up backup file
@@ -2782,9 +2761,9 @@ CHANGELOG;
         // Use /tmp/ path which FileSystem handles specially for in-memory filesystems
         $nonExistentFile = '/tmp/non-existent-file-' . uniqid() . '.phar';
 
-        $logger = new \App\Service\Logger($io, []);
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($logger, $nonExistentFile, $pharAsset);
+        $recorder = new \App\DTO\WorkflowRecorder();
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $this->prompt);
+        $result = $updateFileService->verifyHash($recorder, $nonExistentFile, $pharAsset);
 
         $this->assertFalse($result);
         // Test intent: handler completed successfully, verified by return value
@@ -2839,9 +2818,9 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $logger = new \App\Service\Logger($io, []);
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset);
+        $recorder = new \App\DTO\WorkflowRecorder();
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $this->prompt);
+        $result = $updateFileService->verifyHash($recorder, $tempFile, $pharAsset);
 
         $this->assertTrue($result);
         // Test intent: handler completed successfully, verified by return value
@@ -2870,13 +2849,15 @@ CHANGELOG;
         $io->method('isQuiet')->willReturn(false);
         $io->method('isVeryVerbose')->willReturn(false);
         $io->method('isDebug')->willReturn(false);
-        $logger = new \App\Service\Logger($io, []);
-        $io->method('confirm')
-            ->with($this->anything(), false)
-            ->willReturn(false); // User aborts
 
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset);
+        $prompt = $this->createMock(\App\Service\Logger::class);
+        $prompt->method('confirm')
+            ->with($this->anything(), false)
+            ->willReturn(false);
+
+        $recorder = new \App\DTO\WorkflowRecorder();
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $prompt);
+        $result = $updateFileService->verifyHash($recorder, $tempFile, $pharAsset);
 
         $this->assertFalse($result);
 
@@ -2905,10 +2886,10 @@ CHANGELOG;
         $io->method('warning')->willReturnSelf();
         $io->method('error')->willReturnSelf();
         $io->expects($this->never())->method('confirm');
-        $logger = new \App\Service\Logger($io, []);
 
-        $updateFileService = new \App\Service\UpdateFileService($this->translationService);
-        $result = $updateFileService->verifyHash($logger, $tempFile, $pharAsset, true);
+        $recorder = new \App\DTO\WorkflowRecorder();
+        $updateFileService = new \App\Service\UpdateFileService($this->translationService, $this->prompt);
+        $result = $updateFileService->verifyHash($recorder, $tempFile, $pharAsset, true);
 
         $this->assertFalse($result);
 
@@ -2920,15 +2901,15 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null, // gitToken
             null // No httpClient provided
@@ -2944,15 +2925,15 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             'test-token-123', // gitToken
             null // No httpClient provided
@@ -2976,15 +2957,15 @@ CHANGELOG;
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             'test-token-123',
             $this->httpClient // httpClient provided
@@ -3039,7 +3020,7 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             null,
             $this->httpClient,
@@ -3062,7 +3043,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3100,9 +3082,9 @@ CHANGELOG;
         $flysystem->write($testConfigPath, "invalid: yaml: [unclosed\n");
 
         $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->method('section')->willReturnCallback(function () {
+        $logger->method('addSection')->willReturnCallback(function () {
         });
-        $logger->method('error')->willReturnCallback(function () {
+        $logger->method('addError')->willReturnCallback(function () {
         });
 
         // Create handler that uses in-memory filesystem
@@ -3113,8 +3095,8 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3137,7 +3119,8 @@ CHANGELOG;
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
                 $this->testFileSystem = $testFileSystem;
             }
@@ -3216,24 +3199,24 @@ CHANGELOG;
 
         try {
             $logger = $this->createMock(\App\Service\Logger::class);
-            $logger->method('section')->willReturnCallback(function () {
+            $logger->method('addSection')->willReturnCallback(function () {
             });
-            $logger->method('text')->willReturnCallback(function () {
+            $logger->method('addText')->willReturnCallback(function () {
             });
-            $logger->method('error')->willReturnCallback(function () {
+            $logger->method('addError')->willReturnCallback(function () {
             });
-            $logger->method('success')->willReturnCallback(function () {
+            $logger->method('addSuccess')->willReturnCallback(function () {
             });
 
             $inMemoryFileSystem = $this->createInMemoryFileSystem();
-            $handler = new UpdateHandler(
+            $handler = UpdateHandlerTestKit::create(
                 'studapart',
                 'stud-cli',
                 '1.0.0',
                 $this->tempBinaryPath,
                 $this->translationService,
                 $this->changelogParser,
-                new UpdateFileService($this->translationService),
+                new UpdateFileService($this->translationService, $this->prompt),
                 $logger,
                 $inMemoryFileSystem,
                 null,
@@ -3248,7 +3231,7 @@ CHANGELOG;
                 $this->tempBinaryPath,
                 $this->translationService,
                 $this->changelogParser,
-                new UpdateFileService($this->translationService),
+                new UpdateFileService($this->translationService, $this->prompt),
                 $logger,
                 null,
                 $this->httpClient,
@@ -3272,7 +3255,8 @@ CHANGELOG;
                     string $testConfigPath,
                     FileSystem $testFileSystem
                 ) {
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                     $this->testConfigPath = $testConfigPath;
                     $this->testFileSystem = $testFileSystem;
                 }
@@ -3328,7 +3312,8 @@ CHANGELOG;
                     \App\Service\FileSystem $testFileSystem,
                     string $tempFile
                 ) {
-                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                    [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                    parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                     $this->testConfigPath = $testConfigPath;
                     $this->tempFile = $tempFile;
                 }
@@ -3347,10 +3332,10 @@ CHANGELOG;
             // Execute handle - this should trigger runPrerequisiteMigrations which will fail
             // In test environment, exceptions are gracefully handled and return 0
             // This prevents test failures due to filesystem or migration discovery issues
-            $result = $testHandlerWithDownload->handle($io);
+            $result = $testHandlerWithDownload->handle();
 
             // In test environment, exceptions are gracefully handled and return 0
-            $this->assertSame(0, $result);
+            $this->assertSame(0, $result->exitCode);
 
             // Since we return 0 (not 1), the cleanup code at line 112-114 doesn't run
             // The temp file should still exist in the in-memory filesystem
@@ -3386,9 +3371,9 @@ CHANGELOG;
         $logger = $this->createMock(\App\Service\Logger::class);
         // Should NOT call section or success when there are no pending migrations
         $logger->expects($this->never())
-            ->method('section');
+            ->method('addSection');
         $logger->expects($this->never())
-            ->method('success');
+            ->method('addSuccess');
 
         // Create handler that uses in-memory filesystem - this will use the REAL method
         $testHandler = new class (
@@ -3398,8 +3383,8 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3421,7 +3406,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3447,24 +3433,19 @@ CHANGELOG;
             'name' => 'stud.phar', // Missing 'id' key
         ];
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
         $adapter = new InMemoryFilesystemAdapter();
         $flysystem = new FlysystemFilesystem($adapter);
         $fileSystem = new FileSystem($flysystem);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $fileSystem,
             null,
             $this->httpClient
@@ -3481,11 +3462,6 @@ CHANGELOG;
             'name' => 'stud.phar',
         ];
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
         $httpClient = $this->createMock(HttpClientInterface::class);
         $httpClient->expects($this->once())
             ->method('request')
@@ -3495,15 +3471,15 @@ CHANGELOG;
         $flysystem = new FlysystemFilesystem($adapter);
         $fileSystem = new FileSystem($flysystem);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $fileSystem,
             null,
             $httpClient
@@ -3522,14 +3498,14 @@ CHANGELOG;
 
         try {
             $inMemoryFileSystem = $this->createInMemoryFileSystem();
-            $handler = new UpdateHandler(
+            $handler = UpdateHandlerTestKit::create(
                 'studapart',
                 'stud-cli',
                 '1.0.0',
                 $this->tempBinaryPath,
                 $this->translationService,
                 $this->changelogParser,
-                new UpdateFileService($this->translationService),
+                new UpdateFileService($this->translationService, $this->prompt),
                 $this->createMock(\App\Service\Logger::class),
                 $inMemoryFileSystem,
                 null,
@@ -3581,8 +3557,8 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $logger,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             null,
             $this->httpClient,
             $testConfigPath,
@@ -3604,7 +3580,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3629,14 +3606,14 @@ CHANGELOG;
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
         $testConfigPath = '/test/config.yml';
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
@@ -3651,7 +3628,7 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             null,
             $this->httpClient,
@@ -3674,7 +3651,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3709,7 +3687,7 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             null,
             $this->httpClient,
@@ -3732,7 +3710,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3770,7 +3749,7 @@ CHANGELOG;
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             null,
             $this->httpClient,
@@ -3793,7 +3772,8 @@ CHANGELOG;
                 string $testConfigPath,
                 \App\Service\FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -3813,40 +3793,103 @@ CHANGELOG;
     public function testDiscoverPrerequisiteMigrationsReturnsEmptyArrayInTestEnvironment(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $migrationService = $this->createMock(GlobalMigrationService::class);
+        $migrationService->method('discoverPrerequisiteMigrations')
+            ->with('0')
+            ->willThrowException(new \RuntimeException('discovery failed'));
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
-            $this->createMock(\App\Service\Logger::class),
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
-            $this->httpClient
+            $this->httpClient,
+            $migrationService,
         );
 
-        // In test environment, this should return empty array
         $result = $this->callPrivateMethod($handler, 'discoverPrerequisiteMigrations', ['0']);
 
         $this->assertIsArray($result);
         $this->assertEmpty($result);
     }
 
-    public function testHandleMigrationErrorReturnsZeroInTestEnvironment(): void
+    public function testDiscoverPrerequisiteMigrationsUsesInjectedGlobalMigrationService(): void
     {
         $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $migrationService = $this->createMock(GlobalMigrationService::class);
+        $migrationService->expects($this->once())
+            ->method('discoverPrerequisiteMigrations')
+            ->with('1.2.3')
+            ->willReturn([]);
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
+            $inMemoryFileSystem,
+            null,
+            $this->httpClient,
+            $migrationService,
+        );
+
+        $result = $this->callPrivateMethod($handler, 'discoverPrerequisiteMigrations', ['1.2.3']);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testDiscoverPrerequisiteMigrationsRethrowsOutsideTestEnvironment(): void
+    {
+        $inMemoryFileSystem = $this->createInMemoryFileSystem();
+        $migrationService = $this->createMock(GlobalMigrationService::class);
+        $migrationService->method('discoverPrerequisiteMigrations')
+            ->willThrowException(new \RuntimeException('discovery failed'));
+        $detector = $this->createNonTestEnvironmentDetector();
+
+        $handler = UpdateHandlerTestKit::create(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
+            $inMemoryFileSystem,
+            null,
+            $this->httpClient,
+            $migrationService,
+            $detector,
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('discovery failed');
+
+        $this->callPrivateMethod($handler, 'discoverPrerequisiteMigrations', ['0']);
+    }
+
+    public function testHandleMigrationErrorReturnsZeroInTestEnvironment(): void
+    {
+        $inMemoryFileSystem = $this->createInMemoryFileSystem();
+
+        $handler = UpdateHandlerTestKit::create(
+            'studapart',
+            'stud-cli',
+            '1.0.0',
+            $this->tempBinaryPath,
+            $this->translationService,
+            $this->changelogParser,
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             $inMemoryFileSystem,
             null,
@@ -3875,15 +3918,15 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $translator,
             $this->changelogParser,
-            new UpdateFileService($translator),
-            $this->createMock(\App\Service\Logger::class),
+            new UpdateFileService($translator, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3891,7 +3934,11 @@ CHANGELOG;
 
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['202501160000001', 'Failed to write file']);
 
-        $this->assertSame('Migration 202501160000001 failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => '202501160000001',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration 202501160000001 failed: Failed to write file', $result->fallback);
     }
 
     public function testGetErrorMessageWithTranslationReturnsKey(): void
@@ -3909,15 +3956,15 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $translator,
             $this->changelogParser,
-            new UpdateFileService($translator),
-            $this->createMock(\App\Service\Logger::class),
+            new UpdateFileService($translator, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3926,7 +3973,11 @@ CHANGELOG;
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
 
         // Should return fallback message when translation returns the key
-        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => 'prerequisite',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result->fallback);
     }
 
     public function testGetErrorMessageWithTranslationException(): void
@@ -3944,15 +3995,15 @@ CHANGELOG;
                 return $key;
             });
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $translator,
             $this->changelogParser,
-            new UpdateFileService($translator),
-            $this->createMock(\App\Service\Logger::class),
+            new UpdateFileService($translator, $this->prompt),
+            $this->prompt,
             $inMemoryFileSystem,
             null,
             $this->httpClient
@@ -3961,7 +4012,11 @@ CHANGELOG;
         $result = $this->callPrivateMethod($handler, 'getErrorMessage', ['prerequisite', 'Failed to write file']);
 
         // Should return fallback message when translation throws exception
-        $this->assertSame('Migration prerequisite failed: Failed to write file', $result);
+        $this->assertMessageRef($result, 'migration.error', [
+            'id' => 'prerequisite',
+            'error' => 'Failed to write file',
+        ]);
+        $this->assertSame('Migration prerequisite failed: Failed to write file', $result->fallback);
     }
 
     public function testHandleWithHashVerificationFailureAndCleanupError(): void
@@ -4034,14 +4089,14 @@ CHANGELOG;
             ->method('delete')
             ->willThrowException(new \RuntimeException('Cleanup error'));
 
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             $this->changelogParser,
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $this->prompt),
             $this->createMock(\App\Service\Logger::class),
             $fileSystem,
             null,
@@ -4061,11 +4116,11 @@ CHANGELOG;
             ->with($this->anything(), false)
             ->willReturn(false); // User aborts
 
-        $result = $handler->handle($io);
+        $response = $handler->handle();
 
         // Should return 1 (error) even though cleanup failed
         // The cleanup error is caught and ignored (line 87-89)
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testIsTestEnvironmentWithPhpunitEnvVar(): void
@@ -4178,9 +4233,7 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsFalseWhenNotInTest(): void
     {
-        // Test line 578: return false when none of the conditions match.
-        // Use a subclass that forces all three detectors to return false.
-        $handler = new class (
+        $handler = UpdateHandlerTestKit::create(
             'owner',
             'repo',
             '1.0.0',
@@ -4189,23 +4242,9 @@ CHANGELOG;
             $this->createMock(ChangelogParser::class),
             $this->createMock(\App\Service\UpdateFileService::class),
             $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class)
-        ) extends UpdateHandler {
-            protected function isTestEnvironmentByConstant(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByBacktrace(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByClassOrEnv(): bool
-            {
-                return false;
-            }
-        };
+            $this->createMock(\App\Service\FileSystem::class),
+            testEnvironmentDetector: $this->createNonTestEnvironmentDetector(),
+        );
 
         $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
 
@@ -4214,7 +4253,12 @@ CHANGELOG;
 
     public function testIsTestEnvironmentReturnsTrueWhenOnlyClassOrEnvDetectorReturnsTrue(): void
     {
-        $handler = new class (
+        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector->method('isTestEnvironmentByConstant')->willReturn(false);
+        $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
+        $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(true);
+
+        $handler = UpdateHandlerTestKit::create(
             'owner',
             'repo',
             '1.0.0',
@@ -4223,26 +4267,22 @@ CHANGELOG;
             $this->createMock(ChangelogParser::class),
             $this->createMock(\App\Service\UpdateFileService::class),
             $this->createMock(\App\Service\Logger::class),
-            $this->createMock(\App\Service\FileSystem::class)
-        ) extends UpdateHandler {
-            protected function isTestEnvironmentByConstant(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByBacktrace(): bool
-            {
-                return false;
-            }
-
-            protected function isTestEnvironmentByClassOrEnv(): bool
-            {
-                return true;
-            }
-        };
+            $this->createMock(\App\Service\FileSystem::class),
+            testEnvironmentDetector: $detector,
+        );
 
         $result = $this->callPrivateMethod($handler, 'isTestEnvironment');
 
         $this->assertTrue($result);
+    }
+
+    private function createNonTestEnvironmentDetector(): TestEnvironmentDetector&MockObject
+    {
+        $detector = $this->createMock(TestEnvironmentDetector::class);
+        $detector->method('isTestEnvironmentByConstant')->willReturn(false);
+        $detector->method('isTestEnvironmentByBacktrace')->willReturn(false);
+        $detector->method('isTestEnvironmentByClassOrEnv')->willReturn(false);
+
+        return $detector;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
+use App\Enum\WorkflowChannel;
 use App\Handler\CommitHandler;
 use App\Service\Logger;
 use App\Tests\CommandTestCase;
@@ -29,14 +30,14 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->logger->method('note');
+        $this->logger->method('addNote');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: note() was called for clean working tree, verified by return value
     }
 
@@ -46,14 +47,14 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('   ');
 
-        $this->logger->method('note');
+        $this->logger->method('addNote');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: note() was called for clean working tree (with whitespace), verified by return value
     }
 
@@ -75,15 +76,38 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('my message');
 
-        $this->logger->method('success');
+        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: success() was called, verified by return value
+    }
+
+    public function testHandleWithMessageUsingNewSignature(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->never())
+            ->method('stageAllChanges');
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message');
+
+        $result = $this->handler->handle(false, 'my message', false, false);
+
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithMessageAndAllFlag(): void
@@ -99,15 +123,15 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('my message');
 
-        $this->logger->method('success');
-        $this->logger->method('text');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addText');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', true);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: success() was called, verified by return value
     }
 
@@ -128,15 +152,14 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commit');
 
-        $this->logger->expects($this->once())
-            ->method('error');
+        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 
@@ -167,19 +190,18 @@ class CommitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $loggerCalls = [];
-        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
             $loggerCalls[] = $message;
         });
 
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
-        // Test intent: verbose output was shown (Logger was called)
-        $this->assertNotEmpty($loggerCalls);
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame('abcdef', $result->data['fixupSha'] ?? null);
     }
 
     public function testHandleWithAutoFixupAndAllFlag(): void
@@ -204,19 +226,18 @@ class CommitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $loggerCalls = [];
-        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use (&$loggerCalls) {
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
             $loggerCalls[] = $message;
         });
 
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('success');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
 
         $result = $this->handler->handle($io, false, null, true);
 
-        $this->assertSame(0, $result);
-        // Test intent: verbose output was shown (Logger was called)
-        $this->assertNotEmpty($loggerCalls);
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame('abcdef', $result->data['fixupSha'] ?? null);
     }
 
     public function testHandleWithAutoFixupNoStagedChanges(): void
@@ -241,18 +262,17 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commitFixup');
 
-        $this->logger->expects($this->once())
-            ->method('error');
+        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->method('section');
-        $this->logger->method('gitWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 
@@ -295,18 +315,18 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): New feature [TPW-35]');
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, true, null, false, true);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithInteractivePrompter(): void
@@ -358,23 +378,23 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithQuietUsesDetectedTypeScopeSummaryWithoutPrompting(): void
@@ -423,19 +443,19 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->never())
             ->method('ask');
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('gitWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
+        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false, true);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithInteractivePrompterAndAllFlag(): void
@@ -482,23 +502,23 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, true);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithInteractivePrompterNoStagedChanges(): void
@@ -543,29 +563,28 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commit');
 
-        $this->logger->expects($this->once())
-            ->method('error');
+        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addLine');
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 
@@ -583,14 +602,14 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn(null);
 
-        $this->logger->method('error');
+        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 
@@ -613,14 +632,14 @@ class CommitHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \Exception('Jira service error'));
 
-        $this->logger->method('error');
+        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
         // Test intent: error() was called, verified by return value
     }
 
@@ -643,11 +662,10 @@ class CommitHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
+        $this->logger->method('addErrorWithDetails')
             ->with(
                 \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('commit.error_not_found'),
+                $this->messageRefWithKey('commit.error_not_found'),
                 'HTTP 404: Not Found'
             );
 
@@ -656,7 +674,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleWithVeryVerboseOutput(): void
@@ -708,19 +726,19 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
             if ($verbosity <= Logger::VERBOSITY_VERY_VERBOSE) {
                 $output->writeln($message);
             }
@@ -728,7 +746,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: verbose output was shown, verified by return value
     }
 
@@ -781,23 +799,23 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => '',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_prompt') || str_contains((string) $question, 'Scope') => '',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithVerboseOutputForCommitMessage(): void
@@ -849,24 +867,19 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_auto') || str_contains($question, 'api') => 'api',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
-            if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
-                $output->writeln($message);
-            }
-        });
-        $this->logger->method('gitWriteln')->willReturnCallback(function (int $verbosity, string $message) use ($output) {
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
             if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
                 $output->writeln($message);
             }
@@ -874,7 +887,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
         // Test intent: verbose output was shown, verified by return value
     }
 
@@ -927,23 +940,23 @@ class CommitHandlerTest extends CommandTestCase
         $this->logger->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
-                fn (string $question, ?string $default) => match (true) {
-                    str_contains($question, 'commit.type_prompt') || str_contains($question, 'feat') => 'feat',
-                    str_contains($question, 'commit.scope_prompt') || str_contains($question, 'Scope') => '',
-                    str_contains($question, 'commit.summary_prompt') || str_contains($question, 'Short Message') => 'My awesome feature',
+                fn ($question, ?string $default) => match (true) {
+                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
+                    str_contains((string) $question, 'commit.scope_prompt') || str_contains((string) $question, 'Scope') => '',
+                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('section');
-        $this->logger->method('note');
-        $this->logger->method('text');
-        $this->logger->method('success');
-        $this->logger->method('jiraWriteln');
+        $this->logger->method('addSection');
+        $this->logger->method('addNote');
+        $this->logger->method('addText');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testgetCommitTypeFromIssueType(): void

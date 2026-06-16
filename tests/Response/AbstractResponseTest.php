@@ -2,6 +2,7 @@
 
 namespace App\Tests\Response;
 
+use App\DTO\ResponseMessage;
 use App\Response\AbstractResponse;
 use PHPUnit\Framework\TestCase;
 
@@ -54,5 +55,33 @@ class AbstractResponseTest extends TestCase
         };
 
         $this->assertNull($response->getError());
+    }
+
+    public function testDiagnosticsAreGroupedByLevel(): void
+    {
+        $response = new class ([
+            ResponseMessage::error('Failed', 'stack trace', ['command' => 'test']),
+            ResponseMessage::warning('Careful'),
+            ResponseMessage::notice('Skipped optional step'),
+            ResponseMessage::info('Debug context'),
+        ]) extends AbstractResponse {
+            public function __construct(array $messages)
+            {
+                parent::__construct(false, 'Failed', $messages);
+            }
+        };
+
+        $this->assertTrue($response->hasDiagnostics());
+        $this->assertSame('Failed', $response->getErrors()[0]->message);
+        $this->assertSame('Careful', $response->getWarnings()[0]->message);
+        $this->assertSame('Skipped optional step', $response->getNotices()[0]->message);
+        $this->assertSame('Debug context', $response->getInfos()[0]->message);
+        $this->assertSame(['stack trace'], $response->getTechnicalDetails());
+        $this->assertSame([
+            'errors' => [['message' => 'Failed', 'technicalDetails' => 'stack trace', 'context' => ['command' => 'test']]],
+            'warnings' => [['message' => 'Careful']],
+            'notices' => [['message' => 'Skipped optional step']],
+            'info' => [['message' => 'Debug context']],
+        ], $response->diagnosticsPayload());
     }
 }

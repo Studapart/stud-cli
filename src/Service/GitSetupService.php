@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\MessageRef;
+
 class GitSetupService
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly Logger $logger,
-        private readonly TranslationService $translator
+        private readonly WorkflowOutput $logger,
+        mixed $translator
     ) {
+        unset($translator);
     }
 
     /**
@@ -31,7 +34,7 @@ class GitSetupService
         try {
             $this->gitRepository->getProjectConfigPath();
         } catch (\RuntimeException $e) {
-            throw new \RuntimeException($this->translator->trans('config.base_branch_required'));
+            throw new \RuntimeException((string) MessageRef::key('config.base_branch_required'));
         }
 
         $config = $this->gitRepository->readProjectConfig();
@@ -59,9 +62,9 @@ class GitSetupService
         $branchName = str_replace('origin/', '', $baseBranch);
         if (! $this->gitRepository->remoteBranchExists('origin', $branchName)) {
             if ($quiet) {
-                throw new \RuntimeException($this->translator->trans('config.base_branch_invalid', ['branch' => $branchName]));
+                throw new \RuntimeException((string) MessageRef::key('config.base_branch_invalid', ['branch' => $branchName]));
             }
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.base_branch_invalid', ['branch' => $branchName]));
+            $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_invalid', ['branch' => $branchName]));
 
             return null;
         }
@@ -90,11 +93,11 @@ class GitSetupService
         $detected = $this->detectBaseBranch();
         $defaultSuggestion = $detected ?? 'develop';
         if ($detected !== null) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.base_branch_detected', ['branch' => $detected]));
+            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_detected', ['branch' => $detected]));
         }
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.base_branch_not_configured'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_not_configured'));
         $enteredBranch = $this->logger->ask(
-            $this->translator->trans('config.base_branch_prompt'),
+            MessageRef::key('config.base_branch_prompt'),
             $defaultSuggestion,
             function (?string $value): string {
                 if (empty(trim($value ?? ''))) {
@@ -105,16 +108,16 @@ class GitSetupService
             }
         );
         if ($enteredBranch === null || trim($enteredBranch) === '') {
-            throw new \RuntimeException($this->translator->trans('config.base_branch_required'));
+            throw new \RuntimeException((string) MessageRef::key('config.base_branch_required'));
         }
         $enteredBranch = trim($enteredBranch);
         if (! $this->gitRepository->remoteBranchExists('origin', $enteredBranch)) {
-            throw new \RuntimeException($this->translator->trans('config.base_branch_invalid', ['branch' => $enteredBranch]));
+            throw new \RuntimeException((string) MessageRef::key('config.base_branch_invalid', ['branch' => $enteredBranch]));
         }
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.base_branch_saving'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_saving'));
         $config['baseBranch'] = $enteredBranch;
         $this->gitRepository->writeProjectConfig($config);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.base_branch_saved', ['branch' => $enteredBranch]));
+        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_saved', ['branch' => $enteredBranch]));
 
         return 'origin/' . $enteredBranch;
     }
@@ -184,7 +187,7 @@ class GitSetupService
         try {
             $this->gitRepository->getProjectConfigPath();
         } catch (\RuntimeException $e) {
-            throw new \RuntimeException($this->translator->trans('config.git_provider_required'));
+            throw new \RuntimeException((string) MessageRef::key('config.git_provider_required'));
         }
 
         $config = $this->gitRepository->readProjectConfig();
@@ -216,38 +219,38 @@ class GitSetupService
     private function promptAndSaveGitProvider(array $config, ?string $detected): string
     {
         if ($detected !== null) {
-            $this->logger->note(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('config.git_provider_detected', ['provider' => $detected])
+            $this->logger->addNote(
+                WorkflowOutput::VERBOSITY_NORMAL,
+                MessageRef::key('config.git_provider_detected', ['provider' => $detected])
             );
         }
 
-        $this->logger->note(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('config.git_provider_not_configured')
+        $this->logger->addNote(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('config.git_provider_not_configured')
         );
 
         $enteredProvider = $this->logger->choice(
-            $this->translator->trans('config.git_provider_prompt'),
+            MessageRef::key('config.git_provider_prompt'),
             ['github', 'gitlab'],
             $detected ?? 'github'
         );
 
         if ($enteredProvider === null || ! in_array($enteredProvider, ['github', 'gitlab'], true)) {
-            throw new \RuntimeException($this->translator->trans('config.git_provider_required'));
+            throw new \RuntimeException((string) MessageRef::key('config.git_provider_required'));
         }
 
-        $this->logger->text(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('config.git_provider_saving')
+        $this->logger->addText(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('config.git_provider_saving')
         );
 
         $config['gitProvider'] = $enteredProvider;
         $this->gitRepository->writeProjectConfig($config);
 
-        $this->logger->success(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('config.git_provider_saved', ['provider' => $enteredProvider])
+        $this->logger->addSuccess(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('config.git_provider_saved', ['provider' => $enteredProvider])
         );
 
         return $enteredProvider;
@@ -274,7 +277,7 @@ class GitSetupService
         try {
             $this->gitRepository->getProjectConfigPath();
         } catch (\RuntimeException $e) {
-            throw new \RuntimeException($this->translator->trans('config.git_token_required'));
+            throw new \RuntimeException((string) MessageRef::key('config.git_token_required'));
         }
 
         $projectConfig = $this->gitRepository->readProjectConfig();
@@ -344,9 +347,9 @@ class GitSetupService
         if ($oppositeToken === null || ! is_string($oppositeToken) || trim($oppositeToken) === '') {
             return;
         }
-        $this->logger->warning(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('config.git_token_type_mismatch', [
+        $this->logger->addWarning(
+            WorkflowOutput::VERBOSITY_NORMAL,
+            MessageRef::key('config.git_token_type_mismatch', [
                 'provider' => ucfirst($providerType),
                 'opposite' => $keys['oppositeProvider'],
             ])
@@ -364,19 +367,19 @@ class GitSetupService
         array $globalConfig,
         array $keys
     ): ?string {
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.git_token_not_configured'));
+        $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.git_token_not_configured'));
         if (($globalConfig['GITHUB_TOKEN'] ?? null) === null && ($globalConfig['GITLAB_TOKEN'] ?? null) === null) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.git_token_global_suggestion'));
+            $this->logger->addNote(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.git_token_global_suggestion'));
         }
-        $enteredToken = $this->logger->askHidden($this->translator->trans('config.git_token_prompt', ['provider' => ucfirst($providerType)]));
+        $enteredToken = $this->logger->askHidden(MessageRef::key('config.git_token_prompt', ['provider' => ucfirst($providerType)]));
         if ($enteredToken === null || trim($enteredToken) === '') {
             return null;
         }
         $enteredToken = trim($enteredToken);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.git_token_saving'));
+        $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.git_token_saving'));
         $projectConfig[$keys['tokenKey']] = $enteredToken;
         $this->gitRepository->writeProjectConfig($projectConfig);
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.git_token_saved', ['provider' => ucfirst($providerType)]));
+        $this->logger->addSuccess(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.git_token_saved', ['provider' => ucfirst($providerType)]));
 
         return $enteredToken;
     }
@@ -391,7 +394,7 @@ class GitSetupService
         $branchName = str_replace('origin/', '', $baseBranch);
         if ($branchName === '' || ! $this->gitRepository->remoteBranchExists('origin', $branchName)) {
             throw new \RuntimeException(
-                $this->translator->trans('config.base_branch_invalid', [
+                (string) MessageRef::key('config.base_branch_invalid', [
                     'branch' => $branchName !== '' ? $branchName : $baseBranch,
                 ])
             );

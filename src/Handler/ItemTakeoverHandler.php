@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
+use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
+use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\Prompt\PromptInterface;
 
 class ItemTakeoverHandler
 {
+    private WorkflowEntryRecorder $recorder;
+
     /**
      * @param array<string, mixed> $jiraConfig
      */
@@ -23,55 +28,57 @@ class ItemTakeoverHandler
         private readonly JiraService $jiraService,
         private readonly ItemStartHandler $itemStartHandler,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator,
+        mixed $_translator,
         /** @phpstan-ignore-next-line */
         private readonly array $jiraConfig,
-        private readonly Logger $logger
+        private readonly PromptInterface $prompt,
     ) {
+        unset($_translator);
         // $jiraConfig is kept for potential future use (e.g., transition handling)
     }
 
-    public function handle(SymfonyStyle $io, string $key, bool $quiet = false): int
+    public function handle(string $key, bool $quiet = false): WorkflowResponse
     {
+        $this->recorder = new WorkflowRecorder();
         $key = strtoupper($key);
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.section', ['key' => $key]));
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.section', ['key' => $key]));
 
         // Step 1: Validate working directory
         if (! $this->checkWorkingDirectory()) {
-            return 1;
+            return $this->recorder->toResponse(1);
         }
 
         // Step 2: Fetch issue from Jira
         try {
             $issue = $this->jiraService->getIssue($key);
         } catch (ApiException $e) {
-            $this->logger->errorWithDetails(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('item.takeover.error_not_found', ['key' => $key]),
+            $this->recorder->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.takeover.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
 
-            return 1;
+            return $this->recorder->toResponse(1);
         } catch (\Exception $e) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.error_not_found', ['key' => $key]));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.error_not_found', ['key' => $key]));
 
-            return 1;
+            return $this->recorder->toResponse(1);
         }
 
         // Step 3: Assign issue to current user
         $this->assignIssueToCurrentUser($key);
 
         // Step 4: Fetch from remote
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.fetching'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.fetching'), WorkflowChannel::Git);
         $this->gitRepository->fetch();
 
         // Step 5: Search for branches
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.searching_branches'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.searching_branches'), WorkflowChannel::Git);
         $branches = $this->gitBranchService->findBranchesByIssueKey($key);
 
         // Step 6: Handle branches
         if (empty($branches['local']) && empty($branches['remote'])) {
-            return $this->handleNoBranches($io, $key, $quiet);
+            return $this->handleNoBranches($key, $quiet);
         }
 
         return $this->handleExistingBranches($key, $branches, $quiet);
@@ -81,7 +88,7 @@ class ItemTakeoverHandler
     {
         $status = $this->gitRepository->getPorcelainStatus();
         if (! empty(trim($status))) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.error_dirty_working'));
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.error_dirty_working'));
 
             return false;
         }
@@ -92,48 +99,55 @@ class ItemTakeoverHandler
     protected function assignIssueToCurrentUser(string $key): void
     {
         try {
-            $this->logger->jiraWriteln(Logger::VERBOSITY_VERBOSE, "  {$this->translator->trans('item.takeover.assigning', ['key' => $key])}");
+            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.takeover.assigning', ['key' => $key]), WorkflowChannel::Jira);
             $this->jiraService->assignIssue($key);
         } catch (ApiException $e) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.assign_warning', ['error' => $e->getMessage()]));
-            $this->logger->text(Logger::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.assign_warning', ['error' => $e->getMessage()]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.assign_warning', ['error' => $e->getMessage()]));
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.assign_warning', ['error' => $e->getMessage()]));
         }
     }
 
-    protected function handleNoBranches(SymfonyStyle $io, string $key, bool $quiet = false): int
+    protected function handleNoBranches(string $key, bool $quiet = false): WorkflowResponse
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.no_branches', ['key' => $key]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.no_branches', ['key' => $key]));
 
-        $startFresh = ! $quiet && $this->logger->confirm(
-            $this->translator->trans('item.takeover.start_fresh_prompt'),
+        $startFresh = ! $quiet && $this->prompt->confirm(
+            MessageRef::key('item.takeover.start_fresh_prompt'),
             true
         );
 
         if ($startFresh) {
-            return $this->itemStartHandler->handle($io, $key);
+            $takeoverPartial = $this->recorder->toResponse(0);
+            $startResponse = $this->itemStartHandler->handle($key);
+
+            return WorkflowResponse::fromExitCode(
+                $startResponse->exitCode,
+                array_merge($takeoverPartial->entries, $startResponse->entries),
+                array_merge($takeoverPartial->getMessages(), $startResponse->getMessages()),
+            );
         }
 
-        return 0;
+        return $this->recorder->toResponse(0);
     }
 
     /**
      * @param array{local: array<string>, remote: array<string>} $branches
      */
-    protected function handleExistingBranches(string $key, array $branches, bool $quiet = false): int
+    protected function handleExistingBranches(string $key, array $branches, bool $quiet = false): WorkflowResponse
     {
         $selectedBranch = $this->selectBranch($branches, $quiet);
 
         if ($selectedBranch === null) {
-            return 0;
+            return $this->recorder->toResponse(0);
         }
 
         $currentBranch = $this->gitRepository->getCurrentBranchName();
 
         // Check if already on target branch
         if ($currentBranch === $selectedBranch) {
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.already_on_branch', ['branch' => $selectedBranch]));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.already_on_branch', ['branch' => $selectedBranch]));
         } else {
             $this->switchToBranch($selectedBranch, $branches);
         }
@@ -145,7 +159,7 @@ class ItemTakeoverHandler
         // Check if branch is based on correct base
         $isBasedOnCorrectBase = $this->gitBranchService->isBranchBasedOn($selectedBranch, $this->baseBranch);
         if (! $isBasedOnCorrectBase) {
-            $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.warning_wrong_base', ['base' => $this->baseBranch]));
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.warning_wrong_base', ['base' => $this->baseBranch]));
         }
 
         // Handle branch synchronization
@@ -154,7 +168,7 @@ class ItemTakeoverHandler
         // Show success message
         $this->showSuccessMessage($key, $selectedBranch, $status, $this->baseBranch);
 
-        return 0;
+        return $this->recorder->toResponse(0);
     }
 
     /**
@@ -177,8 +191,8 @@ class ItemTakeoverHandler
     protected function handleSingleBranch(array $branch, bool $quiet = false): ?string
     {
         if ($branch['is_remote']) {
-            $confirmed = $quiet || $this->logger->confirm(
-                $this->translator->trans('item.takeover.confirm_branch', ['branch' => $branch['name']]),
+            $confirmed = $quiet || $this->prompt->confirm(
+                MessageRef::key('item.takeover.confirm_branch', ['branch' => $branch['name']]),
                 true
             );
 
@@ -193,7 +207,7 @@ class ItemTakeoverHandler
      */
     protected function handleMultipleBranches(array $allBranches, bool $quiet = false): ?string
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.branches_found', ['count' => count($allBranches)]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.branches_found', ['count' => count($allBranches)]));
 
         if ($quiet) {
             // First option (remotes first, then locals - same order as combineBranches)
@@ -204,8 +218,8 @@ class ItemTakeoverHandler
 
         $options = $this->buildBranchOptions($allBranches);
 
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.select_branch'));
-        $selected = $this->logger->choice('', $options);
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.select_branch'));
+        $selected = $this->prompt->choice('', $options);
 
         return $this->extractBranchNameFromSelection($allBranches, $selected);
     }
@@ -218,10 +232,7 @@ class ItemTakeoverHandler
     {
         $options = [];
         foreach ($allBranches as $branch) {
-            $label = $branch['is_remote']
-                ? $this->translator->trans('item.takeover.branch_remote', ['branch' => $branch['name']])
-                : $this->translator->trans('item.takeover.branch_local', ['branch' => $branch['name']]);
-            $options[] = $label;
+            $options[] = $this->branchChoiceLabel($branch);
         }
 
         return $options;
@@ -233,11 +244,7 @@ class ItemTakeoverHandler
     protected function extractBranchNameFromSelection(array $allBranches, string $selected): ?string
     {
         foreach ($allBranches as $branch) {
-            $label = $branch['is_remote']
-                ? $this->translator->trans('item.takeover.branch_remote', ['branch' => $branch['name']])
-                : $this->translator->trans('item.takeover.branch_local', ['branch' => $branch['name']]);
-
-            if ($label === $selected) {
+            if ($this->branchChoiceLabel($branch) === $selected) {
                 return $branch['name'];
             }
         }
@@ -273,7 +280,7 @@ class ItemTakeoverHandler
      */
     protected function switchToBranch(string $branchName, array $branches): void
     {
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.switching', ['branch' => $branchName]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.switching', ['branch' => $branchName]), WorkflowChannel::Git);
 
         if (in_array($branchName, $branches['local'], true)) {
             $this->gitBranchService->switchBranch($branchName);
@@ -307,9 +314,9 @@ class ItemTakeoverHandler
             $hasLocalCommits = $status['ahead_remote'] > 0;
 
             if ($hasLocalCommits) {
-                $this->logger->warning(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.warning_diverged'));
+                $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.warning_diverged'));
             } else {
-                $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.pulling'));
+                $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.pulling'), WorkflowChannel::Git);
                 $this->gitRepository->pullWithRebase('origin', $branchName);
             }
         }
@@ -320,49 +327,57 @@ class ItemTakeoverHandler
      */
     protected function showSuccessMessage(string $key, string $branchName, array $status, string $baseBranch): void
     {
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_took_over', ['key' => $key]));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_on_branch', ['branch' => $branchName]));
+        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_took_over', ['key' => $key]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_on_branch', ['branch' => $branchName]));
 
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_status_header'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_status_header'));
 
         $remoteStatus = $this->formatRemoteStatus($status);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_status_remote', ['status' => $remoteStatus]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_status_remote', ['status' => $remoteStatus]));
 
         $baseStatus = $this->formatBaseStatus($status, $baseBranch);
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_status_base', ['base' => $baseBranch, 'status' => $baseStatus]));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_status_base', ['base' => $baseBranch, 'status' => $baseStatus]));
 
-        $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('item.takeover.success_view_details', ['key' => $key]));
+        $this->recorder->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.success_view_details', ['key' => $key]));
     }
 
     /**
      * @param array{behind_remote: int, ahead_remote: int, behind_base: int, ahead_base: int} $status
      */
-    protected function formatRemoteStatus(array $status): string
+    protected function formatRemoteStatus(array $status): MessageRef
     {
         if ($status['behind_remote'] > 0) {
-            return $this->translator->trans('item.takeover.status_behind_remote', ['count' => $status['behind_remote']]);
+            return MessageRef::key('item.takeover.status_behind_remote', ['count' => $status['behind_remote']]);
         }
 
         if ($status['ahead_remote'] > 0) {
-            return $this->translator->trans('item.takeover.status_ahead_remote', ['count' => $status['ahead_remote']]);
+            return MessageRef::key('item.takeover.status_ahead_remote', ['count' => $status['ahead_remote']]);
         }
 
-        return $this->translator->trans('item.takeover.status_sync_remote');
+        return MessageRef::key('item.takeover.status_sync_remote');
     }
 
     /**
      * @param array{behind_remote: int, ahead_remote: int, behind_base: int, ahead_base: int} $status
      */
-    protected function formatBaseStatus(array $status, string $baseBranch): string
+    protected function formatBaseStatus(array $status, string $baseBranch): MessageRef
     {
         if ($status['behind_base'] > 0) {
-            return $this->translator->trans('item.takeover.status_behind_base', ['count' => $status['behind_base'], 'base' => $baseBranch]);
+            return MessageRef::key('item.takeover.status_behind_base', ['count' => $status['behind_base'], 'base' => $baseBranch]);
         }
 
         if ($status['ahead_base'] > 0) {
-            return $this->translator->trans('item.takeover.status_ahead_base', ['count' => $status['ahead_base'], 'base' => $baseBranch]);
+            return MessageRef::key('item.takeover.status_ahead_base', ['count' => $status['ahead_base'], 'base' => $baseBranch]);
         }
 
-        return $this->translator->trans('item.takeover.status_sync_base', ['base' => $baseBranch]);
+        return MessageRef::key('item.takeover.status_sync_base', ['base' => $baseBranch]);
+    }
+
+    /**
+     * @param array{name: string, is_remote: bool} $branch
+     */
+    private function branchChoiceLabel(array $branch): string
+    {
+        return $branch['is_remote'] ? "{$branch['name']} (remote)" : "{$branch['name']} (local)";
     }
 }

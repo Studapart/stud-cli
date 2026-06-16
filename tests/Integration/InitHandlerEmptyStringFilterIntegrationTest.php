@@ -87,6 +87,7 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         fwrite($inputStream, "github_token\n");
         fwrite($inputStream, "gitlab_token\n");
         fwrite($inputStream, "n\n"); // Jira transition enabled: No
+        fwrite($inputStream, "1\n"); // Completion: No
         rewind($inputStream);
 
         $input = new ArrayInput([]);
@@ -98,7 +99,9 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $handler = new InitHandler($this->fileSystem, $this->configPath, $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
 
         // Execute handler
-        $handler->handle($io);
+        $response = $handler->handle();
+
+        $this->assertSame(0, $response->exitCode);
 
         // Verify config was written and empty strings were filtered out
         $this->assertTrue($this->fileSystem->fileExists($this->configPath));

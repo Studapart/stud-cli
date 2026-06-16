@@ -31,13 +31,13 @@ class PrCommentResponder
         }
 
         if (! $response->isSuccess()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $response->getError() ?? '');
+            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->helper->translator->renderText($response->getErrorMessage()));
 
             return null;
         }
 
         $this->helper->initSection($this->logger, 'pr.comment.section');
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $response->message);
+        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->helper->translator->renderText($response->message));
 
         return null;
     }
@@ -45,9 +45,12 @@ class PrCommentResponder
     protected function serialize(PrCommentResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(false, error: $this->helper->translator->renderForAgentText($response->getErrorMessage()));
         }
 
-        return new AgentJsonResponse(true, data: $this->serializer->serialize($response));
+        $data = $this->serializer->serialize($response);
+        $data['message'] = $this->helper->translator->renderForAgentText($response->message);
+
+        return new AgentJsonResponse(true, data: $data);
     }
 }

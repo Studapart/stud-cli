@@ -45,7 +45,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ## Development Setup
 
-1. **Requirements:** PHP 8.2+, `ext-xml`. See [README – System Requirements](README.md#system-requirements).
+1. **Requirements:** PHP 8.2+, `ext-xml`, `ext-curl`, `ext-mbstring`. See [Development guide – Requirements](documentation/development/index.md#requirements).
 2. **Clone and install:**
    ```bash
    git clone https://github.com/studapart/stud-cli.git
@@ -67,7 +67,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
    vendor/bin/phpstan analyse
    ```
 
-For building a PHAR, see [README – Compiling to PHAR (using Box)](README.md#compiling-to-phar-using-box).
+For building a PHAR, see [Development guide – Build PHAR](documentation/development/index.md#build-phar).
 
 ## Standards and Conventions
 
@@ -101,9 +101,10 @@ vendor/bin/phpunit
 
 ## Documentation and ADRs
 
-- **README.md** – User installation, configuration, and command reference; developer setup and PHAR build.
+- **README.md** – Install router and documentation index.
 - **CONVENTIONS.md** – Coding and testing standards (required reading for code contributions).
-- **documentation/** – Architecture Decision Records (ADRs) for design choices (e.g. Responder pattern, migrations, i18n), and [FEATURE_EVALUATION.md](documentation/FEATURE_EVALUATION.md) for a product-level overview of current features and potential gaps.
+- **AI.md** – AI agent development protocol (required for agent-driven work).
+- **documentation/** – Setup, features, integrations, development guide, generated [command reference](documentation/reference/commands.md), and [Architecture Decision Records](documentation/index.md#architecture-decision-records).
 
 When changing behavior or architecture, consider adding or updating an ADR; use [documentation/adr-template.md](documentation/adr-template.md) for new ADRs.
 

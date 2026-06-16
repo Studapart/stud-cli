@@ -17,8 +17,8 @@ class MigrationRegistry
     private const PROJECT_MIGRATIONS_PATH = __DIR__ . '/../Migrations/ProjectMigrations';
 
     public function __construct(
-        private readonly Logger $logger,
-        private readonly TranslationService $translator,
+        private readonly Logger $migrationLogger,
+        private readonly mixed $translator,
         private readonly FileSystem $fileSystem
     ) {
     }
@@ -134,7 +134,7 @@ class MigrationRegistry
             }
 
             /** @var MigrationInterface $migration */
-            $migration = new $className($this->logger, $this->translator);
+            $migration = new $className($this->migrationLogger, $this->translator);
 
             return $migration->getScope() === $expectedScope ? $migration : null;
         } catch (\Throwable $e) {

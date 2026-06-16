@@ -40,7 +40,11 @@ class CommandReferenceGeneratorTest extends TestCase
         $this->assertStringContainsString('translated:help.command_config_validate', $markdown);
         $this->assertStringContainsString('`--skip-jira`', $markdown);
         $this->assertStringContainsString('echo \'{"skipJira":true}\' | stud config:validate --agent', $markdown);
+        $this->assertStringNotContainsString('echo \'{"compact":true', $markdown);
+        $this->assertStringContainsString('success: true', $markdown);
         $this->assertStringContainsString('jira: bool', $markdown);
+        $this->assertStringContainsString('Default compact success shape (`{"compact":true}` or omitted):', $markdown);
+        $this->assertStringContainsString('Full success shape (`{"compact":false}`):', $markdown);
     }
 
     public function testWriteCreatesExpectedFileAndIsCurrentChecksExactContent(): void
@@ -130,7 +134,7 @@ class CommandReferenceGeneratorTest extends TestCase
         $this->assertStringContainsString('## Confluence', $markdown);
         $this->assertStringContainsString('## Documentation', $markdown);
         $this->assertStringContainsString('## System and Release', $markdown);
-        $this->assertStringContainsString('```text' . "\nmessage\n" . '```', $markdown);
+        $this->assertStringContainsString('```text' . "\nsuccess: true\nmessage\n" . '```', $markdown);
     }
 
     public function testProtectedRenderingHelpersCoverEdgeCases(): void
@@ -141,6 +145,8 @@ class CommandReferenceGeneratorTest extends TestCase
             'parameters' => ['options' => []],
         ]));
         $this->assertSame('rows: array', $generator->outputShape(['rows' => ['nested']]));
+        $this->assertSame('(undescribed)', $generator->payloadShape('(undescribed)'));
+        $this->assertSame('success: true', $generator->payloadShape(['success' => true]));
         $this->assertSame('', $generator->defaultValueFor([]));
         $this->assertSame('', $generator->defaultValueFor(['default' => fopen('php://memory', 'r')]));
     }
@@ -221,6 +227,11 @@ class CommandReferenceGeneratorTest extends TestCase
                     ],
                     'input' => [
                         'properties' => [
+                            'compact' => [
+                                'type' => 'bool',
+                                'optional' => true,
+                                'default' => true,
+                            ],
                             'skipJira' => [
                                 'type' => 'bool',
                                 'optional' => true,
@@ -231,6 +242,13 @@ class CommandReferenceGeneratorTest extends TestCase
                     'output' => [
                         'description' => 'Connectivity status',
                         'success' => [
+                            'success' => true,
+                            'data' => [
+                                'jira' => 'bool',
+                                'git' => 'bool',
+                            ],
+                        ],
+                        'compactSuccess' => [
                             'success' => true,
                             'data' => [
                                 'jira' => 'bool',
@@ -265,6 +283,10 @@ class CommandReferenceGeneratorTest extends TestCase
             'output' => [
                 'description' => null,
                 'success' => [
+                    'success' => true,
+                    'data' => $overrides['outputData'] ?? ['message' => 'string'],
+                ],
+                'compactSuccess' => $overrides['compactOutput'] ?? [
                     'success' => true,
                     'data' => $overrides['outputData'] ?? ['message' => 'string'],
                 ],
@@ -314,6 +336,11 @@ class TestableCommandReferenceGenerator extends CommandReferenceGenerator
     public function outputShape(mixed $shape): string
     {
         return $this->renderOutputShape($shape);
+    }
+
+    public function payloadShape(mixed $shape): string
+    {
+        return $this->renderPayloadShape($shape);
     }
 
     /**

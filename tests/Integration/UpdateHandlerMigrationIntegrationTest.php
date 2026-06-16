@@ -12,6 +12,7 @@ use App\Service\FileSystem;
 use App\Service\Logger;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
+use App\Tests\Support\UpdateHandlerTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use PHPUnit\Framework\Attributes\Group;
@@ -170,14 +171,14 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
         $testMigration = $this->createTestMigration($migrationId, $logger, $this->translationService, true);
 
         // Create handler
-        $handler = new UpdateHandler(
+        $handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             $this->fileSystem,
             null,
@@ -192,7 +193,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
             $this->createMock(HttpClientInterface::class),
@@ -215,7 +216,8 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -270,7 +272,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
             $this->createMock(HttpClientInterface::class),
@@ -293,7 +295,8 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -355,7 +358,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
             $this->createMock(HttpClientInterface::class),
@@ -378,7 +381,8 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -426,7 +430,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
             $this->createMock(HttpClientInterface::class),
@@ -449,7 +453,8 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
             }
 
@@ -506,7 +511,7 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
             sys_get_temp_dir() . '/test-binary.phar',
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
+            new UpdateFileService($this->translationService, $logger),
             $logger,
             null,
             $this->createMock(HttpClientInterface::class),
@@ -530,7 +535,8 @@ class UpdateHandlerMigrationIntegrationTest extends TestCase
                 string $testConfigPath,
                 FileSystem $testFileSystem
             ) {
-                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $gitToken, $httpClient);
+                [$detector, $fetcher, $presenter, $runner] = \App\Tests\Support\UpdateHandlerTestKit::services($repoOwner, $repoName, $currentVersion, $testFileSystem, $changelogParser, $gitToken, $httpClient);
+                parent::__construct($repoOwner, $repoName, $currentVersion, $binaryPath, $translator, $changelogParser, $updateFileService, $logger, $testFileSystem, $detector, $fetcher, $presenter, $runner, $gitToken, $httpClient);
                 $this->testConfigPath = $testConfigPath;
                 $this->testFileSystem = $testFileSystem;
             }

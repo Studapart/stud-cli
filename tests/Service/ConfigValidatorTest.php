@@ -164,7 +164,7 @@ class ConfigValidatorTest extends TestCase
             });
 
         $this->logger->expects($this->once())
-            ->method('note');
+            ->method('addNote');
 
         $result = $this->validator->promptForMissingKeys(['baseBranch'], 'project');
 

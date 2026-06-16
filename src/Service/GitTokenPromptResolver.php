@@ -10,7 +10,7 @@ namespace App\Service;
  *
  * Project config:project-init uses {@see tokenFromUserInput} only; it does not merge legacy keys.
  */
-final class GitTokenPromptResolver
+class GitTokenPromptResolver
 {
     /**
      * Non-empty trimmed token from the user, or null if they left the prompt blank.

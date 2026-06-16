@@ -8,6 +8,7 @@ The conventions in this document are informed by architectural decisions documen
 
 ### Architecture & Patterns
 - **[ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md)** - Explains the Action-Domain-Responder pattern used throughout the codebase
+- **[ADR-018: Presentation-Owned Translation](documentation/adr-018-presentation-owned-translation.md)** - Documents that localization happens at presentation boundaries
 - **[ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md)** - Documents the `object:verb` command naming pattern
 - **[ADR-007: Migration System Architecture](documentation/adr-007-migration-system-architecture.md)** - Details the configuration migration system
 - **[ADR-009: Service Locator Pattern in castor.php](documentation/adr-009-service-locator-pattern-in-castor.md)** - Explains how services are provided via helper functions
@@ -77,17 +78,45 @@ User-facing text must use translation keys instead of hardcoded display strings.
 
 Prefer enums when the set of values is closed and shared across multiple classes. Prefer class constants when values are private to one class or model provider-specific protocol terms.
 
-### Responder Pattern and ViewConfig
+### Responder Pattern, Diagnostics, and ViewConfig
 
-All features that display structured data to the console **must** follow the Action–Domain–Responder flow with ViewConfig:
+All features that display user-facing output **must** follow the Action–Domain–Responder flow:
 
-- **Handler:** Pure business logic only; returns a `Response` DTO (no I/O).
-- **Responder:** All presentation logic; uses `PageViewConfig` (with `TableBlock` + `Column` for tables, or `DefinitionItem`, `Section`, `Content` for definition lists and content blocks) to render the Response to console.
-- **Task (castor.php):** Wires Handler → Responder and calls `respond($io, $response)`.
+- **Handler:** Pure workflow/business logic only. It may collect input through `PromptInterface`, but it must not render output, call `Logger`, or translate user-facing messages.
+- **Service:** Domain services must return domain results or append to non-rendering response/diagnostic collectors. They must not depend on `Logger` or `CommandOutputBuffer`.
+- **Response:** Owns user-visible result data and diagnostics (`Error`, `Warning`, `Notice`, `Info`) as `MessageRef` keys plus parameters.
+- **WorkflowRecorder:** Handlers record ordered CLI progress via `WorkflowEntryRecorder` (typically `WorkflowRecorder`), then return `WorkflowResponse`. `WorkflowOutput` remains a transitional recorder for castor/service bridges that also handle prompts.
+- **Responder:** All presentation logic. It translates message references and uses `PageViewConfig` and `Logger` for CLI output, or serializes the same response through `AgentJsonResponse` for JSON.
+- **Task (`castor.php`):** Wires input parsing, Handler, Response, Responder, and exit code handling.
 
-This ensures consistent output behaviour, testability (Handlers are I/O-free), and a single place to change presentation. The only documented exception is `StatusHandler`, which uses a custom dashboard format by explicit decision.
+```mermaid
+flowchart LR
+  castor["castor.php task"] --> handler["Handler"]
+  prompt["PromptInterface"] --> handler
+  handler --> response["Concrete Response DTO"]
+  handler --> workflowRecorder["WorkflowRecorder"]
+  service["Domain Service"] --> response
+  service --> workflowRecorder
+  workflowRecorder --> workflowResponse["WorkflowResponse"]
+  response --> responder["Responder"]
+  workflowResponse --> workflowResponder["WorkflowResponder"]
+  responder --> logger["Logger (CLI renderer)"]
+  workflowResponder --> logger
+  responder --> agentJson["AgentJsonResponse"]
+  workflowResponder --> agentJson
+```
 
-**See also:** [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) for the full ViewConfig inventory, Response/Responder class list, and the requirement that new features use this pattern.
+This ensures consistent output behaviour, testability, compact agent JSON, and a single presentation boundary. Architecture tests enforce that handlers and non-presentation services do not reference `Logger`, `CommandOutputBuffer`, or direct rendering methods. Explicit presentation exceptions include `castor.php`, responders, views, prompt implementations, `Logger`, `ResponderHelper`, `HelpService`, `CommandReferenceGenerator`, `AgentModeSchemaGenerator`, `MessageRenderer`, and `TranslationService`.
+
+**See also:** [ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md) for the full ViewConfig inventory, Response/Responder class list, [ADR-013: Responder-Based Dual Output](documentation/adr-013-responder-based-dual-output.md), [ADR-017: Response-Owned Output and Diagnostics](documentation/adr-017-response-owned-output-and-diagnostics.md), and [ADR-018: Presentation-Owned Translation](documentation/adr-018-presentation-owned-translation.md).
+
+### Agent Translation File Strategy
+
+Agent JSON output uses `src/resources/translations/messages.agent.en.yaml` as a sparse, English-only translation domain for agent-facing wording. The file is not a full locale catalog. Add keys there only when agent consumers benefit from wording that is shorter, more contract-oriented, or different from the human CLI wording.
+
+Runtime agent overrides must reuse the same message keys emitted by `MessageRef` (for example `table.key`), while schema/help copy keeps the existing `agent.*` key namespace. When an agent override is missing, responders fall back to the normal English catalog (`messages.en.yaml`) before using the `MessageRef` fallback. This keeps agent JSON stable regardless of the user's configured CLI locale.
+
+CLI responders must continue to render with the configured locale. Agent JSON responders must render `MessageRef` diagnostics, errors, and translated data fields through the agent renderer or the text-safe `TranslationService::renderText()`, `TranslationService::renderForAgentText()`, and `TranslationService::transForAgentText()` helpers.
 
 ### Code Quality and Complexity Standards
 
@@ -453,20 +482,19 @@ $this->assertStringContainsString('Update complete! You are now on v1.0.1', $out
 ```
 
 **DO assert on:**
-1. **Mocked IO calls** - Verify that the correct methods were called with expected parameters:
+1. **Response state and diagnostics** - Verify result DTO fields and `MessageRef` diagnostics:
    ```php
-   // ✅ GOOD: Testing behavior, not text
-   $io->expects($this->once())
-       ->method('error')
-       ->with($this->callback(function ($messages) {
-           return is_array($messages) && count($messages) > 0;
-       }));
+   // ✅ GOOD: Testing behavior, not rendered prose
+   $response = $handler->handle();
+
+   $this->assertFalse($response->isSuccess());
+   $this->assertSame('item.start.error_not_found', $response->getErrorMessage()->key);
    ```
 
 2. **Function return values** - Test the actual behavior and outcomes:
    ```php
    // ✅ GOOD: Testing the result
-   $result = $handler->handle($io);
+   $result = $handler->handle();
    $this->assertSame(1, $result); // Error case returns 1
    $this->assertSame(0, $result); // Success case returns 0
    ```
@@ -487,36 +515,48 @@ $this->assertStringContainsString('Update complete! You are now on v1.0.1', $out
 
 ## Command Output Conventions
 
-All command output must go through the **Logger** service (from `_get_logger()` in tasks), not directly through `$io`; see [ADR-005 §7.6 Output and Logger](documentation/adr-005-responder-pattern-architecture.md#76-output-and-logger).
+All meaningful command output must be represented in a **Response DTO** or `WorkflowOutput` recorder first. Responders then translate message references and render that response through **Logger** for CLI output or serialize it for agent JSON; see [ADR-005 §7.6 Output and Logger](documentation/adr-005-responder-pattern-architecture.md#76-output-and-logger), [ADR-017](documentation/adr-017-response-owned-output-and-diagnostics.md), and [ADR-018](documentation/adr-018-presentation-owned-translation.md).
 
-**Exceptions:** Only two cases may bypass Logger: (1) **Code outside our codebase** (Castor, vendor, etc.). (2) **Code that cannot use Logger** because it runs before Logger can be created or injected; any such code must be explicitly documented in CONVENTIONS or ADR-005 with the reason. *(Currently no such code exists.)*
+Handlers and domain services must not call `Logger` for user-visible output, warnings, errors, progress summaries, or diagnostics. They must also not call `TranslationService::trans()` for user-visible messages. Use `MessageRef` keys plus parameters and let responders or prompt services translate at the presentation boundary. `Logger` is a CLI rendering sink used by responders, `PageViewConfig`, and rendering helpers.
 
-The following table defines the standard Logger output methods. The first argument is the minimum verbosity level (`Logger::VERBOSITY_NORMAL` or `Logger::VERBOSITY_VERBOSE` for verbose-only output):
+**Exceptions:** Code outside our codebase may render however it needs. Inside this codebase, output rendering is allowed only in documented presentation boundaries: `castor.php`, responders, views, prompt implementations, `Logger`, and presentation/reference helpers. Non-rendering builder APIs such as `MarkdownToAdfConverter::text()` are not considered command output.
+
+The following table defines the standard output intents. Handlers/services record these intents via `ResponseMessage` or `WorkflowOutput`; responders map them to `Logger` methods. The first argument is the minimum verbosity level (`WorkflowOutput::VERBOSITY_NORMAL` or `WorkflowOutput::VERBOSITY_VERBOSE` for verbose-only output):
 
 | Type | Method | Icon | Usage |
 |------|--------|------|-------|
-| **Success** | `$logger->success($verbosity, $message)` | ✅ | Use when an operation completes successfully. Example: `$logger->success(Logger::VERBOSITY_NORMAL, "Branch 'feature/TPW-123' created.")` |
-| **Error** | `$logger->error($verbosity, $message)` | ❌ | Use when an operation fails. Accepts string or array. Example: `$logger->error(Logger::VERBOSITY_NORMAL, ['Failed.', 'Error: ' . $e->getMessage()])` |
-| **Warning** | `$logger->warning($verbosity, $message)` | ⚠️ | Use for non-critical problems. Example: `$logger->warning(Logger::VERBOSITY_NORMAL, 'No Git provider configured.')` |
-| **Notice** | `$logger->note($verbosity, $message)` | ℹ️ | Use for informational notices. Example: `$logger->note(Logger::VERBOSITY_NORMAL, 'A Pull Request already exists.')` |
-| **Info** | `$logger->text($verbosity, $message)` | (none) | Use for general informational text. Example: `$logger->text(Logger::VERBOSITY_NORMAL, 'Fetching latest changes...')` |
-| **Section** | `$logger->section($verbosity, $message)` | (none) | Use for section headers. Example: `$logger->section(Logger::VERBOSITY_NORMAL, 'Checking for updates')` |
+| **Success** | `ResponseMessage` success field or `WorkflowOutput::addSuccess()` | ✅ | Use when an operation completes successfully. |
+| **Error** | `ResponseMessage::error()` or `WorkflowOutput::addError()` | ❌ | Use when an operation fails. Include technical details in `ResponseMessage::$technicalDetails` when useful. |
+| **Warning** | `ResponseMessage::warning()` or `WorkflowOutput::addWarning()` | ⚠️ | Use for non-critical problems that should survive agent-mode serialization. |
+| **Notice** | `ResponseMessage::notice()` or `WorkflowOutput::addNote()` | ℹ️ | Use for informational notices. |
+| **Info/progress** | Concrete response fields or `WorkflowOutput::addText()` | (none) | Use for progress or decorative CLI output. Keep compact agent JSON free of decorative data unless it is meaningful. |
+| **Section** | Concrete response fields or `WorkflowOutput::addSection()` | (none) | Use for CLI section headers in workflow-style commands. |
 
 ### Output Best Practices
 
-1. **Be consistent**: Use the same output method for similar situations across the codebase.
-2. **Be concise**: Error messages should be clear and actionable.
-3. **Use arrays for multi-line messages**: When providing detailed error information, use arrays:
+1. **Keep output responder-owned**: handlers and domain services return responses or record `WorkflowOutput`; responders are the only place that render.
+2. **Be concise**: error messages should be clear and actionable.
+3. **Use diagnostics for meaningful messages**: warnings, errors, notices, and info that matter to agents belong in `ResponseMessage` diagnostics:
    ```php
-   $logger->error(Logger::VERBOSITY_NORMAL, [
-       'Failed to download the new version.',
-       'Error: ' . $e->getMessage(),
-   ]);
+   return CommandResponse::error(
+       MessageRef::key('update.error_download'),
+       [ResponseMessage::error(MessageRef::key('update.error_download'), $e->getMessage())],
+   );
    ```
-4. **Respect verbosity**: Use `Logger::VERBOSITY_VERBOSE` for details that should only appear with `-v`:
+4. **Use `WorkflowOutput` for ordered workflow views**: when an existing command needs progress sections, verbose lines, tables, or raw values, record them without rendering:
    ```php
-   $logger->writeln(Logger::VERBOSITY_VERBOSE, "  <fg=gray>JQL Query: {$jql}</>");
+   $output->addLine(
+       WorkflowOutput::VERBOSITY_VERBOSE,
+       MessageRef::key('item.start.generated_branch', ['branch' => $branch]),
+       WorkflowChannel::Git,
+   );
    ```
+   Use `WorkflowChannel::Git` for in-flight git/gh operation traces (fetch, push, checkout, branch create/delete, PR API calls). Use `WorkflowChannel::Jira` for in-flight Jira API traces (fetch issue, assign, transition). Omit the channel (default) for command response output: formatted results, summaries, confirmations, and mixed workflow narration. Channels affect CLI coloring only; they do not change verbosity or agent JSON.
+5. **Respect compact JSON**: keep decorative/progress output out of compact agent responses. Include diagnostics only when they are meaningful for automated callers.
+6. **Recoverable failures** ([ADR-017 §6](documentation/adr-017-response-owned-output-and-diagnostics.md#6-recoverable-failures-and-service-boundary-exceptions)):
+   * Do **not** push `Logger` into handlers or domain services; responders (and workflow recorders) own presentation.
+   * **Swallow** at the service boundary for ambient best-effort reads when an empty/neutral fallback is correct domain behavior.
+   * **Surface** parse failures and similar issues as response diagnostics when the user is explicitly inspecting that state (for example `config:show`).
 
 ## CHANGELOG.md Format
 
@@ -571,7 +611,7 @@ vendor/bin/phpstan analyse
 
 ### Automation and AI Usage
 
-Scripts and AI agents using `stud-cli` MUST use non-interactive flags where available (`--quiet` or `-q` on commands that support it) to avoid prompts and ensure consistent behavior. See `AI.md` for the full AI development protocol.
+Scripts and AI agents using `stud-cli` MUST use `--agent` mode on commands that support it (JSON input/output, non-interactive). Fall back to `--quiet` / `-q` only when a command lacks `--agent` support. See `AI.md` and `documentation/features/automation.md` for the full AI development protocol.
 
 ## Summary
 
@@ -584,7 +624,7 @@ Scripts and AI agents using `stud-cli` MUST use non-interactive flags where avai
 - **Type Safety**: All files must use `declare(strict_types=1);`. All methods and properties must have explicit type hints. DocBlocks required for public/protected methods and complex logic.
 - **Testing**: Aim for 100% coverage. Test the intent (behavior, return values, exceptions) rather than specific output text. All service dependencies must be mocked in unit tests.
 - **Static Analysis**: PHP-CS-Fixer enforces PSR-12 style. PHPStan (Level 7+) enforces type safety and helps identify complexity violations.
-- **Output**: Use the standardized output methods consistently to provide a uniform user experience.
+- **Output**: Keep output responder-owned. Handlers/services return response state or record `WorkflowOutput`; responders render through `Logger` or serialize agent JSON.
 - **CHANGELOG**: Use `### Breaking` section for breaking changes, not inline markers.
 
 These conventions ensure that `stud-cli` remains maintainable, testable, and provides a consistent developer experience.

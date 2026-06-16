@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 final class PrCommentResponse extends AbstractResponse
 {
     private const ACTION_POSTED = 'posted';
@@ -11,8 +13,8 @@ final class PrCommentResponse extends AbstractResponse
 
     private function __construct(
         bool $success = true,
-        ?string $error = null,
-        public readonly string $message = '',
+        MessageRef|string|null $error = null,
+        public readonly MessageRef|string $message = '',
         public readonly string $action = self::ACTION_POSTED,
         public readonly int $pullNumber = 0,
         public readonly ?string $target = null,
@@ -21,7 +23,7 @@ final class PrCommentResponse extends AbstractResponse
         parent::__construct($success, $error);
     }
 
-    public static function posted(string $message, int $pullNumber): self
+    public static function posted(MessageRef|string $message, int $pullNumber): self
     {
         return new self(
             message: $message,
@@ -30,7 +32,7 @@ final class PrCommentResponse extends AbstractResponse
         );
     }
 
-    public static function replied(string $message, int $pullNumber, string $target, bool $resolved): self
+    public static function replied(MessageRef|string $message, int $pullNumber, string $target, bool $resolved): self
     {
         return new self(
             message: $message,
@@ -41,7 +43,7 @@ final class PrCommentResponse extends AbstractResponse
         );
     }
 
-    public static function error(string $error): self
+    public static function error(MessageRef|string $error): self
     {
         return new self(success: false, error: $error);
     }

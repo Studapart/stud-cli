@@ -6,6 +6,7 @@ use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\ProcessFactory;
 use App\Tests\CommandTestCase;
+use App\Tests\Support\GitRepositoryTestKit;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -28,7 +29,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->fileSystem = new FileSystem($this->flysystem);
 
         $this->processFactory = $this->createMock(ProcessFactory::class);
-        $this->gitRepository = new GitRepository($this->processFactory, $this->fileSystem);
+        $this->gitRepository = GitRepositoryTestKit::create($this->processFactory, $this->fileSystem);
     }
 
     public function testGetJiraKeyFromBranchName(): void
@@ -1902,6 +1903,39 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame(11, $config['transitionId']);
     }
 
+    public function testReadProjectConfigResultDelegatesToProjectConfigService(): void
+    {
+        $configDir = '/test/git-dir';
+        $configData = [
+            'projectKey' => 'TEST',
+            'transitionId' => 11,
+        ];
+
+        $expectedPath = $configDir . '/stud.config';
+        $this->flysystem->write($expectedPath, \Symfony\Component\Yaml\Yaml::dump($configData));
+
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --git-dir')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('run');
+        $process->expects($this->once())
+            ->method('isSuccessful')
+            ->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn($configDir);
+
+        $result = $this->gitRepository->readProjectConfigResult();
+
+        $this->assertFalse($result->isUnreadable());
+        $this->assertSame('TEST', $result->config['projectKey']);
+        $this->assertSame(11, $result->config['transitionId']);
+    }
+
     public function testWriteProjectConfig(): void
     {
         $configDir = '/test/git-dir';
@@ -2088,7 +2122,7 @@ class GitRepositoryTest extends CommandTestCase
             ->method('parseFile')
             ->willThrowException(new \Exception('Parse error'));
 
-        $gitRepository = new GitRepository($this->processFactory, $mockFileSystem);
+        $gitRepository = GitRepositoryTestKit::create($this->processFactory, $mockFileSystem);
 
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -2253,7 +2287,7 @@ class GitRepositoryTest extends CommandTestCase
                 }
             });
 
-        $gitRepository = new GitRepository($this->processFactory, $fileSystem);
+        $gitRepository = GitRepositoryTestKit::create($this->processFactory, $fileSystem);
 
         // Should not throw exception - cleanup errors are caught and ignored
         $gitRepository->rebaseAutosquash($baseSha);
@@ -2292,7 +2326,7 @@ class GitRepositoryTest extends CommandTestCase
                 }
             });
 
-        $gitRepository = new GitRepository($this->processFactory, $fileSystem);
+        $gitRepository = GitRepositoryTestKit::create($this->processFactory, $fileSystem);
 
         // Should not throw exception - cleanup errors are caught and ignored
         $gitRepository->rebaseAutosquash($baseSha);

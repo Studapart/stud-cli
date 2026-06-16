@@ -4,9 +4,12 @@ namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
-use App\Service\Logger;
+use App\Response\WorkflowResponse;
+use App\Service\Prompt\PromptInterface;
+use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -14,6 +17,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ItemStartHandlerTest extends CommandTestCase
 {
     private ItemStartHandler $handler;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
@@ -27,9 +31,15 @@ class ItemStartHandlerTest extends CommandTestCase
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
         $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
-        $logger = $this->createMock(Logger::class);
+        $this->prompt = $this->createMock(PromptInterface::class);
         // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
+    }
+
+    private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
+    {
+        $this->assertInstanceOf(WorkflowResponse::class, $response);
+        $this->assertSame($expectedExitCode, $response->exitCode);
     }
 
     public function testHandle(): void
@@ -66,9 +76,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
         // Test intent: success() was called, verified by return value
     }
 
@@ -82,9 +92,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
         // Test intent: error() was called, verified by return value
     }
 
@@ -95,25 +105,12 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $logger = $this->createMock(\App\Service\Logger::class);
-        $logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('item.start.error_not_found'),
-                'HTTP 404: Not Found'
-            );
-        $logger->method('section');
-        $logger->method('jiraWriteln');
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
 
-        $handler = new \App\Handler\ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $response = $handler->handle('TPW-35');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $handler->handle($io, 'TPW-35');
-
-        $this->assertSame(1, $result);
+        $this->assertWorkflowExitCode($response, 1);
+        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -151,11 +148,11 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
         $fetchedOutput = $output->fetch();
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
         // Test intent: verbose output and success() were called, verified by return value
     }
 
@@ -197,8 +194,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -239,9 +236,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndCachedTransitionNonVerbose(): void
@@ -272,8 +269,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -313,9 +310,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         // Not setting verbose mode - tests the else block without verbose output
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndInteractiveSelection(): void
@@ -346,8 +343,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -412,9 +409,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('transitionIssue')
             ->with('TPW-35', 11);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndUserDeclinesToSave(): void
@@ -445,8 +442,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -514,9 +511,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledButNoTransitionsAvailable(): void
@@ -547,8 +544,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -588,9 +585,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndAssignmentError(): void
@@ -621,8 +618,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -662,9 +659,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndAssignmentErrorVerbose(): void
@@ -695,8 +692,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -737,9 +734,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndTransitionFetchError(): void
@@ -770,8 +767,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -811,9 +808,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndTransitionExecutionError(): void
@@ -844,8 +841,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -885,9 +882,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndAssignmentApiExceptionVerbose(): void
@@ -906,25 +903,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Allow normal verbosity calls (like 'item.start.fetching_changes')
-                if ($verbosity === Logger::VERBOSITY_NORMAL) {
-                    return;
-                }
-                // Check for verbose technical details
-                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
-                    return;
-                }
-            });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
-
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -965,9 +944,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndGetTransitionsApiExceptionVerbose(): void
@@ -986,25 +965,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Allow normal verbosity calls (like 'item.start.fetching_changes')
-                if ($verbosity === Logger::VERBOSITY_NORMAL) {
-                    return;
-                }
-                // Check for verbose technical details
-                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
-                    return;
-                }
-            });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1045,9 +1007,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndTransitionExecutionApiExceptionVerbose(): void
@@ -1066,25 +1028,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Allow normal verbosity calls (like 'item.start.fetching_changes')
-                if ($verbosity === Logger::VERBOSITY_NORMAL) {
-                    return;
-                }
-                // Check for verbose technical details
-                if ($verbosity === Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
-                    return;
-                }
-            });
-        $logger->method('gitWriteln');
-        $logger->method('warning');
-        $logger->method('success');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1125,9 +1070,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndCachedTransitionVerbose(): void
@@ -1146,23 +1091,8 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('jiraWriteln')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Check for cached transition message
-                if ($verbosity === Logger::VERBOSITY_VERBOSE && str_contains($message, 'item.start.using_cached_transition')) {
-                    return;
-                }
 
-                // Allow other jiraWriteln calls
-                return;
-            });
-        $logger->method('text');
-        $logger->method('gitWriteln');
-        $logger->method('success');
-
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1202,9 +1132,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndVerboseSaveMessage(): void
@@ -1235,8 +1165,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1303,9 +1233,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndCachedTransitionForDifferentProject(): void
@@ -1336,8 +1266,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1405,9 +1335,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndConfigMissingProjectKey(): void
@@ -1438,8 +1368,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1507,9 +1437,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleWithTransitionEnabledAndNonInProgressTransition(): void
@@ -1542,8 +1472,8 @@ class ItemStartHandlerTest extends CommandTestCase
         rewind($inputStream);
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
-        $realLogger = new Logger($io, []);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $realLogger);
+        $prompt = new SymfonyPromptService($io);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $this->jiraService->expects($this->once())
             ->method('getIssue')
@@ -1610,9 +1540,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleTransitionWithInvalidTransitionSelection(): void
@@ -1633,21 +1563,17 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        // Create a mocked logger to test the edge case where choice() returns invalid string
-        $logger = $this->createMock(Logger::class);
-        $logger->method('jiraWriteln');
-        $logger->method('text');
-        $logger->method('section');
-        // Mock choice to return a string that doesn't match our regex pattern
-        // This simulates an edge case where the regex fails (shouldn't happen in practice)
-        $logger->expects($this->once())
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
             ->method('choice')
             ->willReturn('Invalid Selection Without ID Pattern');
-        $logger->expects($this->once())
-            ->method('warning')
-            ->with(Logger::VERBOSITY_NORMAL, $this->stringContains('item.start.transition_error'));
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $logger);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->jiraService->expects($this->once())
             ->method('assignIssue')
@@ -1678,10 +1604,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $result = $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem]);
+        $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem]);
 
-        // Method returns 0 even when exception occurs (error handling)
-        $this->assertSame(0, $result);
+        $this->addToAssertionCount(1);
     }
 
     public function testHandleSwitchesToExistingLocalBranch(): void
@@ -1721,9 +1646,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleSwitchesToExistingRemoteBranch(): void
@@ -1763,9 +1688,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleCreatesBranchWhenNoneExists(): void
@@ -1808,9 +1733,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleSwitchesToFirstLocalBranchWhenGeneratedBranchNotExists(): void
@@ -1850,9 +1775,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleSwitchesToFirstRemoteBranchWhenGeneratedBranchNotExists(): void
@@ -1892,9 +1817,9 @@ class ItemStartHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, 'TPW-35');
+        $response = $this->handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleCreatesBranchFromResolvedLocalWhenLocalIsAhead(): void
@@ -1934,22 +1859,14 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'develop');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->atLeastOnce())
-            ->method('gitWriteln');
-        $logger->method('section');
-        $logger->method('jiraWriteln');
-        $logger->method('text');
-        $logger->method('success');
-
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 
     public function testHandleNoVerboseLogWhenResolvedMatchesConfigured(): void
@@ -1989,24 +1906,13 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->method('success');
-        $logger->expects($this->once())
-            ->method('gitWriteln')
-            ->with(
-                Logger::VERBOSITY_VERBOSE,
-                $this->stringContains('item.start.generated_branch')
-            );
-
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $logger);
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $handler->handle($io, 'TPW-35');
+        $response = $handler->handle('TPW-35');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowExitCode($response, 0);
     }
 }

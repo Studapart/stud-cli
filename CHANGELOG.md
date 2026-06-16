@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-06-16
+
+### Changed
+
+- **Agent list/search discovery (SCI-140):** Agent JSON for `items:list`, `items:search`, and `filters:show` now returns slim issue summaries (key, status, title, url, and priority where applicable) instead of full work item records. Use `items:show` for full issue details.
+- **chore (SCI-139):** decompose oversized handlers and services
+- **Monthly follow-up (SCI-142):** remove unused handler console params
+- **Monthly follow-up (SCI-141):** hardened architecture tests, WorkflowOutput allow list, console output regex
+- **Monthly follow-up (SCI-138):** migrate workflow handlers to WorkflowRecorder + WorkflowResponse responder path
+
+### Fixed
+
+- **Agent JSON purity (SCI-127):** Agent mode now suppresses human logger/listener output and keeps stdout to a single structured JSON response.
+
+### Changed
+
+- **Response-owned command output:** Command diagnostics now flow through response DTOs and responders so agent JSON can include warnings, notices, and technical errors without leaking human logger output.
+
+- **Agent compact output (SCI-126):** Agent JSON now defaults to compact success responses for completion-only commands while preserving reusable follow-up values, explicit errors, and `{"compact":false}` for full success payloads.
+
+- **Agent help discovery (SCI-125):** `stud help --agent` now returns essential agent workflow commands by default, with explicit full-schema and single-command discovery inputs.
+
+- **Castor runtime (SCI-128):** Upgraded the Castor runtime lockfile to v1.5.0 and refreshed the required Symfony transitive dependencies while preserving CLI, agent-mode, and build workflow behavior.
+
 ## [3.18.2] - 2026-06-10
 
 ## [3.18.1] - 2026-06-10

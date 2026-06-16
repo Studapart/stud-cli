@@ -11,6 +11,7 @@ use App\Response\BranchListResponse;
 use App\Service\ColorHelper;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
+use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -106,16 +107,20 @@ class BranchListResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedRows(): void
     {
-        $row = new BranchListRow('feat/test', 'active', 'yes', 'origin/feat/test', '');
+        $row = new BranchListRow('feat/test', 'table.key', 'help.title', 'origin/feat/test', '');
         $response = BranchListResponse::success([$row]);
         $io = $this->createMock(SymfonyStyle::class);
+        $translator = new TranslationService('vi', __DIR__ . '/../../src/resources/translations');
+        $responder = new BranchListResponder(new ResponderHelper($translator, null), $this->createLogger($io));
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $responder->respond($io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
         $this->assertCount(1, $result->data['rows']);
         $this->assertSame('feat/test', $result->data['rows'][0]['branch']);
+        $this->assertSame('key', $result->data['rows'][0]['status']);
+        $this->assertSame('Manual', $result->data['rows'][0]['autoClean']);
     }
 
     public function testRespondCliReturnsNull(): void

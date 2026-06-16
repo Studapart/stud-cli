@@ -23,7 +23,7 @@ class ItemUpdateResponder
     {
         if ($format === OutputFormat::Json) {
             if (! $response->isSuccess()) {
-                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+                return new AgentJsonResponse(false, error: $this->translator->renderForAgentText($response->getErrorMessage()));
             }
 
             return new AgentJsonResponse(true, data: [

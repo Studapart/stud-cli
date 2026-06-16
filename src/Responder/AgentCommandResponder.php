@@ -5,22 +5,46 @@ declare(strict_types=1);
 namespace App\Responder;
 
 use App\Response\AgentJsonResponse;
+use App\Response\CommandResponse;
+use App\Service\MessageRenderer;
 
 /**
- * Generic responder for int/void handlers that lack a dedicated Responder.
- * Converts an exit code (or void success) into an AgentJsonResponse.
+ * Generic responder for simple command responses that lack domain-specific presentation.
  */
 class AgentCommandResponder
 {
-    public function respondFromExitCode(int $exitCode, string $successMessage, string $errorMessage): AgentJsonResponse
+    public function __construct(private readonly ?MessageRenderer $messageRenderer = null)
     {
-        return $exitCode === 0
-            ? new AgentJsonResponse(true, data: ['message' => $successMessage])
-            : new AgentJsonResponse(false, error: $errorMessage);
     }
 
-    public function respondSuccess(string $message): AgentJsonResponse
+    public function respond(CommandResponse $response, bool $compact = false): AgentJsonResponse
     {
-        return new AgentJsonResponse(true, data: ['message' => $message]);
+        if (! $response->isSuccess()) {
+            return AgentJsonResponse::fromResponse($response, renderer: $this->messageRenderer);
+        }
+
+        if ($compact) {
+            return AgentJsonResponse::successWithoutData($response->diagnosticsPayload($this->messageRenderer));
+        }
+
+        return AgentJsonResponse::fromResponse(
+            $response,
+            $response->payloadData($this->messageRenderer),
+            renderer: $this->messageRenderer,
+        );
+    }
+
+    public function respondFromExitCode(
+        int $exitCode,
+        string $successMessage,
+        string $errorMessage,
+        bool $compact = false,
+    ): AgentJsonResponse {
+        return $this->respond(CommandResponse::fromExitCode($exitCode, $successMessage, $errorMessage), $compact);
+    }
+
+    public function respondSuccess(string $message, bool $compact = false): AgentJsonResponse
+    {
+        return $this->respond(CommandResponse::success($message), $compact);
     }
 }

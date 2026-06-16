@@ -7,7 +7,6 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\FilterShowResponse;
-use App\Service\DtoSerializer;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
@@ -18,7 +17,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class FilterShowResponder
 {
-    private readonly DtoSerializer $serializer;
+    private readonly WorkItemListJsonSerializer $issueSerializer;
 
     /**
      * @param array<string, mixed> $jiraConfig
@@ -27,9 +26,9 @@ class FilterShowResponder
         private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
         private readonly Logger $logger,
-        ?DtoSerializer $serializer = null,
+        ?WorkItemListJsonSerializer $issueSerializer = null,
     ) {
-        $this->serializer = $serializer ?? new DtoSerializer();
+        $this->issueSerializer = $issueSerializer ?? new WorkItemListJsonSerializer();
     }
 
     public function respond(SymfonyStyle $io, FilterShowResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse
@@ -72,11 +71,16 @@ class FilterShowResponder
     protected function respondJson(FilterShowResponse $response): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+            return new AgentJsonResponse(
+                false,
+                error: $this->helper->translator->renderForAgentText($response->getErrorMessage() ?? 'Unknown error'),
+            );
         }
 
+        $jiraBaseUrl = (string) ($this->jiraConfig['JIRA_URL'] ?? '');
+
         return new AgentJsonResponse(true, data: [
-            'issues' => $this->serializer->serializeList($response->issues),
+            'issues' => $this->issueSerializer->serializeList($response->issues, $jiraBaseUrl, true),
             'filterName' => $response->filterName,
         ]);
     }

@@ -10,6 +10,7 @@ use App\Service\FileSystem;
 use App\Service\Logger;
 use App\Service\TranslationService;
 use App\Service\UpdateFileService;
+use App\Tests\Support\UpdateHandlerTestKit;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -31,6 +32,7 @@ class UpdateHandlerIntegrationTest extends TestCase
     private HttpClientInterface $httpClient;
     private FileSystem $fileSystem;
     private TranslationService $translationService;
+    private Logger $prompt;
     private string $tempBinaryPath;
 
     protected function setUp(): void
@@ -48,17 +50,18 @@ class UpdateHandlerIntegrationTest extends TestCase
 
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->tempBinaryPath = sys_get_temp_dir() . '/stud-test.phar';
+        $this->prompt = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
 
         // Create handler with real services but mocked HTTP client
-        $this->handler = new UpdateHandler(
+        $this->handler = UpdateHandlerTestKit::create(
             'studapart',
             'stud-cli',
             '1.0.0',
             $this->tempBinaryPath,
             $this->translationService,
             new ChangelogParser(),
-            new UpdateFileService($this->translationService),
-            new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []),
+            new UpdateFileService($this->translationService, $this->prompt),
+            $this->prompt,
             $this->fileSystem,
             null,
             $this->httpClient
@@ -148,10 +151,10 @@ CHANGELOG;
         $input->setInteractive(false);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         // Verify update completed successfully
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertFileExists($this->tempBinaryPath);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
     }
@@ -208,10 +211,10 @@ CHANGELOG;
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         // Hash verification should pass and update should succeed
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
         $this->assertFileExists($this->tempBinaryPath);
         $this->assertStringEqualsFile($this->tempBinaryPath, $pharContent);
     }

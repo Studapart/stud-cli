@@ -21,11 +21,11 @@ class SyncHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->logger = $this->createMock(Logger::class);
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('note');
-        $this->logger->method('success');
-        $this->logger->method('error');
+        $this->logger->method('addSection');
+        $this->logger->method('addText');
+        $this->logger->method('addNote');
+        $this->logger->method('addSuccess');
+        $this->logger->method('addError');
     }
 
     public function testHandleRebaseSuccess(): void
@@ -58,7 +58,7 @@ class SyncHandlerTest extends CommandTestCase
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleAlreadyUpToDate(): void
@@ -80,15 +80,14 @@ class SyncHandlerTest extends CommandTestCase
             ->method('tryRebase');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->expects($this->once())
-            ->method('note');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addNote');
 
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleConflictsAbortsRebase(): void
@@ -114,15 +113,14 @@ class SyncHandlerTest extends CommandTestCase
             ->method('rebaseAbort');
 
         $logger = $this->createMock(Logger::class);
-        $logger->method('section');
-        $logger->method('text');
-        $logger->expects($this->once())
-            ->method('error');
+        $logger->method('addSection');
+        $logger->method('addText');
+        $logger->method('addError');
 
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleDirtyWorkingDirectory(): void
@@ -141,7 +139,7 @@ class SyncHandlerTest extends CommandTestCase
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleOnBaseBranch(): void
@@ -159,7 +157,7 @@ class SyncHandlerTest extends CommandTestCase
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, $this->baseBranch, $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleOnBaseBranchWithoutOriginPrefix(): void
@@ -173,7 +171,7 @@ class SyncHandlerTest extends CommandTestCase
         $handler = new SyncHandler($this->gitRepository, $this->gitBranchService, 'main', $this->translationService, $this->logger);
         $result = $handler->handle($this->createIo());
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     private function createIo(): SymfonyStyle

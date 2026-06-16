@@ -42,8 +42,16 @@ inputs:
     description: >-
       Git ref on Studapart/stud-cli for setup-stud.sh (branch, tag, or SHA). Pin to a tag or SHA
       for supply-chain consistency; must include --skip-init support when using the default install args.
+      When this is a semver tag (for example v3.18.2), the installer uses that release without
+      calling the GitHub releases/latest API.
     required: false
     default: develop
+  stud-setup-script-ref:
+    description: >-
+      Optional Git ref for setup-stud.sh itself. Defaults to stud-install-ref. Use a commit or
+      branch that contains installer fixes while stud-install-ref stays pinned to a release tag.
+    required: false
+    default: ''
   run-config-validate:
     description: Run stud config:validate --agent after writing configuration.
     required: false
@@ -76,10 +84,23 @@ runs:
       shell: bash
       env:
         STUD_INSTALL_REF: ${{ inputs.stud-install-ref }}
+        STUD_SETUP_SCRIPT_REF: ${{ inputs.stud-setup-script-ref }}
+        GH_TOKEN: ${{ inputs.github-token }}
       run: |
         set -euo pipefail
-        url="https://raw.githubusercontent.com/Studapart/stud-cli/${STUD_INSTALL_REF}/setup-stud.sh"
-        curl -fsSL "$url" | bash -s -- --force --skip-init
+        script_ref="${STUD_SETUP_SCRIPT_REF:-$STUD_INSTALL_REF}"
+        url="https://raw.githubusercontent.com/Studapart/stud-cli/${script_ref}/setup-stud.sh"
+        attempts="${STUD_INSTALL_SCRIPT_ATTEMPTS:-5}"
+        for attempt in $(seq 1 "$attempts"); do
+          if curl -fsSL "$url" | bash -s -- --force --skip-init; then
+            exit 0
+          fi
+          if [ "$attempt" -eq "$attempts" ]; then
+            echo "Failed to install stud-cli from ${url} after ${attempts} attempt(s)." >&2
+            exit 1
+          fi
+          sleep $((attempt * 3))
+        done
 
     - name: Add stud to PATH
       shell: bash

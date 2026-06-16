@@ -48,7 +48,7 @@ class CommitUndoHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleRefusesWhenPushedAndUserDoesNotConfirm(): void
@@ -75,7 +75,7 @@ class CommitUndoHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleUndoesWhenPushedAndUserConfirms(): void
@@ -102,7 +102,7 @@ class CommitUndoHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io);
 
-        $this->assertSame(0, $result);
+        $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleErrorWhenNotInRepo(): void
@@ -121,7 +121,7 @@ class CommitUndoHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleErrorWhenNoCommit(): void
@@ -142,6 +142,6 @@ class CommitUndoHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), new BufferedOutput());
         $result = $this->handler->handle($io);
 
-        $this->assertSame(1, $result);
+        $this->assertFalse($result->isSuccess());
     }
 }

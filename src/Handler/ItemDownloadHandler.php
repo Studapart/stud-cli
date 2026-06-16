@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
 use App\Service\JiraAttachmentService;
-use App\Service\TranslationService;
 
 class ItemDownloadHandler
 {
@@ -17,8 +17,9 @@ class ItemDownloadHandler
     public function __construct(
         private readonly FileSystem $fileSystem,
         private readonly JiraAttachmentService $jiraAttachmentService,
-        private readonly TranslationService $translator
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
     /**
@@ -33,7 +34,7 @@ class ItemDownloadHandler
 
         if ($key === '' && $urlTrim === '') {
             return ItemDownloadResponse::fatal(
-                $this->translator->trans('item.download.error_key_or_url')
+                MessageRef::key('item.download.error_key_or_url')
             );
         }
 
@@ -42,7 +43,7 @@ class ItemDownloadHandler
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             $message = $e->getMessage();
             if ($message === 'item.download.error_path_traversal') {
-                $message = $this->translator->trans($message);
+                return ItemDownloadResponse::fatal(MessageRef::key($message));
             }
 
             return ItemDownloadResponse::fatal($message);

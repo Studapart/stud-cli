@@ -12,7 +12,7 @@ use App\DTO\PullRequestFeedbackLocation;
 use App\DTO\PullRequestFeedbackState;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-final class GitLabConversationProvider
+class GitLabConversationProvider
 {
     private const DISCUSSIONS_PAGE_SIZE = 100;
     private const KIND_NOTE = 'note';

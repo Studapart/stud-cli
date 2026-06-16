@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
+use App\Enum\ResponseMessageLevel;
 use App\Response\AgentJsonResponse;
 use App\Response\ConfigShowResponse;
 use App\Service\Logger;
@@ -23,13 +26,15 @@ class ConfigShowResponder
     {
         if ($format === OutputFormat::Json) {
             if (! $response->isSuccess()) {
-                return new AgentJsonResponse(false, error: $response->getError() ?? 'Unknown error');
+                $error = $response->getError() ?? 'Unknown error';
+
+                return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error, $response->getErrorParameters()));
             }
             $data = $response->isSingleKey()
                 ? ['singleKey' => $response->singleKey, 'singleKeyValue' => $response->singleKeyValue, 'singleKeySection' => $response->singleKeySection]
                 : ['globalConfig' => $response->globalConfig, 'projectConfig' => $response->projectConfig];
 
-            return new AgentJsonResponse(true, data: $data);
+            return new AgentJsonResponse(true, data: $data, diagnostics: $response->diagnosticsPayload());
         }
 
         if (! $response->isSuccess()) {
@@ -38,6 +43,8 @@ class ConfigShowResponder
 
             return null;
         }
+
+        $this->renderDiagnostics($response);
 
         if ($response->isSingleKey()) {
             $this->respondSingleKey($response, $quiet);
@@ -124,5 +131,41 @@ class ConfigShowResponder
         }
 
         return '';
+    }
+
+    private function renderDiagnostics(ConfigShowResponse $response): void
+    {
+        foreach ($response->getMessages() as $message) {
+            $this->renderDiagnosticMessage($message);
+        }
+    }
+
+    private function renderDiagnosticMessage(ResponseMessage $message): void
+    {
+        $text = $this->renderMessage($message->message);
+
+        match ($message->level) {
+            ResponseMessageLevel::Error => $this->logger->errorWithDetails(
+                Logger::VERBOSITY_NORMAL,
+                $text,
+                $message->technicalDetails ?? '',
+            ),
+            ResponseMessageLevel::Warning => $this->logger->warning(Logger::VERBOSITY_NORMAL, $text),
+            ResponseMessageLevel::Notice => $this->logger->note(Logger::VERBOSITY_NORMAL, $text),
+            ResponseMessageLevel::Info => $this->logger->text(Logger::VERBOSITY_VERBOSE, $text),
+        };
+
+        if ($message->technicalDetails !== null && $message->technicalDetails !== '') {
+            $this->logger->text(Logger::VERBOSITY_DEBUG, ' Technical details: ' . $message->technicalDetails);
+        }
+    }
+
+    private function renderMessage(MessageRef|string $message): string
+    {
+        if ($message instanceof MessageRef) {
+            return $this->helper->translator->trans($message->key, $message->parameters);
+        }
+
+        return $message;
     }
 }

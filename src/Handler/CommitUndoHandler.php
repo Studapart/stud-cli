@@ -4,66 +4,63 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\Prompt\PromptInterface;
 
 class CommitUndoHandler
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly Logger $logger,
-        private readonly TranslationService $translator
+        private readonly PromptInterface $prompt,
+        mixed $_translator
     ) {
+        unset($_translator);
     }
 
-    public function handle(SymfonyStyle $io, bool $quiet = false): int
+    public function handle(mixed $quiet = false, mixed $legacyQuiet = false): CommandResponse
     {
+        if ($quiet instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
+            $quiet = (bool) $legacyQuiet;
+        }
+        $quiet = (bool) $quiet;
+
         try {
             $this->gitRepository->getProjectConfigPath();
         } catch (\RuntimeException $e) {
-            $this->logger->error(
-                Logger::VERBOSITY_NORMAL,
-                explode("\n", $this->translator->trans('commit_undo.error_not_repo'))
-            );
+            $error = MessageRef::key('commit_undo.error_not_repo');
 
-            return 1;
+            return CommandResponse::error(
+                $error,
+                [ResponseMessage::error($error, $e->getMessage())],
+            );
         }
 
         if (! $this->gitRepository->hasAtLeastOneCommit()) {
-            $this->logger->error(
-                Logger::VERBOSITY_NORMAL,
-                explode("\n", $this->translator->trans('commit_undo.error_no_commit'))
-            );
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('commit_undo.error_no_commit'));
         }
 
+        $messages = [];
         if ($this->gitRepository->isHeadPushed()) {
-            $this->logger->warning(
-                Logger::VERBOSITY_NORMAL,
-                $this->translator->trans('commit_undo.warning_pushed')
-            );
+            $warning = MessageRef::key('commit_undo.warning_pushed');
+            $messages[] = ResponseMessage::warning($warning);
 
             if (! $quiet) {
-                $confirmed = $this->logger->confirm(
-                    $this->translator->trans('commit_undo.confirm_continue'),
+                $confirmed = $this->prompt->confirm(
+                    MessageRef::key('commit_undo.confirm_continue'),
                     false
                 );
 
                 if (! $confirmed) {
-                    return 1;
+                    return CommandResponse::error($warning, $messages);
                 }
             }
         }
 
         $this->gitRepository->undoLastCommit();
-        $this->logger->success(
-            Logger::VERBOSITY_NORMAL,
-            $this->translator->trans('commit_undo.success')
-        );
 
-        return 0;
+        return CommandResponse::success(MessageRef::key('commit_undo.success'), messages: $messages);
     }
 }

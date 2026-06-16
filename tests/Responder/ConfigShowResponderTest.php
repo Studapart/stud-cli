@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
 use App\Responder\ConfigShowResponder;
 use App\Response\ConfigShowResponse;
@@ -26,6 +28,64 @@ class ConfigShowResponderTest extends CommandTestCase
         $this->logger = $this->createMock(Logger::class);
         $helper = new ResponderHelper($this->translationService);
         $this->responder = new ConfigShowResponder($helper, $this->logger);
+    }
+
+    public function testRespondRendersNoticeAndInfoDiagnosticsWithRawStringMessages(): void
+    {
+        $response = ConfigShowResponse::success(
+            ['LANGUAGE' => 'en'],
+            null,
+            [
+                ResponseMessage::notice('Branch cleanup skipped'),
+                ResponseMessage::info('Using cached provider data'),
+            ],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())
+            ->method('note')
+            ->with(Logger::VERBOSITY_NORMAL, 'Branch cleanup skipped');
+        $this->logger->expects($this->once())
+            ->method('text')
+            ->with(Logger::VERBOSITY_VERBOSE, 'Using cached provider data');
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondRendersDiagnosticsAtDebugVerbosity(): void
+    {
+        $response = ConfigShowResponse::success(
+            ['LANGUAGE' => 'en'],
+            null,
+            [ResponseMessage::warning(MessageRef::key('config.show.global_config_unreadable'), 'Parse error')],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('warning');
+        $this->logger->expects($this->once())
+            ->method('text')
+            ->with(Logger::VERBOSITY_DEBUG, ' Technical details: Parse error');
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondJsonIncludesDiagnosticsPayload(): void
+    {
+        $response = ConfigShowResponse::success(
+            ['LANGUAGE' => 'en'],
+            null,
+            [ResponseMessage::warning(MessageRef::key('config.show.global_config_unreadable'), 'Parse error')],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $agentResponse = $this->responder->respond($io, $response, false, OutputFormat::Json);
+
+        $this->assertNotNull($agentResponse);
+        $this->assertArrayHasKey('warnings', $agentResponse->diagnostics);
     }
 
     public function testRespondOutputsErrorWhenResponseIsNotSuccess(): void

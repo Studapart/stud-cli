@@ -54,6 +54,18 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $this->assertStringContainsString('item.download.error_path_traversal', (string) $response->getError());
     }
 
+    public function testHandleReturnsFatalWhenTargetDirectoryCannotBeCreated(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('mkdir')
+            ->willThrowException(new \RuntimeException('mkdir failed'));
+
+        $response = $this->handler->handle('KEY-1', null, 'downloads');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('mkdir failed', $response->getError());
+    }
+
     public function testHandleDownloadsAllForIssue(): void
     {
         $this->fileSystem->expects($this->once())->method('mkdir')->with('.cursor/stud-downloads', 0777, true);

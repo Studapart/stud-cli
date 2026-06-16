@@ -13,7 +13,7 @@ use App\DTO\PullRequestFeedbackReview;
 use App\DTO\PullRequestFeedbackState;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-final class GithubConversationProvider
+class GithubConversationProvider
 {
     private const CONNECTION_COMMENTS = 'comments';
     private const CONNECTION_REVIEWS = 'reviews';

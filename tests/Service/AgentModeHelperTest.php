@@ -87,6 +87,19 @@ class AgentModeHelperTest extends TestCase
         $this->assertSame($data, $payload['data']);
     }
 
+    public function testBuildSuccessPayloadWithScalarData(): void
+    {
+        $payload = $this->helper->buildSuccessPayload('1.2.3');
+        $this->assertTrue($payload['success']);
+        $this->assertSame('1.2.3', $payload['data']);
+    }
+
+    public function testBuildSuccessPayloadWithoutData(): void
+    {
+        $payload = $this->helper->buildSuccessPayload(hasData: false);
+        $this->assertSame(['success' => true], $payload);
+    }
+
     public function testBuildErrorPayload(): void
     {
         $payload = $this->helper->buildErrorPayload('Something failed');
@@ -99,6 +112,13 @@ class AgentModeHelperTest extends TestCase
         $payload = $this->helper->buildSuccessPayload(['foo' => 'bar']);
         $json = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $this->assertSame('{"success":true,"data":{"foo":"bar"}}', $json);
+    }
+
+    public function testWriteAgentOutputProducesCompactSuccessJson(): void
+    {
+        $payload = $this->helper->buildSuccessPayload(hasData: false);
+        $json = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $this->assertSame('{"success":true}', $json);
     }
 
     public function testReadAgentInputFromInjectedIoReturnsDecodedArray(): void

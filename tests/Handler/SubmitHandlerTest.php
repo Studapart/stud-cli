@@ -23,7 +23,7 @@ class SubmitHandlerTest extends CommandTestCase
     ];
     private ?GithubProvider $githubProvider;
     private CanConvertToMarkdownInterface $htmlConverter;
-    private \App\Service\Logger $logger;
+    private \App\Service\Prompt\PromptInterface $prompt;
 
     protected function setUp(): void
     {
@@ -34,7 +34,7 @@ class SubmitHandlerTest extends CommandTestCase
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$jiraService = $this->jiraService;
         TestKernel::$translationService = $this->translationService;
-        $this->logger = $this->createMock(\App\Service\Logger::class);
+        $this->prompt = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
             $this->jiraService,
@@ -42,7 +42,7 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $this->logger,
+            $this->prompt,
             $this->htmlConverter
         );
     }
@@ -95,9 +95,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandlePassesAssignToAuthorIntentWhenRequested(): void
@@ -135,9 +135,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleReportsAssignmentFailureAfterPullRequestCreation(): void
@@ -174,23 +174,13 @@ class SubmitHandlerTest extends CommandTestCase
                 'https://github.com/my-owner/my-repo/pull/1'
             ));
 
-        $this->logger->expects($this->once())
-            ->method('error')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
-            );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleDerivesPrTitleFromFirstLineOfMultilineCommit(): void
@@ -241,9 +231,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testExtractPrTitleFromCommitMessageReturnsEmptyForBlankInput(): void
@@ -312,9 +302,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleSuccessWithDraft(): void
@@ -364,9 +354,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $response = $this->handler->handle(new SubmitOptions(true));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithDirtyWorkingDirectoryLogsNoteAndSucceeds(): void
@@ -405,24 +395,13 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('createPullRequest')
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $this->logger->expects($this->once())
-            ->method('note')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->translationService->trans('submit.note_dirty_working')
-            );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('success');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleOnBaseBranch(): void
@@ -433,9 +412,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWhenPushFails(): void
@@ -449,9 +428,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoLogicalCommit(): void
@@ -467,9 +446,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoJiraKeyInCommitMessage(): void
@@ -519,9 +498,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNoJiraKeyInCommitOrBranch(): void
@@ -540,9 +519,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithJiraKeyInBranchNameTakesPriority(): void
@@ -593,9 +572,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleUnescapesCheckboxMarkdownInPrBody(): void
@@ -642,9 +621,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithJiraServiceExceptionForPrBody(): void
@@ -675,10 +654,10 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         $outputText = $output->fetch();
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithEmptyJiraDescription(): void
@@ -724,10 +703,10 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         $outputText = $output->fetch();
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPullRequestCreationApiExceptionNon422(): void
@@ -772,24 +751,13 @@ class SubmitHandlerTest extends CommandTestCase
                 )
             );
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_create_pr'),
-                $this->stringContains('GitHub API Error (Status: 500)')
-            );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithJiraFetchApiExceptionVerbose(): void
@@ -817,30 +785,14 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('createPullRequest')
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
-        $this->logger->method('section');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('warning');
-        $this->logger->method('success');
-        $this->logger->method('text')
-            ->willReturnCallback(function ($verbosity, $message) {
-                // Allow normal verbosity calls
-                if ($verbosity === \App\Service\Logger::VERBOSITY_NORMAL) {
-                    return;
-                }
-                // Check for verbose technical details
-                if ($verbosity === \App\Service\Logger::VERBOSITY_VERBOSE && is_array($message) && isset($message[1]) && str_contains($message[1], 'Technical details:')) {
-                    return;
-                }
-            });
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNoGitProviderConfigured(): void
@@ -884,9 +836,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithGitProviderApiException(): void
@@ -923,10 +875,10 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         $outputText = $output->fetch();
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithPullRequestAlreadyExists(): void
@@ -970,10 +922,10 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         $outputText = $output->fetch();
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithVerboseOutput(): void
@@ -1011,10 +963,10 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle(new ArrayInput([]), $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
         $outputText = $output->fetch();
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNullRemoteOwnerFallsBackToBranchName(): void
@@ -1062,9 +1014,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testValidateAndProcessLabelsAllValid(): void
@@ -1129,7 +1081,7 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $this->logger,
+            $this->prompt,
             $this->htmlConverter
         );
 
@@ -1234,9 +1186,9 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithLabelsFetchError(): void
@@ -1282,9 +1234,9 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithLabelsFetchErrorApiException(): void
@@ -1321,18 +1273,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willThrowException(new \App\Exception\ApiException('Failed to get labels.', 'HTTP 500: Internal Server Error', 500));
 
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_fetch_labels'),
-                'HTTP 500: Internal Server Error'
-            );
-        $this->logger->method('section');
-        $this->logger->method('text');
-        $this->logger->method('gitWriteln');
-        $this->logger->method('jiraWriteln');
-        $this->logger->method('success');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1342,9 +1282,9 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testValidateAndProcessLabelsCreateMissingLabel(): void
@@ -1364,22 +1304,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->with('new-label', $this->matchesRegularExpression('/^[0-9a-f]{6}$/i'), null)
             ->willReturn(['name' => 'new-label']);
 
-        $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-
-        // Mock the methods that will be called
-        $this->logger->expects($this->exactly(2))
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
-
-        $this->logger->expects($this->once())
-            ->method('success')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1407,17 +1332,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->never())
             ->method('createLabel');
 
-        $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $this->logger->expects($this->once())
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
+        $this->prompt->method('choice')->willReturn('Ignore: Skip this label and remove it from the final list');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1443,17 +1358,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->never())
             ->method('createLabel');
 
-        $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $this->logger->expects($this->once())
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_retry_option'));
+        $this->prompt->method('choice')->willReturn('Retry: Abort the command and re-run with a corrected list');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1475,11 +1380,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn($remoteLabels);
 
-        $this->logger->expects($this->never())
-            ->method('choice');
 
-        $this->logger->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1506,21 +1407,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('createLabel')
             ->willThrowException(new \Exception('API Error'));
 
-        $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $this->logger->expects($this->exactly(2))
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
-
-        $this->logger->expects($this->once())
-            ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
+        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1547,25 +1434,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('createLabel')
             ->willThrowException(new \App\Exception\ApiException("Failed to create label 'new-label'.", 'HTTP 422: Validation Failed', 422));
 
-        $output = new BufferedOutput();
-        $io = $this->createMock(SymfonyStyle::class);
-
-        $this->logger->expects($this->exactly(2))
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
-
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_create_option'));
-
-        $this->logger->expects($this->once())
-            ->method('errorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->stringContains('submit.error_create_label'),
-                'HTTP 422: Validation Failed'
-            );
+        $this->prompt->method('choice')->willReturn('Create: Create the label on GitHub and add it to the PR');
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1590,18 +1459,8 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = $this->createMock(SymfonyStyle::class);
 
-        $this->logger->expects($this->once())
-            ->method('text')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, $this->anything());
 
-        $this->logger->expects($this->once())
-            ->method('choice')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything())
-            ->willReturn($this->translationService->trans('submit.label_ignore_option'));
 
-        $this->logger->expects($this->once())
-            ->method('writeln')
-            ->with(\App\Service\Logger::VERBOSITY_VERBOSE, $this->stringContains('ignored'));
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
@@ -1666,10 +1525,10 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Adding labels failure causes the whole operation to fail
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithLabelsNoProvider(): void
@@ -1720,9 +1579,9 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Labels should be ignored when no provider is configured
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAndLabels(): void
@@ -1802,9 +1661,9 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug,enhancement'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAndDraft(): void
@@ -1868,9 +1727,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $response = $this->handler->handle(new SubmitOptions(true));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAndLabelsAndDraft(): void
@@ -1955,9 +1814,9 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAlreadyDraft(): void
@@ -2020,9 +1879,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $response = $this->handler->handle(new SubmitOptions(true));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRFindFails(): void
@@ -2080,10 +1939,10 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
         $io->setVerbosity(SymfonyStyle::VERBOSITY_VERBOSE);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if finding PR fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRAddLabelsFails(): void
@@ -2160,10 +2019,10 @@ class SubmitHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(false, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(false, 'bug'));
 
         // Should still succeed even if adding labels fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRUpdateDraftFails(): void
@@ -2225,10 +2084,10 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(true));
+        $response = $this->handler->handle(new SubmitOptions(true));
 
         // Should still succeed even if updating draft fails
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithExistingPRNoProvider(): void
@@ -2279,9 +2138,9 @@ class SubmitHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         // Should handle gracefully when no provider (labels/draft ignored)
-        $result = $this->handler->handle($io, new SubmitOptions(true, 'bug'));
+        $response = $this->handler->handle(new SubmitOptions(true, 'bug'));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     // Note: HTML-to-Markdown conversion tests were moved to JiraHtmlConverterTest
@@ -2321,19 +2180,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->with('<p>Test HTML</p>')
             ->willThrowException(new \Exception("Class 'DOMDocument' not found"));
 
-        $this->logger->expects($this->once())
-            ->method('warning')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                [
-                    'HTML to Markdown conversion failed: PHP XML extension is missing.',
-                    'Install it using:',
-                    '  Ubuntu/Debian: sudo apt-get install php-xml',
-                    '  Fedora/RHEL: sudo dnf install php-xml',
-                    '  macOS (Homebrew): brew install php-xml',
-                    'Using raw HTML for PR description.',
-                ]
-            );
 
         $this->githubProvider
             ->expects($this->once())
@@ -2348,9 +2194,9 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io);
+        $response = $this->handler->handle();
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleExistingPrWithNoProviderLogsSuccessAndReturns(): void
@@ -2362,12 +2208,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->jiraConfig,
             'origin/develop',
             $this->translationService,
-            $this->logger,
+            $this->prompt,
             $this->htmlConverter
         );
 
-        $this->logger->expects($this->once())->method('note');
-        $this->logger->expects($this->once())->method('success');
 
         $result = $this->callPrivateMethod($handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(), []]);
 
@@ -2391,7 +2235,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->expects($this->once())
             ->method('assignPullRequestToAuthor')
             ->with($existingPr);
-        $this->logger->expects($this->once())->method('success');
 
         $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);
 
@@ -2414,14 +2257,6 @@ class SubmitHandlerTest extends CommandTestCase
             ->method('assignPullRequestToAuthor')
             ->with($existingPr)
             ->willThrowException(new \RuntimeException('Assignment failed'));
-        $this->logger
-            ->expects($this->once())
-            ->method('error')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->callback(fn ($messages): bool => is_array($messages) && count($messages) > 0)
-            );
-
         $result = $this->callPrivateMethod($this->handler, 'handleExistingPr', ['feat/TPW-35', new SubmitOptions(assignToAuthor: true), []]);
 
         $this->assertSame(1, $result);
@@ -2475,8 +2310,8 @@ class SubmitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, new SubmitOptions(assignToAuthor: true));
+        $response = $this->handler->handle(new SubmitOptions(assignToAuthor: true));
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 }

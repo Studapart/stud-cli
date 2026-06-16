@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\AgentModeSchemaGenerator;
+use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../Fixtures/schema_generator_fixtures.php';
@@ -18,6 +19,28 @@ require_once __DIR__ . '/../Fixtures/schema_generator_fixtures.php';
  */
 class AgentModeSchemaGeneratorTest extends TestCase
 {
+    private const ESSENTIAL_COMMANDS = [
+        'commit',
+        'config:show',
+        'config:validate',
+        'confluence:show',
+        'flatten',
+        'help',
+        'items:create',
+        'items:download',
+        'items:show',
+        'items:start',
+        'items:update',
+        'items:upload',
+        'please',
+        'pr:comment',
+        'pr:comments',
+        'push',
+        'submit',
+        'switch',
+        'sync',
+    ];
+
     private AgentModeSchemaGenerator $generator;
 
     /** @var array{meta: array<string, string>, commands: list<array<string, mixed>>} */
@@ -49,14 +72,23 @@ class AgentModeSchemaGeneratorTest extends TestCase
 
     public function testEveryCommandHasRequiredKeys(): void
     {
-        $requiredKeys = ['name', 'aliases', 'description', 'parameters', 'input', 'output'];
+        $requiredKeys = ['name', 'aliases', 'essential', 'description', 'parameters', 'input', 'output'];
         foreach ($this->schema['commands'] as $cmd) {
             foreach ($requiredKeys as $key) {
                 $this->assertArrayHasKey($key, $cmd, "Command '{$cmd['name']}' missing key '{$key}'");
             }
+            $this->assertIsBool($cmd['essential'], "Command '{$cmd['name']}' essential flag must be boolean");
             $this->assertArrayHasKey('options', $cmd['parameters']);
             $this->assertArrayHasKey('arguments', $cmd['parameters']);
             $this->assertArrayHasKey('properties', $cmd['input']);
+        }
+    }
+
+    public function testMetaIncludesDiscoveryHints(): void
+    {
+        foreach (['defaultDiscovery', 'fullDiscovery', 'commandDiscovery'] as $key) {
+            $this->assertArrayHasKey($key, $this->schema['meta']);
+            $this->assertNotSame('', $this->schema['meta'][$key]);
         }
     }
 
@@ -165,6 +197,99 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertSame($sorted, $names, 'Commands should be sorted alphabetically');
     }
 
+    public function testEssentialCommandsAreMarked(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        foreach (self::ESSENTIAL_COMMANDS as $commandName) {
+            $this->assertArrayHasKey($commandName, $schemaByName);
+            $this->assertTrue($schemaByName[$commandName]['essential'], "{$commandName} must be essential");
+        }
+    }
+
+    public function testEssentialOnlyGenerationReturnsAgreedEssentialCommands(): void
+    {
+        $schema = $this->generator->generate(essentialOnly: true);
+        $names = array_column($schema['commands'], 'name');
+        $expected = self::ESSENTIAL_COMMANDS;
+        sort($expected);
+
+        $this->assertSame($expected, $names);
+        foreach ($schema['commands'] as $cmd) {
+            $this->assertTrue($cmd['essential'], "Command '{$cmd['name']}' must be essential");
+        }
+    }
+
+    public function testFullGenerationStillIncludesNonEssentialCommands(): void
+    {
+        $fullNames = array_column($this->schema['commands'], 'name');
+        $essentialNames = array_column($this->generator->generate(essentialOnly: true)['commands'], 'name');
+
+        $this->assertContains('cache:clear', $fullNames);
+        $this->assertNotContains('cache:clear', $essentialNames);
+        $this->assertGreaterThan(count($essentialNames), count($fullNames));
+    }
+
+    public function testCompactDiscoveryUsesSharedResponseSchemas(): void
+    {
+        $schema = $this->generatorWithTranslations()->generate(essentialOnly: true, expandedOutput: false);
+
+        $this->assertArrayHasKey('globalInput', $schema);
+        $this->assertSame([
+            'type' => 'bool',
+            'optional' => true,
+            'default' => true,
+        ], $schema['globalInput']['compact']);
+        $this->assertArrayHasKey('responseSchemas', $schema);
+        $this->assertSame(['success' => true], $schema['responseSchemas']['successOnly']);
+        $this->assertSame(['success' => true, 'data' => 'command.output.data'], $schema['responseSchemas']['successData']);
+        $this->assertSame(
+            ['success' => false, 'error' => 'string', 'diagnostics?' => 'diagnostics'],
+            $schema['responseSchemas']['error']
+        );
+        $this->assertStringContainsString('Use this schema for normal calls', $schema['responseSchemas']['note']);
+        $this->assertSame('Agent contract. Input is JSON via stdin/file; output is one JSON object.', $schema['meta']['description']);
+    }
+
+    public function testCompactDiscoveryCommandsUseOutputReferences(): void
+    {
+        $schemaByName = [];
+        foreach ($this->generatorWithTranslations()->generate(essentialOnly: false, expandedOutput: false)['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $commit = $schemaByName['commit'];
+        $this->assertArrayNotHasKey('compact', $commit['input']['properties']);
+        $this->assertSame(['successOnly', 'error'], $commit['output']['compact']);
+        $this->assertSame(['successData', 'error'], $commit['output']['full']);
+        $this->assertSame(['message' => 'string'], $commit['output']['data']);
+        $this->assertSame('commit result', $commit['output']['description']);
+        $this->assertSame('Commit changes.', $commit['description']);
+        $this->assertArrayNotHasKey('success', $commit['output']);
+        $this->assertArrayNotHasKey('compactSuccess', $commit['output']);
+
+        $configShow = $schemaByName['config:show'];
+        $this->assertSame(['successData', 'error'], $configShow['output']['compact']);
+        $this->assertSame(['successData', 'error'], $configShow['output']['full']);
+        $this->assertSame('config data', $configShow['output']['description']);
+        $this->assertSame('Show config.', $configShow['description']);
+        $this->assertArrayHasKey('globalConfig', $configShow['output']['data']);
+    }
+
+    public function testCompactDiscoveryFallsBackToTaskDescriptionsWithoutTranslator(): void
+    {
+        $schemaByName = [];
+        foreach ($this->generator->generate(essentialOnly: true, expandedOutput: false)['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertSame('Guides you through making a conventional commit', $schemaByName['commit']['description']);
+        $this->assertStringContainsString('Use this schema for normal calls', $this->generator->generate(essentialOnly: true, expandedOutput: false)['responseSchemas']['note']);
+    }
+
     public function testGeneratorSkipsDefaultAndAgentlessTasks(): void
     {
         $schema = $this->schema;
@@ -198,8 +323,11 @@ class AgentModeSchemaGeneratorTest extends TestCase
     {
         $schema = $this->generator->generate(['_test_fixture_no_output_attr']);
         $cmd = $schema['commands'][0];
+        $this->assertFalse($cmd['essential']);
+        $this->assertArrayHasKey('compact', $cmd['input']['properties']);
         $this->assertNull($cmd['output']['description']);
         $this->assertSame('(undescribed)', $cmd['output']['success']['data']);
+        $this->assertSame($cmd['output']['success'], $cmd['output']['compactSuccess']);
     }
 
     public function testOutputSchemaUndescribedWhenEmptyAttribute(): void
@@ -208,6 +336,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $cmd = $schema['commands'][0];
         $this->assertNull($cmd['output']['description']);
         $this->assertSame('(undescribed)', $cmd['output']['success']['data']);
+        $this->assertSame($cmd['output']['success'], $cmd['output']['compactSuccess']);
     }
 
     public function testOutputSchemaWithResponseClass(): void
@@ -232,7 +361,25 @@ class AgentModeSchemaGeneratorTest extends TestCase
 
         $cmd = $schemaByName['config:init'];
         $this->assertSame(['message' => 'string'], $cmd['output']['success']['data']);
+        $this->assertTrue($cmd['output']['compactSuccess']['success']);
+        $this->assertArrayHasKey('diagnostics?', $cmd['output']['compactSuccess']);
         $this->assertNotNull($cmd['output']['description']);
+    }
+
+    public function testCompletionOnlyWorkflowOutputsCompactToSuccessOnly(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        foreach (['items:start', 'submit'] as $commandName) {
+            $cmd = $schemaByName[$commandName];
+            $this->assertSame(['message' => 'string'], $cmd['output']['success']['data']);
+            $this->assertTrue($cmd['output']['compactSuccess']['success']);
+            $this->assertArrayNotHasKey('data', $cmd['output']['compactSuccess']);
+            $this->assertArrayHasKey('diagnostics?', $cmd['output']['compactSuccess']);
+        }
     }
 
     public function testConfigProjectInitInSchemaWithExpectedInputAndOutput(): void
@@ -320,7 +467,9 @@ class AgentModeSchemaGeneratorTest extends TestCase
     {
         foreach ($this->schema['commands'] as $cmd) {
             $this->assertArrayHasKey('error', $cmd['output'], "Command '{$cmd['name']}' output missing error structure");
-            $this->assertSame(['success' => false, 'error' => 'string'], $cmd['output']['error']);
+            $this->assertFalse($cmd['output']['error']['success']);
+            $this->assertSame('string', $cmd['output']['error']['error']);
+            $this->assertArrayHasKey('diagnostics?', $cmd['output']['error']);
         }
     }
 
@@ -409,6 +558,30 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('body', $outputSuccess);
     }
 
+    public function testEveryAgentTaskDocumentsCompactInput(): void
+    {
+        foreach ($this->schema['commands'] as $cmd) {
+            $props = $cmd['input']['properties'] ?? [];
+            $this->assertArrayHasKey('compact', $props, "Command '{$cmd['name']}' input must include compact");
+            $this->assertSame('bool', $props['compact']['type']);
+            $this->assertTrue($props['compact']['optional']);
+            $this->assertTrue($props['compact']['default']);
+        }
+    }
+
+    public function testSyncSchemaDoesNotAdvertiseUnavailableRebasedValue(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $output = $schemaByName['sync']['output']['success']['data'] ?? [];
+        $this->assertSame(['message' => 'string'], $output);
+        $this->assertTrue($schemaByName['sync']['output']['compactSuccess']['success']);
+        $this->assertArrayHasKey('diagnostics?', $schemaByName['sync']['output']['compactSuccess']);
+    }
+
     // ------------------------------------------------------------------
     // Source-based parsing (independent verification, no reflection)
     // ------------------------------------------------------------------
@@ -464,5 +637,10 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
 
         return $tasks;
+    }
+
+    private function generatorWithTranslations(): AgentModeSchemaGenerator
+    {
+        return new AgentModeSchemaGenerator(new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations'));
     }
 }

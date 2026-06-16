@@ -4,45 +4,48 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Contract\WorkflowEntryRecorder;
+use App\DTO\MessageRef;
+use App\DTO\WorkflowRecorder;
+use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
 use App\Service\GitTokenPromptResolver;
-use App\Service\InitProjectConfigFollowUpService;
-use App\Service\Logger;
-use App\Service\MigrationRegistry;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Service\GlobalMigrationIdResolver;
+use App\Service\Prompt\PromptInterface;
 use Symfony\Component\Yaml\Yaml;
 
 class InitHandler
 {
+    private WorkflowEntryRecorder $recorder;
+
+    private readonly GlobalMigrationIdResolver $globalMigrationIdResolver;
+
     public function __construct(
         private readonly FileSystem $fileSystem,
         private readonly string $configPath,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger,
+        mixed $translator,
+        private readonly PromptInterface $prompt,
         private readonly GitTokenPromptResolver $gitTokenPromptResolver,
-        private readonly ?InitProjectConfigFollowUpService $projectConfigFollowUp = null,
+        ?GlobalMigrationIdResolver $globalMigrationIdResolver = null,
     ) {
+        unset($translator);
+        $this->globalMigrationIdResolver = $globalMigrationIdResolver ?? new GlobalMigrationIdResolver($fileSystem);
     }
 
-    /**
-     * @param bool $isAgentMode When true, skips post-save project follow-up (same as `stud config:init --agent`).
-     * @param bool $isInteractiveCli From Castor input; when false, project follow-up only shows the run-later note.
-     */
-    public function handle(SymfonyStyle $io, bool $isAgentMode = false, bool $isInteractiveCli = true): void
+    public function handle(): WorkflowResponse
     {
+        $this->recorder = new WorkflowRecorder();
         $existingConfig = $this->loadExistingConfig();
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.title'));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.wizard.description', ['path' => $this->configPath]));
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.title'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.description', ['path' => $this->configPath]));
 
         $config = $this->buildConfigFromPrompts($existingConfig);
         $this->applyMigrationVersion($config, $existingConfig);
         $this->saveConfig($config);
-        if ($this->projectConfigFollowUp !== null) {
-            $this->projectConfigFollowUp->runAfterGlobalSave($io, $isAgentMode, $isInteractiveCli);
-        }
         $this->promptForCompletion();
+
+        return $this->recorder->toResponse(0);
     }
 
     /**
@@ -63,13 +66,13 @@ class InitHandler
     {
         $languageChoice = $this->promptLanguage($existingConfig);
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.title'));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira.token_help'));
-        $jiraUrlPrompt = $this->translator->trans('config.init.jira.url_prompt');
-        $jiraEmailPrompt = $this->translator->trans('config.init.jira.email_prompt');
-        $jiraTokenPrompt = $this->translator->trans('config.init.jira.token_prompt');
-        $githubTokenPrompt = $this->translator->trans('config.init.git.github_token_prompt');
-        $gitlabTokenPrompt = $this->translator->trans('config.init.git.gitlab_token_prompt');
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.jira.title'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.jira.token_help'));
+        $jiraUrlPrompt = MessageRef::key('config.init.jira.url_prompt', [], 'Enter your Jira URL');
+        $jiraEmailPrompt = MessageRef::key('config.init.jira.email_prompt', [], 'Enter your Jira email address');
+        $jiraTokenPrompt = MessageRef::key('config.init.jira.token_prompt', [], 'Enter your Jira API token (leave blank to keep existing)');
+        $githubTokenPrompt = MessageRef::key('config.init.git.github_token_prompt', [], 'Enter your GitHub PAT (leave blank to keep existing or skip)');
+        $gitlabTokenPrompt = MessageRef::key('config.init.git.gitlab_token_prompt', [], 'Enter your GitLab PAT (leave blank to keep existing or skip)');
 
         $jiraUrl = $this->promptRequiredVisible(
             $jiraUrlPrompt,
@@ -83,19 +86,19 @@ class InitHandler
         );
         $jiraToken = $this->promptRequiredJiraApiToken($jiraTokenPrompt, $existingConfig['JIRA_API_TOKEN'] ?? null);
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.git.title'));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, [
-            $this->translator->trans('config.init.git.description'),
-            $this->translator->trans('config.init.git.token_help'),
-            $this->translator->trans('config.init.git.multiple_tokens_note'),
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.git.title'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, [
+            MessageRef::key('config.init.git.description'),
+            MessageRef::key('config.init.git.token_help'),
+            MessageRef::key('config.init.git.multiple_tokens_note'),
         ]);
-        $githubToken = $this->logger->askHidden($githubTokenPrompt);
-        $gitlabToken = $this->logger->askHidden($gitlabTokenPrompt);
+        $githubToken = $this->prompt->askHidden($githubTokenPrompt);
+        $gitlabToken = $this->prompt->askHidden($gitlabTokenPrompt);
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.title'));
-        $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.jira_transition.description'));
-        $jiraTransitionEnabled = $this->logger->confirm(
-            $this->translator->trans('config.init.jira_transition.prompt'),
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.jira_transition.title'));
+        $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.jira_transition.description'));
+        $jiraTransitionEnabled = $this->prompt->confirm(
+            MessageRef::key('config.init.jira_transition.prompt'),
             $existingConfig['JIRA_TRANSITION_ENABLED'] ?? false
         );
 
@@ -104,8 +107,8 @@ class InitHandler
             'JIRA_URL' => $jiraUrl,
             'JIRA_EMAIL' => $jiraEmail,
             'JIRA_API_TOKEN' => $jiraToken,
-            'GITHUB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($githubToken, 'GITHUB_TOKEN', $existingConfig, $githubTokenPrompt),
-            'GITLAB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig, $gitlabTokenPrompt),
+            'GITHUB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($githubToken, 'GITHUB_TOKEN', $existingConfig, (string) $githubTokenPrompt),
+            'GITLAB_TOKEN' => $this->gitTokenPromptResolver->resolveForGlobalInit($gitlabToken, 'GITLAB_TOKEN', $existingConfig, (string) $gitlabTokenPrompt),
             'JIRA_TRANSITION_ENABLED' => $jiraTransitionEnabled,
         ];
     }
@@ -147,11 +150,11 @@ class InitHandler
      *
      * @param callable(string): string $normalizeValue
      */
-    protected function promptRequiredVisible(string $question, ?string $existingStored, callable $normalizeValue): string
+    protected function promptRequiredVisible(MessageRef|string $question, ?string $existingStored, callable $normalizeValue): string
     {
         $existing = $this->nonEmptyStoredString($existingStored);
         while (true) {
-            $answer = $this->logger->ask($question, $existing);
+            $answer = $this->prompt->ask($question, $existing);
             if ($this->isSkippedInput($answer)) {
                 if ($existing !== null) {
                     return $normalizeValue($existing);
@@ -161,7 +164,7 @@ class InitHandler
             }
 
             $trimmed = trim((string) $answer);
-            if ($trimmed === $question) {
+            if ($trimmed === (string) $question) {
                 continue;
             }
 
@@ -181,11 +184,11 @@ class InitHandler
     /**
      * Required hidden token: skip preserves existing; no existing value re-prompts. Prompt text never accepted as value.
      */
-    protected function promptRequiredJiraApiToken(string $question, ?string $existingStored): string
+    protected function promptRequiredJiraApiToken(MessageRef|string $question, ?string $existingStored): string
     {
         $existing = $this->nonEmptyStoredString($existingStored);
         while (true) {
-            $answer = $this->logger->askHidden($question);
+            $answer = $this->prompt->askHidden($question);
             if ($this->isSkippedInput($answer)) {
                 if ($existing !== null) {
                     return $existing;
@@ -195,7 +198,7 @@ class InitHandler
             }
 
             $trimmed = trim((string) $answer);
-            if ($trimmed === $question) {
+            if ($trimmed === (string) $question) {
                 continue;
             }
 
@@ -208,7 +211,7 @@ class InitHandler
      */
     protected function promptLanguage(array $existingConfig): string
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.language.title'));
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.language.title'));
         $availableLanguages = ['en' => 'English', 'fr' => 'French', 'es' => 'Spanish', 'nl' => 'Dutch', 'ru' => 'Russian', 'el' => 'Greek', 'af' => 'Afrikaans', 'vi' => 'Vietnamese'];
         $defaultLanguage = $existingConfig['LANGUAGE'] ?? $this->detectSystemLocale() ?? 'en';
 
@@ -222,8 +225,8 @@ class InitHandler
 
         $defaultDisplay = $availableLanguages[$defaultLanguage] . ' (' . $defaultLanguage . ')';
 
-        $languageChoiceDisplay = $this->logger->choice(
-            $this->translator->trans('config.init.language.prompt'),
+        $languageChoiceDisplay = $this->prompt->choice(
+            MessageRef::key('config.init.language.prompt'),
             $languageOptions,
             $defaultDisplay
         );
@@ -244,9 +247,7 @@ class InitHandler
             return;
         }
 
-        $registry = new MigrationRegistry($this->logger, $this->translator, $this->fileSystem);
-        $globalMigrations = $registry->discoverGlobalMigrations();
-        $latestMigrationId = $this->getLatestMigrationId($globalMigrations);
+        $latestMigrationId = $this->globalMigrationIdResolver->resolveLatestId();
         if ($latestMigrationId !== null) {
             $config['migration_version'] = $latestMigrationId;
         }
@@ -269,7 +270,7 @@ class InitHandler
         $filteredConfig = array_filter($config, [$this, 'filterEmptyStrings']);
         $this->fileSystem->backupFileIfExists($this->configPath);
         $this->fileSystem->filePutContents($this->configPath, Yaml::dump($filteredConfig));
-        $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.success'));
+        $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.success'));
     }
 
     /**
@@ -302,29 +303,29 @@ class InitHandler
             return;
         }
 
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.title'));
+        $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.completion.title'));
 
-        $choice = $this->logger->choice(
-            $this->translator->trans('config.init.completion.prompt', ['shell' => $shell]),
+        $choice = $this->prompt->choice(
+            MessageRef::key('config.init.completion.prompt', ['shell' => $shell]),
             [
-                $this->translator->trans('config.init.completion.yes'),
-                $this->translator->trans('config.init.completion.no'),
+                'Yes',
+                'No',
             ],
-            $this->translator->trans('config.init.completion.no')
+            'No'
         );
 
-        if ($choice === $this->translator->trans('config.init.completion.yes')) {
+        if ($choice === 'Yes') {
             $command = $shell === 'bash'
-                ? $this->translator->trans('config.init.completion.bash_command')
-                : $this->translator->trans('config.init.completion.zsh_command');
+                ? 'echo \'eval "$(stud completion bash)"\' >> ~/.bashrc'
+                : 'echo \'eval "$(stud completion zsh)"\' >> ~/.zshrc';
 
             $shellrc = $shell === 'bash' ? 'bashrc' : 'zshrc';
 
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.success_message'));
-            $this->logger->writeln(Logger::VERBOSITY_NORMAL, '  <info>' . $command . '</info>');
-            $this->logger->text(Logger::VERBOSITY_NORMAL, $this->translator->trans('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
+            $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.completion.success_message'));
+            $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_NORMAL, '  <info>' . $command . '</info>');
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.completion.reload_instruction', ['shellrc' => $shellrc]));
         } else {
-            $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('config.init.completion.skipped'));
+            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('config.init.completion.skipped'));
         }
     }
 

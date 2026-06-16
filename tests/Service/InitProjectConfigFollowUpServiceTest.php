@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Enum\OutputFormat;
+use App\DTO\WorkflowOutputEntry;
 use App\Handler\ConfigProjectInitHandler;
 use App\Responder\ConfigProjectInitResponder;
 use App\Response\ConfigProjectInitResponse;
+use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
 use App\Service\InitProjectConfigFollowUpService;
-use App\Service\Logger;
 use App\Service\ProjectStudConfigAdequacyChecker;
+use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -20,29 +21,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class InitProjectConfigFollowUpServiceTest extends TestCase
 {
-    public function testSkipsWhenAgentMode(): void
-    {
-        $git = $this->createMock(GitRepository::class);
-        $git->expects($this->never())->method('getProjectConfigPath');
-
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class));
-
-        $io = $this->createIo(true);
-        $service->runAfterGlobalSave($io, true, true);
-    }
-
     public function testNotInGitRepositoryShowsHint(): void
     {
         $git = $this->createMock(GitRepository::class);
         $git->method('getProjectConfigPath')->willThrowException(new \RuntimeException('not git'));
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('note');
-
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
+        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class));
 
         $io = $this->createIo(true);
-        $service->runAfterGlobalSave($io, false, true);
+        $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
+
+        $this->assertTrue($this->hasEntryType($result, 'note'));
     }
 
     public function testAdequateConfigDoesNothing(): void
@@ -51,14 +40,15 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn(['baseBranch' => 'develop']);
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->never())->method('note');
-        $logger->expects($this->never())->method('confirm');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('confirm');
 
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
+        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $prompt);
 
         $io = $this->createIo(true);
-        $service->runAfterGlobalSave($io, false, true);
+        $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
+
+        $this->assertSame([], $result->entries);
     }
 
     public function testInadequateNonInteractiveShowsHint(): void
@@ -67,14 +57,15 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->never())->method('confirm');
-        $logger->expects($this->once())->method('note');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('confirm');
 
-        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $logger);
+        $service = $this->createService($git, $this->createMock(ConfigProjectInitHandler::class), $prompt);
 
         $io = $this->createIo(false);
-        $service->runAfterGlobalSave($io, false, false);
+        $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), false, $io);
+
+        $this->assertTrue($this->hasEntryType($result, 'note'));
     }
 
     public function testInadequateInteractiveDeclineShowsHint(): void
@@ -83,17 +74,18 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('confirm')->willReturn(false);
-        $logger->expects($this->once())->method('note');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(false);
 
         $handler = $this->createMock(ConfigProjectInitHandler::class);
         $handler->expects($this->never())->method('handle');
 
-        $service = $this->createService($git, $handler, $logger);
+        $service = $this->createService($git, $handler, $prompt);
 
         $io = $this->createIo(true);
-        $service->runAfterGlobalSave($io, false, true);
+        $result = $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
+
+        $this->assertTrue($this->hasEntryType($result, 'note'));
     }
 
     public function testInadequateInteractiveAcceptRunsProjectInit(): void
@@ -102,27 +94,26 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $git->method('getProjectConfigPath')->willReturn('/repo/.git/stud.config');
         $git->method('readProjectConfig')->willReturn([]);
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('confirm')->willReturn(true);
-        $logger->expects($this->never())->method('note');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(true);
 
         $response = ConfigProjectInitResponse::success(false, []);
 
         $handler = $this->createMock(ConfigProjectInitHandler::class);
         $handler->expects($this->once())
             ->method('handle')
-            ->with([], [], false, true, false)
+            ->with([], [], false, true, false, $this->isInstanceOf(\App\Contract\WorkflowEntryRecorder::class))
             ->willReturn($response);
 
         $responder = $this->createMock(ConfigProjectInitResponder::class);
         $responder->expects($this->once())
             ->method('respond')
-            ->with($this->anything(), $response, OutputFormat::Cli);
+            ->with($this->anything(), $response, \App\Enum\OutputFormat::Cli);
 
-        $service = $this->createService($git, $handler, $logger, $responder);
+        $service = $this->createService($git, $handler, $prompt, $responder);
 
         $io = $this->createIo(true);
-        $service->runAfterGlobalSave($io, false, true);
+        $service->augmentAfterGlobalSave(WorkflowResponse::fromExitCode(0), true, $io);
     }
 
     private function createIo(bool $interactive): SymfonyStyle
@@ -133,15 +124,26 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         return new SymfonyStyle($input, new BufferedOutput());
     }
 
+    private function hasEntryType(WorkflowResponse $response, string $type): bool
+    {
+        foreach ($response->entries as $entry) {
+            if ($entry instanceof WorkflowOutputEntry && $entry->type === $type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function createService(
         GitRepository $git,
         ConfigProjectInitHandler $handler,
-        ?Logger $logger = null,
+        ?PromptInterface $prompt = null,
         ?ConfigProjectInitResponder $responder = null,
     ): InitProjectConfigFollowUpService {
         $translationsPath = __DIR__ . '/../../src/resources/translations';
         $translator = new TranslationService('en', $translationsPath);
-        $logger ??= $this->createMock(Logger::class);
+        $prompt ??= $this->createMock(PromptInterface::class);
         $responder ??= $this->createMock(ConfigProjectInitResponder::class);
 
         return new InitProjectConfigFollowUpService(
@@ -150,7 +152,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
             $handler,
             $responder,
             $translator,
-            $logger,
+            $prompt,
         );
     }
 }

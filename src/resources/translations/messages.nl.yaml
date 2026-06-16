@@ -62,6 +62,8 @@ config:
     section_global: "Globale configuratie"
     section_project: "Projectconfiguratie"
     no_config_found: "Geen configuratiebestand gevonden. Voer 'stud config:init' uit om er een aan te maken. Output is veilig te delen (geheimen zijn geredigeerd)."
+    global_config_unreadable: "Global configuration file exists but could not be parsed; showing empty global config."
+    project_config_unreadable: "Project configuration file exists but could not be parsed; project config is omitted."
     key_not_found: "Configuratiesleutel '%key%' niet gevonden."
     key_not_allowed: "Configuratiesleutel '%key%' kan niet worden weergegeven."
   validate:

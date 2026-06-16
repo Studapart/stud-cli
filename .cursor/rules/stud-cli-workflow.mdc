@@ -11,7 +11,7 @@ This project uses `stud-cli` for all Git and Jira operations. These rules **over
 
 Always use `--agent` mode when available. Agent mode accepts JSON input (via stdin or file), returns structured JSON, and implicitly enables quiet/non-interactive behavior. Only fall back to `--quiet` if a command lacks `--agent` support.
 
-When unsure about a command's input format, run `echo '{}' | stud help --agent` to get the full auto-generated schema (input properties, types, defaults, output shapes).
+When unsure about a command's input format, run `echo '{}' | stud help --agent` for essential-command schemas, or `echo '{"command":"<name>"}' | stud help --agent` for one command (input properties, types, defaults, output shapes).
 
 ## Forbidden Commands
 

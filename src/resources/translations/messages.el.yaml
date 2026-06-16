@@ -62,6 +62,8 @@ config:
     section_global: "Καθολική ρύθμιση"
     section_project: "Ρύθμιση έργου"
     no_config_found: "Δεν βρέθηκε αρχείο ρυθμίσεων. Εκτελέστε 'stud config:init' για δημιουργία. Η έξοδος είναι ασφαλής για κοινοποίηση (τα μυστικά αποκρύπτονται)."
+    global_config_unreadable: "Global configuration file exists but could not be parsed; showing empty global config."
+    project_config_unreadable: "Project configuration file exists but could not be parsed; project config is omitted."
     key_not_found: "Το κλειδί ρυθμίσεων '%key%' δεν βρέθηκε."
     key_not_allowed: "Το κλειδί ρυθμίσεων '%key%' δεν μπορεί να εμφανιστεί."
   validate:

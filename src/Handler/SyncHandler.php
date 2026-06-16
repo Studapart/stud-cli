@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
+use App\Response\CommandResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\Logger;
-use App\Service\TranslationService;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class SyncHandler
 {
@@ -16,9 +16,9 @@ class SyncHandler
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
         private readonly string $baseBranch,
-        private readonly TranslationService $translator,
-        private readonly Logger $logger
+        mixed $_translator,
     ) {
+        unset($_translator);
     }
 
     /**
@@ -26,33 +26,27 @@ class SyncHandler
      *
      * Steps: pre-flight checks → fetch → resolve base → check ancestry → rebase (abort on conflict).
      */
-    public function handle(SymfonyStyle $io): int
+    public function handle(): CommandResponse
     {
-        $this->logger->section(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.section'));
-
         $currentBranch = $this->gitRepository->getCurrentBranchName();
 
         if ($this->isOnBaseBranch($currentBranch)) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.error_on_base_branch'));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('sync.error_on_base_branch'));
         }
 
         if (! $this->isWorkingDirectoryClean()) {
-            $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.error_dirty_working'));
-
-            return 1;
+            return CommandResponse::error(MessageRef::key('sync.error_dirty_working'));
         }
 
-        $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('sync.fetching'));
         $this->gitRepository->fetch();
 
         $resolvedBase = $this->gitBranchService->resolveLatestBaseBranch($this->baseBranch);
 
         if ($this->gitRepository->isAncestor($resolvedBase, 'HEAD')) {
-            $this->logger->note(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.already_up_to_date'));
-
-            return 0;
+            return CommandResponse::success(
+                data: ['branch' => $currentBranch, 'base' => $resolvedBase],
+                messages: [ResponseMessage::notice(MessageRef::key('sync.already_up_to_date'))],
+            );
         }
 
         return $this->attemptRebase($currentBranch, $resolvedBase);
@@ -78,28 +72,19 @@ class SyncHandler
     /**
      * Runs the rebase and aborts automatically on conflict.
      */
-    protected function attemptRebase(string $currentBranch, string $resolvedBase): int
+    protected function attemptRebase(string $currentBranch, string $resolvedBase): CommandResponse
     {
-        $this->logger->text(Logger::VERBOSITY_VERBOSE, $this->translator->trans('sync.rebasing', [
-            'branch' => $currentBranch,
-            'base' => $resolvedBase,
-        ]));
-
         if ($this->gitRepository->tryRebase($resolvedBase)) {
-            $this->logger->success(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.success', [
+            return CommandResponse::success(MessageRef::key('sync.success', [
                 'branch' => $currentBranch,
                 'base' => $resolvedBase,
-            ]));
-
-            return 0;
+            ]), ['branch' => $currentBranch, 'base' => $resolvedBase]);
         }
 
         $this->gitRepository->rebaseAbort();
 
-        $this->logger->error(Logger::VERBOSITY_NORMAL, $this->translator->trans('sync.error_conflicts', [
+        return CommandResponse::error(MessageRef::key('sync.error_conflicts', [
             'base' => $resolvedBase,
-        ]));
-
-        return 1;
+        ]), data: ['branch' => $currentBranch, 'base' => $resolvedBase]);
     }
 }
