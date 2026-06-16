@@ -24,6 +24,11 @@ flag (default `true`) omits `data` only for **completion-only** commands. Comman
 that return structured `data` (for example `items:show`, `config:show`) always
 include `data` regardless of `compact`.
 
+List, search, and filter discovery commands (`items:list`, `items:search`,
+`filters:show`) return slim issue summaries in agent mode (`key`, `status`, `title`,
+`url`, and `priority` where shown in the CLI table). Call `items:show` when you need
+the full description or attachments.
+
 For completion-only commands, compact output omits `data`:
 
 ```json

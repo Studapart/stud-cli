@@ -17,20 +17,23 @@ class ItemListResponderTest extends CommandTestCase
 
     private ItemListResponder $responder;
 
+    /** @var array<string, mixed> */
+    private array $jiraConfig = ['JIRA_URL' => 'https://jira.example.com'];
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $helper = new ResponderHelper($this->translationService, null);
         $this->io = $this->createMock(SymfonyStyle::class);
-        $this->responder = new ItemListResponder($helper, $this->createLogger($this->io));
+        $this->responder = new ItemListResponder($helper, $this->jiraConfig, $this->createLogger($this->io));
     }
 
     public function testRespondReturnsZeroOnEmptyIssues(): void
     {
         $response = ItemListResponse::success([], false, null);
         $io = $this->createMock(SymfonyStyle::class);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->createLogger($io));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, $this->createLogger($io));
 
         $io->expects($this->once())
             ->method('section')
@@ -62,7 +65,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
 
         $responder->respond($io, $response);
 
@@ -76,7 +79,7 @@ class ItemListResponderTest extends CommandTestCase
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
 
         $responder->respond($io, $response);
 
@@ -98,7 +101,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder($helper, new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder($helper, $this->jiraConfig, new \App\Service\Logger($io, []));
 
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, null);
@@ -113,7 +116,7 @@ class ItemListResponderTest extends CommandTestCase
     public function testRespondShowsVerboseOutputWithProject(): void
     {
         $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
-        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), new \App\Service\Logger($io, []));
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
         $issue = new WorkItem('1000', 'TPW-35', 'Title', 'To Do', 'User', 'desc', [], 'Task');
         $response = ItemListResponse::success([$issue], false, 'MYPROJ');
 
@@ -128,7 +131,7 @@ class ItemListResponderTest extends CommandTestCase
         $colorHelper = $this->createMock(ColorHelper::class);
         $helper = new ResponderHelper($this->translationService, $colorHelper);
         $io = $this->createMock(SymfonyStyle::class);
-        $responder = new ItemListResponder($helper, $this->createLogger($io));
+        $responder = new ItemListResponder($helper, $this->jiraConfig, $this->createLogger($io));
         $response = ItemListResponse::success([], false, null);
 
         $colorHelper->expects($this->once())
@@ -144,7 +147,7 @@ class ItemListResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedIssues(): void
     {
-        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
+        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', 'Long description', [], 'Story', [], 'High');
         $response = ItemListResponse::success([$issue], false, null);
 
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
@@ -153,6 +156,26 @@ class ItemListResponderTest extends CommandTestCase
         $this->assertTrue($result->success);
         $this->assertCount(1, $result->data['issues']);
         $this->assertFalse($result->data['all']);
+        $this->assertSlimIssueSummary($result->data['issues'][0], includePriority: false);
+    }
+
+    /**
+     * @param array<string, mixed> $issue
+     */
+    private function assertSlimIssueSummary(array $issue, bool $includePriority): void
+    {
+        $this->assertSame('PROJ-1', $issue['key']);
+        $this->assertSame('Open', $issue['status']);
+        $this->assertSame('Test', $issue['title']);
+        $this->assertSame('https://jira.example.com/browse/PROJ-1', $issue['url']);
+        $this->assertArrayNotHasKey('description', $issue);
+        $this->assertArrayNotHasKey('renderedDescription', $issue);
+        $this->assertArrayNotHasKey('id', $issue);
+        if ($includePriority) {
+            $this->assertArrayHasKey('priority', $issue);
+        } else {
+            $this->assertArrayNotHasKey('priority', $issue);
+        }
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

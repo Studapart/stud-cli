@@ -141,7 +141,7 @@ class FilterShowResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedIssues(): void
     {
-        $issue = new WorkItem('1', 'PROJ-1', 'Test Issue', 'Open', 'user', '', [], 'Story');
+        $issue = new WorkItem('1', 'PROJ-1', 'Test Issue', 'Open', 'user', 'Long description', [], 'Story', [], 'Medium');
         $response = FilterShowResponse::success([$issue], 'My Filter');
 
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
@@ -150,6 +150,12 @@ class FilterShowResponderTest extends CommandTestCase
         $this->assertTrue($result->success);
         $this->assertSame('My Filter', $result->data['filterName']);
         $this->assertCount(1, $result->data['issues']);
+        $issueSummary = $result->data['issues'][0];
+        $this->assertSame('PROJ-1', $issueSummary['key']);
+        $this->assertSame('Medium', $issueSummary['priority']);
+        $this->assertSame('https://jira.example.com/browse/PROJ-1', $issueSummary['url']);
+        $this->assertArrayNotHasKey('description', $issueSummary);
+        $this->assertArrayNotHasKey('renderedDescription', $issueSummary);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

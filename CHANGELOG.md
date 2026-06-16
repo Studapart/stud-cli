@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Agent list/search discovery (SCI-140):** Agent JSON for `items:list`, `items:search`, and `filters:show` now returns slim issue summaries (key, status, title, url, and priority where applicable) instead of full work item records. Use `items:show` for full issue details.
 - **chore (SCI-139):** decompose oversized handlers and services
 - **Monthly follow-up (SCI-142):** remove unused handler console params
 - **Monthly follow-up (SCI-141):** hardened architecture tests, WorkflowOutput allow list, console output regex
