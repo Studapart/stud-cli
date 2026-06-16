@@ -1790,7 +1790,14 @@ function filters_list(
 }
 
 #[AsTask(name: 'items:list', aliases: ['ls'], description: 'Lists active work items (your dashboard)')]
-#[AgentOutput(responseClass: \App\Response\ItemListResponse::class, description: 'List of work items')]
+#[AgentOutput(
+    properties: [
+        'issues' => 'array of slim issue summaries (key, status, title, url)',
+        'all' => 'bool',
+        'project' => 'string|null',
+    ],
+    description: 'List of work items (agent mode returns slim issue summaries; use items:show for full details)',
+)]
 function items_list(
     #[AsOption(name: 'all', shortcut: 'a', description: 'List items for all users')]
     bool $all = false,
@@ -1827,7 +1834,7 @@ function items_list(
 
     $handler = new ItemListHandler(_get_jira_service());
     $response = $handler->handle($all, $project, $sort);
-    $responder = new ItemListResponder(_get_responder_helper(), _get_logger());
+    $responder = new ItemListResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -1841,7 +1848,13 @@ function items_list(
 }
 
 #[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
-#[AgentOutput(responseClass: \App\Response\SearchResponse::class, description: 'JQL search results')]
+#[AgentOutput(
+    properties: [
+        'issues' => 'array of slim issue summaries (key, status, title, priority, url)',
+        'jql' => 'string',
+    ],
+    description: 'JQL search results (agent mode returns slim issue summaries; use items:show for full details)',
+)]
 function items_search(
     #[AsArgument(name: 'jql', description: 'The JQL query string (or inputFile when --agent)')]
     ?string $jql = null,
@@ -1876,7 +1889,13 @@ function items_search(
 }
 
 #[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
-#[AgentOutput(responseClass: \App\Response\FilterShowResponse::class, description: 'Issues from a saved filter')]
+#[AgentOutput(
+    properties: [
+        'issues' => 'array of slim issue summaries (key, status, title, priority, url)',
+        'filterName' => 'string',
+    ],
+    description: 'Issues from a saved filter (agent mode returns slim issue summaries; use items:show for full details)',
+)]
 function filters_show(
     #[AsArgument(name: 'filterName', description: 'The filter name (or inputFile when --agent)')]
     ?string $filterName = null,

@@ -148,7 +148,7 @@ class SearchResponderTest extends CommandTestCase
 
     public function testRespondJsonReturnsSerializedResults(): void
     {
-        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', '', [], 'Story');
+        $issue = new WorkItem('1', 'PROJ-1', 'Test', 'Open', 'user', 'Long description', [], 'Story', [], 'High');
         $response = SearchResponse::success([$issue], 'project = PROJ');
 
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
@@ -157,6 +157,12 @@ class SearchResponderTest extends CommandTestCase
         $this->assertTrue($result->success);
         $this->assertSame('project = PROJ', $result->data['jql']);
         $this->assertCount(1, $result->data['issues']);
+        $issueSummary = $result->data['issues'][0];
+        $this->assertSame('PROJ-1', $issueSummary['key']);
+        $this->assertSame('High', $issueSummary['priority']);
+        $this->assertSame('https://your-company.atlassian.net/browse/PROJ-1', $issueSummary['url']);
+        $this->assertArrayNotHasKey('description', $issueSummary);
+        $this->assertArrayNotHasKey('renderedDescription', $issueSummary);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void
