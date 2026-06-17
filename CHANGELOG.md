@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.1] - 2026-06-17
+
 ### Fixed
 
 - **Git subprocess timeout (SCI-191):** Raised default git subprocess timeout from 60s to 600s so pre-commit hooks can finish during `stud commit`, `stud push`, and `stud submit`. `ProcessTimedOutException` is now mapped to an actionable `GitException`; commit handlers return structured errors in CLI and `--agent` mode instead of an uncaught stack trace. Sets `GIT_TERMINAL_PROMPT=0` on git subprocesses.
