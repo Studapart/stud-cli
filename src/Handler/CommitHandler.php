@@ -8,6 +8,8 @@ use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Exception\GitException;
+use App\Exception\GitTimeoutException;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\JiraService;
@@ -64,10 +66,16 @@ class CommitHandler
         if (! $stageAll && ! $this->hasStagedChanges()) {
             return CommandResponse::error(MessageRef::key('commit.no_staged_changes'));
         }
-        if ($stageAll) {
-            $this->gitRepository->stageAllChanges();
+
+        $gitError = $this->executeGitCommit(function () use ($message, $stageAll): void {
+            if ($stageAll) {
+                $this->gitRepository->stageAllChanges();
+            }
+            $this->gitRepository->commit($message);
+        });
+        if ($gitError !== null) {
+            return $gitError;
         }
-        $this->gitRepository->commit($message);
 
         return CommandResponse::success(MessageRef::key('commit.success'), ['commitMessage' => $message]);
     }
@@ -87,10 +95,16 @@ class CommitHandler
         if (! $stageAll && ! $this->hasStagedChanges()) {
             return CommandResponse::error(MessageRef::key('commit.no_staged_changes'));
         }
-        if ($stageAll) {
-            $this->gitRepository->stageAllChanges();
+
+        $gitError = $this->executeGitCommit(function () use ($latestLogicalSha, $stageAll): void {
+            if ($stageAll) {
+                $this->gitRepository->stageAllChanges();
+            }
+            $this->gitRepository->commitFixup($latestLogicalSha);
+        });
+        if ($gitError !== null) {
+            return $gitError;
         }
-        $this->gitRepository->commitFixup($latestLogicalSha);
 
         return CommandResponse::success(
             MessageRef::key('commit.fixup_success', ['sha' => $latestLogicalSha]),
@@ -131,10 +145,16 @@ class CommitHandler
         if (! $stageAll && ! $this->hasStagedChanges()) {
             return CommandResponse::error(MessageRef::key('commit.no_staged_changes'), $messages);
         }
-        if ($stageAll) {
-            $this->gitRepository->stageAllChanges();
+
+        $gitError = $this->executeGitCommit(function () use ($stageAll, $commitMessage): void {
+            if ($stageAll) {
+                $this->gitRepository->stageAllChanges();
+            }
+            $this->gitRepository->commit($commitMessage);
+        }, $messages);
+        if ($gitError !== null) {
+            return $gitError;
         }
-        $this->gitRepository->commit($commitMessage);
 
         return CommandResponse::success(
             MessageRef::key('commit.success'),
@@ -191,5 +211,46 @@ class CommitHandler
         // git diff --cached --quiet returns 0 if there are no staged changes, 1 if there are staged changes
         // So we return !isSuccessful() to indicate if there are staged changes
         return ! $process->isSuccessful();
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    private function executeGitCommit(callable $operation, array $messages = []): ?CommandResponse
+    {
+        try {
+            $operation();
+        } catch (GitTimeoutException $e) {
+            $error = MessageRef::key('git.error.timeout', [
+                '%seconds%' => (string) (int) $e->getTimeoutSeconds(),
+                '%command%' => $e->getCommand(),
+            ]);
+
+            return CommandResponse::error(
+                $error,
+                $this->withErrorMessage($messages, ResponseMessage::error($error, $e->getTechnicalDetails())),
+            );
+        } catch (GitException $e) {
+            $error = MessageRef::key('commit.error_git', ['error' => $e->getMessage()]);
+
+            return CommandResponse::error(
+                $error,
+                $this->withErrorMessage($messages, ResponseMessage::error($error, $e->getTechnicalDetails())),
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     *
+     * @return list<ResponseMessage>
+     */
+    private function withErrorMessage(array $messages, ResponseMessage $errorMessage): array
+    {
+        $messages[] = $errorMessage;
+
+        return $messages;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ResponderOwnedOutputTest extends TestCase
@@ -19,9 +20,7 @@ final class ResponderOwnedOutputTest extends TestCase
         );
     }
 
-    /**
-     * @dataProvider nonPresentationSourceFiles
-     */
+    #[DataProvider('nonPresentationSourceFiles')]
     public function testNonPresentationLayersDoNotRenderOutput(string $filePath): void
     {
         $contents = file_get_contents($filePath);

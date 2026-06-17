@@ -314,6 +314,9 @@ please:
 
     Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
   warning_force: ⚠️  Đang ép buộc với lease...
+git:
+  error:
+    timeout: "Lệnh git đã hết thời gian chờ sau %seconds% giây (lệnh: %command%). Hook pre-commit, kiểm thử hoặc ký GPG có thể vẫn đang chạy. Chạy lệnh git thủ công trong repo để xem đầu ra hook."
 push:
   pushing: "Đang đẩy nhánh %branch%..."
   success: "✅ Đã đẩy nhánh lên origin."
@@ -533,6 +536,7 @@ commit:
     Vui lòng sử dụng "stud start <key>" để tạo nhánh.'
   fetching_jira: 'Đang lấy issue Jira: %key%'
   error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+  error_git: "Commit thất bại: %error%"
   jira_details: 'Chi tiết Issue Jira:'
   jira_title: 'Tiêu đề: %title%'
   jira_type: 'Loại: %type% -> %commit_type%'

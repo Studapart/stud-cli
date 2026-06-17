@@ -314,6 +314,9 @@ please:
 
     Για την αρχική push και για να δημιουργήσετε Pull Request, παρακαλώ χρησιμοποιήστε "stud submit".'
   warning_force: ⚠️  Εξαναγκασμός με lease...
+git:
+  error:
+    timeout: "Η εντολή git έληξε μετά από %seconds% δευτερόλεπτα (εντολή: %command%). Τα pre-commit hooks, τα tests ή η υπογραφή GPG μπορεί να εκτελούνται ακόμα. Εκτελέστε την εντολή git χειροκίνητα στο repo για να δείτε την έξοδο των hooks."
 push:
   pushing: "Ωθώντας κλάδο %branch%..."
   success: "✅ Ο κλάδος ωθήθηκε στο origin."
@@ -533,6 +536,7 @@ commit:
     Παρακαλώ χρησιμοποιήστε "stud start <key>" για να δημιουργήσετε έναν κλάδο.'
   fetching_jira: 'Λήψη θέματος Jira: %key%'
   error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+  error_git: "Το commit απέτυχε: %error%"
   jira_details: 'Λεπτομέρειες Θέματος Jira:'
   jira_title: 'Τίτλος: %title%'
   jira_type: 'Τύπος: %type% -> %commit_type%'

@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\Service\GitRemoteUrlParser;
 use App\Service\ProcessFactory;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
@@ -22,10 +23,9 @@ class GitRemoteUrlParserTest extends TestCase
     }
 
     /**
-     * @dataProvider urlProvider
-     *
      * @param array{owner?: string, name?: string, provider?: string} $expected
      */
+    #[DataProvider('urlProvider')]
     public function testParseUrl(string $url, array $expected): void
     {
         $this->assertSame($expected, $this->parser->parseUrl($url));
