@@ -314,6 +314,9 @@ please:
 
     Vir die aanvanklike push en om ''n Pull Request te skep, gebruik asseblief "stud submit".'
   warning_force: ⚠️  Dwing met lease...
+git:
+  error:
+    timeout: "Git-opdrag het uitgetel na %seconds% sekondes (opdrag: %command%). Pre-commit hooks, toetse of GPG-ondertekening loop dalk nog. Voer die git-opdrag handmatig in u repo uit om hook-uitvoer te sien."
 push:
   pushing: "Branch %branch% word gestoot..."
   success: "✅ Branch na origin gestoot."
@@ -533,6 +536,7 @@ commit:
     Gebruik asseblief "stud start <key>" om ''n tak te skep.'
   fetching_jira: 'Kry Jira item: %key%'
   error_not_found: Kon nie Jira item met sleutel "%key%" vind nie.
+  error_git: "Commit het misluk: %error%"
   jira_details: 'Jira Item Besonderhede:'
   jira_title: 'Titel: %title%'
   jira_type: 'Tipe: %type% -> %commit_type%'

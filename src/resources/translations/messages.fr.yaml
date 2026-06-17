@@ -314,6 +314,9 @@ please:
 
     Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
   warning_force: ⚠️  Forçage avec lease...
+git:
+  error:
+    timeout: "La commande git a expiré après %seconds% secondes (commande : %command%). Les hooks pre-commit, tests ou la signature GPG peuvent encore s'exécuter. Exécutez la commande git manuellement dans votre dépôt pour voir la sortie des hooks."
 push:
   pushing: "Poussée de la branche %branch%…"
   success: "✅ Branche poussée vers origin."
@@ -533,6 +536,7 @@ commit:
     Veuillez utiliser "stud start <key>" pour créer une branche.'
   fetching_jira: 'Récupération du ticket Jira : %key%'
   error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+  error_git: "Échec du commit : %error%"
   jira_details: 'Détails du ticket Jira :'
   jira_title: 'Titre : %title%'
   jira_type: 'Type : %type% -> %commit_type%'

@@ -87,6 +87,56 @@ class CommitHandlerTest extends CommandTestCase
         // Test intent: success() was called, verified by return value
     }
 
+    public function testHandleWithMessageReturnsErrorOnGitTimeoutDuringCommit(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message')
+            ->willThrowException(new \App\Exception\GitTimeoutException(
+                'git commit -m my message',
+                600.0,
+                'timed out',
+            ));
+
+        $result = $this->handler->handle(false, 'my message', false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertCount(1, $result->getMessages());
+        $this->assertSame('timed out', $result->getMessages()[0]->technicalDetails);
+    }
+
+    public function testHandleWithMessageReturnsErrorOnGitExceptionDuringCommit(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message')
+            ->willThrowException(new \App\Exception\GitException('timeout message', 'technical details'));
+
+        $result = $this->handler->handle(false, 'my message', false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertCount(1, $result->getMessages());
+        $this->assertSame('technical details', $result->getMessages()[0]->technicalDetails);
+    }
+
     public function testHandleWithMessageUsingNewSignature(): void
     {
         $this->gitRepository->expects($this->once())

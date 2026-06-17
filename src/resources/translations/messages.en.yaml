@@ -325,6 +325,11 @@ please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
 
+# Git subprocess errors
+git:
+  error:
+    timeout: "Git command timed out after %seconds% seconds (command: %command%). Pre-commit hooks, tests, or GPG signing may still be running. Run the git command manually in your repo to see hook output."
+
 # Push Handler (commit + origin push; same non-force push as submit preflight)
 push:
   pushing: "Pushing branch %branch%..."
@@ -533,6 +538,7 @@ commit:
   error_no_key: "Could not find a Jira key in your current branch name.\nPlease use \"stud start <key>\" to create a branch."
   fetching_jira: "Fetching Jira issue: %key%"
   error_not_found: "Could not find Jira issue with key \"%key%\"."
+  error_git: "Commit failed: %error%"
   jira_details: "Jira Issue Details:"
   jira_title: "Title: %title%"
   jira_type: "Type: %type% -> %commit_type%"

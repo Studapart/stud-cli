@@ -858,6 +858,37 @@ class GitRepositoryTest extends CommandTestCase
         }
     }
 
+    public function testRunThrowsGitExceptionOnProcessTimeout(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git commit -m test')
+            ->willReturn($process);
+
+        $process->expects($this->once())
+            ->method('mustRun')
+            ->willThrowException(new \Symfony\Component\Process\Exception\ProcessTimedOutException(
+                $process,
+                \Symfony\Component\Process\Exception\ProcessTimedOutException::TYPE_GENERAL,
+            ));
+
+        $this->translationService->expects($this->never())
+            ->method('trans');
+
+        $this->expectException(\App\Exception\GitTimeoutException::class);
+
+        try {
+            $this->gitRepository->run('git commit -m test');
+        } catch (\App\Exception\GitTimeoutException $e) {
+            $this->assertSame('git commit -m test', $e->getCommand());
+            $this->assertSame(\App\Service\ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS, $e->getTimeoutSeconds());
+            $this->assertNotEmpty($e->getTechnicalDetails());
+
+            throw $e;
+        }
+    }
+
     public function testRunQuietly(): void
     {
         $process = $this->createMock(Process::class);

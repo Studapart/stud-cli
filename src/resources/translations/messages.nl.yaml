@@ -314,6 +314,9 @@ please:
 
     Voor de eerste push en om een Pull Request te maken, gebruik alstublieft "stud submit".'
   warning_force: ⚠️  Forceren met lease...
+git:
+  error:
+    timeout: "Git-commando time-out na %seconds% seconden (commando: %command%). Pre-commit hooks, tests of GPG-ondertekening kunnen nog actief zijn. Voer het git-commando handmatig uit in uw repository om hook-uitvoer te zien."
 push:
   pushing: "Branch %branch% pushen..."
   success: "✅ Branch naar origin gepusht."
@@ -533,6 +536,7 @@ commit:
     Gebruik alstublieft "stud start <key>" om een branch aan te maken.'
   fetching_jira: 'Jira ticket ophalen: %key%'
   error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+  error_git: "Commit mislukt: %error%"
   jira_details: 'Jira Ticket Details:'
   jira_title: 'Titel: %title%'
   jira_type: 'Type: %type% -> %commit_type%'

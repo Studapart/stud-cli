@@ -314,6 +314,9 @@ please:
 
     Para el push inicial y para crear una Pull Request, por favor use "stud submit".'
   warning_force: ⚠️  Forzando con lease...
+git:
+  error:
+    timeout: "El comando git superó el tiempo de espera de %seconds% segundos (comando: %command%). Los hooks pre-commit, pruebas o la firma GPG pueden seguir ejecutándose. Ejecute el comando git manualmente en su repositorio para ver la salida de los hooks."
 push:
   pushing: "Empujando rama %branch%..."
   success: "✅ Rama enviada a origin."
@@ -533,6 +536,7 @@ commit:
     Por favor use "stud start <key>" para crear una rama.'
   fetching_jira: 'Obteniendo ticket de Jira: %key%'
   error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+  error_git: "Error al hacer commit: %error%"
   jira_details: 'Detalles del ticket de Jira:'
   jira_title: 'Título: %title%'
   jira_type: 'Tipo: %type% -> %commit_type%'
