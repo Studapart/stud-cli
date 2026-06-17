@@ -57,6 +57,7 @@ use App\Handler\FilterListHandler;
 use App\Handler\FilterShowHandler;
 use App\Handler\FlattenHandler;
 use App\Handler\InitHandler;
+use App\Handler\InitPromptCollector;
 use App\Handler\ItemCreateHandler;
 use App\Handler\ItemDownloadHandler;
 use App\Handler\ItemListHandler;
@@ -1415,21 +1416,27 @@ function config_init(
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     $compact = false;
+    $rawAgentInput = [];
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
             return;
         }
         $compact = _agent_compact_enabled($input);
+        $rawAgentInput = $input;
     }
     $handler = new InitHandler(
         _get_file_system(),
         _get_config_path(),
-        _get_translation_service(),
         _get_prompt(),
-        new \App\Service\GitTokenPromptResolver(),
+        new InitPromptCollector(
+            _get_prompt(),
+            new \App\Service\GitTokenPromptResolver(),
+            _get_message_renderer(),
+            new \App\Service\GlobalConfigProviderResolver(),
+        ),
     );
-    $response = $handler->handle();
+    $response = $handler->handle($rawAgentInput, $agent);
     if (! $agent) {
         $response = _get_init_project_config_follow_up_service()->augmentAfterGlobalSave($response, input()->isInteractive(), io());
     }

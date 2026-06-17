@@ -9,6 +9,8 @@ The conventions in this document are informed by architectural decisions documen
 ### Architecture & Patterns
 - **[ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md)** - Explains the Action-Domain-Responder pattern used throughout the codebase
 - **[ADR-018: Presentation-Owned Translation](documentation/adr-018-presentation-owned-translation.md)** - Documents that localization happens at presentation boundaries
+- **[ADR-019: Closed Prompt Choices Use Backed Enums](documentation/adr-019-closed-prompt-choices-use-backed-enums.md)** - Provider tokens and numbered menus as enums; field maps stay class constants
+- **[ADR-020: Global Init Wizard Director and Strategy](documentation/adr-020-global-init-wizard-director-and-strategy.md)** - Provider credential collectors under `GlobalInit\`; `InitPromptInputHelper::resolveWhenActive()`
 - **[ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md)** - Documents the `object:verb` command naming pattern
 - **[ADR-007: Migration System Architecture](documentation/adr-007-migration-system-architecture.md)** - Details the configuration migration system
 - **[ADR-009: Service Locator Pattern in castor.php](documentation/adr-009-service-locator-pattern-in-castor.md)** - Explains how services are provided via helper functions

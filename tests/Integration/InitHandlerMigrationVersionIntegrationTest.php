@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Handler\InitHandler;
+use App\Handler\InitPromptCollector;
 use App\Service\FileSystem;
+use App\Service\GitTokenPromptResolver;
+use App\Service\GlobalConfigProviderResolver;
 use App\Service\Logger;
+use App\Service\MessageRenderer;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -112,6 +116,8 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         // Need to provide the exact choice string format that choice() expects
         // The choice() method expects the full display string, not just the index
         fwrite($inputStream, "English (en)\n"); // Language choice - use the full display string
+        fwrite($inputStream, "0\n"); // Git provider: GitHub
+        fwrite($inputStream, "0\n"); // PM: Jira
         fwrite($inputStream, "https://jira.example.com\n");
         fwrite($inputStream, "existing@example.com\n");
         fwrite($inputStream, "existing_token\n");
@@ -129,7 +135,17 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
 
         // Create handler with the IO that has the input stream
         $logger = new Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, 'config.yml', $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
+        $handler = new InitHandler(
+            $this->fileSystem,
+            'config.yml',
+            $logger,
+            new InitPromptCollector(
+                $logger,
+                new GitTokenPromptResolver(),
+                new MessageRenderer($this->translationService),
+                new GlobalConfigProviderResolver(),
+            ),
+        );
 
         // Execute handler
         $response = $handler->handle();

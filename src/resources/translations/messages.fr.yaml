@@ -40,6 +40,24 @@ config:
       multiple_tokens_note: 'Note : Vous pouvez configurer les deux jetons, ou seulement ceux dont vous avez besoin. Le fournisseur sera configuré par dépôt.'
       github_token_prompt: Entrez votre PAT GitHub (laissez vide pour conserver l'existant ou ignorer)
       gitlab_token_prompt: Entrez votre PAT GitLab (laissez vide pour conserver l'existant ou ignorer)
+    git_provider:
+      title: "Git Provider Selection"
+      menu: "0 GitHub · 1 GitLab · 2 Both"
+      prompt: "Configure Git provider"
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Both"
+    work_item_provider:
+      title: "Project Management Selection"
+      menu: "0 Jira · 1 Linear · 2 Both"
+      prompt: "Configure project management"
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Both"
+    linear:
+      title: "Linear Configuration"
+      description: "Configure Linear API access. This is only required if you selected Linear."
+      api_key_prompt: "Enter your Linear API key (leave blank to keep existing)"
     jira_transition:
       title: Configuration de transition Jira
       description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
