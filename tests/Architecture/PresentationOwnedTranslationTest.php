@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class PresentationOwnedTranslationTest extends TestCase
@@ -19,9 +20,7 @@ final class PresentationOwnedTranslationTest extends TestCase
         );
     }
 
-    /**
-     * @dataProvider nonPresentationSourceFiles
-     */
+    #[DataProvider('nonPresentationSourceFiles')]
     public function testNonPresentationLayersDoNotTranslateDirectly(string $filePath): void
     {
         $contents = file_get_contents($filePath);

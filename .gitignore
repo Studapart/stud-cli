@@ -64,8 +64,5 @@ coverage*
 /tmp/stud-*
 tmp/stud-*
 
-.cursor/reports/*
-.cursor/tmp/*
-.cursor/prompts/*
-.cursor/specs/*
-.cursor/downloads/*
+# Cursor IDE agent config (rules, skills, local specs — not part of the repo)
+.cursor/

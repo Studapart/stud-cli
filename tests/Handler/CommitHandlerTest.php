@@ -87,6 +87,56 @@ class CommitHandlerTest extends CommandTestCase
         // Test intent: success() was called, verified by return value
     }
 
+    public function testHandleWithMessageReturnsErrorOnGitTimeoutDuringCommit(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message')
+            ->willThrowException(new \App\Exception\GitTimeoutException(
+                'git commit -m my message',
+                600.0,
+                'timed out',
+            ));
+
+        $result = $this->handler->handle(false, 'my message', false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertCount(1, $result->getMessages());
+        $this->assertSame('timed out', $result->getMessages()[0]->technicalDetails);
+    }
+
+    public function testHandleWithMessageReturnsErrorOnGitExceptionDuringCommit(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('my message')
+            ->willThrowException(new \App\Exception\GitException('timeout message', 'technical details'));
+
+        $result = $this->handler->handle(false, 'my message', false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertCount(1, $result->getMessages());
+        $this->assertSame('technical details', $result->getMessages()[0]->technicalDetails);
+    }
+
     public function testHandleWithMessageUsingNewSignature(): void
     {
         $this->gitRepository->expects($this->once())
@@ -238,6 +288,33 @@ class CommitHandlerTest extends CommandTestCase
 
         $this->assertTrue($result->isSuccess());
         $this->assertSame('abcdef', $result->data['fixupSha'] ?? null);
+    }
+
+    public function testHandleWithAutoFixupReturnsErrorOnGitExceptionDuringCommitFixup(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->with('origin/develop')
+            ->willReturn('abcdef');
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commitFixup')
+            ->with('abcdef')
+            ->willThrowException(new \App\Exception\GitTimeoutException('git commit --fixup abcdef', 600.0, 'timed out'));
+
+        $result = $this->handler->handle(false, null, false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertGreaterThanOrEqual(1, count($result->getMessages()));
     }
 
     public function testHandleWithAutoFixupNoStagedChanges(): void
@@ -456,6 +533,57 @@ class CommitHandlerTest extends CommandTestCase
         $result = $this->handler->handle($io, false, null, false, true);
 
         $this->assertTrue($result->isSuccess());
+    }
+
+    public function testHandleWithQuietJiraPromptReturnsErrorOnGitTimeoutDuringCommit(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('getPorcelainStatus')
+            ->willReturn('M  file.txt');
+
+        $this->gitRepository->expects($this->once())
+            ->method('findLatestLogicalSha')
+            ->willReturn(null);
+
+        $this->gitRepository->expects($this->once())
+            ->method('getJiraKeyFromBranchName')
+            ->willReturn('TPW-35');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My awesome feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['api'],
+        );
+
+        $this->jiraService->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with('git diff --cached --quiet')
+            ->willReturn($this->createMockProcess(false));
+
+        $this->gitRepository->expects($this->once())
+            ->method('commit')
+            ->with('feat(api): My awesome feature [TPW-35]')
+            ->willThrowException(new \App\Exception\GitTimeoutException(
+                'git commit -m feat(api): My awesome feature [TPW-35]',
+                600.0,
+                'timed out',
+            ));
+
+        $result = $this->handler->handle(false, null, false, true);
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertGreaterThanOrEqual(2, count($result->getMessages()));
     }
 
     public function testHandleWithInteractivePrompterAndAllFlag(): void

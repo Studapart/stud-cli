@@ -314,6 +314,9 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+git:
+  error:
+    timeout: "Команда git превысила лимит времени %seconds% секунд (команда: %command%). Pre-commit хуки, тесты или подпись GPG могут всё ещё выполняться. Запустите git вручную в репозитории, чтобы увидеть вывод хуков."
 push:
   pushing: "Отправка ветки %branch%..."
   success: "✅ Ветка отправлена в origin."
@@ -533,6 +536,7 @@ commit:
     Пожалуйста, используйте "stud start <key>" для создания ветки.'
   fetching_jira: 'Получение задачи Jira: %key%'
   error_not_found: Не удалось найти задачу Jira с ключом "%key%".
+  error_git: "Не удалось выполнить коммит: %error%"
   jira_details: 'Детали задачи Jira:'
   jira_title: 'Название: %title%'
   jira_type: 'Тип: %type% -> %commit_type%'

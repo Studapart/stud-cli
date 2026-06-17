@@ -6,7 +6,9 @@ namespace App\Service;
 
 use App\DTO\ConfigFileReadResult;
 use App\Exception\GitException;
+use App\Exception\GitTimeoutException;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 class GitRepository
@@ -324,6 +326,13 @@ class GitRepository
 
         try {
             $process->mustRun();
+        } catch (ProcessTimedOutException $e) {
+            throw new GitTimeoutException(
+                $command,
+                ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS,
+                $e->getMessage(),
+                $e,
+            );
         } catch (ProcessFailedException $e) {
             $errorOutput = $process->getErrorOutput() ?: $process->getOutput();
             $technicalDetails = trim($errorOutput) ?: 'Command failed with no error output';
