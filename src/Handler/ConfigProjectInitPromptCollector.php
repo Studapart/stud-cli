@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\ProjectStudConfigFieldMap;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\Enum\WorkItemProvider;
+use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\GitTokenPromptResolver;
+use App\Service\GlobalConfigProviderResolver;
 use App\Service\Prompt\PromptInterface;
 
 /**
@@ -22,6 +26,9 @@ class ConfigProjectInitPromptCollector
         mixed $_translator,
         private readonly PromptInterface $prompt,
         private readonly GitTokenPromptResolver $gitTokenPromptResolver,
+        private readonly FileSystem $fileSystem,
+        private readonly string $globalConfigPath,
+        private readonly GlobalConfigProviderResolver $providerResolver,
     ) {
         unset($_translator);
     }
@@ -32,14 +39,30 @@ class ConfigProjectInitPromptCollector
     public function collect(WorkflowEntryRecorder $recorder): array
     {
         $existing = $this->gitRepository->readProjectConfig();
+        $globalWorkItemProviders = $this->readGlobalWorkItemProviders();
         $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_title'));
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_hint'));
 
         $patches = [];
+        if ($this->providerResolver->collectsJira($globalWorkItemProviders)
+            && $this->providerResolver->collectsLinear($globalWorkItemProviders)) {
+            $patches = array_merge($patches, $this->promptWorkItemProvider($existing));
+        }
+
+        $effectiveProvider = $this->resolveEffectiveWorkItemProvider(
+            $this->mergeProjectConfig($existing, $patches),
+            $globalWorkItemProviders,
+        );
+
         $patches = array_merge($patches, $this->promptProjectKey($existing));
-        $patches = array_merge($patches, $this->promptJiraDefaultProject($existing));
-        $patches = array_merge($patches, $this->promptConfluenceDefaultSpace($existing));
-        $patches = array_merge($patches, $this->promptTransitionId($existing, $recorder));
+        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
+            $patches = array_merge($patches, $this->promptJiraDefaultProject($existing));
+            $patches = array_merge($patches, $this->promptConfluenceDefaultSpace($existing));
+            $patches = array_merge($patches, $this->promptTransitionId($existing, $recorder));
+        }
+        if ($this->shouldRunLinearPrompts($effectiveProvider)) {
+            $patches = array_merge($patches, $this->promptLinearFields($existing));
+        }
         $patches = array_merge($patches, $this->promptBaseBranch($existing, $recorder));
         $patches = array_merge($patches, $this->promptGitProvider($existing, $recorder));
         $patches = array_merge($patches, $this->promptGitlabInstanceUrl($existing));
@@ -47,6 +70,142 @@ class ConfigProjectInitPromptCollector
         $patches = array_merge($patches, $this->promptGitlabToken($existing, $recorder));
 
         return $patches;
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    protected function promptWorkItemProvider(array $existing): array
+    {
+        $current = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
+            ? strtolower(trim($existing['workItemProvider']))
+            : 'auto';
+        if (! in_array($current, ['jira', 'linear', 'auto'], true)) {
+            $current = 'auto';
+        }
+        $choice = $this->prompt->choice(
+            MessageRef::key('config.project_init.prompt_work_item_provider'),
+            ['jira', 'linear', 'auto'],
+            $current,
+        );
+
+        return ['workItemProvider' => (string) $choice];
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    protected function promptLinearFields(array $existing): array
+    {
+        $patches = [];
+        $startStateId = $this->promptOptionalString(
+            MessageRef::key('config.project_init.prompt_linear_start_state_id'),
+            isset($existing['linearStartStateId']) && is_string($existing['linearStartStateId'])
+                ? $existing['linearStartStateId']
+                : null,
+        );
+        if ($startStateId !== null) {
+            $patches['linearStartStateId'] = $startStateId;
+        }
+
+        $labelGroupId = $this->promptOptionalString(
+            MessageRef::key('config.project_init.prompt_linear_type_label_group_id'),
+            isset($existing['linearTypeLabelGroupId']) && is_string($existing['linearTypeLabelGroupId'])
+                ? $existing['linearTypeLabelGroupId']
+                : null,
+        );
+        if ($labelGroupId !== null) {
+            $patches['linearTypeLabelGroupId'] = $labelGroupId;
+        }
+
+        return $patches;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function readGlobalWorkItemProviders(): array
+    {
+        if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
+            return [WorkItemProvider::Jira->value];
+        }
+
+        try {
+            $config = $this->fileSystem->parseFile($this->globalConfigPath);
+        } catch (\Throwable) {
+            return [WorkItemProvider::Jira->value];
+        }
+
+        if (isset($config['WORK_ITEM_PROVIDERS']) && is_array($config['WORK_ITEM_PROVIDERS'])) {
+            $providers = array_values(array_filter($config['WORK_ITEM_PROVIDERS'], 'is_string'));
+
+            return $this->providerResolver->normalizeWorkItemProviders($providers);
+        }
+
+        return $this->providerResolver->inferDefaultWorkItemProviders($config);
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @param list<string>         $globalWorkItemProviders
+     */
+    protected function resolveEffectiveWorkItemProvider(array $existing, array $globalWorkItemProviders): string
+    {
+        $hasJira = $this->providerResolver->collectsJira($globalWorkItemProviders);
+        $hasLinear = $this->providerResolver->collectsLinear($globalWorkItemProviders);
+
+        if ($hasJira && ! $hasLinear) {
+            return 'jira';
+        }
+        if ($hasLinear && ! $hasJira) {
+            return 'linear';
+        }
+
+        $stored = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
+            ? strtolower(trim($existing['workItemProvider']))
+            : 'auto';
+
+        return in_array($stored, ['jira', 'linear', 'auto'], true) ? $stored : 'auto';
+    }
+
+    protected function shouldRunJiraPrompts(string $effectiveProvider): bool
+    {
+        return $effectiveProvider === 'jira' || $effectiveProvider === 'auto';
+    }
+
+    protected function shouldRunLinearPrompts(string $effectiveProvider): bool
+    {
+        return $effectiveProvider === 'linear';
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @param array<string, mixed> $patches
+     * @return array<string, mixed>
+     */
+    protected function mergeProjectConfig(array $existing, array $patches): array
+    {
+        $merged = $existing;
+        foreach ($patches as $inputKey => $value) {
+            if (! isset(ProjectStudConfigFieldMap::INPUT_TO_YAML[$inputKey])) {
+                continue;
+            }
+            $merged[ProjectStudConfigFieldMap::INPUT_TO_YAML[$inputKey]] = $value;
+        }
+
+        return $merged;
+    }
+
+    protected function promptOptionalString(MessageRef|string $question, ?string $current): ?string
+    {
+        $answer = $this->prompt->ask($question, $current !== null && $current !== '' ? $current : null);
+        if ($answer === null || trim((string) $answer) === '') {
+            return null;
+        }
+
+        return trim((string) $answer);
     }
 
     /**

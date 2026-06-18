@@ -536,17 +536,25 @@ function _get_git_setup_service(): GitSetupService
     );
 }
 
+function _get_config_project_init_prompt_collector(): ConfigProjectInitPromptCollector
+{
+    return new ConfigProjectInitPromptCollector(
+        _get_git_repository(),
+        _get_git_setup_service(),
+        _get_translation_service(),
+        _get_prompt(),
+        new \App\Service\GitTokenPromptResolver(),
+        _get_file_system(),
+        _get_config_path(),
+        new \App\Service\GlobalConfigProviderResolver(),
+    );
+}
+
 function _get_init_project_config_follow_up_service(): InitProjectConfigFollowUpService
 {
     $gitRepository = _get_git_repository();
     $gitSetup = _get_git_setup_service();
-    $promptCollector = new ConfigProjectInitPromptCollector(
-        $gitRepository,
-        $gitSetup,
-        _get_translation_service(),
-        _get_prompt(),
-        new \App\Service\GitTokenPromptResolver()
-    );
+    $promptCollector = _get_config_project_init_prompt_collector();
     $projectInitHandler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
 
     return new InitProjectConfigFollowUpService(
@@ -1636,29 +1644,9 @@ function config_validate(
     }
 }
 
-#[AsTask(name: 'config:project-init', aliases: ['cpi'], description: 'Create or merge project stud config (.git/stud.config); flags, agent JSON, or interactive when no values are given')]
+#[AsTask(name: 'config:project-init', aliases: ['cpi'], description: 'Create or merge project stud config (.git/stud.config); interactive by default or --agent JSON')]
 #[AgentOutput(responseClass: \App\Response\ConfigProjectInitResponse::class, description: 'Merged project configuration (redacted) and whether the file was updated')]
 function config_project_init(
-    #[AsOption(name: 'project-key', description: 'Jira project key (transition cache)')]
-    ?string $projectKey = null,
-    #[AsOption(name: 'transition-id', description: 'Jira transition ID to cache')]
-    ?int $transitionId = null,
-    #[AsOption(name: 'base-branch', description: 'Repository base branch (validated on origin unless skipped)')]
-    ?string $baseBranch = null,
-    #[AsOption(name: 'git-provider', description: 'github or gitlab')]
-    ?string $gitProvider = null,
-    #[AsOption(name: 'github-token', description: 'GitHub PAT for this repository')]
-    ?string $githubToken = null,
-    #[AsOption(name: 'gitlab-token', description: 'GitLab PAT for this repository')]
-    ?string $gitlabToken = null,
-    #[AsOption(name: 'gitlab-instance-url', description: 'Self-hosted GitLab instance URL')]
-    ?string $gitlabInstanceUrl = null,
-    #[AsOption(name: 'jira-default-project', description: 'Default Jira project for stud items:create')]
-    ?string $jiraDefaultProject = null,
-    #[AsOption(name: 'confluence-default-space', description: 'Default Confluence space key')]
-    ?string $confluenceDefaultSpace = null,
-    #[AsOption(name: 'skip-base-branch-remote-check', description: 'Skip verifying base-branch on origin')]
-    bool $skipBaseBranchRemoteCheck = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -1667,7 +1655,7 @@ function config_project_init(
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     $rawAgentInput = [];
-    $skipRemote = $skipBaseBranchRemoteCheck;
+    $skipRemote = false;
 
     if ($agent) {
         $input = _read_agent_input($inputFile);
@@ -1678,53 +1666,13 @@ function config_project_init(
         $skipRemote = (bool) ($input['skipBaseBranchRemoteCheck'] ?? false);
     }
 
-    $cliPatches = [];
-    if (! $agent) {
-        if ($projectKey !== null && trim($projectKey) !== '') {
-            $cliPatches['projectKey'] = trim($projectKey);
-        }
-        if ($transitionId !== null) {
-            $cliPatches['transitionId'] = $transitionId;
-        }
-        if ($baseBranch !== null && trim($baseBranch) !== '') {
-            $cliPatches['baseBranch'] = trim($baseBranch);
-        }
-        if ($gitProvider !== null && trim($gitProvider) !== '') {
-            $cliPatches['gitProvider'] = strtolower(trim($gitProvider));
-        }
-        if ($githubToken !== null && trim($githubToken) !== '') {
-            $cliPatches['githubToken'] = trim($githubToken);
-        }
-        if ($gitlabToken !== null && trim($gitlabToken) !== '') {
-            $cliPatches['gitlabToken'] = trim($gitlabToken);
-        }
-        if ($gitlabInstanceUrl !== null && trim($gitlabInstanceUrl) !== '') {
-            $cliPatches['gitlabInstanceUrl'] = trim($gitlabInstanceUrl);
-        }
-        if ($jiraDefaultProject !== null && trim($jiraDefaultProject) !== '') {
-            $cliPatches['jiraDefaultProject'] = trim($jiraDefaultProject);
-        }
-        if ($confluenceDefaultSpace !== null && trim($confluenceDefaultSpace) !== '') {
-            $cliPatches['confluenceDefaultSpace'] = trim($confluenceDefaultSpace);
-        }
-    }
-
-    $hasExplicitCli = $cliPatches !== [] || ($skipBaseBranchRemoteCheck && ! $agent);
-    $interactive = ! $agent && ! $hasExplicitCli;
-
-    $workflowRecorder = $interactive ? new \App\DTO\WorkflowRecorder() : null;
+    $workflowRecorder = $agent ? null : new \App\DTO\WorkflowRecorder();
 
     $gitRepository = _get_git_repository();
     $gitSetup = _get_git_setup_service();
-    $promptCollector = new ConfigProjectInitPromptCollector(
-        $gitRepository,
-        $gitSetup,
-        _get_translation_service(),
-        _get_prompt(),
-        new \App\Service\GitTokenPromptResolver()
-    );
+    $promptCollector = _get_config_project_init_prompt_collector();
     $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $promptCollector);
-    $response = $handler->handle($rawAgentInput, $cliPatches, $skipRemote, $interactive, $agent, $workflowRecorder);
+    $response = $handler->handle($rawAgentInput, $skipRemote, $agent, $workflowRecorder);
     $responder = new ConfigProjectInitResponder(_get_responder_helper(), _get_logger());
     if ($format !== OutputFormat::Json && $workflowRecorder !== null) {
         _respond_workflow_response($workflowRecorder->toResponse($response->isSuccess() ? 0 : 1), false);

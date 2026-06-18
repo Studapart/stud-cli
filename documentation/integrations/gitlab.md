@@ -20,10 +20,10 @@ Run:
 stud init
 ```
 
-or configure project settings:
+or configure project settings interactively:
 
 ```bash
-stud config:project-init --git-provider gitlab --gitlab-instance-url https://gitlab.example.com
+stud config:project-init
 ```
 
 For automation:

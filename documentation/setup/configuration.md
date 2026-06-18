@@ -26,7 +26,7 @@ Repository-specific values live in `.git/stud.config`.
 
 ```bash
 stud config:project-init
-stud cpi --project-key SCI --base-branch develop
+stud cpi
 ```
 
 Agent mode is available for automation:

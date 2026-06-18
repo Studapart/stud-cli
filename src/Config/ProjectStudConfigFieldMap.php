@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Config;
 
 /**
- * Maps config:project-init inputs (CLI flags / agent JSON) to YAML keys in .git/stud.config.
+ * Maps config:project-init agent JSON inputs to YAML keys in .git/stud.config.
  */
 final class ProjectStudConfigFieldMap
 {
@@ -24,6 +24,10 @@ final class ProjectStudConfigFieldMap
         'gitlabInstanceUrl' => 'gitlabInstanceUrl',
         'jiraDefaultProject' => 'JIRA_DEFAULT_PROJECT',
         'confluenceDefaultSpace' => 'CONFLUENCE_DEFAULT_SPACE',
+        'workItemProvider' => 'workItemProvider',
+        'linearStartStateId' => 'linearStartStateId',
+        'linearTypeLabelGroupId' => 'linearTypeLabelGroupId',
+        'linearTypeBranchPrefixes' => 'linearTypeBranchPrefixes',
     ];
 
     /**

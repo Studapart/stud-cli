@@ -102,7 +102,7 @@ class InitProjectConfigFollowUpServiceTest extends TestCase
         $handler = $this->createMock(ConfigProjectInitHandler::class);
         $handler->expects($this->once())
             ->method('handle')
-            ->with([], [], false, true, false, $this->isInstanceOf(\App\Contract\WorkflowEntryRecorder::class))
+            ->with([], false, false, $this->isInstanceOf(\App\Contract\WorkflowEntryRecorder::class))
             ->willReturn($response);
 
         $responder = $this->createMock(ConfigProjectInitResponder::class);

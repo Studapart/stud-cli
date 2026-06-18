@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
+use App\Config\ProjectStudConfigFieldMap;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -195,6 +196,28 @@ class AgentModeSchemaGenerator
                 'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
             ] + $inputProperties;
         }
+
+        if ($taskName === 'config:project-init') {
+            $inputProperties = $this->buildConfigProjectInitInputProperties();
+        }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildConfigProjectInitInputProperties(): array
+    {
+        $properties = [];
+        foreach (array_keys(ProjectStudConfigFieldMap::INPUT_TO_YAML) as $key) {
+            $properties[$key] = match ($key) {
+                'transitionId' => ['type' => 'int|null', 'optional' => true, 'default' => null],
+                'linearTypeBranchPrefixes' => ['type' => 'object', 'optional' => true, 'default' => null],
+                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            };
+        }
+        $properties['skipBaseBranchRemoteCheck'] = ['type' => 'bool', 'optional' => true, 'default' => false];
+
+        return $properties;
     }
 
     /**

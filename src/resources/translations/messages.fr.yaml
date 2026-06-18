@@ -98,6 +98,8 @@ config:
     reserved_keys: "Ces clés ne peuvent pas être définies par cette commande : %keys%"
     invalid_git_provider: "gitProvider doit être github ou gitlab."
     invalid_transition_id: "transitionId doit être un entier positif ou nul."
+    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Configuration stud du projet"
     interactive_hint: "Appuyez sur Entrée pour conserver la valeur actuelle. Laissez les champs optionnels vides pour les ignorer."
@@ -112,6 +114,9 @@ config:
     prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
     prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
     prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
+    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     status_updated: "Configuration du projet mise à jour (.git/stud.config)."
     status_unchanged: "Aucune modification écrite (configuration inchangée)."
     failed: "Échec de la mise à jour de la configuration du projet."
@@ -697,10 +702,7 @@ help:
   command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
   command_config_show: "Afficher la configuration actuelle (globale et projet) avec les secrets masqués ; sûr à partager."
   command_config_validate: "Valider que la configuration est présente et que Jira et le fournisseur Git sont accessibles. Utilisez --skip-jira ou --skip-git pour des vérifications partielles."
-  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Utilisez les options CLI, stud config:project-init --agent avec du JSON, ou le mode interactif sans option. Les clés agent inconnues sont rejetées ; migration_version est réservée."
-  option_config_project_init_project_key: "Clé de projet Jira (cache de transition avec transition-id)"
-  option_config_project_init_base_branch: "Branche de base ; la présence sur origin est vérifiée sauf si --skip-base-branch-remote-check est défini"
-  option_config_project_init_skip_base: "Ne pas vérifier que la branche de base existe sur origin"
+  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Exécutez en mode interactif ou utilisez stud config:project-init --agent avec du JSON. Les clés agent inconnues sont rejetées ; migration_version est réservée."
   command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.

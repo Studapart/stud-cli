@@ -98,6 +98,8 @@ config:
     reserved_keys: "Эти ключи нельзя задать этой командой: %keys%"
     invalid_git_provider: "gitProvider должен быть github или gitlab."
     invalid_transition_id: "transitionId должен быть неотрицательным целым числом."
+    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Конфигурация проекта stud"
     interactive_hint: "Нажмите Enter, чтобы оставить текущее значение. Оставьте необязательные поля пустыми, чтобы пропустить."
@@ -112,6 +114,9 @@ config:
     prompt_github_token: "Токен GitHub для этого репозитория (скрыт)"
     prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
     prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
+    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     status_updated: "Конфигурация проекта обновлена (.git/stud.config)."
     status_unchanged: "Изменения не записаны (конфигурация без изменений)."
     failed: "Не удалось обновить конфигурацию проекта."
@@ -697,10 +702,7 @@ help:
   command_config_init: Интерактивный мастер для настройки деталей подключения Jira и Git.
   command_config_show: "Показать текущую конфигурацию (глобальную и проекта) с скрытыми секретами; безопасно для обмена."
   command_config_validate: "Проверить наличие конфигурации и доступность Jira и Git-провайдера. Используйте --skip-jira или --skip-git для частичных проверок."
-  command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Используйте флаги CLI, stud config:project-init --agent с JSON или интерактивно без флагов. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
-  option_config_project_init_project_key: "Ключ проекта Jira (кэш перехода с transition-id)"
-  option_config_project_init_base_branch: "Базовая ветка; наличие на origin проверяется, если не задан --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Не проверять, существует ли базовая ветка на origin"
+  command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Запустите интерактивно или используйте stud config:project-init --agent с JSON. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
