@@ -98,6 +98,8 @@ config:
     reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
     invalid_git_provider: "gitProvider phải là github hoặc gitlab."
     invalid_transition_id: "transitionId phải là số nguyên không âm."
+    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
     interactive_hint: "Nhấn Enter để giữ giá trị hiện tại. Để trống các trường tùy chọn nếu muốn bỏ qua."
@@ -112,6 +114,9 @@ config:
     prompt_github_token: "Token GitHub cho kho này (ẩn)"
     prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
     prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
+    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     status_updated: "Đã cập nhật cấu hình dự án (.git/stud.config)."
     status_unchanged: "Không ghi thay đổi (cấu hình không đổi)."
     failed: "Cập nhật cấu hình dự án thất bại."
@@ -697,10 +702,7 @@ help:
   command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
   command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
   command_config_validate: "Xác thực rằng cấu hình có mặt và Jira cùng nhà cung cấp Git có thể truy cập. Dùng --skip-jira hoặc --skip-git để kiểm tra từng phần."
-  command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Dùng cờ CLI, stud config:project-init --agent với JSON, hoặc chạy tương tác không cờ. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
-  option_config_project_init_project_key: "Mã dự án Jira (bộ nhớ chuyển trạng thái với transition-id)"
-  option_config_project_init_base_branch: "Nhánh cơ sở; kiểm tra tồn tại trên origin trừ khi bật --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Không kiểm tra nhánh cơ sở có tồn tại trên origin"
+  command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Chạy tương tác hoặc dùng stud config:project-init --agent với JSON. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.

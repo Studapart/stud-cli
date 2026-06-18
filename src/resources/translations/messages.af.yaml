@@ -98,6 +98,8 @@ config:
     reserved_keys: "Hierdie sleutels kan nie met hierdie opdrag gestel word nie: %keys%"
     invalid_git_provider: "gitProvider moet github of gitlab wees."
     invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
+    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Stud-projekkonfigurasie"
     interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
@@ -112,6 +114,9 @@ config:
     prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
     prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
     prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
+    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     status_updated: "Projekkonfigurasie bygewerk (.git/stud.config)."
     status_unchanged: "Geen veranderinge geskryf nie (konfigurasie onveranderd)."
     failed: "Bywerking van projekkonfigurasie het misluk."
@@ -697,10 +702,7 @@ help:
   command_config_init: Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel.
   command_config_show: "Vertoon huidige konfigurasie (globaal en projek) met geheime verberg; veilig om te deel."
   command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira en die Git-verskaffer bereikbaar is. Gebruik --skip-jira of --skip-git vir gedeeltelijke kontroles."
-  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Gebruik CLI-vlae, stud config:project-init --agent met JSON, of interaktief sonder vlae. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
-  option_config_project_init_project_key: "Jira-projekkode (oorgangs-kas met transition-id)"
-  option_config_project_init_base_branch: "Basis-tak; bestaan op origin word nagegaan tensy --skip-base-branch-remote-check gestel is"
-  option_config_project_init_skip_base: "Moenie nagaan of die basis-tak op origin bestaan nie"
+  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Voer interaktief uit of gebruik stud config:project-init --agent met JSON. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
   command_completion: Genereer shell outo-voltooiing scripts vir bash of zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.

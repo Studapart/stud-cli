@@ -89,5 +89,8 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertContains('CONFLUENCE_DEFAULT_SPACE', $allowed);
         $this->assertContains('baseBranch', $allowed);
         $this->assertContains('gitProvider', $allowed);
+        $this->assertContains('workItemProvider', $allowed);
+        $this->assertContains('linearStartStateId', $allowed);
+        $this->assertContains('linearTypeBranchPrefixes', $allowed);
     }
 }

@@ -88,7 +88,7 @@ class InitProjectConfigFollowUpService
 
     private function runInteractiveProjectInit(WorkflowEntryRecorder $recorder, SymfonyStyle $io): void
     {
-        $initResponse = $this->projectInitHandler->handle([], [], false, true, false, $recorder);
+        $initResponse = $this->projectInitHandler->handle([], false, false, $recorder);
         $this->projectInitResponder->respond($io, $initResponse, OutputFormat::Cli);
         if (! $initResponse->isSuccess()) {
             // @codeCoverageIgnoreStart

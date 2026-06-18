@@ -49,6 +49,10 @@ final class SecretKeyPolicy
             'baseBranch',
             'gitProvider',
             'gitlabInstanceUrl',
+            'workItemProvider',
+            'linearStartStateId',
+            'linearTypeLabelGroupId',
+            'linearTypeBranchPrefixes',
             'migration_version',
         ];
     }

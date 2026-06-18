@@ -98,6 +98,8 @@ config:
     reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
     invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
     invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
+    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Ρύθμιση stud έργου"
     interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
@@ -112,6 +114,9 @@ config:
     prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
     prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
     prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
+    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     status_updated: "Η ρύθμιση έργου ενημερώθηκε (.git/stud.config)."
     status_unchanged: "Δεν εγγράφηκαν αλλαγές (η ρύθμιση παρέμεινε ίδια)."
     failed: "Η ενημέρωση ρύθμισης έργου απέτυχε."
@@ -697,10 +702,7 @@ help:
   command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
   command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
-  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Χρησιμοποιήστε σημαίες CLI, stud config:project-init --agent με JSON, ή διαδραστικά χωρίς σημαίες. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
-  option_config_project_init_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης με transition-id)"
-  option_config_project_init_base_branch: "Βασικός κλάδος· ελέγχεται η ύπαρξη στο origin εκτός αν έχει οριστεί --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Να μην ελέγχεται αν ο βασικός κλάδος υπάρχει στο origin"
+  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Εκτελέστε διαδραστικά ή χρησιμοποιήστε stud config:project-init --agent με JSON. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.

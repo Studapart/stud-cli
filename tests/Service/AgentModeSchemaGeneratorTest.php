@@ -393,6 +393,9 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertContains('cpi', $cmd['aliases'] ?? []);
         $props = $cmd['input']['properties'] ?? [];
         $this->assertArrayHasKey('projectKey', $props);
+        $this->assertArrayHasKey('workItemProvider', $props);
+        $this->assertArrayHasKey('linearStartStateId', $props);
+        $this->assertArrayHasKey('linearTypeBranchPrefixes', $props);
         $this->assertArrayHasKey('skipBaseBranchRemoteCheck', $props);
         $out = $cmd['output']['success']['data'] ?? [];
         $this->assertArrayHasKey('updated', $out);

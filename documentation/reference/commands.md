@@ -121,10 +121,10 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-config-project-init"></a>
 ### `stud config:project-init`
 
-Create or merge .git/stud.config (project key, base branch, provider, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Use CLI flags, stud config:project-init --agent with JSON, or run interactively with no flags. Unknown agent keys are rejected; migration_version is reserved.
+Create or merge .git/stud.config (project key, base branch, provider, tokens, work-item provider, Linear keys, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Run interactively or use stud config:project-init --agent with JSON. Unknown agent keys are rejected; migration_version is reserved.
 
 - **Alias:** `stud cpi`
-- **Syntax:** `stud config:project-init [options]`
+- **Syntax:** `stud config:project-init`
 
 <details>
 <summary>Options, examples, and agent schema</summary>
@@ -135,11 +135,7 @@ None.
 
 #### Options
 
-| Option | Description |
-| --- | --- |
-| `--project-key <key>` | Jira project key (transition cache with transition-id) |
-| `--base-branch <branch>` | Base branch; existence on origin is checked unless --skip-base-branch-remote-check is set |
-| `--skip-base-branch-remote-check` | Do not verify that the base branch exists on origin |
+None.
 
 
 #### Examples
@@ -147,10 +143,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-stud config:project-init --project-key SCI-123
-stud config:project-init --base-branch feat/SCI-123-existing-branch
-stud config:project-init --skip-base-branch-remote-check
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","workItemProvider":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -167,6 +160,10 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `gitlabInstanceUrl` | `string\|null` | yes | `NULL` |
 | `jiraDefaultProject` | `string\|null` | yes | `NULL` |
 | `confluenceDefaultSpace` | `string\|null` | yes | `NULL` |
+| `workItemProvider` | `string\|null` | yes | `NULL` |
+| `linearStartStateId` | `string\|null` | yes | `NULL` |
+| `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
+| `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
 | `skipBaseBranchRemoteCheck` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -428,13 +425,13 @@ echo '{"filterName":"My Filter"}' | stud filters:show --agent
 
 #### Agent JSON Output
 
-Issues from a saved filter
+Issues from a saved filter (agent mode returns slim issue summaries; use items:show for full details)
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, priority, url)
 filterName: string
 ```
 
@@ -442,7 +439,7 @@ Full success shape (`{"compact":false}`):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, priority, url)
 filterName: string
 ```
 
@@ -647,13 +644,13 @@ echo '{"all":true,"project":"example","sort":"example"}' | stud items:list --age
 
 #### Agent JSON Output
 
-List of work items
+List of work items (agent mode returns slim issue summaries; use items:show for full details)
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, url)
 all: bool
 project: string|null
 ```
@@ -662,7 +659,7 @@ Full success shape (`{"compact":false}`):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, url)
 all: bool
 project: string|null
 ```
@@ -710,13 +707,13 @@ echo '{"jql":"project = SCI and statusCategory != Done"}' | stud items:search --
 
 #### Agent JSON Output
 
-JQL search results
+JQL search results (agent mode returns slim issue summaries; use items:show for full details)
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, priority, url)
 jql: string
 ```
 
@@ -724,7 +721,7 @@ Full success shape (`{"compact":false}`):
 
 ```text
 success: true
-issues: array
+issues: array of slim issue summaries (key, status, title, priority, url)
 jql: string
 ```
 
