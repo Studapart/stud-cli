@@ -3,7 +3,11 @@
 namespace App\Tests\Handler;
 
 use App\Handler\InitHandler;
+use App\Handler\InitPromptCollector;
 use App\Service\FileSystem;
+use App\Service\GitTokenPromptResolver;
+use App\Service\GlobalConfigProviderResolver;
+use App\Service\MessageRenderer;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -13,6 +17,7 @@ use Symfony\Component\Yaml\Yaml;
 class InitHandlerTest extends CommandTestCase
 {
     private InitHandler $handler;
+    private InitPromptCollector $promptCollector;
     private FileSystem $fileSystem;
     private ?string $originalShell = null;
     private \App\Service\Prompt\PromptInterface $prompt;
@@ -32,7 +37,26 @@ class InitHandlerTest extends CommandTestCase
         $this->fileSystem = $this->createMock(FileSystem::class);
         // Logger will be created per test with real $io for interactive methods
         $this->prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
-        $this->handler = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $this->prompt, new \App\Service\GitTokenPromptResolver());
+        $this->promptCollector = $this->createPromptCollector();
+        $this->handler = $this->createInitHandler($this->prompt, $this->promptCollector);
+    }
+
+    private function createPromptCollector(?\App\Service\Prompt\PromptInterface $prompt = null): InitPromptCollector
+    {
+        return new InitPromptCollector(
+            $prompt ?? $this->prompt,
+            new GitTokenPromptResolver(),
+            new MessageRenderer($this->translationService),
+            new GlobalConfigProviderResolver(),
+        );
+    }
+
+    private function createInitHandler(
+        \App\Service\Prompt\PromptInterface $prompt,
+        InitPromptCollector $promptCollector,
+        string $configPath = '/tmp/config.yml',
+    ): InitHandler {
+        return new InitHandler($this->fileSystem, $configPath, $prompt, $promptCollector);
     }
 
     /**
@@ -42,7 +66,15 @@ class InitHandlerTest extends CommandTestCase
     {
         $realLogger = new \App\Service\Logger($io, []);
 
-        return new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
+        return $this->createInitHandler(
+            $realLogger,
+            new InitPromptCollector(
+                $realLogger,
+                new GitTokenPromptResolver(),
+                new MessageRenderer($this->translationService),
+                new GlobalConfigProviderResolver(),
+            ),
+        );
     }
 
     private function isMigrationsDirectory(string $path): bool
@@ -122,6 +154,8 @@ class InitHandlerTest extends CommandTestCase
         $inputStream = fopen('php://memory', 'r+');
         // choice() expects the index number (0 for first option), not the string value
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -195,24 +229,31 @@ class InitHandlerTest extends CommandTestCase
             ->method('backupFileIfExists')
             ->with('/tmp/config.yml');
 
-        $output = new BufferedOutput();
-        $input = new ArrayInput([]);
-        $inputStream = fopen('php://memory', 'r+');
-        fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
-        fwrite($inputStream, "https://new-jira.example.com/\n"); // New Jira URL
-        fwrite($inputStream, "new@example.com\n"); // New Jira Email
-        fwrite($inputStream, "existing_jira_token\n"); // Jira token (askHidden)
-        fwrite($inputStream, "new_github_token\n"); // GitHub token (askHidden)
-        fwrite($inputStream, "\n"); // GitLab token (skip, should preserve existing)
-        fwrite($inputStream, "n\n"); // Jira transition enabled: No
-        fwrite($inputStream, "1\n"); // Completion prompt: No is second option (index 1)
-        rewind($inputStream);
+        $this->prompt->expects($this->exactly(4))
+            ->method('choice')
+            ->willReturnOnConsecutiveCalls(
+                'English (en)', // language
+                '0 GitHub', // git provider
+                '0 Jira', // pm provider
+                'No', // completion
+            );
+        $this->prompt->expects($this->exactly(2))
+            ->method('ask')
+            ->willReturnOnConsecutiveCalls(
+                'https://new-jira.example.com/',
+                'new@example.com',
+            );
+        $this->prompt->expects($this->exactly(2))
+            ->method('askHidden')
+            ->willReturnOnConsecutiveCalls(
+                'existing_jira_token',
+                'new_github_token',
+            );
+        $this->prompt->expects($this->once())
+            ->method('confirm')
+            ->willReturn(false);
 
-        $input->setStream($inputStream);
-        $io = new SymfonyStyle($input, $output);
-
-        $handler = $this->createHandlerWithRealLogger($io);
-        $handler->handle();
+        $this->handler->handle();
 
         // Test intent: success() was called, verified by mocked fileSystem->filePutContents() being called
     }
@@ -267,6 +308,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language: English
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "https://jira.example.com/\n");
         fwrite($inputStream, "existing@example.com\n");
         fwrite($inputStream, "\n"); // Jira token empty -> keep existing
@@ -321,6 +364,8 @@ class InitHandlerTest extends CommandTestCase
         $inputStream = fopen('php://memory', 'r+');
         // choice() expects the index number (0 for first option), not the string value
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -395,6 +440,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "2\n"); // Git provider: 2 Both
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "\n"); // Keep existing Jira URL
         fwrite($inputStream, "\n"); // Keep existing Jira Email
         fwrite($inputStream, "\n"); // Press Enter without input for Jira token (askHidden returns null/empty, should preserve existing)
@@ -456,6 +503,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "2\n"); // Git provider: 2 Both
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "https://jira.example.com/\n"); // Jira URL with trailing slash
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -516,6 +565,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "2\n"); // Git provider: 2 Both
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -576,6 +627,8 @@ class InitHandlerTest extends CommandTestCase
         $inputStream = fopen('php://memory', 'r+');
         // choice() expects the index number (0 for first option), not the string value
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -624,6 +677,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -683,6 +738,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -742,6 +799,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -833,6 +892,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "0\n"); // Language selection: English (en) is first option (index 0)
+        fwrite($inputStream, "0\n"); // Git provider: 0 GitHub
+        fwrite($inputStream, "0\n"); // PM: 0 Jira
         fwrite($inputStream, "jira_url\n");
         fwrite($inputStream, "jira_email\n");
         fwrite($inputStream, "jira_token\n");
@@ -852,7 +913,15 @@ class InitHandlerTest extends CommandTestCase
             ['text' => 'white', 'muted' => 'gray'],
             messageRenderer: new \App\Service\MessageRenderer($this->translationService)
         );
-        $handlerWithRealLogger = new InitHandler($this->fileSystem, '/tmp/config.yml', $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
+        $handlerWithRealLogger = $this->createInitHandler(
+            $realLogger,
+            new InitPromptCollector(
+                $realLogger,
+                new GitTokenPromptResolver(),
+                new MessageRenderer($this->translationService),
+                new GlobalConfigProviderResolver(),
+            ),
+        );
 
         $response = $handlerWithRealLogger->handle();
 
@@ -884,7 +953,7 @@ class InitHandlerTest extends CommandTestCase
             putenv('LC_ALL=fr_FR.UTF-8');
             putenv('LANG=en_US.UTF-8'); // Should be ignored when LC_ALL is set
 
-            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
             $this->assertSame('fr', $detected);
         } finally {
             if ($originalLcAll !== false) {
@@ -909,7 +978,7 @@ class InitHandlerTest extends CommandTestCase
             putenv('LC_ALL='); // Clear LC_ALL
             putenv('LANG=es_ES.UTF-8');
 
-            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
             $this->assertSame('es', $detected);
         } finally {
             if ($originalLcAll !== false) {
@@ -932,7 +1001,7 @@ class InitHandlerTest extends CommandTestCase
         try {
             putenv('LC_ALL=nl_NL.UTF-8');
 
-            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
             $this->assertSame('nl', $detected);
         } finally {
             if ($originalLcAll !== false) {
@@ -950,7 +1019,7 @@ class InitHandlerTest extends CommandTestCase
         try {
             putenv('LC_ALL=de_DE.UTF-8'); // German is not supported
 
-            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
             $this->assertNull($detected);
         } finally {
             if ($originalLcAll !== false) {
@@ -970,7 +1039,7 @@ class InitHandlerTest extends CommandTestCase
             putenv('LC_ALL=');
             putenv('LANG=');
 
-            $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+            $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
             $this->assertNull($detected);
         } finally {
             if ($originalLcAll !== false) {
@@ -994,7 +1063,7 @@ class InitHandlerTest extends CommandTestCase
         try {
             foreach ($supportedLanguages as $lang) {
                 putenv('LC_ALL=' . $lang . '_XX.UTF-8');
-                $detected = $this->callPrivateMethod($this->handler, 'detectSystemLocale');
+                $detected = $this->callPrivateMethod($this->promptCollector, 'detectSystemLocale');
                 $this->assertSame($lang, $detected, "Failed to detect language: {$lang}");
             }
         } finally {
@@ -1073,6 +1142,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "English (en)\n"); // Language choice - use full display string
+        fwrite($inputStream, "2 Both\n"); // Git provider
+        fwrite($inputStream, "0 Jira\n"); // PM
         fwrite($inputStream, "https://jira.example.com\n");
         fwrite($inputStream, "email@example.com\n");
         fwrite($inputStream, "token\n");
@@ -1085,7 +1156,16 @@ class InitHandlerTest extends CommandTestCase
 
         // Use real logger so it can read from input stream
         $realLogger = new \App\Service\Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, $configPath, $this->translationService, $realLogger, new \App\Service\GitTokenPromptResolver());
+        $handler = $this->createInitHandler(
+            $realLogger,
+            new InitPromptCollector(
+                $realLogger,
+                new GitTokenPromptResolver(),
+                new MessageRenderer($this->translationService),
+                new GlobalConfigProviderResolver(),
+            ),
+            $configPath,
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Failed to create config directory: ' . $configDir);
@@ -1137,6 +1217,8 @@ class InitHandlerTest extends CommandTestCase
         $input = new ArrayInput([]);
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "English (en)\n");
+        fwrite($inputStream, "2 Both\n"); // Git provider
+        fwrite($inputStream, "0 Jira\n"); // PM
         fwrite($inputStream, "/\n"); // JIRA_URL that will become empty string after rtrim
         fwrite($inputStream, "email@example.com\n");
         fwrite($inputStream, "token\n");

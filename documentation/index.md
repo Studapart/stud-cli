@@ -45,5 +45,7 @@ Central map for `stud-cli` documentation.
 | [016](adr-016-item-create-handler-decomposition.md) | ItemCreateHandler decomposition |
 | [017](adr-017-response-owned-output-and-diagnostics.md) | Response-owned output and diagnostics |
 | [018](adr-018-presentation-owned-translation.md) | Presentation-owned translation |
+| [019](adr-019-closed-prompt-choices-use-backed-enums.md) | Closed prompt choices use backed enums |
+| [020](adr-020-global-init-wizard-director-and-strategy.md) | Global init wizard: Director + Strategy decomposition |
 
 New ADRs: use [adr-template.md](adr-template.md).
