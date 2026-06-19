@@ -43,7 +43,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything());
         $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything());
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
 
         $this->responder->respond($io, $response);
     }
@@ -86,7 +86,8 @@ class ConfigValidateResponderTest extends CommandTestCase
 
                     return is_string($value) && str_contains(strtolower($value), 'fail') && str_contains($value, 'Connection refused');
                 }),
-                $this->anything()
+                $this->anything(),
+                $this->anything(),
             );
 
         $this->responder->respond($io, $response);
@@ -118,7 +119,12 @@ class ConfigValidateResponderTest extends CommandTestCase
                     $value = array_values($row)[0] ?? '';
 
                     return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                })
+                }),
+                $this->callback(function (array $row) {
+                    $value = array_values($row)[0] ?? '';
+
+                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
+                }),
             );
 
         $this->responder->respond($io, $response);
@@ -146,7 +152,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything());
         $logger->expects($this->atLeastOnce())
             ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything());
+            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
 
         $responder->respond($io, $response);
     }
@@ -166,7 +172,7 @@ class ConfigValidateResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything());
         $this->logger->expects($this->once())
             ->method('definitionList')
-            ->with($this->anything(), $this->isType('array'), $this->isType('array'));
+            ->with($this->anything(), $this->isType('array'), $this->isType('array'), $this->isType('array'));
 
         $this->responder->respond($io, $response);
     }
@@ -187,6 +193,7 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->assertTrue($result->success);
         $this->assertSame('ok', $result->data['jiraStatus']);
         $this->assertSame('ok', $result->data['gitStatus']);
+        $this->assertSame('skipped', $result->data['linearStatus']);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

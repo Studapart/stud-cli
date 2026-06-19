@@ -22,6 +22,23 @@ class ConfigValidateResponseTest extends TestCase
         $this->assertNull($response->getError());
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->gitStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->linearStatus);
+    }
+
+    public function testCreateLinearFailMakesResponseNotSuccess(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_FAIL,
+            'Unauthorized',
+        );
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
+        $this->assertSame('Unauthorized', $response->linearMessage);
     }
 
     public function testCreateJiraFailMakesResponseNotSuccess(): void

@@ -6,10 +6,11 @@ namespace App\Handler;
 
 use App\DTO\Filter;
 use App\DTO\MessageRef;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\FilterListResponse;
 use App\Service\JiraService;
 
-class FilterListHandler
+class FilterListHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly JiraService $jiraService,

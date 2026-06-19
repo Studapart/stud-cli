@@ -39,7 +39,7 @@ final class ArchitecturePresentationExceptions
      * @var list<string>
      */
     public const LEGACY_WORKFLOW_OUTPUT_SERVICES = [
-        'src/Service/ConfigValidator.php',
+        'src/Service/ConfigRemediationService.php',
         'src/Service/GitSetupService.php',
     ];
 }

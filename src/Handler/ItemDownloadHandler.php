@@ -6,11 +6,12 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
 use App\Service\JiraAttachmentService;
 
-class ItemDownloadHandler
+class ItemDownloadHandler implements WorkItemJiraAware
 {
     private const DEFAULT_RELATIVE_DIR = '.cursor/stud-downloads';
 

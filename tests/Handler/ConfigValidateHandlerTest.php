@@ -14,6 +14,32 @@ class ConfigValidateHandlerTest extends CommandTestCase
 {
     private GitProviderInterface&MockObject $gitProvider;
 
+    /**
+     * @param \App\Service\JiraService|MockObject|null|false $jiraService false uses setUp mock; null means not configured
+     * @param GitProviderInterface|MockObject|null|false $gitProvider false uses setUp mock; null means not configured
+     */
+    private function createHandler(
+        \App\Service\JiraService|MockObject|null|false $jiraService = false,
+        GitProviderInterface|MockObject|null|false $gitProvider = false,
+        bool $skipJira = false,
+        bool $skipGit = false,
+        bool $skipLinear = false,
+        bool $validateJira = true,
+        bool $validateGit = true,
+        bool $validateLinear = true,
+    ): ConfigValidateHandler {
+        return new ConfigValidateHandler(
+            $jiraService === false ? $this->jiraService : $jiraService,
+            $gitProvider === false ? $this->gitProvider : $gitProvider,
+            $skipJira,
+            $skipGit,
+            $skipLinear,
+            $validateJira,
+            $validateGit,
+            $validateLinear,
+        );
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -30,13 +56,14 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler($this->jiraService, $this->gitProvider, false, false);
+        $handler = $this->createHandler();
         $response = $handler->handle();
 
         $this->assertInstanceOf(ConfigValidateResponse::class, $response);
         $this->assertTrue($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->gitStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->linearStatus);
         $this->assertNull($response->jiraMessage);
         $this->assertNull($response->gitMessage);
     }
@@ -50,7 +77,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler($this->jiraService, $this->gitProvider, false, false);
+        $handler = $this->createHandler();
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -68,7 +95,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willThrowException(new \RuntimeException('Git provider error'));
 
-        $handler = new ConfigValidateHandler($this->jiraService, $this->gitProvider, false, false);
+        $handler = $this->createHandler();
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -84,12 +111,81 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
 
-        $handler = new ConfigValidateHandler(null, null, true, true);
+        $handler = $this->createHandler(null, null, true, true);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->gitStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->linearStatus);
+    }
+
+    public function testHandleSkipsJiraWhenValidateJiraFalse(): void
+    {
+        $this->jiraService->expects($this->never())
+            ->method('getProjects');
+        $this->gitProvider->expects($this->once())
+            ->method('getLabels')
+            ->willReturn([]);
+
+        $handler = new ConfigValidateHandler(
+            $this->jiraService,
+            $this->gitProvider,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+        );
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->jiraStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->gitStatus);
+    }
+
+    public function testHandleSkipsGitWhenValidateGitFalse(): void
+    {
+        $this->jiraService->expects($this->once())
+            ->method('getProjects')
+            ->willReturn([]);
+        $this->gitProvider->expects($this->never())
+            ->method('getLabels');
+
+        $handler = new ConfigValidateHandler(
+            $this->jiraService,
+            $this->gitProvider,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+        );
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->jiraStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->gitStatus);
+    }
+
+    public function testHandleSkipsLinearWhenValidateLinearTrueUntilClientExists(): void
+    {
+        $handler = new ConfigValidateHandler(null, null, true, true, false, false, false, true);
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->linearStatus);
+    }
+
+    public function testHandleSkipsLinearWhenSkipLinearTrue(): void
+    {
+        $handler = new ConfigValidateHandler(null, null, true, true, true, false, false, true);
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->linearStatus);
     }
 
     public function testHandleSkipsJiraOnlyWhenSkipJiraTrue(): void
@@ -100,7 +196,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler(null, $this->gitProvider, true, false);
+        $handler = $this->createHandler(null, $this->gitProvider, true, false);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -116,7 +212,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
 
-        $handler = new ConfigValidateHandler($this->jiraService, null, false, true);
+        $handler = $this->createHandler($this->jiraService, null, false, true);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -130,7 +226,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler(null, $this->gitProvider, false, false);
+        $handler = $this->createHandler(null, $this->gitProvider);
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -144,7 +240,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getProjects')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler($this->jiraService, null, false, false);
+        $handler = $this->createHandler($this->jiraService, null);
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -162,7 +258,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler($this->jiraService, $this->gitProvider, false, false);
+        $handler = $this->createHandler();
         $response = $handler->handle();
 
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->jiraStatus);

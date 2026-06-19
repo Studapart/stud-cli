@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\BranchSwitchResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 
-class BranchSwitchHandler
+class BranchSwitchHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

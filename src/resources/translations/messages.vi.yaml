@@ -88,6 +88,7 @@ config:
     section_title: "Xác thực cấu hình"
     label_jira: "Jira"
     label_git_provider: "Nhà cung cấp Git"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Lỗi"
     status_skipped: "Đã bỏ qua"
@@ -701,7 +702,7 @@ help:
   example_prefix: 'Ví dụ: %example%'
   command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
   command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
-  command_config_validate: "Xác thực rằng cấu hình có mặt và Jira cùng nhà cung cấp Git có thể truy cập. Dùng --skip-jira hoặc --skip-git để kiểm tra từng phần."
+  command_config_validate: "Xác thực rằng cấu hình có mặt và Jira, nhà cung cấp Git và Linear có thể truy cập. Dùng --skip-jira, --skip-git hoặc --skip-linear để kiểm tra từng phần."
   command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Chạy tương tác hoặc dùng stud config:project-init --agent với JSON. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
@@ -777,6 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Skip the Linear connectivity check"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

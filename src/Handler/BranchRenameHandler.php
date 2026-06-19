@@ -8,6 +8,7 @@ use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\BranchNameValidator;
@@ -16,7 +17,7 @@ use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
-class BranchRenameHandler
+class BranchRenameHandler implements GitRepositoryAware
 {
     private WorkflowEntryRecorder $recorder;
 

@@ -7,11 +7,12 @@ namespace App\Handler;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\ConfluenceAware;
 use App\Response\ConfluenceShowResponse;
 use App\Service\AdfToMarkdownConverter;
 use App\Service\ConfluenceService;
 
-class ConfluenceShowHandler
+class ConfluenceShowHandler implements ConfluenceAware
 {
     public function __construct(
         private readonly ConfluenceService $confluenceService,

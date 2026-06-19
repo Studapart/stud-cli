@@ -7,13 +7,16 @@ namespace App\Handler;
 use App\DTO\MessageRef;
 use App\DTO\PrCommentRequest;
 use App\DTO\PullRequestFeedbackConversation;
+use App\Guard\Capability\GitProviderGithubAware;
+use App\Guard\Capability\GitProviderGitlabAware;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\PrCommentResponse;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
 use App\Service\MarkdownHelper;
 use App\Service\PullRequestFeedbackTargetResolver;
 
-class PrCommentHandler
+class PrCommentHandler implements GitProviderGithubAware, GitProviderGitlabAware, GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

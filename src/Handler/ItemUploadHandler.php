@@ -7,11 +7,12 @@ namespace App\Handler;
 use App\DTO\ItemUploadInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
 use App\Service\JiraAttachmentService;
 
-class ItemUploadHandler
+class ItemUploadHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly FileSystem $fileSystem,

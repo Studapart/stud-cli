@@ -7,11 +7,12 @@ namespace App\Handler;
 use App\DTO\ConfluencePushInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\ConfluenceAware;
 use App\Response\ConfluencePushResponse;
 use App\Service\ConfluenceService;
 use App\Service\MarkdownToAdfConverter;
 
-class ConfluencePushHandler
+class ConfluencePushHandler implements ConfluenceAware
 {
     public function __construct(
         private readonly ConfluenceService $confluenceService,
