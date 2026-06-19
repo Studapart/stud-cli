@@ -1027,7 +1027,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $handler = new \ReflectionClass($this->handler);
         $method = $handler->getMethod('validateBranchName');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Test with consecutive dots (str_contains check)
         $this->assertFalse($method->invoke($this->handler, 'branch..name'));
@@ -1055,7 +1055,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $handler = new \ReflectionClass($this->handler);
         $method = $handler->getMethod('getBranchPrefixFromIssueType');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('fix', $method->invoke($this->handler, 'bug'));
         $this->assertSame('feat', $method->invoke($this->handler, 'story'));
@@ -1130,9 +1130,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $handlerReflection = new \ReflectionClass($handler);
         $method = $handlerReflection->getMethod('updatePullRequestAfterRename');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
         $recorderProperty = $handlerReflection->getProperty('recorder');
-        $recorderProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($recorderProperty);
         $recorderProperty->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         // Should return early without error
@@ -1152,7 +1152,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $recorder = new \App\DTO\WorkflowRecorder();
         $reflection = new \ReflectionClass($this->handler);
         $recorderProperty = $reflection->getProperty('recorder');
-        $recorderProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($recorderProperty);
         $recorderProperty->setValue($this->handler, $recorder);
 
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/test');

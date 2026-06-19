@@ -641,7 +641,7 @@ class GitSetupServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitSetupService);
         $method = $reflection->getMethod($method);
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         return $method->invokeArgs($this->gitSetupService, $args);
     }

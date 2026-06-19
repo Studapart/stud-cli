@@ -194,7 +194,7 @@ class MigrationRegistryTest extends TestCase
         // Use reflection to call sortMigrations directly
         $reflection = new \ReflectionClass($this->registry);
         $method = $reflection->getMethod('sortMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $sorted = $method->invoke($this->registry, $unsorted);
 
@@ -232,7 +232,7 @@ class MigrationRegistryTest extends TestCase
         // Use reflection to call protected method
         $reflection = new \ReflectionClass($this->registry);
         $method = $reflection->getMethod('discoverMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->registry, '/non/existent/path', MigrationScope::GLOBAL);
 
@@ -244,7 +244,7 @@ class MigrationRegistryTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->registry);
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->registry, '/tmp', 'nonexistent.php');
 
@@ -265,7 +265,7 @@ class MigrationRegistryTest extends TestCase
 
         $reflection = new \ReflectionClass($registry);
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, basename($testFile));
 
@@ -288,7 +288,7 @@ class MigrationRegistryTest extends TestCase
 
         $reflection = new \ReflectionClass($registry);
         $method = $reflection->getMethod('discoverMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, MigrationScope::GLOBAL);
 
@@ -301,7 +301,7 @@ class MigrationRegistryTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->registry);
         $method = $reflection->getMethod('compareMigrationId');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result1 = $method->invoke($this->registry, '202501150000001', '202501150000002');
         $this->assertLessThan(0, $result1);
@@ -318,11 +318,11 @@ class MigrationRegistryTest extends TestCase
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
         $fileSystemProperty = $reflection->getProperty('fileSystem');
-        $fileSystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($fileSystemProperty);
         $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
-        $filesystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($filesystemProperty);
         $flysystem = $filesystemProperty->getValue($fileSystem);
 
         $testDir = '/test';
@@ -336,7 +336,7 @@ PHP;
         $flysystem->write($testFile, $content);
 
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, basename($testFile));
 
@@ -348,11 +348,11 @@ PHP;
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
         $fileSystemProperty = $reflection->getProperty('fileSystem');
-        $fileSystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($fileSystemProperty);
         $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
-        $filesystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($filesystemProperty);
         $flysystem = $filesystemProperty->getValue($fileSystem);
 
         $testDir = '/test';
@@ -365,7 +365,7 @@ PHP;
         $flysystem->write($testFile, $content);
 
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, basename($testFile));
 
@@ -378,7 +378,7 @@ PHP;
         // by using a non-existent directory (already tested) or by testing edge cases
         $reflection = new \ReflectionClass($this->registry);
         $method = $reflection->getMethod('discoverMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Non-existent directory should return empty array
         $result = $method->invoke($this->registry, '/non/existent/path', MigrationScope::GLOBAL);
@@ -391,11 +391,11 @@ PHP;
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
         $fileSystemProperty = $reflection->getProperty('fileSystem');
-        $fileSystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($fileSystemProperty);
         $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
-        $filesystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($filesystemProperty);
         $flysystem = $filesystemProperty->getValue($fileSystem);
 
         $testDir = '/test/migrations';
@@ -404,7 +404,7 @@ PHP;
         $flysystem->write($testFile, 'not a php file');
 
         $method = $reflection->getMethod('discoverMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, MigrationScope::GLOBAL);
 
@@ -439,7 +439,7 @@ PHP;
 
         $reflection = new \ReflectionClass($registry);
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, '/test', 'Test.php');
 
@@ -452,11 +452,11 @@ PHP;
         $registry = $this->createRegistryWithInMemoryFilesystem();
         $reflection = new \ReflectionClass($registry);
         $fileSystemProperty = $reflection->getProperty('fileSystem');
-        $fileSystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($fileSystemProperty);
         $fileSystem = $fileSystemProperty->getValue($registry);
         $reflectionFileSystem = new \ReflectionClass($fileSystem);
         $filesystemProperty = $reflectionFileSystem->getProperty('filesystem');
-        $filesystemProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($filesystemProperty);
         $flysystem = $filesystemProperty->getValue($fileSystem);
 
         $testDir = '/test';
@@ -470,7 +470,7 @@ PHP;
         $flysystem->write($testFile, $content);
 
         $method = $reflection->getMethod('getClassNameFromFile');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($registry, $testDir, basename($testFile));
 
@@ -498,7 +498,7 @@ PHP;
         try {
             $reflection = new \ReflectionClass($this->registry);
             $method = $reflection->getMethod('discoverMigrations');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
 
             $result = $method->invoke($this->registry, $tempDir, MigrationScope::GLOBAL);
 
@@ -553,7 +553,7 @@ PHP;
 
             $reflection = new \ReflectionClass($this->registry);
             $method = $reflection->getMethod('discoverMigrations');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
 
             $result = $method->invoke($this->registry, $tempDir, MigrationScope::GLOBAL);
 
@@ -598,7 +598,7 @@ PHP;
 
             $reflection = new \ReflectionClass($this->registry);
             $method = $reflection->getMethod('discoverMigrations');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
 
             $result = $method->invoke($this->registry, $tempDir, MigrationScope::GLOBAL);
 
@@ -652,7 +652,7 @@ PHP;
 
             $reflection = new \ReflectionClass($this->registry);
             $method = $reflection->getMethod('discoverMigrations');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
 
             // Try to discover as GLOBAL scope - should not find PROJECT scope migration
             // This should trigger the continue at line 127

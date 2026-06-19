@@ -1368,7 +1368,7 @@ class GithubGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->githubProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->githubProvider, $responseMock);
 
@@ -1385,7 +1385,7 @@ class GithubGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->githubProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->githubProvider, $responseMock);
 
@@ -1788,7 +1788,7 @@ class GithubGitHostingAdapterTest extends TestCase
         // Use reflection to access protected getClient method
         $reflection = new \ReflectionClass($provider);
         $method = $reflection->getMethod('getClient');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $client = $method->invoke($provider);
 
@@ -1808,7 +1808,7 @@ class GithubGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->githubProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->githubProvider, $responseMock, 'POST', '/repos/test_owner/test_repo/pulls');
 

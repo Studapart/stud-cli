@@ -184,7 +184,7 @@ class LinearGraphqlClientTest extends TestCase
 
         $graphql = new LinearGraphqlClient(new MockHttpClient());
         $method = new \ReflectionMethod(LinearGraphqlClient::class, 'extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('HTTP 502', $method->invoke($graphql, $response));
     }
@@ -193,7 +193,7 @@ class LinearGraphqlClientTest extends TestCase
     {
         $graphql = new LinearGraphqlClient(new MockHttpClient());
         $method = new \ReflectionMethod(LinearGraphqlClient::class, 'formatGraphQlErrors');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('Linear GraphQL request failed.', $method->invoke($graphql, ['not-an-array']));
     }

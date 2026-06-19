@@ -120,7 +120,7 @@ class ConfigProjectInitResponderTest extends TestCase
         $ref = new \ReflectionClass(ConfigProjectInitResponse::class);
         $response = $ref->newInstanceWithoutConstructor();
         $ctor = $ref->getConstructor();
-        $ctor->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($ctor);
         $ctor->invoke($response, false, null, false, []);
 
         $json = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json);

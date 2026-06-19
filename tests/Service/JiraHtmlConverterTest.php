@@ -197,7 +197,7 @@ class JiraHtmlConverterTest extends TestCase
         // Test exception path by using reflection to inject a mock converter that throws
         $reflection = new \ReflectionClass($this->converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that will throw an exception
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
@@ -248,7 +248,7 @@ class JiraHtmlConverterTest extends TestCase
         // Use reflection to inject a mock converter that throws DOMDocument exception
         $reflection = new \ReflectionClass($converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
@@ -274,7 +274,7 @@ class JiraHtmlConverterTest extends TestCase
         // Use reflection to inject a mock converter that throws non-DOMDocument exception
         $reflection = new \ReflectionClass($converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws a different exception
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
@@ -307,7 +307,7 @@ class JiraHtmlConverterTest extends TestCase
         // Use reflection to inject a mock converter that throws DOMDocument exception
         $reflection = new \ReflectionClass($converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
@@ -333,7 +333,7 @@ class JiraHtmlConverterTest extends TestCase
         // Use reflection to inject a mock converter that throws non-DOMDocument exception
         $reflection = new \ReflectionClass($converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws a different exception
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);
@@ -359,7 +359,7 @@ class JiraHtmlConverterTest extends TestCase
         // Use reflection to inject a mock converter that throws DOMDocument exception with different message
         $reflection = new \ReflectionClass($converter);
         $markdownConverterProperty = $reflection->getProperty('markdownConverter');
-        $markdownConverterProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($markdownConverterProperty);
 
         // Create a mock that throws DOMDocument-related exception with different message format
         $mockConverter = $this->createMock(\League\HTMLToMarkdown\HtmlConverter::class);

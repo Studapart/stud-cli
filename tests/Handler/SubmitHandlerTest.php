@@ -240,7 +240,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('extractPrTitleFromCommitMessage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('', $method->invoke($this->handler, ''));
         $this->assertSame('', $method->invoke($this->handler, "\n\n  \n\t\n"));
@@ -250,7 +250,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('extractPrTitleFromCommitMessage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('subject', $method->invoke($this->handler, "  subject  \n\nbody"));
         $this->assertSame('subject', $method->invoke($this->handler, "\r\nsubject\r\nbody"));
@@ -1036,7 +1036,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,enhancement');
 
@@ -1050,7 +1050,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, '');
 
@@ -1064,7 +1064,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Test with whitespace-only input
         $result = $method->invoke($this->handler, '  ,  ,  ');
@@ -1087,7 +1087,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.git_provider_not_configured');
@@ -1111,7 +1111,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Request lowercase 'bug' but it should match 'Bug' from GitHub
         $result = $method->invoke($this->handler, 'bug');
@@ -1308,7 +1308,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,new-label');
 
@@ -1336,7 +1336,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,typo');
 
@@ -1362,7 +1362,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,typo');
 
@@ -1384,7 +1384,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,unknown-label', true);
 
@@ -1411,7 +1411,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,new-label');
 
@@ -1438,7 +1438,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,new-label');
 
@@ -1464,7 +1464,7 @@ class SubmitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('validateAndProcessLabels');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, 'bug,typo');
 

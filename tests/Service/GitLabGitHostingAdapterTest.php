@@ -689,7 +689,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractBranchName');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, 'owner:branch-name');
 
@@ -700,7 +700,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractBranchName');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, 'branch-name');
 
@@ -711,7 +711,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('normalizeColor');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, '#ff0000');
 
@@ -722,7 +722,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('normalizeColor');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, 'ff0000');
 
@@ -733,7 +733,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('mapStateToGitLab');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('opened', $method->invoke($this->gitlabProvider, 'open'));
         $this->assertSame('closed', $method->invoke($this->gitlabProvider, 'closed'));
@@ -744,7 +744,7 @@ class GitLabGitHostingAdapterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('mapStateFromGitLab');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('open', $method->invoke($this->gitlabProvider, 'opened'));
         $this->assertSame('closed', $method->invoke($this->gitlabProvider, 'closed'));
@@ -1446,7 +1446,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
 
@@ -1460,7 +1460,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
 
@@ -1474,7 +1474,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
 
@@ -1488,7 +1488,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('hasNextPage');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 1);
 
@@ -1511,7 +1511,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('normalizeMergeRequestData');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $gitlabMr);
 
@@ -1534,7 +1534,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
 
@@ -1555,7 +1555,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
 
@@ -1570,7 +1570,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
 
@@ -1585,7 +1585,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 'GET', '/test/endpoint');
 
@@ -1600,7 +1600,7 @@ class GitLabGitHostingAdapterTest extends TestCase
 
         $reflection = new \ReflectionClass($this->gitlabProvider);
         $method = $reflection->getMethod('extractTechnicalDetails');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->gitlabProvider, $responseMock, 'POST', '/projects/test_owner%2Ftest_repo/merge_requests');
 
@@ -1721,7 +1721,7 @@ class GitLabGitHostingAdapterTest extends TestCase
         // Use reflection to access protected getClient method
         $reflection = new \ReflectionClass($provider);
         $method = $reflection->getMethod('getClient');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $client = $method->invoke($provider);
 
