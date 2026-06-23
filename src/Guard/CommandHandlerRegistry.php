@@ -35,6 +35,7 @@ use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
+use App\Handler\ProjectsLabelsHandler;
 use App\Handler\ProjectsWorkflowHandler;
 use App\Handler\PushHandler;
 use App\Handler\ReleaseHandler;
@@ -73,6 +74,7 @@ class CommandHandlerRegistry
         'config:project-init' => ['handler' => ConfigProjectInitHandler::class, 'capabilities' => null],
         'projects:list' => ['handler' => ProjectListHandler::class, 'capabilities' => null],
         'projects:workflow' => ['handler' => ProjectsWorkflowHandler::class, 'capabilities' => null],
+        'projects:labels' => ['handler' => ProjectsLabelsHandler::class, 'capabilities' => null],
         'filters:list' => ['handler' => FilterListHandler::class, 'capabilities' => null],
         'filters:show' => ['handler' => FilterShowHandler::class, 'capabilities' => null],
         'items:list' => ['handler' => ItemListHandler::class, 'capabilities' => null],

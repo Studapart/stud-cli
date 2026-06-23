@@ -323,6 +323,15 @@ project:
     column_target_status: "Target status"
     column_type: "Type"
     column_provider: "Provider"
+  labels:
+    section: "Project label groups"
+    labels_not_supported_for_jira: "Label group discovery is not available for Jira. Use Linear or configure linearTypeLabelGroupId manually."
+    no_label_groups: "No label groups found for project %project%."
+    column_group_id: "Group ID"
+    column_group_name: "Group name"
+    column_label_id: "Label ID"
+    column_label_name: "Label name"
+    column_color: "Color"
 
 # Search Handler
 search:
@@ -753,6 +762,9 @@ help:
   command_projects_list: "Lists all visible Jira projects."
   command_projects_workflow: "List workflow transitions (Jira) or states (Linear) for a project."
   option_projects_workflow_project: "Project or team key (e.g. SCI)"
+  command_projects_labels: "List Linear LabelGroups and child labels for a project team."
+  option_projects_labels_project: "Project or team key (e.g. SCI)"
+  option_projects_labels_groups_only: "Return only LabelGroups; omit orphan non-group labels"
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_download: "Downloads Jira attachments for an issue or one file from a Jira attachment URL. With a key, all attachments are saved (--url is ignored). Without a key, --url is required. Uses the same Jira auth as other commands. Default directory: .cursor/stud-downloads. Agent JSON: issueKey or key, optional url, optional path."

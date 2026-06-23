@@ -319,6 +319,15 @@ project:
     column_target_status: Statut cible
     column_type: Type
     column_provider: Fournisseur
+  labels:
+    section: Groupes d'étiquettes du projet
+    labels_not_supported_for_jira: La découverte des groupes d'étiquettes n'est pas disponible pour Jira. Utilisez Linear ou configurez linearTypeLabelGroupId manuellement.
+    no_label_groups: Aucun groupe d'étiquettes trouvé pour le projet %project%.
+    column_group_id: ID du groupe
+    column_group_name: Nom du groupe
+    column_label_id: ID de l'étiquette
+    column_label_name: Nom de l'étiquette
+    column_color: Couleur
 search:
   section: Recherche de tickets Jira avec JQL
   jql_query: 'Requête JQL : %jql%'
@@ -721,6 +730,9 @@ help:
   command_projects_list: Liste tous les projets Jira visibles.
   command_projects_workflow: Liste les transitions de workflow (Jira) ou les états (Linear) pour un projet.
   option_projects_workflow_project: Clé de projet ou d'équipe (ex. SCI)
+  command_projects_labels: Liste les LabelGroups Linear et les étiquettes enfants pour une équipe projet.
+  option_projects_labels_project: Clé de projet ou d'équipe (ex. SCI)
+  option_projects_labels_groups_only: Retourner uniquement les LabelGroups ; exclure les étiquettes orphelines hors groupe
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
   command_items_download: "Télécharge les pièces jointes Jira pour un ticket ou un fichier depuis une URL de pièce jointe. Avec une clé, toutes les pièces sont enregistrées (--url ignoré). Sans clé, --url est obligatoire. Même authentification Jira que les autres commandes. Dossier par défaut : .cursor/stud-downloads. Agent JSON : issueKey ou key, url et path optionnels."

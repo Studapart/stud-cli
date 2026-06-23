@@ -319,6 +319,15 @@ project:
     column_target_status: Trạng thái đích
     column_type: Loại
     column_provider: Nhà cung cấp
+  labels:
+    section: Nhóm nhãn dự án
+    labels_not_supported_for_jira: Không hỗ trợ khám phá nhóm nhãn cho Jira. Dùng Linear hoặc cấu hình linearTypeLabelGroupId thủ công.
+    no_label_groups: Không tìm thấy nhóm nhãn cho dự án %project%.
+    column_group_id: ID nhóm
+    column_group_name: Tên nhóm
+    column_label_id: ID nhãn
+    column_label_name: Tên nhãn
+    column_color: Màu
 search:
   section: Tìm kiếm các issue Jira với JQL
   jql_query: 'Truy vấn JQL: %jql%'
@@ -721,6 +730,9 @@ help:
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
   command_projects_workflow: Liệt kê transition workflow (Jira) hoặc trạng thái (Linear) cho một dự án.
   option_projects_workflow_project: Khóa dự án hoặc team (vd. SCI)
+  command_projects_labels: Liệt kê Linear LabelGroups và nhãn con cho team dự án.
+  option_projects_labels_project: Khóa dự án hoặc team (vd. SCI)
+  option_projects_labels_groups_only: Chỉ trả về LabelGroups; bỏ nhãn lẻ không thuộc nhóm
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."

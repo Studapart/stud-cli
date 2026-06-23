@@ -319,6 +319,15 @@ project:
     column_target_status: Doelstatus
     column_type: Type
     column_provider: Provider
+  labels:
+    section: Project labelgroepen
+    labels_not_supported_for_jira: Labelgroep-ontdekking is niet beschikbaar voor Jira. Gebruik Linear of configureer linearTypeLabelGroupId handmatig.
+    no_label_groups: Geen labelgroepen gevonden voor project %project%.
+    column_group_id: Groep-ID
+    column_group_name: Groepsnaam
+    column_label_id: Label-ID
+    column_label_name: Labelnaam
+    column_color: Kleur
 search:
   section: Jira tickets zoeken met JQL
   jql_query: 'JQL Query: %jql%'
@@ -782,6 +791,9 @@ help:
   command_projects_list: Lijst alle zichtbare Jira projecten.
   command_projects_workflow: Lijst workflow-transities (Jira) of statussen (Linear) voor een project.
   option_projects_workflow_project: Project- of teamsleutel (bijv. SCI)
+  command_projects_labels: Lijst Linear LabelGroups en child labels voor een projectteam.
+  option_projects_labels_project: Project- of teamsleutel (bijv. SCI)
+  option_projects_labels_groups_only: Alleen LabelGroups retourneren; losse niet-groep labels weglaten
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
   command_items_download: "Downloadt Jira-bijlagen voor een ticket of één bestand vanaf een Jira-bijlage-URL. Met sleutel worden alle bijlagen opgeslagen (--url genegeerd). Zonder sleutel is --url verplicht. Zelfde Jira-auth als andere commando's. Standaardmap .cursor/stud-downloads. Agent JSON issueKey of key, optioneel url en path."

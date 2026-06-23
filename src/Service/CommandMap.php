@@ -377,6 +377,15 @@ class CommandMap
                     ],
                     'arguments' => [],
                 ],
+                'projects:labels' => [
+                    'alias' => null,
+                    'description_key' => 'help.command_projects_labels',
+                    'options' => [
+                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_project', 'argument' => 'KEY'],
+                        ['name' => '--groups-only', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_groups_only', 'argument' => null],
+                    ],
+                    'arguments' => [],
+                ],
                 'update' => [
                     'alias' => 'up',
                     'description_key' => 'help.command_update',

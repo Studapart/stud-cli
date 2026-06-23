@@ -319,6 +319,15 @@ project:
     column_target_status: Целевой статус
     column_type: Тип
     column_provider: Провайдер
+  labels:
+    section: Группы меток проекта
+    labels_not_supported_for_jira: Обнаружение групп меток недоступно для Jira. Используйте Linear или задайте linearTypeLabelGroupId вручную.
+    no_label_groups: Группы меток для проекта %project% не найдены.
+    column_group_id: ID группы
+    column_group_name: Имя группы
+    column_label_id: ID метки
+    column_label_name: Имя метки
+    column_color: Цвет
 search:
   section: Поиск задач Jira с помощью JQL
   jql_query: 'JQL Запрос: %jql%'
@@ -721,6 +730,9 @@ help:
   command_projects_list: Список всех видимых проектов Jira.
   command_projects_workflow: Список переходов workflow (Jira) или состояний (Linear) для проекта.
   option_projects_workflow_project: Ключ проекта или команды (например SCI)
+  command_projects_labels: Список Linear LabelGroups и дочерних меток для команды проекта.
+  option_projects_labels_project: Ключ проекта или команды (например SCI)
+  option_projects_labels_groups_only: Только LabelGroups; без отдельных меток вне групп
   command_items_list: Список активных элементов работы (ваша панель управления).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
