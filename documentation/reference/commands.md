@@ -25,6 +25,7 @@ This reference is generated from the same runtime metadata used by `stud help --
 - [`stud items:transition`](#stud-items-transition)
 - [`stud items:update`](#stud-items-update)
 - [`stud items:upload`](#stud-items-upload)
+- [`stud projects:labels`](#stud-projects-labels)
 - [`stud projects:list`](#stud-projects-list)
 - [`stud projects:workflow`](#stud-projects-workflow)
 
@@ -1118,6 +1119,68 @@ Full success shape (`{"compact":false}`):
 success: true
 files: array
 errors: array
+```
+
+Error shape: `{"success":false,"error":"string"}`
+
+</details>
+
+<a id="stud-projects-labels"></a>
+### `stud projects:labels`
+
+List Linear LabelGroups and child labels for a project team.
+
+- **Alias:** None
+- **Syntax:** `stud projects:labels [options]`
+
+<details>
+<summary>Options, examples, and agent schema</summary>
+
+#### Arguments
+
+None.
+
+#### Options
+
+| Option | Description |
+| --- | --- |
+| `--project KEY` | Project or team key (e.g. SCI) |
+| `--groups-only` | Return only LabelGroups; omit orphan non-group labels |
+
+
+#### Examples
+
+```bash
+stud projects:labels
+stud projects:labels --project key
+stud projects:labels --groups-only
+echo '{"project":"example","groupsOnly":true}' | stud projects:labels --agent
+```
+
+#### Agent JSON Input
+
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
+| `project` | `string\|null` | yes | `NULL` |
+| `groupsOnly` | `bool` | yes | `false` |
+
+#### Agent JSON Output
+
+Available label groups and child labels for a project or team key
+
+Default compact success shape (`{"compact":true}` or omitted):
+
+```text
+success: true
+groups: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
+groups: array
 ```
 
 Error shape: `{"success":false,"error":"string"}`

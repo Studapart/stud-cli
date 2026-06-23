@@ -17,6 +17,7 @@ class HelpService
         'completion' => 'stud completion',
         'projects:list' => 'stud projects:list',
         'projects:workflow' => 'stud projects:workflow',
+        'projects:labels' => 'stud projects:labels',
         'items:list' => 'stud items:list',
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',

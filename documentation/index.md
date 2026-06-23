@@ -47,5 +47,7 @@ Central map for `stud-cli` documentation.
 | [018](adr-018-presentation-owned-translation.md) | Presentation-owned translation |
 | [019](adr-019-closed-prompt-choices-use-backed-enums.md) | Closed prompt choices use backed enums |
 | [020](adr-020-global-init-wizard-director-and-strategy.md) | Global init wizard: Director + Strategy decomposition |
+| [021](adr-021-command-readiness-guard.md) | Command readiness guard |
+| [022](adr-022-jira-linear-work-item-scope-mapping.md) | Jira and Linear work-item scope mapping |
 
 New ADRs: use [adr-template.md](adr-template.md).

@@ -74,6 +74,7 @@ use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
+use App\Handler\ProjectsLabelsHandler;
 use App\Handler\ProjectsWorkflowHandler;
 use App\Handler\PushHandler;
 use App\Handler\ReleaseHandler;
@@ -103,6 +104,7 @@ use App\Responder\ItemUploadResponder;
 use App\Responder\PrCommentResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
+use App\Responder\ProjectsLabelsResponder;
 use App\Responder\ProjectsWorkflowResponder;
 use App\Responder\SearchResponder;
 use App\Responder\WorkflowResponder;
@@ -1830,6 +1832,62 @@ function projects_workflow(
     );
     $response = $handler->handle(trim($project));
     $responder = new ProjectsWorkflowResponder(_get_responder_helper(), _get_logger(), _get_message_renderer());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'projects:labels', description: 'List Linear LabelGroups and child labels for a project team')]
+#[AgentOutput(responseClass: \App\Response\ProjectsLabelsResponse::class, description: 'Available label groups and child labels for a project or team key')]
+function projects_labels(
+    #[AsOption(name: 'project', description: 'Project or team key (e.g. SCI)')]
+    ?string $project = null,
+    #[AsOption(name: 'groups-only', description: 'Return only LabelGroups; omit orphan non-group labels')]
+    bool $groupsOnly = false,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $project = (string) ($input['project'] ?? '');
+        $groupsOnly = (bool) ($input['groupsOnly'] ?? false);
+    }
+
+    if ($project === null || trim($project) === '') {
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "--project" option is required.');
+        exit(1);
+    }
+
+    $projectConfig = [];
+
+    try {
+        $projectConfig = _get_git_repository()->readProjectConfig();
+    } catch (\RuntimeException) {
+        $projectConfig = [];
+    }
+
+    $handler = new ProjectsLabelsHandler(
+        _get_linear_metadata_client(),
+        new WorkItemProviderResolver(),
+        _get_config(),
+        $projectConfig,
+    );
+    $response = $handler->handle(trim($project), $groupsOnly);
+    $responder = new ProjectsLabelsResponder(_get_responder_helper(), _get_logger(), _get_message_renderer());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
