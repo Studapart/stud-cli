@@ -309,6 +309,16 @@ project:
     section: Jira Projecten ophalen
     error_fetch: 'Fout bij ophalen van projecten: %error%'
     no_projects: Geen projecten gevonden.
+  workflow:
+    section: Project workflow statussen
+    no_state_changes: Geen statuswijzigingen gevonden voor project %project%.
+    error_ambiguous_provider: workItemProvider is dubbelzinnig. Stel jira of linear in .git/stud.config in of voer stud config:project-init uit.
+    error_no_provider: Geen work-item provider geconfigureerd. Voer stud config:init uit.
+    column_id: ID
+    column_name: Naam
+    column_target_status: Doelstatus
+    column_type: Type
+    column_provider: Provider
 search:
   section: Jira tickets zoeken met JQL
   jql_query: 'JQL Query: %jql%'
@@ -770,6 +780,8 @@ help:
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Lijst alle zichtbare Jira projecten.
+  command_projects_workflow: Lijst workflow-transities (Jira) of statussen (Linear) voor een project.
+  option_projects_workflow_project: Project- of teamsleutel (bijv. SCI)
   command_items_list: Lijst actieve werkitems (uw dashboard).
   command_items_show: Toon gedetailleerde informatie voor één werkitem.
   command_items_download: "Downloadt Jira-bijlagen voor een ticket of één bestand vanaf een Jira-bijlage-URL. Met sleutel worden alle bijlagen opgeslagen (--url genegeerd). Zonder sleutel is --url verplicht. Zelfde Jira-auth als andere commando's. Standaardmap .cursor/stud-downloads. Agent JSON issueKey of key, optioneel url en path."

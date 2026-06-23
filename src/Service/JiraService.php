@@ -161,6 +161,33 @@ class JiraService
         return $data['transitions'] ?? [];
     }
 
+    /**
+     * Fetches workflow transitions for a Jira project by locating a representative issue.
+     *
+     * Strategy: newest non-Done issue in the project, then issue-scoped transitions API.
+     *
+     * @return array<int, array{id: int, name: string, to: array{name: string, statusCategory: array{key: string, name: string}}}>
+     */
+    public function getProjectTransitions(string $projectKey): array
+    {
+        $escapedKey = $this->escapeJqlProjectKey($projectKey);
+        $issues = $this->searchIssues("project = {$escapedKey} AND statusCategory != Done ORDER BY created DESC");
+        if ($issues === []) {
+            $issues = $this->searchIssues("project = {$escapedKey} ORDER BY created DESC");
+        }
+
+        if ($issues === []) {
+            return [];
+        }
+
+        return $this->getTransitions($issues[0]->key);
+    }
+
+    protected function escapeJqlProjectKey(string $projectKey): string
+    {
+        return '"' . str_replace('"', '\\"', $projectKey) . '"';
+    }
+
     public function transitionIssue(string $key, int $transitionId): void
     {
         $url = "/rest/api/3/issue/{$key}/transitions";

@@ -369,6 +369,14 @@ class CommandMap
                     'options' => [],
                     'arguments' => [],
                 ],
+                'projects:workflow' => [
+                    'alias' => null,
+                    'description_key' => 'help.command_projects_workflow',
+                    'options' => [
+                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_workflow_project', 'argument' => 'KEY'],
+                    ],
+                    'arguments' => [],
+                ],
                 'update' => [
                     'alias' => 'up',
                     'description_key' => 'help.command_update',

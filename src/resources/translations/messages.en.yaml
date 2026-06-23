@@ -313,6 +313,16 @@ project:
     section: "Fetching Jira Projects"
     error_fetch: "Failed to fetch projects: %error%"
     no_projects: "No projects found."
+  workflow:
+    section: "Project workflow states"
+    no_state_changes: "No state changes found for project %project%."
+    error_ambiguous_provider: "workItemProvider is ambiguous. Set jira or linear in .git/stud.config or run stud config:project-init."
+    error_no_provider: "No work-item provider configured. Run stud config:init."
+    column_id: "ID"
+    column_name: "Name"
+    column_target_status: "Target status"
+    column_type: "Type"
+    column_provider: "Provider"
 
 # Search Handler
 search:
@@ -741,6 +751,8 @@ help:
   command_docs_check: "Check that the generated command reference is up to date."
   command_help: "Displays a list of available commands."
   command_projects_list: "Lists all visible Jira projects."
+  command_projects_workflow: "List workflow transitions (Jira) or states (Linear) for a project."
+  option_projects_workflow_project: "Project or team key (e.g. SCI)"
   command_items_list: "Lists active work items (your dashboard)."
   command_items_show: "Shows detailed info for one work item."
   command_items_download: "Downloads Jira attachments for an issue or one file from a Jira attachment URL. With a key, all attachments are saved (--url is ignored). Without a key, --url is required. Uses the same Jira auth as other commands. Default directory: .cursor/stud-downloads. Agent JSON: issueKey or key, optional url, optional path."

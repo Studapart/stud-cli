@@ -26,6 +26,7 @@ This reference is generated from the same runtime metadata used by `stud help --
 - [`stud items:update`](#stud-items-update)
 - [`stud items:upload`](#stud-items-upload)
 - [`stud projects:list`](#stud-projects-list)
+- [`stud projects:workflow`](#stud-projects-workflow)
 
 ### Git Workflow
 - [`stud branch:rename`](#stud-branch-rename)
@@ -1173,6 +1174,65 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 projects: array
+```
+
+Error shape: `{"success":false,"error":"string"}`
+
+</details>
+
+<a id="stud-projects-workflow"></a>
+### `stud projects:workflow`
+
+List workflow transitions (Jira) or states (Linear) for a project.
+
+- **Alias:** None
+- **Syntax:** `stud projects:workflow [options]`
+
+<details>
+<summary>Options, examples, and agent schema</summary>
+
+#### Arguments
+
+None.
+
+#### Options
+
+| Option | Description |
+| --- | --- |
+| `--project KEY` | Project or team key (e.g. SCI) |
+
+
+#### Examples
+
+```bash
+stud projects:workflow
+stud projects:workflow --project key
+echo '{"project":"example"}' | stud projects:workflow --agent
+```
+
+#### Agent JSON Input
+
+| Property | Type | Optional | Default |
+| --- | --- | --- | --- |
+| `compact` | `bool` | yes | `true` |
+| `project` | `string\|null` | yes | `NULL` |
+
+#### Agent JSON Output
+
+Available state changes for a project or team key
+
+Default compact success shape (`{"compact":true}` or omitted):
+
+```text
+success: true
+stateChanges: array
+```
+
+Full success shape (`{"compact":false}`):
+
+```text
+success: true
+stateChanges: array
 ```
 
 Error shape: `{"success":false,"error":"string"}`

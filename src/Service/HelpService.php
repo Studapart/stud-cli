@@ -16,6 +16,7 @@ class HelpService
         'config:project-init' => 'stud config:project-init',
         'completion' => 'stud completion',
         'projects:list' => 'stud projects:list',
+        'projects:workflow' => 'stud projects:workflow',
         'items:list' => 'stud items:list',
         'items:search' => 'stud items:search',
         'items:show' => 'stud items:show',

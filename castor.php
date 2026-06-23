@@ -74,6 +74,7 @@ use App\Handler\PleaseHandler;
 use App\Handler\PrCommentHandler;
 use App\Handler\PrCommentsHandler;
 use App\Handler\ProjectListHandler;
+use App\Handler\ProjectsWorkflowHandler;
 use App\Handler\PushHandler;
 use App\Handler\ReleaseHandler;
 use App\Handler\SearchHandler;
@@ -102,6 +103,7 @@ use App\Responder\ItemUploadResponder;
 use App\Responder\PrCommentResponder;
 use App\Responder\PrCommentsResponder;
 use App\Responder\ProjectListResponder;
+use App\Responder\ProjectsWorkflowResponder;
 use App\Responder\SearchResponder;
 use App\Responder\WorkflowResponder;
 use App\Response\AgentJsonResponse;
@@ -146,6 +148,7 @@ use App\Service\MigrationRegistry;
 use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectStudConfigAdequacyChecker;
+use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
@@ -158,6 +161,7 @@ use App\Service\UpdatePrerequisiteMigrationRunner;
 use App\Service\UpdateReleaseFetcher;
 use App\Service\VersionCheckService;
 use App\Service\WorkflowOutput;
+use App\Service\WorkItemProviderResolver;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsListener;
 use Castor\Attribute\AsOption;
@@ -331,6 +335,41 @@ function _get_jira_service(): JiraService
         new JiraFieldMetadataService($client),
         new JiraUserSearchService($client),
     );
+}
+
+function _get_jira_service_if_configured(): ?JiraService
+{
+    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraService) {
+        return \App\Tests\TestKernel::$jiraService;
+    }
+
+    $config = _get_config();
+    foreach (['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'] as $key) {
+        if (! isset($config[$key]) || ! is_string($config[$key]) || trim($config[$key]) === '') {
+            return null;
+        }
+    }
+
+    return _get_jira_service();
+}
+
+function _get_linear_metadata_client(): ?\App\Service\LinearMetadataClient
+{
+    $config = _get_config();
+    $apiKey = $config['LINEAR_API_KEY'] ?? null;
+    if (! is_string($apiKey) || trim($apiKey) === '') {
+        return null;
+    }
+
+    $client = HttpClient::createForBaseUri('https://api.linear.app/', [
+        'headers' => [
+            'User-Agent' => 'stud-cli',
+            'Authorization' => trim($apiKey),
+            'Content-Type' => 'application/json',
+        ],
+    ]);
+
+    return new \App\Service\LinearMetadataClient($client);
 }
 
 function _get_jira_attachment_service(): JiraAttachmentService
@@ -1736,6 +1775,61 @@ function projects_list(
     $handler = new ProjectListHandler(_get_jira_service());
     $response = $handler->handle();
     $responder = new ProjectListResponder(_get_responder_helper(), _get_logger());
+    $agentResponse = $responder->respond(io(), $response, $format);
+    if ($agentResponse !== null) {
+        _agent_respond($agentResponse);
+
+        return;
+    }
+    if (! $response->isSuccess()) {
+        _get_error_responder()->respond(io(), $response);
+        exit(1);
+    }
+}
+
+#[AsTask(name: 'projects:workflow', description: 'List workflow transitions (Jira) or states (Linear) for a project')]
+#[AgentOutput(responseClass: \App\Response\ProjectsWorkflowResponse::class, description: 'Available state changes for a project or team key')]
+function projects_workflow(
+    #[AsOption(name: 'project', description: 'Project or team key (e.g. SCI)')]
+    ?string $project = null,
+    #[AsOption(name: 'agent', description: 'JSON input/output mode')]
+    bool $agent = false,
+    #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
+    ?string $inputFile = null,
+): void {
+    _load_constants();
+    $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    if ($agent) {
+        $input = _read_agent_input($inputFile);
+        if ($input === null) {
+            return;
+        }
+        $project = (string) ($input['project'] ?? '');
+    }
+
+    if ($project === null || trim($project) === '') {
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "--project" option is required.');
+        exit(1);
+    }
+
+    $projectConfig = [];
+
+    try {
+        $projectConfig = _get_git_repository()->readProjectConfig();
+    } catch (\RuntimeException) {
+        $projectConfig = [];
+    }
+
+    $handler = new ProjectsWorkflowHandler(
+        _get_jira_service_if_configured(),
+        _get_linear_metadata_client(),
+        new WorkItemProviderResolver(),
+        new ProjectsWorkflowNormalizer(),
+        _get_config(),
+        $projectConfig,
+    );
+    $response = $handler->handle(trim($project));
+    $responder = new ProjectsWorkflowResponder(_get_responder_helper(), _get_logger(), _get_message_renderer());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
