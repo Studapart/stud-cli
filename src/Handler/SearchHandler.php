@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\SearchResponse;
 use App\Service\JiraService;
 
-class SearchHandler
+class SearchHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly JiraService $jiraService

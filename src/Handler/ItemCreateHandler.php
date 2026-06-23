@@ -8,6 +8,7 @@ use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueFieldResolver;
@@ -16,7 +17,7 @@ use App\Service\ItemCreatePromptService;
 use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
 
-class ItemCreateHandler
+class ItemCreateHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,

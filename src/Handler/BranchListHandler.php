@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\BranchListRow;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\BranchListResponse;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 
-class BranchListHandler
+class BranchListHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

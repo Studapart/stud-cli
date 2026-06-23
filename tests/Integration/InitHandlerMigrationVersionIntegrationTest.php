@@ -6,11 +6,15 @@ namespace App\Tests\Integration;
 
 use App\Handler\InitHandler;
 use App\Handler\InitPromptCollector;
+use App\Migrations\GlobalMigrations\Migration20260619102828000_ProviderLists;
+use App\Service\CommandOutputBuffer;
 use App\Service\FileSystem;
 use App\Service\GitTokenPromptResolver;
 use App\Service\GlobalConfigProviderResolver;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
+use App\Service\MigrationExecutor;
+use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -157,5 +161,32 @@ class InitHandlerMigrationVersionIntegrationTest extends TestCase
         $this->assertSame($existingMigrationVersion, $updatedConfig['migration_version'], 'migration_version should be preserved from existing config');
         $this->assertSame('en', $updatedConfig['LANGUAGE']);
         $this->assertSame('https://jira.example.com', $updatedConfig['JIRA_URL']);
+    }
+
+    public function testLegacyConfigMigratesProviderListsWithoutManualEdit(): void
+    {
+        $legacyConfig = [
+            'migration_version' => '202501150000001',
+            'JIRA_URL' => 'https://jira.example.com',
+            'JIRA_EMAIL' => 'user@example.com',
+            'JIRA_API_TOKEN' => 'token',
+            'GITHUB_TOKEN' => 'gh-token',
+        ];
+        $yamlContent = \Symfony\Component\Yaml\Yaml::dump($legacyConfig, 2, 2);
+        $this->fileSystem->write('config.yml', $yamlContent);
+
+        $logger = new Logger(new SymfonyStyle(new ArrayInput([]), new BufferedOutput()), []);
+        $migration = new Migration20260619102828000_ProviderLists($logger, $this->translationService);
+        $executor = new MigrationExecutor(
+            new CommandOutputBuffer($logger, $this->createMock(PromptInterface::class)),
+            $this->fileSystem,
+            $this->translationService,
+        );
+        $migrated = $executor->executeMigrations([$migration], $legacyConfig, 'config.yml');
+
+        $this->assertSame(['jira'], $migrated['WORK_ITEM_PROVIDERS']);
+        $this->assertSame(['github'], $migrated['GIT_PROVIDERS']);
+        $this->assertSame('gh-token', $migrated['GITHUB_TOKEN']);
+        $this->assertSame('20260619102828000', $migrated['migration_version']);
     }
 }

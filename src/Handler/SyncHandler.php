@@ -6,11 +6,13 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\CommandResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 
-class SyncHandler
+class SyncHandler implements GitRepositoryAware, ProjectBaseBranchAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

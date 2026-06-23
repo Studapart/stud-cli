@@ -40,6 +40,9 @@ use App\DTO\ItemUploadInput;
 use App\DTO\SubmitOptions;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
+use App\Guard\CommandContextFactory;
+use App\Guard\CommandGuard;
+use App\Guard\CommandHandlerRegistry;
 use App\Handler\BranchCleanHandler;
 use App\Handler\BranchListHandler;
 use App\Handler\BranchRenameHandler;
@@ -117,7 +120,7 @@ use App\Service\ChangelogParser;
 use App\Service\CommandMap;
 use App\Service\CommandOutputBuffer;
 use App\Service\CommandReferenceGenerator;
-use App\Service\ConfigValidator;
+use App\Service\ConfigRemediationService;
 use App\Service\ConfluenceService;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
@@ -1297,33 +1300,46 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
             // Not in a git repository, skip project migrations
         }
 
-        // Step 3: Validate command requirements
-        $validator = new ConfigValidator(new CommandOutputBuffer($logger, _get_prompt()), $translator, _get_git_branch_service());
+        // Step 3: Command readiness guard
         $projectConfig = null;
+        $hasGitRepository = false;
 
         try {
             $gitRepository = _get_git_repository();
             $projectConfig = $gitRepository->readProjectConfig();
+            $hasGitRepository = true;
         } catch (\RuntimeException $e) {
             // Not in a git repository
         }
 
-        $validationResult = $validator->validateCommandRequirements($commandName, $config, $projectConfig);
+        $contextFactory = new CommandContextFactory();
+        $context = $contextFactory->create($event, $config, $projectConfig, $hasGitRepository);
+        $capabilities = CommandHandlerRegistry::resolveCapabilities($commandName);
+        $guard = new CommandGuard();
+        $guardResult = $guard->check($capabilities, $context);
 
-        // Step 4: Prompt for missing mandatory keys
-        if ($validationResult->hasMissingKeys()) {
-            // Check if we're in non-interactive mode (TTY not attached or --quiet)
+        // Step 4: Prompt for missing mandatory keys or block when not remediable
+        if (! $guardResult->canProceed) {
             $input = $event->getInput();
             $isInteractive = $input->isInteractive();
             $isQuiet = $input->hasOption('quiet') && $input->getOption('quiet');
+            $isAgent = _is_agent_mode_request($input);
+            $remediation = new ConfigRemediationService(
+                new CommandOutputBuffer($logger, _get_prompt()),
+                $translator,
+                _get_git_branch_service()
+            );
 
-            if (! $isInteractive || $isQuiet) {
-                // Non-interactive mode: exit with error
-                $missingKeys = array_merge($validationResult->missingGlobalKeys, $validationResult->missingProjectKeys);
-                $logger->error(Logger::VERBOSITY_NORMAL, [
-                    'Missing required configuration keys: ' . implode(', ', $missingKeys),
-                    'Please run "stud config:init" to configure these keys, or run the command without --quiet in interactive mode.',
-                ]);
+            if (! empty($guardResult->environmentFailures) || ! $isInteractive || $isQuiet || $isAgent) {
+                if (in_array('git_repository', $guardResult->environmentFailures, true)) {
+                    $logger->error(Logger::VERBOSITY_NORMAL, 'This command requires a git repository.');
+                } else {
+                    $missingKeys = array_merge($guardResult->missingGlobalKeys, $guardResult->missingProjectKeys);
+                    $logger->error(Logger::VERBOSITY_NORMAL, [
+                        'Missing required configuration keys: ' . implode(', ', $missingKeys),
+                        'Please run "stud config:init" to configure these keys, or run the command without --quiet in interactive mode.',
+                    ]);
+                }
                 $event->disableCommand();
                 $command->setCode(function () {
                     return 1;
@@ -1332,30 +1348,25 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
                 return;
             }
 
-            // Interactive mode: prompt for missing keys
-            if (! empty($validationResult->missingGlobalKeys)) {
-                $promptedValues = $validator->promptForMissingKeys($validationResult->missingGlobalKeys, 'global');
+            if (! empty($guardResult->missingGlobalKeys)) {
+                $promptedValues = $remediation->promptForMissingKeys($guardResult->missingGlobalKeys, 'global');
                 foreach ($promptedValues as $key => $value) {
                     $config[$key] = $value;
                 }
-                // Save updated global config
                 $fileSystem->dumpFile($configPath, $config);
             }
 
-            if (! empty($validationResult->missingProjectKeys)) {
+            if (! empty($guardResult->missingProjectKeys)) {
                 try {
                     $gitRepository = _get_git_repository();
-                    $projectConfigPath = $gitRepository->getProjectConfigPath();
                     $projectConfig = $gitRepository->readProjectConfig();
 
-                    $promptedValues = $validator->promptForMissingKeys($validationResult->missingProjectKeys, 'project');
+                    $promptedValues = $remediation->promptForMissingKeys($guardResult->missingProjectKeys, 'project');
                     foreach ($promptedValues as $key => $value) {
                         $projectConfig[$key] = $value;
                     }
-                    // Save updated project config
                     $gitRepository->writeProjectConfig($projectConfig);
                 } catch (\RuntimeException $e) {
-                    // Not in a git repository, can't save project config
                     $logger->error(Logger::VERBOSITY_NORMAL, 'Cannot save project configuration: not in a git repository.');
                     $event->disableCommand();
                     $command->setCode(function () {
@@ -1584,14 +1595,16 @@ function _agent_respond(AgentJsonResponse $agentResponse): void
     _agent_output_and_exit(_get_agent_mode_helper(), $agentResponse->toPayload());
 }
 
-#[AsTask(name: 'config:validate', description: 'Validate that configuration is present and that Jira and the Git provider are reachable')]
+#[AsTask(name: 'config:validate', description: 'Validate configuration and ping configured Jira, Git, and Linear providers')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira and Git provider connectivity status')]
+#[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira, Git provider, and Linear connectivity status')]
 function config_validate(
     #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
     bool $skipJira = false,
     #[AsOption(name: 'skip-git', description: 'Skip the Git provider connectivity check')]
     bool $skipGit = false,
+    #[AsOption(name: 'skip-linear', description: 'Skip the Linear connectivity check')]
+    bool $skipLinear = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -1606,14 +1619,22 @@ function config_validate(
         }
         $skipJira = (bool) ($input['skipJira'] ?? false);
         $skipGit = (bool) ($input['skipGit'] ?? false);
+        $skipLinear = (bool) ($input['skipLinear'] ?? false);
     }
-    _get_config();
+    $globalConfig = _get_config();
+    $providerResolver = new \App\Service\GlobalConfigProviderResolver();
+    $workItemProviders = $providerResolver->resolveWorkItemProviders($globalConfig);
+    $gitProviders = $providerResolver->resolveGitProviders($globalConfig);
+    $validateJira = $providerResolver->collectsJira($workItemProviders);
+    $validateGit = $providerResolver->collectsGithub($gitProviders)
+        || $providerResolver->collectsGitlab($gitProviders);
+    $validateLinear = $providerResolver->collectsLinear($workItemProviders);
 
-    $jiraService = $skipJira ? null : _get_jira_service();
+    $jiraService = ($skipJira || ! $validateJira) ? null : _get_jira_service();
     $gitProvider = null;
-    $skipGitForHandler = $skipGit;
+    $skipGitForHandler = $skipGit || ! $validateGit;
 
-    if (! $skipGit) {
+    if ($validateGit && ! $skipGit) {
         try {
             $gitRepository = _get_git_repository();
             $gitRepository->getProjectConfigPath();
@@ -1630,7 +1651,16 @@ function config_validate(
         }
     }
 
-    $handler = new ConfigValidateHandler($jiraService, $gitProvider, $skipJira, $skipGitForHandler);
+    $handler = new ConfigValidateHandler(
+        $jiraService,
+        $gitProvider,
+        $skipJira,
+        $skipGitForHandler,
+        $skipLinear,
+        $validateJira,
+        $validateGit,
+        $validateLinear,
+    );
     $response = $handler->handle();
     $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);

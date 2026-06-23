@@ -10,12 +10,14 @@ use App\DTO\WorkItem;
 use App\Exception\ApiException;
 use App\Exception\GitException;
 use App\Exception\GitTimeoutException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
 
-class CommitHandler
+class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

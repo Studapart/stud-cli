@@ -68,6 +68,7 @@ class CommandMap
                 'options' => [
                     ['name' => '--skip-jira', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_jira', 'argument' => null],
                     ['name' => '--skip-git', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_git', 'argument' => null],
+                    ['name' => '--skip-linear', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_linear', 'argument' => null],
                 ],
                 'arguments' => [],
             ],

@@ -9,13 +9,16 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
 
-class ItemTakeoverHandler
+class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
 {
     private WorkflowEntryRecorder $recorder;
 

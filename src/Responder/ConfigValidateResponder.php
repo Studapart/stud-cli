@@ -39,20 +39,25 @@ class ConfigValidateResponder
 
         $jiraLabel = $this->helper->translator->trans('config.validate.label_jira');
         $gitLabel = $this->helper->translator->trans('config.validate.label_git_provider');
+        $linearLabel = $this->helper->translator->trans('config.validate.label_linear');
         $jiraValue = $this->formatStatus($response->jiraStatus, $response->jiraMessage);
         $gitValue = $this->formatStatus($response->gitStatus, $response->gitMessage);
+        $linearValue = $this->formatStatus($response->linearStatus, $response->linearMessage);
 
         if ($this->helper->colorHelper !== null) {
             $jiraLabel = $this->helper->colorHelper->format('definition_key', $jiraLabel);
             $jiraValue = $this->helper->colorHelper->format('definition_value', $jiraValue);
             $gitLabel = $this->helper->colorHelper->format('definition_key', $gitLabel);
             $gitValue = $this->helper->colorHelper->format('definition_value', $gitValue);
+            $linearLabel = $this->helper->colorHelper->format('definition_key', $linearLabel);
+            $linearValue = $this->helper->colorHelper->format('definition_value', $linearValue);
         }
 
         $this->logger->definitionList(
             Logger::VERBOSITY_NORMAL,
             [$jiraLabel => $jiraValue],
-            [$gitLabel => $gitValue]
+            [$gitLabel => $gitValue],
+            [$linearLabel => $linearValue],
         );
 
         return null;
@@ -71,6 +76,8 @@ class ConfigValidateResponder
             'jiraMessage' => $response->jiraMessage,
             'gitStatus' => $response->gitStatus,
             'gitMessage' => $response->gitMessage,
+            'linearStatus' => $response->linearStatus,
+            'linearMessage' => $response->linearMessage,
         ]);
     }
 

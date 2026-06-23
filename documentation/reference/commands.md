@@ -263,7 +263,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-config-validate"></a>
 ### `stud config:validate`
 
-Validate that configuration is present and that Jira and the Git provider are reachable. Use --skip-jira or --skip-git to run partial checks.
+Validate configuration and ping configured Jira, Git, and Linear providers. Use --skip-jira, --skip-git, or --skip-linear for partial checks.
 
 - **Alias:** None
 - **Syntax:** `stud config:validate [options]`
@@ -281,6 +281,7 @@ None.
 | --- | --- |
 | `--skip-jira` | Skip the Jira connectivity check |
 | `--skip-git` | Skip the Git provider connectivity check |
+| `--skip-linear` | Skip the Linear connectivity check |
 
 
 #### Examples
@@ -289,7 +290,8 @@ None.
 stud config:validate
 stud config:validate --skip-jira
 stud config:validate --skip-git
-echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
+stud config:validate --skip-linear
+echo '{"skipJira":true,"skipGit":true,"skipLinear":true}' | stud config:validate --agent
 ```
 
 #### Agent JSON Input
@@ -299,10 +301,11 @@ echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
 | `compact` | `bool` | yes | `true` |
 | `skipJira` | `bool` | yes | `false` |
 | `skipGit` | `bool` | yes | `false` |
+| `skipLinear` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
-Jira and Git provider connectivity status
+Jira, Git provider, and Linear connectivity status
 
 Default compact success shape (`{"compact":true}` or omitted):
 
@@ -312,6 +315,8 @@ jiraStatus: string
 jiraMessage: string|null
 gitStatus: string
 gitMessage: string|null
+linearStatus: string
+linearMessage: string|null
 ```
 
 Full success shape (`{"compact":false}`):
@@ -322,6 +327,8 @@ jiraStatus: string
 jiraMessage: string|null
 gitStatus: string
 gitMessage: string|null
+linearStatus: string
+linearMessage: string|null
 ```
 
 Error shape: `{"success":false,"error":"string"}`

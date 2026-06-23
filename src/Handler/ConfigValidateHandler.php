@@ -9,8 +9,8 @@ use App\Service\GitProviderInterface;
 use App\Service\JiraService;
 
 /**
- * Handler for config:validate: validates that config is loadable and that Jira
- * and the Git provider are reachable with the configured credentials.
+ * Handler for config:validate: validates that config is loadable and that configured
+ * Jira, Git, and Linear providers are reachable with the stored credentials.
  */
 class ConfigValidateHandler
 {
@@ -20,7 +20,11 @@ class ConfigValidateHandler
         private readonly ?JiraService $jiraService,
         private readonly ?GitProviderInterface $gitProvider,
         private readonly bool $skipJira,
-        private readonly bool $skipGit
+        private readonly bool $skipGit,
+        private readonly bool $skipLinear,
+        private readonly bool $validateJira,
+        private readonly bool $validateGit,
+        private readonly bool $validateLinear,
     ) {
     }
 
@@ -28,12 +32,15 @@ class ConfigValidateHandler
     {
         $jiraStatus = $this->resolveJiraStatus();
         $gitStatus = $this->resolveGitStatus();
+        $linearStatus = $this->resolveLinearStatus();
 
         return ConfigValidateResponse::create(
             $jiraStatus['status'],
             $jiraStatus['message'],
             $gitStatus['status'],
-            $gitStatus['message']
+            $gitStatus['message'],
+            $linearStatus['status'],
+            $linearStatus['message'],
         );
     }
 
@@ -42,7 +49,7 @@ class ConfigValidateHandler
      */
     protected function resolveJiraStatus(): array
     {
-        if ($this->skipJira) {
+        if ($this->skipJira || ! $this->validateJira) {
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
@@ -67,7 +74,7 @@ class ConfigValidateHandler
      */
     protected function resolveGitStatus(): array
     {
-        if ($this->skipGit) {
+        if ($this->skipGit || ! $this->validateGit) {
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
@@ -85,6 +92,18 @@ class ConfigValidateHandler
                 'message' => $this->shortReason($e),
             ];
         }
+    }
+
+    /**
+     * @return array{status: string, message: ?string}
+     */
+    protected function resolveLinearStatus(): array
+    {
+        if ($this->skipLinear || ! $this->validateLinear) {
+            return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
+        }
+
+        return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
     }
 
     protected function shortReason(\Throwable $e): string

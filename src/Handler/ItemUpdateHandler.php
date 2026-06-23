@@ -7,11 +7,12 @@ namespace App\Handler;
 use App\DTO\ItemUpdateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
 use App\Service\JiraService;
 
-class ItemUpdateHandler
+class ItemUpdateHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly JiraService $jiraService,

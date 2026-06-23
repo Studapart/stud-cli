@@ -88,6 +88,7 @@ config:
     section_title: "Επικύρωση ρυθμίσεων"
     label_jira: "Jira"
     label_git_provider: "Πάροχος Git"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Αποτυχία"
     status_skipped: "Παραλείφθηκε"
@@ -701,7 +702,7 @@ help:
   example_prefix: 'Παράδειγμα: %example%'
   command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
-  command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
+  command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira, ο πάροχος Git και το Linear είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira, --skip-git ή --skip-linear για μερικούς ελέγχους."
   command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Εκτελέστε διαδραστικά ή χρησιμοποιήστε stud config:project-init --agent με JSON. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
@@ -777,6 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Skip the Linear connectivity check"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

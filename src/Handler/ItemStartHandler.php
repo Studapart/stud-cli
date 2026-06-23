@@ -9,6 +9,9 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
+use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
@@ -17,7 +20,7 @@ use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
-class ItemStartHandler
+class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
 {
     private WorkflowEntryRecorder $recorder;
 

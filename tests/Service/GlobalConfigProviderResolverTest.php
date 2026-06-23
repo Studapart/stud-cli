@@ -82,4 +82,44 @@ class GlobalConfigProviderResolverTest extends TestCase
         $this->assertFalse($this->resolver->collectsGithub([GitProvider::Gitlab->value]));
         $this->assertFalse($this->resolver->collectsLinear([WorkItemProvider::Jira->value]));
     }
+
+    public function testResolveGitProvidersPrefersExplicitList(): void
+    {
+        $this->assertSame(
+            [GitProvider::Gitlab->value],
+            $this->resolver->resolveGitProviders([
+                'GIT_PROVIDERS' => ['gitlab'],
+                'GITHUB_TOKEN' => 'gh',
+            ])
+        );
+    }
+
+    public function testInferGitProvidersFromLegacyTokenAndProvider(): void
+    {
+        $this->assertSame(
+            [GitProvider::Gitlab->value],
+            $this->resolver->inferGitProvidersFromLegacy([
+                'GIT_TOKEN' => 'legacy',
+                'GIT_PROVIDER' => 'gitlab',
+            ])
+        );
+    }
+
+    public function testResolveWorkItemProvidersFromCredentials(): void
+    {
+        $this->assertSame(
+            [WorkItemProvider::Linear->value],
+            $this->resolver->resolveWorkItemProviders([
+                'LINEAR_API_KEY' => 'lin',
+            ])
+        );
+    }
+
+    public function testResolveWorkItemProvidersDefaultsToJiraWhenNoCredentials(): void
+    {
+        $this->assertSame(
+            [WorkItemProvider::Jira->value],
+            $this->resolver->resolveWorkItemProviders([]),
+        );
+    }
 }

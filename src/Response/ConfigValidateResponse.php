@@ -6,7 +6,7 @@ namespace App\Response;
 
 /**
  * Response DTO for config:validate command.
- * Carries per-component status: Jira and Git provider (ok, fail, or skipped).
+ * Carries per-component status: Jira, Git provider, and Linear (ok, fail, or skipped).
  */
 final class ConfigValidateResponse extends AbstractResponse
 {
@@ -20,7 +20,9 @@ final class ConfigValidateResponse extends AbstractResponse
         public readonly string $jiraStatus,
         public readonly ?string $jiraMessage,
         public readonly string $gitStatus,
-        public readonly ?string $gitMessage
+        public readonly ?string $gitMessage,
+        public readonly string $linearStatus,
+        public readonly ?string $linearMessage,
     ) {
         parent::__construct($success, $error);
     }
@@ -32,9 +34,13 @@ final class ConfigValidateResponse extends AbstractResponse
         string $jiraStatus,
         ?string $jiraMessage,
         string $gitStatus,
-        ?string $gitMessage
+        ?string $gitMessage,
+        string $linearStatus = self::STATUS_SKIPPED,
+        ?string $linearMessage = null,
     ): self {
-        $success = ($jiraStatus !== self::STATUS_FAIL) && ($gitStatus !== self::STATUS_FAIL);
+        $success = ($jiraStatus !== self::STATUS_FAIL)
+            && ($gitStatus !== self::STATUS_FAIL)
+            && ($linearStatus !== self::STATUS_FAIL);
 
         return new self(
             $success,
@@ -42,7 +48,9 @@ final class ConfigValidateResponse extends AbstractResponse
             $jiraStatus,
             $jiraMessage,
             $gitStatus,
-            $gitMessage
+            $gitMessage,
+            $linearStatus,
+            $linearMessage,
         );
     }
 
@@ -54,7 +62,9 @@ final class ConfigValidateResponse extends AbstractResponse
             self::STATUS_FAIL,
             null,
             self::STATUS_FAIL,
-            null
+            null,
+            self::STATUS_FAIL,
+            null,
         );
     }
 }

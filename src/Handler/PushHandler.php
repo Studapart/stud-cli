@@ -6,11 +6,12 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
-class PushHandler
+class PushHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly CommitHandler $commitHandler,
