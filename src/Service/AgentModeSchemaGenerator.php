@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
+use App\Config\GlobalStudConfigFieldMap;
 use App\Config\ProjectStudConfigFieldMap;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
@@ -197,9 +198,30 @@ class AgentModeSchemaGenerator
             ] + $inputProperties;
         }
 
+        if ($taskName === 'config:init') {
+            $inputProperties = $this->buildConfigInitInputProperties();
+        }
+
         if ($taskName === 'config:project-init') {
             $inputProperties = $this->buildConfigProjectInitInputProperties();
         }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildConfigInitInputProperties(): array
+    {
+        $properties = [];
+        foreach (array_keys(GlobalStudConfigFieldMap::INPUT_TO_YAML) as $key) {
+            $properties[$key] = match ($key) {
+                'gitProviders', 'workItemProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
+                'jiraTransitionEnabled' => ['type' => 'bool', 'optional' => true, 'default' => null],
+                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            };
+        }
+
+        return $properties;
     }
 
     /**

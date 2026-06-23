@@ -732,7 +732,7 @@ help:
   category_git_workflow: "Git Workflow"
   category_release_commands: "Release Commands"
   example_prefix: "Example: %example%"
-  command_config_init: "Interactive wizard to set up Jira & Git connection details."
+  command_config_init: "Interactive wizard for Git providers, work-item providers (Jira/Linear), and credentials."
   command_config_show: "Display current configuration (global and project) with secrets redacted; safe for sharing. Use -k/--key to show one whitelisted key; -q/--quiet with --key outputs only the raw value."
   command_config_validate: "Validate configuration and ping configured Jira, Git, and Linear providers. Use --skip-jira, --skip-git, or --skip-linear for partial checks."
   command_config_project_init: "Create or merge .git/stud.config (project key, base branch, provider, tokens, work-item provider, Linear keys, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Run interactively or use stud config:project-init --agent with JSON. Unknown agent keys are rejected; migration_version is reserved."

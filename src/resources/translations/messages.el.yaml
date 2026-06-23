@@ -41,23 +41,23 @@ config:
       github_token_prompt: Εισάγετε το PAT GitHub σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
       gitlab_token_prompt: Εισάγετε το PAT GitLab σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
     git_provider:
-      title: "Git Provider Selection"
-      menu: "0 GitHub · 1 GitLab · 2 Both"
-      prompt: "Configure Git provider"
+      title: Επιλογή παρόχου Git
+      menu: "0 GitHub · 1 GitLab · 2 Και τα δύο"
+      prompt: Ρύθμιση παρόχου Git
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
-      choice_both: "2 Both"
+      choice_both: "2 Και τα δύο"
     work_item_provider:
-      title: "Project Management Selection"
-      menu: "0 Jira · 1 Linear · 2 Both"
-      prompt: "Configure project management"
+      title: Επιλογή διαχείρισης έργου
+      menu: "0 Jira · 1 Linear · 2 Και τα δύο"
+      prompt: Ρύθμιση διαχείρισης έργου
       choice_jira: "0 Jira"
       choice_linear: "1 Linear"
-      choice_both: "2 Both"
+      choice_both: "2 Και τα δύο"
     linear:
-      title: "Linear Configuration"
-      description: "Configure Linear API access. This is only required if you selected Linear."
-      api_key_prompt: "Enter your Linear API key (leave blank to keep existing)"
+      title: Ρύθμιση Linear
+      description: "Ρυθμίστε την πρόσβαση στο API του Linear. Απαιτείται μόνο αν επιλέξατε Linear."
+      api_key_prompt: "Εισαγάγετε το κλειδί API του Linear (αφήστε κενό για να διατηρήσετε το υπάρχον)"
     jira_transition:
       title: Ρύθμιση Μετάβασης Jira
       description: Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα.
@@ -99,8 +99,8 @@ config:
     reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
     invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
     invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
-    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
-    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
+    invalid_work_item_provider: "Το workItemProvider πρέπει να είναι jira, linear ή auto."
+    invalid_linear_type_branch_prefixes: "Το linearTypeBranchPrefixes πρέπει να είναι χάρτης μη κενών ετικετών τύπου σε μη κενά προθέματα κλάδων."
     base_branch_error: "%message%"
     interactive_title: "Ρύθμιση stud έργου"
     interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
@@ -115,9 +115,9 @@ config:
     prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
     prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
     prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
-    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
-    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
-    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
+    prompt_work_item_provider: "Πάροχος work-item για αυτό το αποθετήριο (όταν η καθολική ρύθμιση υποστηρίζει Jira και Linear)"
+    prompt_linear_start_state_id: "ID κατάστασης workflow Linear για items:start (προαιρετικό)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear για αντιστοίχιση προθεμάτων κλάδων (προαιρετικό)"
     status_updated: "Η ρύθμιση έργου ενημερώθηκε (.git/stud.config)."
     status_unchanged: "Δεν εγγράφηκαν αλλαγές (η ρύθμιση παρέμεινε ίδια)."
     failed: "Η ενημέρωση ρύθμισης έργου απέτυχε."
@@ -700,7 +700,7 @@ help:
   category_git_workflow: Ροή Εργασίας Git
   category_release_commands: Εντολές Release
   example_prefix: 'Παράδειγμα: %example%'
-  command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
+  command_config_init: Διαδραστικός οδηγός για παρόχους Git, work-item (Jira/Linear) και διαπιστευτήρια.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
   command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira, ο πάροχος Git και το Linear είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira, --skip-git ή --skip-linear για μερικούς ελέγχους."
   command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Εκτελέστε διαδραστικά ή χρησιμοποιήστε stud config:project-init --agent με JSON. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
@@ -778,7 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
-  option_config_validate_skip_linear: "Skip the Linear connectivity check"
+  option_config_validate_skip_linear: "Παράλειψη ελέγχου συνδεσιμότητας Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

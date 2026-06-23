@@ -41,23 +41,23 @@ config:
       github_token_prompt: Nhập PAT GitHub của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
       gitlab_token_prompt: Nhập PAT GitLab của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
     git_provider:
-      title: "Git Provider Selection"
-      menu: "0 GitHub · 1 GitLab · 2 Both"
-      prompt: "Configure Git provider"
+      title: Chọn nhà cung cấp Git
+      menu: "0 GitHub · 1 GitLab · 2 Cả hai"
+      prompt: Cấu hình nhà cung cấp Git
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
-      choice_both: "2 Both"
+      choice_both: "2 Cả hai"
     work_item_provider:
-      title: "Project Management Selection"
-      menu: "0 Jira · 1 Linear · 2 Both"
-      prompt: "Configure project management"
+      title: Chọn quản lý dự án
+      menu: "0 Jira · 1 Linear · 2 Cả hai"
+      prompt: Cấu hình quản lý dự án
       choice_jira: "0 Jira"
       choice_linear: "1 Linear"
-      choice_both: "2 Both"
+      choice_both: "2 Cả hai"
     linear:
-      title: "Linear Configuration"
-      description: "Configure Linear API access. This is only required if you selected Linear."
-      api_key_prompt: "Enter your Linear API key (leave blank to keep existing)"
+      title: Cấu hình Linear
+      description: "Cấu hình truy cập API Linear. Chỉ cần thiết nếu bạn đã chọn Linear."
+      api_key_prompt: "Nhập khóa API Linear (để trống để giữ giá trị hiện có)"
     jira_transition:
       title: Cấu hình chuyển đổi Jira
       description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
@@ -99,8 +99,8 @@ config:
     reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
     invalid_git_provider: "gitProvider phải là github hoặc gitlab."
     invalid_transition_id: "transitionId phải là số nguyên không âm."
-    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
-    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
+    invalid_work_item_provider: "workItemProvider phải là jira, linear hoặc auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes phải là map các nhãn loại không rỗng tới tiền tố nhánh không rỗng."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
     interactive_hint: "Nhấn Enter để giữ giá trị hiện tại. Để trống các trường tùy chọn nếu muốn bỏ qua."
@@ -115,9 +115,9 @@ config:
     prompt_github_token: "Token GitHub cho kho này (ẩn)"
     prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
     prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
-    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
-    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
-    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
+    prompt_work_item_provider: "Nhà cung cấp work-item cho kho lưu trữ này (khi cấu hình toàn cục hỗ trợ cả Jira và Linear)"
+    prompt_linear_start_state_id: "ID trạng thái workflow Linear cho items:start (tùy chọn)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear cho ánh xạ tiền tố nhánh (tùy chọn)"
     status_updated: "Đã cập nhật cấu hình dự án (.git/stud.config)."
     status_unchanged: "Không ghi thay đổi (cấu hình không đổi)."
     failed: "Cập nhật cấu hình dự án thất bại."
@@ -700,7 +700,7 @@ help:
   category_git_workflow: Quy trình Git
   category_release_commands: Lệnh Phát hành
   example_prefix: 'Ví dụ: %example%'
-  command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
+  command_config_init: Trình hướng dẫn tương tác cho nhà cung cấp Git, work-item (Jira/Linear) và thông tin xác thực.
   command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
   command_config_validate: "Xác thực rằng cấu hình có mặt và Jira, nhà cung cấp Git và Linear có thể truy cập. Dùng --skip-jira, --skip-git hoặc --skip-linear để kiểm tra từng phần."
   command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Chạy tương tác hoặc dùng stud config:project-init --agent với JSON. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
@@ -778,7 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
-  option_config_validate_skip_linear: "Skip the Linear connectivity check"
+  option_config_validate_skip_linear: "Bỏ qua kiểm tra kết nối Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

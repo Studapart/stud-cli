@@ -41,23 +41,23 @@ config:
       github_token_prompt: Введите ваш PAT GitHub (оставьте пустым, чтобы сохранить существующий или пропустить)
       gitlab_token_prompt: Введите ваш PAT GitLab (оставьте пустым, чтобы сохранить существующий или пропустить)
     git_provider:
-      title: "Git Provider Selection"
-      menu: "0 GitHub · 1 GitLab · 2 Both"
-      prompt: "Configure Git provider"
+      title: Выбор Git-провайдера
+      menu: "0 GitHub · 1 GitLab · 2 Оба"
+      prompt: Настроить Git-провайдера
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
-      choice_both: "2 Both"
+      choice_both: "2 Оба"
     work_item_provider:
-      title: "Project Management Selection"
-      menu: "0 Jira · 1 Linear · 2 Both"
-      prompt: "Configure project management"
+      title: Выбор системы управления проектами
+      menu: "0 Jira · 1 Linear · 2 Оба"
+      prompt: Настроить управление проектами
       choice_jira: "0 Jira"
       choice_linear: "1 Linear"
-      choice_both: "2 Both"
+      choice_both: "2 Оба"
     linear:
-      title: "Linear Configuration"
-      description: "Configure Linear API access. This is only required if you selected Linear."
-      api_key_prompt: "Enter your Linear API key (leave blank to keep existing)"
+      title: Настройка Linear
+      description: "Настройте доступ к API Linear. Требуется только если вы выбрали Linear."
+      api_key_prompt: "Введите API-ключ Linear (оставьте пустым, чтобы сохранить существующий)"
     jira_transition:
       title: Настройка перехода Jira
       description: Включить автоматический переход в 'В работе' при начале работы над задачей.
@@ -99,8 +99,8 @@ config:
     reserved_keys: "Эти ключи нельзя задать этой командой: %keys%"
     invalid_git_provider: "gitProvider должен быть github или gitlab."
     invalid_transition_id: "transitionId должен быть неотрицательным целым числом."
-    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
-    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
+    invalid_work_item_provider: "workItemProvider должен быть jira, linear или auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes должен быть картой непустых меток типов к непустым префиксам веток."
     base_branch_error: "%message%"
     interactive_title: "Конфигурация проекта stud"
     interactive_hint: "Нажмите Enter, чтобы оставить текущее значение. Оставьте необязательные поля пустыми, чтобы пропустить."
@@ -115,9 +115,9 @@ config:
     prompt_github_token: "Токен GitHub для этого репозитория (скрыт)"
     prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
     prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
-    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
-    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
-    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
+    prompt_work_item_provider: "Провайдер задач для этого репозитория (когда глобальная конфигурация поддерживает Jira и Linear)"
+    prompt_linear_start_state_id: "ID состояния workflow Linear для items:start (необязательно)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear для сопоставления префиксов веток (необязательно)"
     status_updated: "Конфигурация проекта обновлена (.git/stud.config)."
     status_unchanged: "Изменения не записаны (конфигурация без изменений)."
     failed: "Не удалось обновить конфигурацию проекта."
@@ -700,7 +700,7 @@ help:
   category_git_workflow: Рабочий процесс Git
   category_release_commands: Команды релиза
   example_prefix: 'Пример: %example%'
-  command_config_init: Интерактивный мастер для настройки деталей подключения Jira и Git.
+  command_config_init: Интерактивный мастер для Git-провайдеров, провайдеров задач (Jira/Linear) и учётных данных.
   command_config_show: "Показать текущую конфигурацию (глобальную и проекта) с скрытыми секретами; безопасно для обмена."
   command_config_validate: "Проверить наличие конфигурации и доступность Jira, Git-провайдера и Linear. Используйте --skip-jira, --skip-git или --skip-linear для частичных проверок."
   command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Запустите интерактивно или используйте stud config:project-init --agent с JSON. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
@@ -778,7 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
-  option_config_validate_skip_linear: "Skip the Linear connectivity check"
+  option_config_validate_skip_linear: "Пропустить проверку подключения Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

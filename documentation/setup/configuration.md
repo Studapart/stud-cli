@@ -6,7 +6,41 @@ Run the first-time wizard after installing:
 stud init
 ```
 
-The wizard creates or updates `~/.config/stud/config.yml`.
+The wizard creates or updates `~/.config/stud/config.yml`. You choose which Git hosts and work-item backends you use; credentials are collected only for the providers you select.
+
+## Init wizard menus
+
+After language selection, `stud config:init` shows two numbered menus (0 / 1 / 2). Your choices set `GIT_PROVIDERS` and `WORK_ITEM_PROVIDERS` in global config.
+
+### Git provider menu
+
+| Choice | `GIT_PROVIDERS` | Credentials collected |
+|--------|-----------------|----------------------|
+| 0 GitHub | `github` | GitHub PAT (optional if already stored) |
+| 1 GitLab | `gitlab` | GitLab PAT (optional if already stored) |
+| 2 Both | `github`, `gitlab` | GitHub PAT and GitLab PAT |
+
+Per-repository overrides remain available in `.git/stud.config` via `stud config:project-init`.
+
+### Work-item provider menu
+
+| Choice | `WORK_ITEM_PROVIDERS` | Credentials collected |
+|--------|----------------------|----------------------|
+| 0 Jira | `jira` | Jira URL, email, API token; optional transition-to-In-Progress flag |
+| 1 Linear | `linear` | Linear API key |
+| 2 Both | `jira`, `linear` | Jira trio + transition flag, then Linear API key |
+
+Jira is not required when you select Linear only. Legacy configs without provider lists are migrated automatically on the next command that loads global config.
+
+### Agent mode
+
+Pass provider choices and credentials as JSON instead of interactive prompts:
+
+```bash
+echo '{"gitProviders":["github"],"workItemProviders":["jira"],"jiraUrl":"https://example.atlassian.net","jiraEmail":"you@example.com","jiraApiToken":"..."}' | stud config:init --agent
+```
+
+Run `echo '{"command":"config:init"}' | stud help --agent` for the full input schema.
 
 ## Provider lists
 
@@ -36,7 +70,7 @@ Jira access enables reading issues, projects, filters, attachments, and Confluen
 
 ## Linear
 
-When `WORK_ITEM_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init`. Linear connectivity validation in `stud config:validate` is skipped until the Linear client is implemented.
+When `WORK_ITEM_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init`. Linear connectivity in `stud config:validate` is reported as skipped until the Linear client performs live checks.
 
 ## Project Configuration
 

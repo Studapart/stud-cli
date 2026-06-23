@@ -1424,7 +1424,7 @@ function _version_check_listener(ConsoleTerminateEvent $event): void
 // Configuration Command
 // =================================================================================
 
-#[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard to set up Jira & Git connection details')]
+#[AsTask(name: 'config:init', aliases: ['init'], description: 'Interactive wizard for Git providers, work-item providers (Jira/Linear), and credentials')]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Confirmation message', completionOnly: true)]
 function config_init(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
