@@ -149,6 +149,7 @@ use App\Service\MigrationExecutor;
 use App\Service\MigrationRegistry;
 use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
+use App\Service\ProjectMetadataPromptService;
 use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\NonInteractivePromptService;
@@ -580,6 +581,19 @@ function _get_git_setup_service(): GitSetupService
     );
 }
 
+function _get_project_metadata_prompt_service(): ProjectMetadataPromptService
+{
+    return new ProjectMetadataPromptService(
+        _get_jira_service_if_configured(),
+        _get_linear_metadata_client(),
+        new WorkItemProviderResolver(),
+        new ProjectsWorkflowNormalizer(),
+        _get_config(),
+        _get_prompt(),
+        _get_message_renderer(),
+    );
+}
+
 function _get_config_project_init_prompt_collector(): ConfigProjectInitPromptCollector
 {
     return new ConfigProjectInitPromptCollector(
@@ -591,6 +605,7 @@ function _get_config_project_init_prompt_collector(): ConfigProjectInitPromptCol
         _get_file_system(),
         _get_config_path(),
         new \App\Service\GlobalConfigProviderResolver(),
+        _get_project_metadata_prompt_service(),
     );
 }
 
