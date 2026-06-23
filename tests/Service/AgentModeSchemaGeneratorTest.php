@@ -382,6 +382,24 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
     }
 
+    public function testConfigInitInSchemaWithExpectedInput(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertArrayHasKey('config:init', $schemaByName);
+        $cmd = $schemaByName['config:init'];
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('gitProviders', $props);
+        $this->assertSame('array', $props['gitProviders']['type']);
+        $this->assertArrayHasKey('workItemProviders', $props);
+        $this->assertArrayHasKey('linearApiKey', $props);
+        $this->assertArrayHasKey('jiraUrl', $props);
+        $this->assertArrayHasKey('jiraTransitionEnabled', $props);
+    }
+
     public function testConfigProjectInitInSchemaWithExpectedInputAndOutput(): void
     {
         $schemaByName = [];

@@ -41,23 +41,23 @@ config:
       github_token_prompt: Voer jou GitHub PAT in (laat leeg om bestaande te behou of slaan oor)
       gitlab_token_prompt: Voer jou GitLab PAT in (laat leeg om bestaande te behou of slaan oor)
     git_provider:
-      title: "Git Provider Selection"
-      menu: "0 GitHub · 1 GitLab · 2 Both"
-      prompt: "Configure Git provider"
+      title: Git-verskaffer keuse
+      menu: "0 GitHub · 1 GitLab · 2 Albei"
+      prompt: Stel Git-verskaffer op
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
-      choice_both: "2 Both"
+      choice_both: "2 Albei"
     work_item_provider:
-      title: "Project Management Selection"
-      menu: "0 Jira · 1 Linear · 2 Both"
-      prompt: "Configure project management"
+      title: Projekbestuur keuse
+      menu: "0 Jira · 1 Linear · 2 Albei"
+      prompt: Stel projekbestuur op
       choice_jira: "0 Jira"
       choice_linear: "1 Linear"
-      choice_both: "2 Both"
+      choice_both: "2 Albei"
     linear:
-      title: "Linear Configuration"
-      description: "Configure Linear API access. This is only required if you selected Linear."
-      api_key_prompt: "Enter your Linear API key (leave blank to keep existing)"
+      title: Linear-opstelling
+      description: "Stel Linear API-toegang op. Slegs nodig as jy Linear gekies het."
+      api_key_prompt: "Voer jou Linear API-sleutel in (los leeg om bestaande te behou)"
     jira_transition:
       title: Jira Oorgang Konfigurasie
       description: Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word.
@@ -99,8 +99,8 @@ config:
     reserved_keys: "Hierdie sleutels kan nie met hierdie opdrag gestel word nie: %keys%"
     invalid_git_provider: "gitProvider moet github of gitlab wees."
     invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
-    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
-    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
+    invalid_work_item_provider: "workItemProvider moet jira, linear of auto wees."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes moet 'n kaart van nie-leë tipe-etikette na nie-leë tak-voorvoegsels wees."
     base_branch_error: "%message%"
     interactive_title: "Stud-projekkonfigurasie"
     interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
@@ -115,9 +115,9 @@ config:
     prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
     prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
     prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
-    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
-    prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
-    prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
+    prompt_work_item_provider: "Work-item-verskaffer vir hierdie repository (wanneer globale config beide Jira en Linear ondersteun)"
+    prompt_linear_start_state_id: "Linear workflow status-id vir items:start (opsioneel)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup-id vir tak-voorvoegselkartering (opsioneel)"
     status_updated: "Projekkonfigurasie bygewerk (.git/stud.config)."
     status_unchanged: "Geen veranderinge geskryf nie (konfigurasie onveranderd)."
     failed: "Bywerking van projekkonfigurasie het misluk."
@@ -700,7 +700,7 @@ help:
   category_git_workflow: Git Werkvloei
   category_release_commands: Vrystelling Opdragte
   example_prefix: 'Voorbeeld: %example%'
-  command_config_init: Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel.
+  command_config_init: Interaktiewe wizard vir Git-verskaffers, work-item-verskaffers (Jira/Linear) en geloofsbriewe.
   command_config_show: "Vertoon huidige konfigurasie (globaal en projek) met geheime verberg; veilig om te deel."
   command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira, die Git-verskaffer en Linear bereikbaar is. Gebruik --skip-jira, --skip-git of --skip-linear vir gedeeltelike kontroles."
   command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Voer interaktief uit of gebruik stud config:project-init --agent met JSON. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
@@ -778,7 +778,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
-  option_config_validate_skip_linear: "Skip the Linear connectivity check"
+  option_config_validate_skip_linear: "Slaan Linear-verbindingskontrole oor"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

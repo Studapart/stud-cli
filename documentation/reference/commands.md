@@ -66,7 +66,7 @@ This reference is generated from the same runtime metadata used by `stud help --
 <a id="stud-config-init"></a>
 ### `stud config:init`
 
-Interactive wizard to set up Jira & Git connection details.
+Interactive wizard for Git providers, work-item providers (Jira/Linear), and credentials.
 
 - **Alias:** `stud init`
 - **Syntax:** `stud config:init`
@@ -88,7 +88,7 @@ None.
 ```bash
 stud config:init
 stud init
-echo '{}' | stud config:init --agent
+echo '{"language":"example","gitProviders":["example"],"workItemProviders":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","jiraTransitionEnabled":true,"githubToken":"example","gitlabToken":"example","linearApiKey":"example"}' | stud config:init --agent
 ```
 
 #### Agent JSON Input
@@ -96,6 +96,16 @@ echo '{}' | stud config:init --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `language` | `string\|null` | yes | `NULL` |
+| `gitProviders` | `array` | yes | `NULL` |
+| `workItemProviders` | `array` | yes | `NULL` |
+| `jiraUrl` | `string\|null` | yes | `NULL` |
+| `jiraEmail` | `string\|null` | yes | `NULL` |
+| `jiraApiToken` | `string\|null` | yes | `NULL` |
+| `jiraTransitionEnabled` | `bool` | yes | `NULL` |
+| `githubToken` | `string\|null` | yes | `NULL` |
+| `gitlabToken` | `string\|null` | yes | `NULL` |
+| `linearApiKey` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
