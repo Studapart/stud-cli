@@ -309,6 +309,16 @@ project:
     section: Получение проектов Jira
     error_fetch: 'Ошибка при получении проектов: %error%'
     no_projects: Проекты не найдены.
+  workflow:
+    section: Состояния workflow проекта
+    no_state_changes: Для проекта %project% не найдено изменений состояния.
+    error_ambiguous_provider: workItemProvider неоднозначен. Укажите jira или linear в .git/stud.config или выполните stud config:project-init.
+    error_no_provider: Провайдер задач не настроен. Выполните stud config:init.
+    column_id: ID
+    column_name: Название
+    column_target_status: Целевой статус
+    column_type: Тип
+    column_provider: Провайдер
 search:
   section: Поиск задач Jira с помощью JQL
   jql_query: 'JQL Запрос: %jql%'
@@ -709,6 +719,8 @@ help:
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Список всех видимых проектов Jira.
+  command_projects_workflow: Список переходов workflow (Jira) или состояний (Linear) для проекта.
+  option_projects_workflow_project: Ключ проекта или команды (например SCI)
   command_items_list: Список активных элементов работы (ваша панель управления).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."

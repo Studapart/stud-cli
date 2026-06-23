@@ -309,6 +309,16 @@ project:
     section: Kry Jira Projekte
     error_fetch: 'Kon nie projekte kry nie: %error%'
     no_projects: Geen projekte gevind nie.
+  workflow:
+    section: Projek workflow statusse
+    no_state_changes: Geen statusveranderinge gevind vir projek %project%.
+    error_ambiguous_provider: workItemProvider is dubbelsinnig. Stel jira of linear in .git/stud.config of voer stud config:project-init uit.
+    error_no_provider: Geen work-item-verskaffer gekonfigureer nie. Voer stud config:init uit.
+    column_id: ID
+    column_name: Naam
+    column_target_status: Teikensatus
+    column_type: Tipe
+    column_provider: Verskaffer
 search:
   section: Soek Jira items met JQL
   jql_query: 'JQL Navraag: %jql%'
@@ -709,6 +719,8 @@ help:
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Lys alle sigbare Jira projekte.
+  command_projects_workflow: Lys workflow-oorgange (Jira) of statusse (Linear) vir 'n projek.
+  option_projects_workflow_project: Projek- of spansleutel (bv. SCI)
   command_items_list: Lys aktiewe werkitems (jou dashboard).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."

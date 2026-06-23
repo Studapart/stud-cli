@@ -309,6 +309,16 @@ project:
     section: Récupération des projets Jira
     error_fetch: 'Échec de la récupération des projets : %error%'
     no_projects: Aucun projet trouvé.
+  workflow:
+    section: États de workflow du projet
+    no_state_changes: Aucun changement d'état trouvé pour le projet %project%.
+    error_ambiguous_provider: workItemProvider est ambigu. Définissez jira ou linear dans .git/stud.config ou exécutez stud config:project-init.
+    error_no_provider: Aucun fournisseur de tickets configuré. Exécutez stud config:init.
+    column_id: ID
+    column_name: Nom
+    column_target_status: Statut cible
+    column_type: Type
+    column_provider: Fournisseur
 search:
   section: Recherche de tickets Jira avec JQL
   jql_query: 'Requête JQL : %jql%'
@@ -709,6 +719,8 @@ help:
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Liste tous les projets Jira visibles.
+  command_projects_workflow: Liste les transitions de workflow (Jira) ou les états (Linear) pour un projet.
+  option_projects_workflow_project: Clé de projet ou d'équipe (ex. SCI)
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
   command_items_download: "Télécharge les pièces jointes Jira pour un ticket ou un fichier depuis une URL de pièce jointe. Avec une clé, toutes les pièces sont enregistrées (--url ignoré). Sans clé, --url est obligatoire. Même authentification Jira que les autres commandes. Dossier par défaut : .cursor/stud-downloads. Agent JSON : issueKey ou key, url et path optionnels."

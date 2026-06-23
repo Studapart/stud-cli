@@ -1503,6 +1503,71 @@ echo 'hello';
         $this->assertSame('', $result[0]['displayName']);
     }
 
+    public function testGetProjectTransitionsReturnsEmptyWhenNoIssuesFound(): void
+    {
+        $emptySearch = $this->createMock(ResponseInterface::class);
+        $emptySearch->method('getStatusCode')->willReturn(200);
+        $emptySearch->method('toArray')->willReturn(['issues' => []]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->with('POST', '/rest/api/3/search/jql', $this->anything())
+            ->willReturn($emptySearch);
+
+        $transitions = $this->jiraService->getProjectTransitions('SCI');
+
+        $this->assertSame([], $transitions);
+    }
+
+    public function testGetProjectTransitionsUsesRepresentativeIssue(): void
+    {
+        $searchResponse = $this->createMock(ResponseInterface::class);
+        $searchResponse->method('getStatusCode')->willReturn(200);
+        $searchResponse->method('toArray')->willReturn([
+            'issues' => [
+                [
+                    'id' => '10001',
+                    'key' => 'SCI-1',
+                    'fields' => [
+                        'summary' => 'Issue 1',
+                        'status' => ['name' => 'To Do'],
+                        'assignee' => null,
+                        'description' => null,
+                        'labels' => [],
+                        'issuetype' => ['name' => 'Task'],
+                        'components' => [],
+                    ],
+                ],
+            ],
+        ]);
+
+        $transitionResponse = $this->createMock(ResponseInterface::class);
+        $transitionResponse->method('getStatusCode')->willReturn(200);
+        $transitionResponse->method('toArray')->willReturn([
+            'transitions' => [
+                ['id' => 11, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress', 'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress']]],
+            ],
+        ]);
+
+        $this->httpClientMock->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function (string $method, string $url) use ($searchResponse, $transitionResponse) {
+                if ($method === 'POST' && $url === '/rest/api/3/search/jql') {
+                    return $searchResponse;
+                }
+                if ($method === 'GET' && $url === '/rest/api/3/issue/SCI-1/transitions') {
+                    return $transitionResponse;
+                }
+
+                $this->fail('Unexpected request: ' . $method . ' ' . $url);
+            });
+
+        $transitions = $this->jiraService->getProjectTransitions('SCI');
+
+        $this->assertCount(1, $transitions);
+        $this->assertSame(11, $transitions[0]['id']);
+    }
+
     // Helper to call private methods for testing
     private function callPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
     {
