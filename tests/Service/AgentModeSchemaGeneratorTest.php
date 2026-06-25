@@ -412,12 +412,62 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $props = $cmd['input']['properties'] ?? [];
         $this->assertArrayHasKey('projectKey', $props);
         $this->assertArrayHasKey('workItemProvider', $props);
+        $this->assertArrayHasKey('transitionId', $props);
         $this->assertArrayHasKey('linearStartStateId', $props);
+        $this->assertArrayHasKey('linearTypeLabelGroupId', $props);
         $this->assertArrayHasKey('linearTypeBranchPrefixes', $props);
         $this->assertArrayHasKey('skipBaseBranchRemoteCheck', $props);
         $out = $cmd['output']['success']['data'] ?? [];
         $this->assertArrayHasKey('updated', $out);
         $this->assertArrayHasKey('redactedProjectConfig', $out);
+    }
+
+    public function testProjectsWorkflowInSchemaWithExpectedInputAndOutput(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertArrayHasKey('projects:workflow', $schemaByName);
+        $cmd = $schemaByName['projects:workflow'];
+        $this->assertFalse($cmd['essential']);
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('project', $props);
+        $this->assertSame('string|null', $props['project']['type']);
+        $out = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('stateChanges', $out);
+        $this->assertSame('array', $out['stateChanges']);
+    }
+
+    public function testProjectsLabelsInSchemaWithExpectedInputAndOutput(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertArrayHasKey('projects:labels', $schemaByName);
+        $cmd = $schemaByName['projects:labels'];
+        $this->assertFalse($cmd['essential']);
+        $props = $cmd['input']['properties'] ?? [];
+        $this->assertArrayHasKey('project', $props);
+        $this->assertArrayHasKey('groupsOnly', $props);
+        $this->assertSame('bool', $props['groupsOnly']['type']);
+        $this->assertFalse($props['groupsOnly']['default']);
+        $out = $cmd['output']['success']['data'] ?? [];
+        $this->assertArrayHasKey('groups', $out);
+        $this->assertSame('array', $out['groups']);
+    }
+
+    public function testProjectsMetadataCommandsExcludedFromEssentialSchema(): void
+    {
+        $essentialNames = array_column($this->generator->generate(essentialOnly: true)['commands'], 'name');
+
+        $this->assertNotContains('projects:workflow', $essentialNames);
+        $this->assertNotContains('projects:labels', $essentialNames);
+        $this->assertContains('projects:workflow', array_column($this->schema['commands'], 'name'));
+        $this->assertContains('projects:labels', array_column($this->schema['commands'], 'name'));
     }
 
     public function testPrCommentsSchemaDocumentsThreadedMode(): void
