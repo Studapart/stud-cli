@@ -11,6 +11,7 @@ use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use App\Service\GitTokenPromptResolver;
 use App\Service\GlobalConfigProviderResolver;
+use App\Service\ProjectMetadataPromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
@@ -25,6 +26,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         PromptInterface $prompt,
         GitSetupService $gitSetup,
         ?array $globalConfig = null,
+        ?ProjectMetadataPromptService $metadataPrompts = null,
     ): ConfigProjectInitPromptCollector {
         $fileSystem = $this->createMock(FileSystem::class);
         $fileSystem->method('fileExists')->willReturn($globalConfig !== null);
@@ -41,7 +43,19 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
+            $metadataPrompts ?? $this->createDefaultMetadataPromptsMock(),
         );
+    }
+
+    private function createDefaultMetadataPromptsMock(): ProjectMetadataPromptService
+    {
+        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts->method('chooseJiraTransitionId')->willReturn(null);
+        $metadataPrompts->method('chooseLinearStartStateId')->willReturn(null);
+        $metadataPrompts->method('chooseLinearTypeLabelGroupId')->willReturn(null);
+        $metadataPrompts->method('buildLinearBranchPrefixMap')->willReturn(null);
+
+        return $metadataPrompts;
     }
 
     public function testCollectReturnsEmptyWhenUserSkipsAllOptionalUpdates(): void
@@ -112,7 +126,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
     }
 
-    public function testCollectLogsErrorWhenTransitionIdIsNotNumeric(): void
+    public function testCollectSkipsTransitionWhenMetadataPickerReturnsNull(): void
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('readProjectConfig')->willReturn([]);
@@ -120,33 +134,14 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $gitSetup = $this->createMock(GitSetupService::class);
         $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
 
-        $translator = $this->createMock(TranslationService::class);
-        $translator->method('trans')->willReturn('bad-transition');
-
         $prompt = $this->createMock(PromptInterface::class);
-        $prompt->method('ask')->willReturnOnConsecutiveCalls(
-            '',
-            '',
-            '',
-            'not-a-number',
-            '',
-            ''
-        );
+        $prompt->method('ask')->willReturn('');
         $prompt->method('choice')->willReturn('github');
 
         $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
 
         $recorder = new WorkflowRecorder();
         $this->assertSame(['gitProvider' => 'github'], $collector->collect($recorder));
-        $hasError = false;
-        foreach ($recorder->getEntries() as $entry) {
-            if ($entry->type === 'error') {
-                $hasError = true;
-
-                break;
-            }
-        }
-        $this->assertTrue($hasError);
     }
 
     public function testCollectNotesDetectedBaseBranchWhenPresent(): void
@@ -163,7 +158,6 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
-            '',
             '',
             '',
             '',
@@ -294,20 +288,25 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
-            '',
+            'SCI',
             'jira',
             '  myspace  ',
-            '42',
             '',
             'https://gitlab.example/'
         );
         $prompt->method('choice')->willReturn('gitlab');
         $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret');
 
-        $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
+        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts->expects($this->once())
+            ->method('chooseJiraTransitionId')
+            ->willReturn(42);
+
+        $collector = $this->createCollector($gitRepository, $prompt, $gitSetup, null, $metadataPrompts);
 
         $this->assertSame(
             [
+                'projectKey' => 'SCI',
                 'jiraDefaultProject' => 'JIRA',
                 'confluenceDefaultSpace' => 'myspace',
                 'transitionId' => 42,
@@ -386,20 +385,27 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls(
-            'SCI',
-            'state-1',
-            'group-1',
-            '',
-            '',
-        );
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '');
         $prompt->method('askHidden')->willReturn('');
+
+        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts->expects($this->once())
+            ->method('chooseLinearStartStateId')
+            ->willReturn('state-1');
+        $metadataPrompts->expects($this->once())
+            ->method('chooseLinearTypeLabelGroupId')
+            ->willReturn('group-1');
+        $metadataPrompts->expects($this->once())
+            ->method('buildLinearBranchPrefixMap')
+            ->with($this->anything(), 'SCI', $this->anything(), 'group-1')
+            ->willReturn(['Story' => 'feat']);
 
         $collector = $this->createCollector(
             $gitRepository,
             $prompt,
             $gitSetup,
             ['WORK_ITEM_PROVIDERS' => ['linear']],
+            $metadataPrompts,
         );
 
         $this->assertSame(
@@ -407,6 +413,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-1',
                 'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Story' => 'feat'],
                 'gitProvider' => 'github',
             ],
             $collector->collect(new WorkflowRecorder()),
@@ -498,6 +505,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $fileSystem,
             '/tmp/global-config.yml',
             new GlobalConfigProviderResolver(),
+            $this->createDefaultMetadataPromptsMock(),
         );
 
         $this->assertSame(['gitProvider' => 'github'], $collector->collect(new WorkflowRecorder()));
@@ -517,20 +525,24 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls(
-            'SCI',
-            'new-state',
-            'new-group',
-            '',
-            '',
-        );
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '');
         $prompt->method('askHidden')->willReturn('');
+
+        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts->expects($this->once())
+            ->method('chooseLinearStartStateId')
+            ->willReturn('new-state');
+        $metadataPrompts->expects($this->once())
+            ->method('chooseLinearTypeLabelGroupId')
+            ->willReturn('new-group');
+        $metadataPrompts->method('buildLinearBranchPrefixMap')->willReturn(null);
 
         $collector = $this->createCollector(
             $gitRepository,
             $prompt,
             $gitSetup,
             ['WORK_ITEM_PROVIDERS' => ['linear']],
+            $metadataPrompts,
         );
 
         $this->assertSame(
