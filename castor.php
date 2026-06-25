@@ -1805,6 +1805,7 @@ function projects_list(
 }
 
 #[AsTask(name: 'projects:workflow', description: 'List workflow transitions (Jira) or states (Linear) for a project')]
+#[AgentCommand(essential: false)]
 #[AgentOutput(responseClass: \App\Response\ProjectsWorkflowResponse::class, description: 'Available state changes for a project or team key')]
 function projects_workflow(
     #[AsOption(name: 'project', description: 'Project or team key (e.g. SCI)')]
@@ -1860,6 +1861,7 @@ function projects_workflow(
 }
 
 #[AsTask(name: 'projects:labels', description: 'List Linear LabelGroups and child labels for a project team')]
+#[AgentCommand(essential: false)]
 #[AgentOutput(responseClass: \App\Response\ProjectsLabelsResponse::class, description: 'Available label groups and child labels for a project or team key')]
 function projects_labels(
     #[AsOption(name: 'project', description: 'Project or team key (e.g. SCI)')]

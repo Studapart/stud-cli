@@ -632,4 +632,88 @@ class ConfigProjectInitHandlerTest extends TestCase
         $this->assertFalse($response->isSuccess());
         $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
     }
+
+    public function testAgentNeverInvokesPromptCollector(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn(['projectKey' => 'SCI']);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $gitSetup = $this->createMock(GitSetupService::class);
+        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $prompts->expects($this->never())->method('collect');
+
+        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $response = $handler->handle([], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->updated);
+    }
+
+    public function testAgentMetadataDiscoveryToProjectInitFlow(): void
+    {
+        $workflowJson = [
+            'stateChanges' => [
+                ['id' => '21', 'name' => 'In Progress', 'targetStatus' => 'In Progress', 'provider' => 'jira'],
+            ],
+        ];
+        $labelsJson = [
+            'groups' => [
+                [
+                    'id' => 'group-uuid',
+                    'name' => 'Type',
+                    'labels' => [
+                        ['id' => 'label-story', 'name' => 'Story'],
+                        ['id' => 'label-bug', 'name' => 'Bug'],
+                    ],
+                ],
+            ],
+        ];
+
+        $transitionId = (int) $workflowJson['stateChanges'][0]['id'];
+        $linearTypeLabelGroupId = $labelsJson['groups'][0]['id'];
+
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls(
+            [],
+            [
+                'projectKey' => 'SCI',
+                'transitionId' => $transitionId,
+                'linearStartStateId' => 'state-uuid',
+                'linearTypeLabelGroupId' => $linearTypeLabelGroupId,
+                'linearTypeBranchPrefixes' => ['Story' => 'feat', 'Bug' => 'fix'],
+            ],
+        );
+        $gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with([
+                'projectKey' => 'SCI',
+                'transitionId' => $transitionId,
+                'linearStartStateId' => 'state-uuid',
+                'linearTypeLabelGroupId' => $linearTypeLabelGroupId,
+                'linearTypeBranchPrefixes' => ['Story' => 'feat', 'Bug' => 'fix'],
+            ]);
+
+        $gitSetup = $this->createMock(GitSetupService::class);
+        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+        $prompts->expects($this->never())->method('collect');
+
+        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $response = $handler->handle([
+            'projectKey' => 'SCI',
+            'transitionId' => $transitionId,
+            'linearStartStateId' => 'state-uuid',
+            'linearTypeLabelGroupId' => $linearTypeLabelGroupId,
+            'linearTypeBranchPrefixes' => ['Story' => 'feat', 'Bug' => 'fix'],
+        ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->updated);
+        $this->assertSame('SCI', $response->redactedProjectConfig['projectKey'] ?? null);
+        $this->assertSame($transitionId, $response->redactedProjectConfig['transitionId'] ?? null);
+        $this->assertSame('state-uuid', $response->redactedProjectConfig['linearStartStateId'] ?? null);
+        $this->assertSame($linearTypeLabelGroupId, $response->redactedProjectConfig['linearTypeLabelGroupId'] ?? null);
+    }
 }

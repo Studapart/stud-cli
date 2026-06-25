@@ -101,6 +101,8 @@ MD);
             'config:project-init',
             'completion',
             'projects:list',
+            'projects:workflow',
+            'projects:labels',
             'items:list',
             'items:search',
             'items:show',
