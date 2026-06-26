@@ -15,7 +15,7 @@ class SearchHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new SearchHandler($this->jiraService);
+        $this->handler = new SearchHandler($this->workItemProvider);
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
@@ -31,8 +31,8 @@ class SearchHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('search')
             ->with('project = TPW')
             ->willReturn([$issue]);
 
@@ -47,8 +47,8 @@ class SearchHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('search')
             ->with('project = TPW')
             ->willReturn([]);
 
@@ -62,8 +62,8 @@ class SearchHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('search')
             ->with('project = TPW')
             ->willThrowException(new \Exception('Jira API error'));
 

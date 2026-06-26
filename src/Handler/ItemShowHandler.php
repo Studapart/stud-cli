@@ -6,12 +6,12 @@ namespace App\Handler;
 
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemShowResponse;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 
 class ItemShowHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService
+        private readonly WorkItemProviderInterface $provider,
     ) {
     }
 
@@ -20,7 +20,7 @@ class ItemShowHandler implements WorkItemJiraAware
         $key = strtoupper($key);
 
         try {
-            $issue = $this->jiraService->getIssue($key, true);
+            $issue = $this->provider->getIssue($key, true);
 
             return ItemShowResponse::success($issue);
         } catch (\Exception $e) {

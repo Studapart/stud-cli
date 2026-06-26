@@ -6,19 +6,19 @@ namespace App\Tests\Service;
 
 use App\Enum\JiraSupportedTypes;
 use App\Service\BranchNameGenerator;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class BranchNameGeneratorTest extends TestCase
 {
-    private JiraService&MockObject $jiraService;
+    private WorkItemProviderInterface&MockObject $workItemProvider;
     private BranchNameGenerator $generator;
 
     protected function setUp(): void
     {
-        $this->jiraService = $this->createMock(JiraService::class);
-        $this->generator = new BranchNameGenerator($this->jiraService);
+        $this->workItemProvider = $this->createMock(WorkItemProviderInterface::class);
+        $this->generator = new BranchNameGenerator($this->workItemProvider);
     }
 
     public function testPrefixForIssueTypeMapsKnownTypes(): void
@@ -48,7 +48,7 @@ class BranchNameGeneratorTest extends TestCase
             [],
             JiraSupportedTypes::Bug->value,
         );
-        $this->jiraService->expects($this->once())->method('getIssue')->with('SCI-1')->willReturn($issue);
+        $this->workItemProvider->expects($this->once())->method('getIssue')->with('SCI-1')->willReturn($issue);
 
         $this->assertSame('fix/SCI-1-fix-login', $this->generator->generateBranchNameFromKey('SCI-1'));
     }

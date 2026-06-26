@@ -504,15 +504,16 @@ function _get_branch_clean_handler(): BranchCleanHandler
     );
 }
 
-function _get_item_create_handler(): ItemCreateHandler
+function _get_item_create_handler(?string $providerOverride = null): ItemCreateHandler
 {
     $prompt = _get_prompt();
     $jiraService = _get_jira_service();
+    $provider = _require_work_item_provider($providerOverride);
 
     return new ItemCreateHandler(
         new ItemCreateProjectResolver(_get_git_repository(), $jiraService, $prompt),
         new ItemCreatePromptService($jiraService, _get_issue_field_resolver(), $prompt),
-        $jiraService,
+        $provider,
         _get_issue_field_resolver(),
         _get_fields_parser(),
         $prompt,
@@ -528,11 +529,11 @@ function _get_branch_rename_handler(): BranchRenameHandler
     return new BranchRenameHandler(
         $gitRepository,
         _get_git_branch_service(),
-        new BranchNameGenerator($jiraService),
+        new BranchNameGenerator(_require_work_item_provider()),
         new BranchNameValidator(),
         new BranchRenamePrCoordinator(
             $gitRepository,
-            $jiraService,
+            _require_work_item_provider(),
             _get_git_provider(),
             _get_jira_config(),
             _get_base_branch(),
@@ -796,6 +797,16 @@ function _get_work_item_provider(bool $quiet = false, ?string $override = null):
 
         return null;
     }
+}
+
+function _require_work_item_provider(?string $override = null): WorkItemProviderInterface
+{
+    $provider = _get_work_item_provider(false, $override);
+    if ($provider === null) {
+        exit(1);
+    }
+
+    return $provider;
 }
 
 function _get_translation_service(): TranslationService
@@ -1749,7 +1760,7 @@ function _agent_submit_run_push_phase(array $input): \App\Response\CommandRespon
     $message = isset($input['message']) && is_string($input['message']) ? $input['message'] : null;
     $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $commitHandler = new CommitHandler($gitRepository, _require_work_item_provider(), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
     $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
 
@@ -1799,7 +1810,8 @@ function config_validate(
         || $providerResolver->collectsGitlab($gitProviders);
     $validateLinear = $providerResolver->collectsLinear($workItemProviders);
 
-    $jiraService = ($skipJira || ! $validateJira) ? null : _get_jira_service();
+    $workItemProvider = ($skipJira || ! $validateJira) ? null : _get_work_item_provider(true);
+
     $gitProvider = null;
     $skipGitForHandler = $skipGit || ! $validateGit;
 
@@ -1821,7 +1833,7 @@ function config_validate(
     }
 
     $handler = new ConfigValidateHandler(
-        $jiraService,
+        $workItemProvider,
         $gitProvider,
         $skipJira,
         $skipGitForHandler,
@@ -1906,7 +1918,7 @@ function projects_list(
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
 
-    $handler = new ProjectListHandler(_get_jira_service());
+    $handler = new ProjectListHandler(_require_work_item_provider());
     $response = $handler->handle();
     $responder = new ProjectListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2045,7 +2057,7 @@ function filters_list(
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
 
-    $handler = new FilterListHandler(_get_jira_service(), _get_translation_service());
+    $handler = new FilterListHandler(_require_work_item_provider(), _get_translation_service());
     $response = $handler->handle();
     $responder = new FilterListResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2076,6 +2088,8 @@ function items_list(
     ?string $project = null,
     #[AsOption(name: 'sort', shortcut: 's', description: 'Sort results by Key or Status')]
     ?string $sort = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -2083,6 +2097,7 @@ function items_list(
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $providerOverride = null;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -2091,6 +2106,7 @@ function items_list(
         $all = (bool) ($input['all'] ?? false);
         $project = isset($input['project']) ? (string) $input['project'] : null;
         $sort = isset($input['sort']) ? ucfirst(strtolower((string) $input['sort'])) : null;
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     } else {
         $translator = _get_translation_service();
         if ($sort !== null) {
@@ -2103,7 +2119,7 @@ function items_list(
         }
     }
 
-    $handler = new ItemListHandler(_get_jira_service());
+    $handler = new ItemListHandler(_require_work_item_provider($providerOverride ?? $provider));
     $response = $handler->handle($all, $project, $sort);
     $responder = new ItemListResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2144,7 +2160,7 @@ function items_search(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "jql" argument is required.');
         exit(1);
     }
-    $handler = new SearchHandler(_get_jira_service());
+    $handler = new SearchHandler(_require_work_item_provider());
     $response = $handler->handle($jql);
     $responder = new SearchResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2185,7 +2201,7 @@ function filters_show(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "filterName" argument is required.');
         exit(1);
     }
-    $handler = new FilterShowHandler(_get_jira_service());
+    $handler = new FilterShowHandler(_require_work_item_provider());
     $response = $handler->handle($filterName);
     $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2206,22 +2222,26 @@ function filters_show(
 function items_show(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
     ?string $key = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $providerOverride = null;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
             return;
         }
         $key = (string) ($input['key'] ?? '');
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     } elseif ($key === null || $key === '') {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $handler = new ItemShowHandler(_get_jira_service());
+    $handler = new ItemShowHandler(_require_work_item_provider($providerOverride ?? $provider));
     $response = $handler->handle($key);
     $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $key, $format);
@@ -2262,7 +2282,7 @@ function items_download(
         $pathRaw = $input['path'] ?? null;
         $path = is_string($pathRaw) ? $pathRaw : null;
     }
-    $handler = new ItemDownloadHandler(_get_file_system(), _get_jira_attachment_service(), _get_translation_service());
+    $handler = new ItemDownloadHandler(_get_file_system(), _require_work_item_provider(), _get_translation_service());
     $response = $handler->handle($key, $url, $path);
     $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2330,7 +2350,7 @@ function items_upload(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.upload.error_no_files'));
         exit(1);
     }
-    $handler = new ItemUploadHandler(_get_file_system(), _get_jira_attachment_service(), $translator);
+    $handler = new ItemUploadHandler(_get_file_system(), _require_work_item_provider(), $translator);
     $inputDto = new ItemUploadInput(trim($key), $files);
     $response = $handler->handle($inputDto);
     $responder = new ItemUploadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
@@ -2395,6 +2415,8 @@ function items_create(
     ?string $parent = null,
     #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
     ?string $fields = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -2405,6 +2427,7 @@ function items_create(
     $interactive = ! $agent && function_exists('posix_isatty') && @posix_isatty(STDIN);
     /** @var array<string, string|list<string>>|null $fieldsMap */
     $fieldsMap = null;
+    $providerOverride = null;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -2416,6 +2439,7 @@ function items_create(
         $description = $input['description'] ?? null;
         $descriptionFormat = $input['descriptionFormat'] ?? null;
         $parent = $input['parent'] ?? null;
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
         if (isset($input['fields'])) {
             if (is_array($input['fields'])) {
                 $fieldsMap = $input['fields'];
@@ -2426,7 +2450,7 @@ function items_create(
     } else {
         $summary = _items_create_normalize_summary($summary);
     }
-    $handler = _get_item_create_handler();
+    $handler = _get_item_create_handler($providerOverride ?? $provider);
     $input = new ItemCreateInput($project, $type, $summary, $description, $descriptionFormat, $parent, $fields, $fieldsMap);
     $response = $handler->handle($interactive, $input);
     $responder = new ItemCreateResponder(_get_translation_service(), _get_jira_config(), _get_logger());
@@ -2456,6 +2480,8 @@ function items_update(
     ?string $descriptionFormat = null,
     #[AsOption(name: 'fields', shortcut: 'F', description: 'Extra fields as key=value pairs separated by semicolons (e.g. "labels=Bug,DX;priority=High")')]
     ?string $fields = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -2465,6 +2491,7 @@ function items_update(
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     /** @var array<string, string|list<string>>|null $fieldsMap */
     $fieldsMap = null;
+    $providerOverride = null;
     if ($agent) {
         // Read from explicit input file only; otherwise stdin. Using $key as input source would treat
         // a Jira key (e.g. SCI-79) as a file path and prevent JSON (including fields) from being read.
@@ -2476,6 +2503,7 @@ function items_update(
         $summary = $input['summary'] ?? null;
         $description = $input['description'] ?? null;
         $descriptionFormat = $input['descriptionFormat'] ?? null;
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
         if (isset($input['fields'])) {
             if (is_array($input['fields'])) {
                 $fieldsMap = $input['fields'];
@@ -2494,7 +2522,7 @@ function items_update(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.update.error_no_key'));
         exit(1);
     }
-    $handler = new ItemUpdateHandler(_get_jira_service(), _get_translation_service(), _get_fields_parser());
+    $handler = new ItemUpdateHandler(_require_work_item_provider($providerOverride ?? $provider), _get_translation_service(), _get_fields_parser());
     $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
     $response = $handler->handle($input);
     $responder = new ItemUpdateResponder(_get_translation_service(), _get_logger());
@@ -2515,11 +2543,14 @@ function items_update(
 function items_transition(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent). Optional - will detect from branch if not provided')]
     ?string $key = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
 ): void {
     _load_constants();
     $compact = false;
+    $providerOverride = null;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
@@ -2527,8 +2558,9 @@ function items_transition(
         }
         $compact = _agent_compact_enabled($input);
         $key = isset($input['key']) ? (string) $input['key'] : null;
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
-    $handler = new ItemTransitionHandler(_get_git_repository(), _get_jira_service(), _get_translation_service(), _get_prompt());
+    $handler = new ItemTransitionHandler(_get_git_repository(), _require_work_item_provider($providerOverride ?? $provider), _get_translation_service(), _get_prompt());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2544,11 +2576,14 @@ function items_transition(
 function items_start(
     #[AsArgument(name: 'key', description: 'The Jira issue key (or inputFile when --agent)')]
     ?string $key = null,
+    #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
+    ?string $provider = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
 ): void {
     _load_constants();
     $compact = false;
+    $providerOverride = null;
     if ($agent) {
         $input = _read_agent_input($key);
         if ($input === null) {
@@ -2556,11 +2591,13 @@ function items_start(
         }
         $compact = _agent_compact_enabled($input);
         $key = (string) ($input['key'] ?? '');
+        $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     } elseif ($key === null || $key === '') {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt());
+    $workItemProvider = _require_work_item_provider($providerOverride ?? $provider);
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $workItemProvider, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2593,8 +2630,9 @@ function items_takeover(
     $baseBranch = _get_base_branch();
     $gitBranchService = _get_git_branch_service();
     $prompt = _get_prompt();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
-    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, _get_jira_service(), $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $workItemProvider = _require_work_item_provider();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
     $response = $handler->handle($key, $quiet);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2726,7 +2764,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $handler = new CommitHandler(_get_git_repository(), _require_work_item_provider(), _get_base_branch(), _get_translation_service(), _get_prompt());
     $response = $handler->handle($isNew, $message, $stageAll, $quiet);
     if (is_int($response)) {
         $response = CommandResponse::fromExitCode($response, 'Commit created', 'Commit failed');
@@ -2788,7 +2826,7 @@ function push(
         return;
     }
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _get_jira_service(), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $commitHandler = new CommitHandler($gitRepository, _require_work_item_provider(), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
     $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
     $noPleaseForHandler = $agent ? false : $noPlease;
@@ -3096,7 +3134,7 @@ function submit(
         }
     }
 
-    $handler = new SubmitHandler($gitRepository, _get_jira_service(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_prompt(), _get_html_converter());
+    $handler = new SubmitHandler($gitRepository, _require_work_item_provider(), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_prompt(), _get_html_converter());
     $response = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -3603,7 +3641,7 @@ function status(
         }
         $compact = _agent_compact_enabled($input);
     }
-    $handler = new StatusHandler(_get_git_repository(), _get_jira_service(), _get_translation_service());
+    $handler = new StatusHandler(_get_git_repository(), _require_work_item_provider(), _get_translation_service());
     $response = $handler->handle();
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);

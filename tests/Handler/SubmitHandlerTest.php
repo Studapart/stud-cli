@@ -32,12 +32,12 @@ class SubmitHandlerTest extends CommandTestCase
         $this->githubProvider = $this->createMock(GithubProvider::class);
         $this->htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$workItemProvider = $this->workItemProvider;
         TestKernel::$translationService = $this->translationService;
         $this->prompt = $this->createMock(\App\Service\Logger::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             $this->githubProvider,
             $this->jiraConfig,
             'origin/develop',
@@ -71,7 +71,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->expects($this->once())
             ->method('toMarkdown')
@@ -112,7 +112,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
 
-        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+        $this->workItemProvider->method('getIssue')->willReturn(new WorkItem(
             id: '10001',
             key: 'TPW-35',
             title: 'My feature',
@@ -152,7 +152,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
 
-        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+        $this->workItemProvider->method('getIssue')->willReturn(new WorkItem(
             id: '10001',
             key: 'TPW-35',
             title: 'My feature',
@@ -212,7 +212,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -284,7 +284,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -331,7 +331,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->expects($this->once())
             ->method('toMarkdown')
@@ -383,7 +383,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->expects($this->once())
             ->method('toMarkdown')
@@ -477,7 +477,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -550,7 +550,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -602,7 +602,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: [],
             renderedDescription: '<p>Acceptance</p>'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturn("Acceptance Criteria\n\n- \\[ \\] Item one\n- \\[x] Item two");
@@ -637,7 +637,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
 
-        $this->jiraService->method('getIssue')->willThrowException(new \Exception('Jira API error'));
+        $this->workItemProvider->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
         $this->githubProvider
             ->expects($this->once())
@@ -683,7 +683,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: null // Empty description
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -734,7 +734,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -773,7 +773,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
 
-        $this->jiraService->method('getIssue')
+        $this->workItemProvider->method('getIssue')
             ->with('TPW-35', true)
             ->willThrowException(new \App\Exception\ApiException('Failed to fetch Jira issue.', 'HTTP 500: Internal Server Error', 500));
 
@@ -801,7 +801,7 @@ class SubmitHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
@@ -831,7 +831,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -865,7 +865,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -905,7 +905,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -952,7 +952,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -993,7 +993,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -1076,7 +1076,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             null,
             $this->jiraConfig,
             'origin/develop',
@@ -1143,7 +1143,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->with('My rendered description')
@@ -1215,7 +1215,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -1263,7 +1263,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $this->htmlConverter->method('toMarkdown')
             ->willReturnCallback(fn ($html) => $html);
@@ -1495,7 +1495,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $remoteLabels = [
             ['name' => 'bug'],
@@ -1537,7 +1537,7 @@ class SubmitHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
@@ -1567,7 +1567,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -1608,7 +1608,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $remoteLabels = [
             ['name' => 'bug'],
@@ -1690,7 +1690,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         // PR creation fails because it already exists
         $this->githubProvider
@@ -1756,7 +1756,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $remoteLabels = [
             ['name' => 'bug'],
@@ -1843,7 +1843,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         // PR creation fails because it already exists
         $this->githubProvider
@@ -1908,7 +1908,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         // PR creation fails because it already exists
         $this->githubProvider
@@ -1969,7 +1969,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $remoteLabels = [
             ['name' => 'bug'],
@@ -2049,7 +2049,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         // PR creation fails because it already exists
         $this->githubProvider
@@ -2096,7 +2096,7 @@ class SubmitHandlerTest extends CommandTestCase
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
         $this->handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             null, // No GithubProvider
             $this->jiraConfig,
             'origin/develop',
@@ -2126,7 +2126,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: 'My rendered description'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -2172,7 +2172,7 @@ class SubmitHandlerTest extends CommandTestCase
             components: ['my-scope'],
             renderedDescription: '<p>Test HTML</p>'
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         // Mock converter to throw DOMDocument exception
         $this->htmlConverter->expects($this->once())
@@ -2203,7 +2203,7 @@ class SubmitHandlerTest extends CommandTestCase
     {
         $handler = new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->workItemProvider,
             null,
             $this->jiraConfig,
             'origin/develop',
@@ -2274,7 +2274,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
 
-        $this->jiraService->method('getIssue')->willReturn(new WorkItem(
+        $this->workItemProvider->method('getIssue')->willReturn(new WorkItem(
             id: '10001',
             key: 'TPW-35',
             title: 'My feature',

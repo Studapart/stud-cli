@@ -21,10 +21,10 @@ use App\Response\WorkflowResponse;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitProviderInterface;
 use App\Service\GitRepository;
-use App\Service\JiraService;
 use App\Service\MarkdownHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\SubmitLabelResolver;
+use App\Service\WorkItemProviderInterface;
 
 class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
 {
@@ -35,7 +35,7 @@ class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, G
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly WorkItemProviderInterface $provider,
         private readonly ?GitProviderInterface $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
@@ -182,7 +182,7 @@ class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, G
     {
         try {
             $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.fetching_jira', ['key' => $jiraKey]), WorkflowChannel::Jira);
-            $issue = $this->jiraService->getIssue($jiraKey, true);
+            $issue = $this->provider->getIssue($jiraKey, true);
 
             return $issue->renderedDescription;
         } catch (ApiException $e) {

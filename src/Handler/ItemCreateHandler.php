@@ -14,15 +14,15 @@ use App\Service\FieldsParser;
 use App\Service\IssueFieldResolver;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
-use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
+use App\Service\WorkItemProviderInterface;
 
 class ItemCreateHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,
         private readonly ItemCreatePromptService $promptService,
-        private readonly JiraService $jiraService,
+        private readonly WorkItemProviderInterface $provider,
         private readonly IssueFieldResolver $fieldResolver,
         private readonly FieldsParser $fieldsParser,
         private readonly PromptInterface $prompt,
@@ -87,7 +87,7 @@ class ItemCreateHandler implements WorkItemJiraAware
         }
 
         try {
-            $allFieldsMeta = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+            $allFieldsMeta = $this->provider->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
@@ -183,7 +183,7 @@ class ItemCreateHandler implements WorkItemJiraAware
     protected function createIssueAndReturnResponse(array $fields, array $skippedOptionalFields): ItemCreateResponse
     {
         try {
-            $result = $this->jiraService->createIssue($fields);
+            $result = $this->provider->create($fields);
 
             return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
         } catch (ApiException $e) {

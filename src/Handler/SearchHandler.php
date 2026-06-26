@@ -6,19 +6,19 @@ namespace App\Handler;
 
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\SearchResponse;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 
 class SearchHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService
+        private readonly WorkItemProviderInterface $provider,
     ) {
     }
 
     public function handle(string $jql): SearchResponse
     {
         try {
-            $issues = $this->jiraService->searchIssues($jql);
+            $issues = $this->provider->search($jql);
 
             return SearchResponse::success($issues, $jql);
         } catch (\Exception $e) {

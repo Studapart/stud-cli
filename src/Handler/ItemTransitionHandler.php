@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
@@ -13,8 +14,8 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
+use App\Service\WorkItemProviderInterface;
 
 class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
 {
@@ -22,7 +23,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly WorkItemProviderInterface $provider,
         mixed $_translator,
         private readonly PromptInterface $prompt,
     ) {
@@ -57,7 +58,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
     {
         try {
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.transition.fetching', ['key' => $key]), WorkflowChannel::Jira);
-            $this->jiraService->getIssue($key);
+            $this->provider->getIssue($key);
 
             return true;
         } catch (ApiException $e) {
@@ -72,12 +73,12 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
     }
 
     /**
-     * @return array<int, array<string, mixed>>|null
+     * @return list<StateChange>|null
      */
     protected function fetchTransitionsOrFail(string $key): ?array
     {
         try {
-            $transitions = $this->jiraService->getTransitions($key);
+            $transitions = $this->provider->listItemStateChanges($key);
             if ($transitions === []) {
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.no_transitions', ['key' => $key]));
 
@@ -97,11 +98,11 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
     }
 
     /**
-     * @param array<int, array<string, mixed>> $transitions
+     * @param list<StateChange> $transitions
      */
     protected function selectTransitionIdFromUser(array $transitions): ?int
     {
-        $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+        $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
         $selected = $this->prompt->choice(MessageRef::key('item.transition.select_transition'), $options);
         preg_match('/ID: (\d+)\)$/', $selected, $matches);
         if (! isset($matches[1])) {
@@ -116,7 +117,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
     protected function executeTransitionAndReturn(string $key, int $transitionId): int
     {
         try {
-            $this->jiraService->transitionIssue($key, $transitionId);
+            $this->provider->applyStateChange($key, (string) $transitionId);
             $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.success', ['key' => $key]));
 
             return 0;

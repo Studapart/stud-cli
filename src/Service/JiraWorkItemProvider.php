@@ -24,19 +24,18 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
         return $this->jiraService->getIssue($key, $renderFields);
     }
 
-    public function search(string $query, ?string $context = null): array
+    public function search(string $query): array
     {
-        unset($context);
-
         return array_values($this->jiraService->searchIssues($query));
     }
 
-    public function listAssignedActive(?string $projectKey = null): array
+    public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array
     {
-        $jqlParts = [
-            'assignee = currentUser()',
-            "statusCategory in ('To Do', 'In Progress')",
-        ];
+        $jqlParts = [];
+        if ($onlyMine) {
+            $jqlParts[] = 'assignee = currentUser()';
+        }
+        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
         if ($projectKey !== null && $projectKey !== '') {
             $jqlParts[] = 'project = ' . strtoupper($projectKey);
         }
@@ -61,6 +60,21 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
     public function update(string $key, array $input): void
     {
         $this->jiraService->updateIssue($key, $input);
+    }
+
+    public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
+    {
+        return $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+    }
+
+    public function getEditMetaFields(string $key): array
+    {
+        return $this->jiraService->getEditMetaFields($key);
+    }
+
+    public function formatDescription(string $text, string $format = 'plain'): array
+    {
+        return $this->jiraService->descriptionToAdf($text, $format);
     }
 
     public function listProjectStateChanges(string $projectKey): array

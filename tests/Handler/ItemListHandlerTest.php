@@ -15,7 +15,7 @@ class ItemListHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new ItemListHandler($this->jiraService);
+        $this->handler = new ItemListHandler($this->workItemProvider);
     }
 
     public function testHandleDefaultReturnsSuccessResponse(): void
@@ -31,9 +31,9 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, true)
             ->willReturn([$issue]);
 
         $response = $this->handler->handle(false, null, null);
@@ -59,9 +59,9 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('statusCategory in (\'To Do\', \'In Progress\') ORDER BY updated DESC')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, false)
             ->willReturn([$issue]);
 
         $response = $this->handler->handle(true, null, null);
@@ -85,9 +85,9 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('assignee = currentUser() AND statusCategory in (\'To Do\', \'In Progress\') AND project = MYPROJ ORDER BY updated DESC')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with('MYPROJ', true)
             ->willReturn([$issue]);
 
         $response = $this->handler->handle(false, 'MYPROJ', null);
@@ -103,8 +103,9 @@ class ItemListHandlerTest extends CommandTestCase
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-35', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, true)
             ->willReturn([$issue1, $issue2, $issue3]);
 
         $response = $this->handler->handle(false, null, 'Key');
@@ -122,8 +123,9 @@ class ItemListHandlerTest extends CommandTestCase
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-100', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, true)
             ->willReturn([$issue1, $issue2, $issue3]);
 
         $response = $this->handler->handle(false, null, 'Status');
@@ -137,8 +139,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, true)
             ->willReturn([]);
 
         $response = $this->handler->handle(false, null, null);
@@ -150,8 +153,9 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
+        $this->workItemProvider->expects($this->once())
+            ->method('listAssignedActive')
+            ->with(null, true)
             ->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle(false, null, null);

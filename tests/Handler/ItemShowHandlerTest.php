@@ -16,7 +16,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new ItemShowHandler($this->jiraService);
+        $this->handler = new ItemShowHandler($this->workItemProvider);
     }
 
     public function testHandleReturnsSuccessResponse(): void
@@ -34,7 +34,7 @@ class ItemShowHandlerTest extends CommandTestCase
             '<p>This is a test description.</p>'
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willReturn($issue);
@@ -48,7 +48,7 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willThrowException(new RuntimeException('Issue not found'));
@@ -76,7 +76,7 @@ class ItemShowHandlerTest extends CommandTestCase
             null
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willReturn($issue);

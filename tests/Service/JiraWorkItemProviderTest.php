@@ -51,7 +51,7 @@ class JiraWorkItemProviderTest extends TestCase
             ->with('project = SCI')
             ->willReturn($issues);
 
-        $this->assertSame($issues, $this->provider->search('project = SCI', 'ignored'));
+        $this->assertSame($issues, $this->provider->search('project = SCI'));
     }
 
     public function testListAssignedActiveBuildsJqlWithoutProject(): void
@@ -76,6 +76,17 @@ class JiraWorkItemProviderTest extends TestCase
         $this->assertSame($issues, $this->provider->listAssignedActive('sci'));
     }
 
+    public function testListAssignedActiveWithoutOnlyMineOmitsAssigneeClause(): void
+    {
+        $issues = [];
+        $this->jiraService->expects($this->once())
+            ->method('searchIssues')
+            ->with("statusCategory in ('To Do', 'In Progress') ORDER BY updated DESC")
+            ->willReturn($issues);
+
+        $this->assertSame($issues, $this->provider->listAssignedActive(null, false));
+    }
+
     public function testCreateDelegatesToJiraService(): void
     {
         $fields = ['project' => ['key' => 'SCI']];
@@ -97,6 +108,39 @@ class JiraWorkItemProviderTest extends TestCase
 
         $this->provider->update('SCI-1', $fields);
         $this->addToAssertionCount(1);
+    }
+
+    public function testGetCreateMetaFieldsDelegatesToJiraService(): void
+    {
+        $meta = ['summary' => ['required' => true, 'name' => 'Summary']];
+        $this->jiraService->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('SCI', '10001')
+            ->willReturn($meta);
+
+        $this->assertSame($meta, $this->provider->getCreateMetaFields('SCI', '10001'));
+    }
+
+    public function testGetEditMetaFieldsDelegatesToJiraService(): void
+    {
+        $meta = ['summary' => ['required' => false, 'name' => 'Summary']];
+        $this->jiraService->expects($this->once())
+            ->method('getEditMetaFields')
+            ->with('SCI-1')
+            ->willReturn($meta);
+
+        $this->assertSame($meta, $this->provider->getEditMetaFields('SCI-1'));
+    }
+
+    public function testFormatDescriptionDelegatesToJiraService(): void
+    {
+        $adf = ['type' => 'doc', 'version' => 1, 'content' => []];
+        $this->jiraService->expects($this->once())
+            ->method('descriptionToAdf')
+            ->with('Hello', 'markdown')
+            ->willReturn($adf);
+
+        $this->assertSame($adf, $this->provider->formatDescription('Hello', 'markdown'));
     }
 
     public function testListProjectStateChangesMapsTransitions(): void

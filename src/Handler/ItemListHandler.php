@@ -6,30 +6,19 @@ namespace App\Handler;
 
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemListResponse;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 
 class ItemListHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService
+        private readonly WorkItemProviderInterface $provider,
     ) {
     }
 
     public function handle(bool $all, ?string $project, ?string $sort = null): ItemListResponse
     {
-        $jqlParts = [];
-        if (! $all) {
-            $jqlParts[] = 'assignee = currentUser()';
-        }
-        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
-        if ($project) {
-            $jqlParts[] = 'project = ' . strtoupper($project);
-        }
-
-        $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
-
         try {
-            $issues = $this->jiraService->searchIssues($jql);
+            $issues = $this->provider->listAssignedActive($project, ! $all);
 
             if ($sort !== null) {
                 $issues = $this->sortIssues($issues, $sort);
@@ -42,8 +31,6 @@ class ItemListHandler implements WorkItemJiraAware
     }
 
     /**
-     * Sorts issues by the specified field.
-     *
      * @param \App\DTO\WorkItem[] $issues
      * @return \App\DTO\WorkItem[]
      */

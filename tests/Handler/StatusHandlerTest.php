@@ -16,9 +16,9 @@ class StatusHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$workItemProvider = $this->workItemProvider;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->handler = new StatusHandler($this->gitRepository, $this->workItemProvider, $this->translationService);
     }
 
     public function testHandle(): void
@@ -38,7 +38,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -63,7 +63,7 @@ class StatusHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->jiraService->method('getIssue')->willThrowException(new \Exception('Jira API error'));
+        $this->workItemProvider->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle();
 
@@ -76,7 +76,7 @@ class StatusHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->jiraService->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+        $this->workItemProvider->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
         $response = $this->handler->handle();
 
@@ -101,7 +101,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -125,7 +125,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->workItemProvider->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 

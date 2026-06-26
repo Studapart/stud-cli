@@ -29,7 +29,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->jiraService,
+            $this->workItemProvider,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -54,7 +54,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         return new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->jiraService,
+            $this->workItemProvider,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -91,10 +91,10 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
-            ->willThrowException(new \RuntimeException('Issue not found'));
+            ->willThrowException(new \App\Exception\ApiException('Issue not found', 'HTTP 404', 404));
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -118,7 +118,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
@@ -126,7 +126,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->jiraService,
+            $this->workItemProvider,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -157,13 +157,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123')
             ->willThrowException(new \RuntimeException('Assignment failed'));
 
@@ -212,13 +212,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -266,13 +266,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
 
@@ -282,7 +282,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->jiraService,
+            $this->workItemProvider,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -335,13 +335,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -408,13 +408,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -481,13 +481,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -553,13 +553,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -627,13 +627,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -704,13 +704,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -781,13 +781,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -834,13 +834,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -922,13 +922,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -993,13 +993,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -1047,13 +1047,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -1097,13 +1097,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -1173,13 +1173,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())
@@ -1246,13 +1246,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->workItemProvider->expects($this->once())
+            ->method('assign')
             ->with('PROJ-123');
 
         $this->gitRepository->expects($this->once())

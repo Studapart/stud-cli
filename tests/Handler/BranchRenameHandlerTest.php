@@ -42,11 +42,11 @@ class BranchRenameHandlerTest extends CommandTestCase
         return new BranchRenameHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            new BranchNameGenerator($this->jiraService),
+            new BranchNameGenerator($this->workItemProvider),
             new BranchNameValidator(),
             new BranchRenamePrCoordinator(
                 $this->gitRepository,
-                $this->jiraService,
+                $this->workItemProvider,
                 $githubProvider,
                 ['JIRA_URL' => 'https://jira.example.com'],
                 'origin/develop',
@@ -83,7 +83,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn(new WorkItem(
@@ -173,7 +173,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -221,7 +221,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34')
             ->willReturn($workItem);
@@ -273,7 +273,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -500,7 +500,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -542,7 +542,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
@@ -832,7 +832,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -940,7 +940,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -1076,7 +1076,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));

@@ -9,6 +9,7 @@ use App\Service\JiraService;
 use App\Service\Logger;
 use App\Service\MessageRenderer;
 use App\Service\TranslationService;
+use App\Service\WorkItemProviderInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -21,6 +22,7 @@ abstract class CommandTestCase extends TestCase
     protected GitRepository $gitRepository;
     protected GitBranchService $gitBranchService;
     protected JiraService $jiraService;
+    protected WorkItemProviderInterface $workItemProvider;
     protected TranslationService $translationService;
 
     protected function setUp(): void
@@ -30,6 +32,7 @@ abstract class CommandTestCase extends TestCase
         $this->gitRepository = $this->createMock(GitRepository::class);
         $this->gitBranchService = $this->createMock(GitBranchService::class);
         $this->jiraService = $this->createMock(JiraService::class);
+        $this->workItemProvider = $this->createMock(WorkItemProviderInterface::class);
 
         // Mock TranslationService to avoid file system dependencies in unit tests
         // Note: TranslationServiceTest uses real instances for integration testing

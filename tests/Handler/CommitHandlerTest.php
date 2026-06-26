@@ -21,7 +21,7 @@ class CommitHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->logger = $this->createMock(Logger::class);
-        $this->handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $this->logger);
+        $this->handler = new CommitHandler($this->gitRepository, $this->workItemProvider, 'origin/develop', $this->translationService, $this->logger);
     }
 
     public function testHandleWithCleanWorkingTree(): void
@@ -378,7 +378,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -432,7 +432,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -500,7 +500,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -561,7 +561,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -612,7 +612,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -675,7 +675,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -741,7 +741,7 @@ class CommitHandlerTest extends CommandTestCase
         // Test intent: error() was called, verified by return value
     }
 
-    public function testHandleWithJiraServiceException(): void
+    public function testHandleWithWorkItemProviderException(): void
     {
         $this->gitRepository->expects($this->once())
             ->method('getPorcelainStatus')
@@ -755,20 +755,18 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Jira service error'));
 
-        $this->logger->method('addError');
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Jira service error');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle($io, false, null, false);
-
-        $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
+        $this->handler->handle($io, false, null, false);
     }
 
     public function testHandleWithJiraServiceApiException(): void
@@ -785,7 +783,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
@@ -831,7 +829,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -904,7 +902,7 @@ class CommitHandlerTest extends CommandTestCase
             components: [],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -972,7 +970,7 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1048,7 +1046,7 @@ class CommitHandlerTest extends CommandTestCase
             components: [],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->workItemProvider->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1090,7 +1088,7 @@ class CommitHandlerTest extends CommandTestCase
     public function testgetCommitTypeFromIssueType(): void
     {
         $logger = $this->createMock(Logger::class);
-        $handler = new CommitHandler($this->gitRepository, $this->jiraService, 'origin/develop', $this->translationService, $logger);
+        $handler = new CommitHandler($this->gitRepository, $this->workItemProvider, 'origin/develop', $this->translationService, $logger);
 
         $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
         $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));

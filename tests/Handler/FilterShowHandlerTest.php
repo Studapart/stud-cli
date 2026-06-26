@@ -15,7 +15,7 @@ class FilterShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new FilterShowHandler($this->jiraService);
+        $this->handler = new FilterShowHandler($this->workItemProvider);
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
@@ -31,9 +31,9 @@ class FilterShowHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->workItemProvider->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willReturn([$issue]);
 
         $response = $this->handler->handle('My Filter');
@@ -47,9 +47,9 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->workItemProvider->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willReturn([]);
 
         $response = $this->handler->handle('My Filter');
@@ -62,9 +62,9 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->workItemProvider->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle('My Filter');

@@ -6,21 +6,19 @@ namespace App\Handler;
 
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\FilterShowResponse;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 
 class FilterShowHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService
+        private readonly WorkItemProviderInterface $provider,
     ) {
     }
 
     public function handle(string $filterName): FilterShowResponse
     {
-        $jql = 'filter = "' . $filterName . '"';
-
         try {
-            $issues = $this->jiraService->searchIssues($jql);
+            $issues = $this->provider->runFilterOrView($filterName);
 
             return FilterShowResponse::success($issues, $filterName);
         } catch (\Exception $e) {

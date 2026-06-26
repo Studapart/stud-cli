@@ -26,13 +26,14 @@ interface WorkItemProviderInterface
      * @return list<WorkItem>
      * @throws ApiException
      */
-    public function search(string $query, ?string $context = null): array;
+    public function search(string $query): array;
 
     /**
+     * @param bool $onlyMine When true, limit to issues assigned to the current user (Jira: assignee = currentUser())
      * @return list<WorkItem>
      * @throws ApiException
      */
-    public function listAssignedActive(?string $projectKey = null): array;
+    public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array;
 
     /**
      * @param array<string, mixed> $input
@@ -46,6 +47,23 @@ interface WorkItemProviderInterface
      * @throws ApiException
      */
     public function update(string $key, array $input): void;
+
+    /**
+     * @return array<string, array{required: bool, name: string}>
+     * @throws ApiException
+     */
+    public function getCreateMetaFields(string $projectKey, string $issueTypeId): array;
+
+    /**
+     * @return array<string, array{required: bool, name: string}>
+     * @throws ApiException
+     */
+    public function getEditMetaFields(string $key): array;
+
+    /**
+     * @return array{type: string, version: int, content: array<int, mixed>}
+     */
+    public function formatDescription(string $text, string $format = 'plain'): array;
 
     /**
      * @return list<StateChange>

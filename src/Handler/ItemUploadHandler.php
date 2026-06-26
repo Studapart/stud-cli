@@ -10,13 +10,13 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
-use App\Service\JiraAttachmentService;
+use App\Service\WorkItemProviderInterface;
 
 class ItemUploadHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly JiraAttachmentService $jiraAttachmentService,
+        private readonly WorkItemProviderInterface $provider,
         mixed $_translator
     ) {
         unset($_translator);
@@ -98,7 +98,7 @@ class ItemUploadHandler implements WorkItemJiraAware
         $uploadName = basename(str_replace('\\', '/', $trimmed));
 
         try {
-            $this->jiraAttachmentService->uploadFileToIssue($issueKey, $absolute);
+            $this->provider->uploadAttachment($issueKey, $absolute);
             $files[] = ['filename' => $uploadName, 'path' => $trimmed];
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();

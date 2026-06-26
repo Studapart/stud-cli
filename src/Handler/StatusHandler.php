@@ -13,7 +13,7 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\WorkItemProviderInterface;
 
 class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
 {
@@ -21,7 +21,7 @@ class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly WorkItemProviderInterface $provider,
         mixed $_translator,
     ) {
         unset($_translator);
@@ -51,7 +51,7 @@ class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
         $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('status.fetching', ['key' => $key]), WorkflowChannel::Jira);
 
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->provider->getIssue($key);
             $this->recorder->addLine(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}",

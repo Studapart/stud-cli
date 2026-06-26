@@ -9,7 +9,7 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
-use App\Service\JiraAttachmentService;
+use App\Service\WorkItemProviderInterface;
 
 class ItemDownloadHandler implements WorkItemJiraAware
 {
@@ -17,7 +17,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
 
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly JiraAttachmentService $jiraAttachmentService,
+        private readonly WorkItemProviderInterface $provider,
         mixed $_translator
     ) {
         unset($_translator);
@@ -111,7 +111,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
     private function downloadAllForIssue(string $issueKey, string $targetDir): ItemDownloadResponse
     {
         try {
-            $attachments = $this->jiraAttachmentService->fetchAttachmentsForIssue($issueKey);
+            $attachments = $this->provider->listAttachments($issueKey);
         } catch (ApiException $e) {
             return ItemDownloadResponse::fatal($e->getMessage());
         }
@@ -119,7 +119,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
         $files = [];
         $errors = [];
         foreach ($attachments as $attachment) {
-            $files = $this->pullOneAttachment($attachment['filename'], $attachment['contentUrl'], $targetDir, $files, $errors);
+            $files = $this->pullOneAttachment($attachment->filename, $attachment->contentUrl, $targetDir, $files, $errors);
         }
 
         return ItemDownloadResponse::result($files, $errors);
@@ -153,24 +153,16 @@ class ItemDownloadHandler implements WorkItemJiraAware
         array $files,
         array &$errors
     ): array {
-        try {
-            $body = $this->jiraAttachmentService->downloadAttachmentContent($contentUrl);
-        } catch (ApiException $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
-
-            return $files;
-        } catch (\Throwable $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
-
-            return $files;
-        }
-
         $safe = $this->sanitizeFilename($originalFilename);
         $uniqueName = $this->allocateFilename($targetDir, $safe);
         $relativePath = $targetDir . '/' . $uniqueName;
 
         try {
-            $this->fileSystem->filePutContents($relativePath, $body);
+            $this->provider->downloadAttachment($contentUrl, $relativePath);
+        } catch (ApiException $e) {
+            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
+
+            return $files;
         } catch (\Throwable $e) {
             $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
 

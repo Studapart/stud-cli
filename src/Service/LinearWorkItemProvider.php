@@ -18,13 +18,15 @@ final class LinearWorkItemProvider implements WorkItemProviderInterface
         throw new \BadMethodCallException('Not implemented until SCI-164');
     }
 
-    public function search(string $query, ?string $context = null): array
+    public function search(string $query): array
     {
         throw new \BadMethodCallException('Not implemented until SCI-164');
     }
 
-    public function listAssignedActive(?string $projectKey = null): array
+    public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array
     {
+        unset($projectKey, $onlyMine);
+
         throw new \BadMethodCallException('Not implemented until SCI-164');
     }
 
@@ -42,6 +44,27 @@ final class LinearWorkItemProvider implements WorkItemProviderInterface
      */
     public function update(string $key, array $input): void
     {
+        throw new \BadMethodCallException('Not implemented until SCI-164');
+    }
+
+    public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
+    {
+        unset($projectKey, $issueTypeId);
+
+        throw new \BadMethodCallException('Not implemented until SCI-164');
+    }
+
+    public function getEditMetaFields(string $key): array
+    {
+        unset($key);
+
+        throw new \BadMethodCallException('Not implemented until SCI-164');
+    }
+
+    public function formatDescription(string $text, string $format = 'plain'): array
+    {
+        unset($text, $format);
+
         throw new \BadMethodCallException('Not implemented until SCI-164');
     }
 
