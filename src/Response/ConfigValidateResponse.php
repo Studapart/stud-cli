@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 /**
  * Response DTO for config:validate command.
  * Carries per-component status: Jira, Git provider, and Linear (ok, fail, or skipped).
@@ -18,11 +20,11 @@ final class ConfigValidateResponse extends AbstractResponse
         bool $success,
         ?string $error,
         public readonly string $jiraStatus,
-        public readonly ?string $jiraMessage,
+        public readonly MessageRef|string|null $jiraMessage,
         public readonly string $gitStatus,
-        public readonly ?string $gitMessage,
+        public readonly MessageRef|string|null $gitMessage,
         public readonly string $linearStatus,
-        public readonly ?string $linearMessage,
+        public readonly MessageRef|string|null $linearMessage,
         array $messages = [],
     ) {
         parent::__construct($success, $error, $messages);
@@ -35,11 +37,11 @@ final class ConfigValidateResponse extends AbstractResponse
      */
     public static function create(
         string $jiraStatus,
-        ?string $jiraMessage,
+        MessageRef|string|null $jiraMessage,
         string $gitStatus,
-        ?string $gitMessage,
+        MessageRef|string|null $gitMessage,
         string $linearStatus = self::STATUS_SKIPPED,
-        ?string $linearMessage = null,
+        MessageRef|string|null $linearMessage = null,
         array $messages = [],
     ): self {
         $success = ($jiraStatus !== self::STATUS_FAIL)

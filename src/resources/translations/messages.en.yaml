@@ -98,6 +98,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira is not configured."
+    error_git_not_configured: "Git provider is not configured."
+    error_jira_ping: "Jira connection failed: %error%"
+    error_git_ping: "Git provider connection failed: %error%"
   project_init:
     section_title: "Project configuration"
     not_git_repository: "Not inside a Git repository. Run this command from a repository checkout."
@@ -271,6 +275,8 @@ item:
     error_fetch: "Failed to load attachments: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Path cannot contain parent directory segments (..)."
+    error_cwd: "Cannot determine current working directory."
+    error_target_dir: "Failed to create target directory: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Uploaded attachments"

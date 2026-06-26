@@ -363,7 +363,7 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
     return _get_jira_api_client();
 }
 
-function _get_linear_api_client(): ?\App\Service\LinearApiClient
+function _get_linear_http_client(): ?\Symfony\Contracts\HttpClient\HttpClientInterface
 {
     $config = _get_config();
     $apiKey = $config['LINEAR_API_KEY'] ?? null;
@@ -371,15 +371,37 @@ function _get_linear_api_client(): ?\App\Service\LinearApiClient
         return null;
     }
 
-    $client = HttpClient::createForBaseUri('https://api.linear.app/', [
+    return HttpClient::createForBaseUri('https://api.linear.app/graphql', [
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => trim($apiKey),
             'Content-Type' => 'application/json',
         ],
     ]);
+}
 
-    return new \App\Service\LinearApiClient($client);
+function _get_linear_graphql_client(): ?\App\Service\LinearGraphqlClient
+{
+    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$linearGraphqlClient !== null) {
+        return \App\Tests\TestKernel::$linearGraphqlClient;
+    }
+
+    $httpClient = _get_linear_http_client();
+    if ($httpClient === null) {
+        return null;
+    }
+
+    return new \App\Service\LinearGraphqlClient($httpClient);
+}
+
+function _get_linear_api_client(): ?\App\Service\LinearApiClient
+{
+    $graphqlClient = _get_linear_graphql_client();
+    if ($graphqlClient === null) {
+        return null;
+    }
+
+    return new \App\Service\LinearApiClient($graphqlClient);
 }
 
 function _get_jira_attachment_service_if_configured(): ?JiraAttachmentService

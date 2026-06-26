@@ -6,12 +6,18 @@ namespace App\Tests\Service;
 
 use App\Exception\ApiException;
 use App\Service\LinearApiClient;
+use App\Service\LinearGraphqlClient;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 class LinearApiClientTest extends TestCase
 {
+    private function createService(MockHttpClient $client): LinearApiClient
+    {
+        return new LinearApiClient(new LinearGraphqlClient($client));
+    }
+
     public function testGetTeamWorkflowStatesReturnsNodes(): void
     {
         $client = new MockHttpClient([
@@ -28,7 +34,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
         $states = $service->getTeamWorkflowStates('SCI');
 
         $this->assertSame([
@@ -44,13 +50,13 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         try {
             $service->getTeamWorkflowStates('SCI');
             $this->fail('Expected ApiException was not thrown.');
         } catch (ApiException $exception) {
-            $this->assertSame('Linear GraphQL request failed.', $exception->getTechnicalDetails());
+            $this->assertSame('Unknown GraphQL error', $exception->getTechnicalDetails());
         }
     }
 
@@ -62,7 +68,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamWorkflowStates('SCI');
@@ -74,7 +80,7 @@ class LinearApiClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         try {
             $service->getTeamWorkflowStates('SCI');
@@ -103,7 +109,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertSame([
             ['id' => 'state-2', 'name' => 'Done', 'type' => 'completed'],
@@ -124,34 +130,9 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertSame([], $service->getTeamWorkflowStates('SCI'));
-    }
-
-    public function testExtractTechnicalDetailsReturnsResponseBody(): void
-    {
-        $response = $this->createMock(\Symfony\Contracts\HttpClient\ResponseInterface::class);
-        $response->method('getContent')->with(false)->willReturn('linear error body');
-
-        $service = new LinearApiClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearApiClient::class, 'extractTechnicalDetails');
-        $method->setAccessible(true);
-
-        $this->assertSame('linear error body', $method->invoke($service, $response));
-    }
-
-    public function testExtractTechnicalDetailsFallsBackToStatusCodeWhenBodyUnreadable(): void
-    {
-        $response = $this->createMock(\Symfony\Contracts\HttpClient\ResponseInterface::class);
-        $response->method('getStatusCode')->willReturn(502);
-        $response->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
-
-        $service = new LinearApiClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearApiClient::class, 'extractTechnicalDetails');
-        $method->setAccessible(true);
-
-        $this->assertSame('HTTP 502', $method->invoke($service, $response));
     }
 
     public function testGetTeamLabelGroupsReturnsGroupsWithChildren(): void
@@ -184,7 +165,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR));
         });
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
         $groups = $service->getTeamLabelGroups('SCI', true);
 
         $this->assertSame([
@@ -234,7 +215,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
         $groups = $service->getTeamLabelGroups('SCI', false);
 
         $this->assertCount(2, $groups);
@@ -251,7 +232,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamLabelGroups('SCI', true);
@@ -272,7 +253,7 @@ class LinearApiClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         try {
             $service->getTeamLabelGroups('SCI', false);
@@ -289,7 +270,7 @@ class LinearApiClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         try {
             $service->getTeamLabelGroups('SCI', true);
@@ -326,7 +307,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertSame([
             [
@@ -353,7 +334,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertSame([], $service->getTeamLabelGroups('SCI', true));
     }
@@ -391,7 +372,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertCount(1, $service->getTeamLabelGroups('SCI', false));
     }
@@ -419,7 +400,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->assertSame([], $service->getTeamLabelGroups('SCI', false));
     }
@@ -441,7 +422,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamLabelGroups('SCI', false);
@@ -473,7 +454,7 @@ class LinearApiClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearApiClient($client);
+        $service = $this->createService($client);
         $groups = $service->getTeamLabelGroups('SCI', false);
 
         $this->assertCount(1, $groups);

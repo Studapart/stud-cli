@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Exception\ApiException;
 use App\Handler\ConfigValidateHandler;
 use App\Response\ConfigValidateResponse;
 use App\Service\GitHostingPort;
@@ -82,8 +83,23 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->jiraStatus);
-        $this->assertSame('Jira API error', $response->jiraMessage);
+        $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_ping', ['error' => 'Jira API error']);
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->gitStatus);
+    }
+
+    public function testHandleReturnsJiraFailWhenPingThrowsApiException(): void
+    {
+        $this->issueTracker->expects($this->once())
+            ->method('ping')
+            ->willThrowException(new ApiException('Jira unavailable', 'GET /myself failed'));
+        $this->gitProvider->expects($this->once())
+            ->method('getLabels')
+            ->willReturn([]);
+
+        $response = $this->createHandler()->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_ping', ['error' => 'Jira unavailable']);
     }
 
     public function testHandleReturnsGitFailWhenGetLabelsThrows(): void
@@ -100,7 +116,21 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->gitStatus);
-        $this->assertSame('Git provider error', $response->gitMessage);
+        $this->assertMessageRef($response->gitMessage, 'config.validate.error_git_ping', ['error' => 'Git provider error']);
+    }
+
+    public function testHandleReturnsGitFailWhenGetLabelsThrowsApiException(): void
+    {
+        $this->issueTracker->expects($this->once())
+            ->method('ping');
+        $this->gitProvider->expects($this->once())
+            ->method('getLabels')
+            ->willThrowException(new ApiException('Git unauthorized', 'GET /labels 401'));
+
+        $response = $this->createHandler()->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->gitMessage, 'config.validate.error_git_ping', ['error' => 'Git unauthorized']);
     }
 
     public function testHandleReturnsBothSkippedWhenSkipFlagsTrue(): void
@@ -228,7 +258,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->jiraStatus);
-        $this->assertSame('Jira not configured', $response->jiraMessage);
+        $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_not_configured');
     }
 
     public function testHandleReturnsGitFailWhenGitProviderNullAndNotSkipped(): void
@@ -241,7 +271,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->gitStatus);
-        $this->assertSame('Git provider not configured', $response->gitMessage);
+        $this->assertMessageRef($response->gitMessage, 'config.validate.error_git_not_configured');
     }
 
     public function testShortReasonTruncatesLongMessages(): void
@@ -258,7 +288,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $response = $handler->handle();
 
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->jiraStatus);
-        $this->assertLessThanOrEqual(120, strlen($response->jiraMessage ?? ''));
-        $this->assertStringEndsWith('...', $response->jiraMessage ?? '');
+        $message = $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_ping');
+        $this->assertLessThanOrEqual(120, strlen((string) ($message->parameters['error'] ?? '')));
+        $this->assertStringEndsWith('...', (string) ($message->parameters['error'] ?? ''));
     }
 }

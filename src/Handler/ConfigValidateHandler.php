@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
+use App\Exception\ApiException;
 use App\Response\ConfigValidateResponse;
 use App\Service\GitHostingPort;
 use App\Service\IssueTrackerPort;
@@ -45,7 +47,7 @@ class ConfigValidateHandler
     }
 
     /**
-     * @return array{status: string, message: ?string}
+     * @return array{status: string, message: MessageRef|string|null}
      */
     protected function resolveJiraStatus(): array
     {
@@ -54,23 +56,31 @@ class ConfigValidateHandler
         }
 
         if ($this->workItemProvider === null) {
-            return ['status' => ConfigValidateResponse::STATUS_FAIL, 'message' => 'Jira not configured'];
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_jira_not_configured'),
+            ];
         }
 
         try {
             $this->workItemProvider->ping();
 
             return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
+        } catch (ApiException $e) {
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_jira_ping', ['error' => $this->shortReason($e)]),
+            ];
         } catch (\Throwable $e) {
             return [
                 'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => $this->shortReason($e),
+                'message' => MessageRef::key('config.validate.error_jira_ping', ['error' => $this->shortReason($e)]),
             ];
         }
     }
 
     /**
-     * @return array{status: string, message: ?string}
+     * @return array{status: string, message: MessageRef|string|null}
      */
     protected function resolveGitStatus(): array
     {
@@ -79,23 +89,31 @@ class ConfigValidateHandler
         }
 
         if ($this->gitProvider === null) {
-            return ['status' => ConfigValidateResponse::STATUS_FAIL, 'message' => 'Git provider not configured'];
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_git_not_configured'),
+            ];
         }
 
         try {
             $this->gitProvider->getLabels();
 
             return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
+        } catch (ApiException $e) {
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
+            ];
         } catch (\Throwable $e) {
             return [
                 'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => $this->shortReason($e),
+                'message' => MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
             ];
         }
     }
 
     /**
-     * @return array{status: string, message: ?string}
+     * @return array{status: string, message: MessageRef|string|null}
      */
     protected function resolveLinearStatus(): array
     {

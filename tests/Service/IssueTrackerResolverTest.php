@@ -62,16 +62,47 @@ class IssueTrackerResolverTest extends TestCase
         $this->assertSame('jira', $result['provider']);
     }
 
-    public function testReturnsErrorWhenBothConfiguredAndAuto(): void
+    public function testResolvesJiraByDefaultWhenBothConfiguredAndAuto(): void
+    {
+        $result = $this->resolver->resolveActiveProvider(
+            [
+                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            ['workItemProvider' => 'auto'],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('jira', $result['provider']);
+    }
+
+    public function testResolvesLinearByDefaultWhenBothConfiguredWithoutJiraCredentials(): void
+    {
+        $result = $this->resolver->resolveActiveProvider(
+            [
+                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            ['workItemProvider' => 'auto'],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('linear', $result['provider']);
+    }
+
+    public function testReturnsErrorWhenBothConfiguredAndAutoWithoutCredentials(): void
     {
         $result = $this->resolver->resolveActiveProvider(
             ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
-            [],
+            ['workItemProvider' => 'auto'],
         );
 
         $this->assertFalse($result['ok']);
         $this->assertSame(
-            'project.workflow.error_ambiguous_provider',
+            'work_item_provider.not_configured',
             $result['error']->key,
         );
     }
@@ -88,7 +119,7 @@ class IssueTrackerResolverTest extends TestCase
 
         $this->assertFalse($result['ok']);
         $this->assertSame(
-            'project.workflow.error_no_provider',
+            'work_item_provider.not_configured',
             $result['error']->key,
         );
     }

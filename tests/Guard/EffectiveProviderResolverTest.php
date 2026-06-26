@@ -68,14 +68,27 @@ class EffectiveProviderResolverTest extends TestCase
         $this->assertFalse($result['ambiguous']);
     }
 
-    public function testResolveWorkItemProvidersMarksAmbiguousAutoSelection(): void
+    public function testResolveWorkItemProvidersResolvesAutoToJiraWhenBothConfigured(): void
     {
         $result = $this->resolver->resolveWorkItemProviders(
             [
                 'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
+            ['workItemProvider' => 'auto'],
+        );
+
+        $this->assertFalse($result['ambiguous']);
+        $this->assertSame(['jira'], $result['providers']);
+    }
+
+    public function testResolveWorkItemProvidersMarksAmbiguousWhenAutoCannotResolve(): void
+    {
+        $result = $this->resolver->resolveWorkItemProviders(
+            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
             ['workItemProvider' => 'auto'],
         );
 

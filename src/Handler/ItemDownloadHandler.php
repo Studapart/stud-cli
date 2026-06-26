@@ -39,15 +39,25 @@ class ItemDownloadHandler implements WorkItemJiraAware
             );
         }
 
+        $cwd = getcwd();
+        // @codeCoverageIgnoreStart
+        if ($cwd === false) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_cwd')
+            );
+        }
+        // @codeCoverageIgnoreEnd
+
         try {
             $targetDir = $this->resolveTargetDirectory($path);
-        } catch (\InvalidArgumentException|\RuntimeException $e) {
-            $message = $e->getMessage();
-            if ($message === 'item.download.error_path_traversal') {
-                return ItemDownloadResponse::fatal(MessageRef::key($message));
-            }
-
-            return ItemDownloadResponse::fatal($message);
+        } catch (\InvalidArgumentException) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_path_traversal')
+            );
+        } catch (\RuntimeException $e) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_target_dir', ['error' => $e->getMessage()])
+            );
         }
 
         if ($key !== '') {
@@ -81,13 +91,6 @@ class ItemDownloadHandler implements WorkItemJiraAware
      */
     private function resolveTargetDirectory(?string $pathOption): string
     {
-        $cwd = getcwd();
-        // @codeCoverageIgnoreStart
-        if ($cwd === false) {
-            throw new \RuntimeException('Cannot determine current working directory.');
-        }
-        // @codeCoverageIgnoreEnd
-
         $rel = ($pathOption !== null && trim($pathOption) !== '') ? trim($pathOption) : self::DEFAULT_RELATIVE_DIR;
         $this->assertNoPathTraversal($rel);
         $this->fileSystem->mkdir($rel, 0777, true);
@@ -103,7 +106,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
         $normalized = str_replace('\\', '/', $path);
         foreach (explode('/', $normalized) as $segment) {
             if ($segment === '..') {
-                throw new \InvalidArgumentException('item.download.error_path_traversal');
+                throw new \InvalidArgumentException('Path traversal');
             }
         }
     }
