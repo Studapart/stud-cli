@@ -314,6 +314,10 @@ item:
     error_fetch: 'Error al obtener tickets: %error%'
     no_items: No se encontraron tickets que coincidan con sus criterios.
     error_invalid_sort: 'Valor de ordenación inválido ''%value%''. Valores aceptados: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Linear está seleccionado pero LINEAR_API_KEY no está configurado. Ejecute "stud config:init" o configure LINEAR_API_KEY en ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira está seleccionado pero las credenciales de Jira no están configuradas. Ejecute "stud config:init".'
+  not_configured: 'No hay proveedor de work-items configurado. Ejecute "stud config:init" para configurar Jira o Linear.'
 project:
   list:
     section: Obteniendo proyectos de Jira

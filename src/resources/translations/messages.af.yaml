@@ -314,6 +314,10 @@ item:
     error_fetch: 'Kon nie items kry nie: %error%'
     no_items: Geen items gevind wat by jou kriteria pas nie.
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waardes: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Linear is gekies maar LINEAR_API_KEY is nie gekonfigureer nie. Voer "stud config:init" uit of stel LINEAR_API_KEY in ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira is gekies maar Jira-geloofsbriewe is nie gekonfigureer nie. Voer "stud config:init" uit.'
+  not_configured: 'Geen work-item-verskaffer gekonfigureer nie. Voer "stud config:init" uit om Jira of Linear op te stel.'
 project:
   list:
     section: Kry Jira Projekte
