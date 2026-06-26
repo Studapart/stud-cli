@@ -10,8 +10,6 @@ use League\Flysystem\Local\LocalFilesystemAdapter;
 
 class FileSystem
 {
-    private const TEMP_PATH_PREFIX = '/tmp/';
-
     private readonly bool $isLocalFilesystem;
     private readonly ?string $cachedCwd;
 
@@ -230,7 +228,7 @@ class FileSystem
         // For temp files, use native operations if:
         // 1. Using in-memory filesystem (temp files need native ops)
         // 2. Using local filesystem but path is outside root
-        if (str_starts_with($path, self::TEMP_PATH_PREFIX)) {
+        if ($this->isUnderSystemTempDir($path)) {
             $isLocal = $this->isLocalFilesystem();
 
             return ! $isLocal || ! $this->isPathWithinRoot($path);
@@ -241,6 +239,29 @@ class FileSystem
         // is inside the archive; using Flysystem would write the config inside the PHAR.
         if ($path !== '' && $path[0] === '/' && ! str_starts_with($path, 'phar://') && $this->isLocalFilesystem()) {
             return true;
+        }
+
+        return false;
+    }
+
+    private function isUnderSystemTempDir(string $path): bool
+    {
+        if ($path === '' || $path[0] !== '/') {
+            return false;
+        }
+
+        $normalizedPath = str_replace('\\', '/', $path);
+        $candidates = array_unique([
+            rtrim(str_replace('\\', '/', sys_get_temp_dir()), '/'),
+            '/tmp',
+            '/private/tmp',
+        ]);
+
+        foreach ($candidates as $tempDir) {
+            if (str_starts_with($normalizedPath, $tempDir . '/')
+                || $normalizedPath === $tempDir) {
+                return true;
+            }
         }
 
         return false;
@@ -320,7 +341,6 @@ class FileSystem
             // but only once at construction time, not on every call
             $reflection = new \ReflectionClass($this->filesystem);
             $adapterProperty = $reflection->getProperty('adapter');
-            $adapterProperty->setAccessible(true);
             $adapter = $adapterProperty->getValue($this->filesystem);
 
             return $adapter instanceof LocalFilesystemAdapter;
@@ -517,7 +537,6 @@ class FileSystem
         try {
             $reflection = new \ReflectionClass($this->filesystem);
             $adapterProperty = $reflection->getProperty('adapter');
-            $adapterProperty->setAccessible(true);
             $adapter = $adapterProperty->getValue($this->filesystem);
 
             if (! $adapter instanceof LocalFilesystemAdapter) {
@@ -526,7 +545,6 @@ class FileSystem
 
             $adapterReflection = new \ReflectionClass($adapter);
             $rootLocationProperty = $adapterReflection->getProperty('rootLocation');
-            $rootLocationProperty->setAccessible(true);
             $rootLocation = $rootLocationProperty->getValue($adapter);
 
             return $rootLocation . '/' . ltrim($path, '/');
