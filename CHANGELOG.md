@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Work-item provider (SCI-161):** `JiraWorkItemProvider` delegates all `WorkItemProviderInterface` methods to `JiraService` and `JiraAttachmentService` with unchanged Jira `WorkItem` mapping; `listAssignedActive` encapsulates the JQL used by `items:list`.
+
 ## [3.19.1] - 2026-06-17
 
 ### Fixed

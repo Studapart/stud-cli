@@ -4,34 +4,46 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\StateChange;
 use App\DTO\WorkItem;
+use App\Exception\ApiException;
 
 /**
- * Jira adapter for WorkItemProviderInterface (SCI-161 implements delegation).
- *
- * @codeCoverageIgnore
+ * Jira adapter for {@see WorkItemProviderInterface}; delegates to existing Jira services.
  */
 final class JiraWorkItemProvider implements WorkItemProviderInterface
 {
     public function __construct(
         private readonly JiraService $jiraService,
-        private readonly ?JiraAttachmentService $attachmentService = null,
+        private readonly JiraAttachmentService $attachmentService,
     ) {
     }
 
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return $this->jiraService->getIssue($key, $renderFields);
     }
 
     public function search(string $query, ?string $context = null): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        unset($context);
+
+        return array_values($this->jiraService->searchIssues($query));
     }
 
     public function listAssignedActive(?string $projectKey = null): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $jqlParts = [
+            'assignee = currentUser()',
+            "statusCategory in ('To Do', 'In Progress')",
+        ];
+        if ($projectKey !== null && $projectKey !== '') {
+            $jqlParts[] = 'project = ' . strtoupper($projectKey);
+        }
+
+        $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
+
+        return array_values($this->jiraService->searchIssues($jql));
     }
 
     /**
@@ -40,7 +52,7 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
      */
     public function create(array $input): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return $this->jiraService->createIssue($input);
     }
 
     /**
@@ -48,52 +60,69 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
      */
     public function update(string $key, array $input): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $this->jiraService->updateIssue($key, $input);
     }
 
     public function listProjectStateChanges(string $projectKey): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return $this->mapJiraTransitions($this->jiraService->getProjectTransitions($projectKey));
     }
 
     public function listItemStateChanges(string $itemKey): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return $this->mapJiraTransitions($this->jiraService->getTransitions($itemKey));
     }
 
     public function applyStateChange(string $itemKey, string $changeId): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $this->jiraService->transitionIssue($itemKey, (int) $changeId);
     }
 
     public function assign(string $key, ?string $user = null): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $this->jiraService->assignIssue($key, $user ?? 'currentUser()');
     }
 
     public function listTeams(): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return array_values($this->jiraService->getProjects());
     }
 
     public function listFiltersOrViews(): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return array_values($this->jiraService->getFilters());
     }
 
     public function runFilterOrView(string $name): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $jql = 'filter = "' . $name . '"';
+
+        return array_values($this->jiraService->searchIssues($jql));
     }
 
     public function listWorkflowMetadata(?string $projectKey = null): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        if ($projectKey === null || $projectKey === '') {
+            return [];
+        }
+
+        return [
+            'issueTypes' => $this->jiraService->getCreateMetaIssueTypes($projectKey),
+        ];
     }
 
     public function listTypeLabels(?string $projectKey = null): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        if ($projectKey === null || $projectKey === '') {
+            return [];
+        }
+
+        $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+
+        return array_values(array_map(
+            static fn (array $type): string => $type['name'],
+            $issueTypes,
+        ));
     }
 
     public function ping(): void
@@ -103,20 +132,41 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
 
     public function listAttachments(string $key): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        return $this->jiraService->getIssue($key, true)->attachments;
     }
 
     public function uploadAttachment(string $key, string $localPath): void
     {
-        if ($this->attachmentService === null) {
-            throw new \BadMethodCallException('Not implemented until SCI-161');
-        }
-
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $this->attachmentService->uploadFileToIssue($key, $localPath);
     }
 
     public function downloadAttachment(string $url, string $destPath): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-161');
+        $content = $this->attachmentService->downloadAttachmentContent($url);
+        if (@file_put_contents($destPath, $content) === false) {
+            throw new ApiException(
+                'Could not write attachment to destination path.',
+                sprintf('Failed to write file: %s', $destPath),
+                500,
+            );
+        }
+    }
+
+    /**
+     * @param array<int, array{id: int|string, name: string, to?: array{name?: string}}> $transitions
+     * @return list<StateChange>
+     */
+    private function mapJiraTransitions(array $transitions): array
+    {
+        $stateChanges = [];
+        foreach ($transitions as $transition) {
+            $stateChanges[] = new StateChange(
+                id: (string) $transition['id'],
+                name: (string) $transition['name'],
+                targetStatus: isset($transition['to']['name']) ? (string) $transition['to']['name'] : null,
+            );
+        }
+
+        return $stateChanges;
     }
 }
