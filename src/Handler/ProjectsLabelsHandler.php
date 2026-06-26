@@ -10,6 +10,7 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\Capability\WorkItemLinearAware;
 use App\Response\ProjectsLabelsResponse;
+use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPortSupplier;
 
 /**
@@ -35,7 +36,7 @@ class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
             return ProjectsLabelsResponse::error($resolution['error']);
         }
 
-        if ($resolution['provider'] === 'jira') {
+        if (! $resolution['port'] instanceof IssueTrackerLabelGroupsCapable) {
             return ProjectsLabelsResponse::success([], [
                 ResponseMessage::notice(MessageRef::key('project.labels.labels_not_supported_for_jira')),
             ]);

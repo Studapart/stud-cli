@@ -9,13 +9,15 @@ use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsLabelsHandler;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
+use App\Service\LinearIssueTrackerAdapter;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class ProjectsLabelsHandlerTest extends CommandTestCase
 {
     public function testHandleReturnsLinearLabelGroups(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearPortMock();
         $port->expects($this->once())
             ->method('listLabelGroups')
             ->with('SCI', false)
@@ -43,7 +45,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
     public function testHandlePassesGroupsOnlyFlagToPort(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearPortMock();
         $port->expects($this->once())
             ->method('listLabelGroups')
             ->with('SCI', true)
@@ -60,10 +62,9 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
         $this->assertCount(1, $response->getWarnings());
     }
 
-    public function testHandleReturnsNoticeForJiraProvider(): void
+    public function testHandleReturnsNoticeWhenPortDoesNotSupportLabelGroups(): void
     {
         $port = $this->createMock(IssueTrackerPort::class);
-        $port->expects($this->never())->method('listLabelGroups');
 
         $response = $this->createHandler(
             resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
@@ -115,7 +116,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenLabelFetchFails(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearPortMock();
         $port->expects($this->once())
             ->method('listLabelGroups')
             ->willThrowException(new \RuntimeException('Linear unavailable'));
@@ -151,5 +152,13 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             $globalConfig,
             $projectConfig,
         );
+    }
+
+    private function createLinearPortMock(): LinearIssueTrackerAdapter&MockObject
+    {
+        return $this->getMockBuilder(LinearIssueTrackerAdapter::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['listLabelGroups'])
+            ->getMock();
     }
 }

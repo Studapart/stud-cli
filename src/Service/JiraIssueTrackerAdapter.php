@@ -131,13 +131,6 @@ final class JiraIssueTrackerAdapter implements IssueTrackerPort
         ));
     }
 
-    public function listLabelGroups(string $projectKey, bool $groupsOnly = false): array
-    {
-        unset($projectKey, $groupsOnly);
-
-        return [];
-    }
-
     public function ping(): void
     {
         $this->jiraApiClient->getProjects();

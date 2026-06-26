@@ -10,7 +10,7 @@ use App\DTO\WorkItem;
 /**
  * Linear adapter for IssueTrackerPort (SCI-164+ implements full delegation).
  */
-final class LinearIssueTrackerAdapter implements IssueTrackerPort
+class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGroupsCapable
 {
     public function __construct(
         private readonly LinearApiClient $linearApiClient,

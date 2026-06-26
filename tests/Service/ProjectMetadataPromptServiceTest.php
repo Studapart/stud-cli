@@ -10,12 +10,14 @@ use App\DTO\WorkflowRecorder;
 use App\Service\BranchNameGenerator;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
+use App\Service\LinearIssueTrackerAdapter;
 use App\Service\MessageRenderer;
 use App\Service\ProjectMetadataPromptService;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class ProjectMetadataPromptServiceTest extends CommandTestCase
 {
@@ -99,7 +101,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseLinearTypeLabelGroupIdReturnsSelectedGroup(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->expects($this->once())
             ->method('listLabelGroups')
             ->with('SCI', true)
@@ -131,7 +133,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testBuildLinearBranchPrefixMapReturnsMapWhenConfirmed(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->expects($this->once())
             ->method('listLabelGroups')
             ->with('SCI', true)
@@ -169,7 +171,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testBuildLinearBranchPrefixMapReturnsNullWhenNotConfirmed(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             [
                 'id' => 'group-1',
@@ -274,7 +276,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseLinearTypeLabelGroupIdReturnsNullWhenNoGroups(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([]);
 
         $prompt = $this->createMock(PromptInterface::class);
@@ -305,7 +307,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testBuildLinearBranchPrefixMapWarnsWhenSelectedGroupHasNoChildLabels(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             ['id' => 'group-1', 'name' => 'Type', 'labels' => []],
         ]);
@@ -324,7 +326,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testBuildLinearBranchPrefixMapReturnsNullWhenAllPrefixPromptsSkipped(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             [
                 'id' => 'group-1',
@@ -348,7 +350,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseLinearTypeLabelGroupIdDefaultsToExistingGroupId(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             ['id' => 'group-1', 'name' => 'Type', 'labels' => []],
         ]);
@@ -446,7 +448,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseLinearTypeLabelGroupIdIgnoresInvalidExistingGroupId(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             ['id' => 'group-1', 'name' => 'Type', 'labels' => []],
         ]);
@@ -473,7 +475,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testBuildLinearBranchPrefixMapReturnsNullWhenGroupIdNotFound(): void
     {
-        $port = $this->createMock(IssueTrackerPort::class);
+        $port = $this->createLinearLabelGroupsPortMock();
         $port->method('listLabelGroups')->willReturn([
             ['id' => 'group-1', 'name' => 'Type', 'labels' => [['id' => 'label-1', 'name' => 'Bug']]],
             ['id' => 'group-2', 'name' => 'Priority', 'labels' => []],
@@ -538,5 +540,13 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
         }
 
         return false;
+    }
+
+    private function createLinearLabelGroupsPortMock(): LinearIssueTrackerAdapter&MockObject
+    {
+        return $this->getMockBuilder(LinearIssueTrackerAdapter::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['listLabelGroups'])
+            ->getMock();
     }
 }

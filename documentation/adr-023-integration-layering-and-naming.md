@@ -106,7 +106,8 @@ Current class names (post SCI-162 / SCI-163 follow-up):
 
 | Class | Role |
 |-------|------|
-| `IssueTrackerPort` | Issue CRUD, search, transitions, attachments, project/team list, discovery metadata (`listProjectStateChanges`, `listLabelGroups`, …) |
+| `IssueTrackerPort` | Issue CRUD, search, transitions, attachments, project/team list, shared discovery (`listProjectStateChanges`, …) |
+| `IssueTrackerLabelGroupsCapable` | Optional capability — Linear LabelGroups + child labels (`listLabelGroups`); not on Jira |
 | `JiraIssueTrackerAdapter` | JQL and Jira REST delegation |
 | `LinearIssueTrackerAdapter` | Linear discovery metadata today; full issue parity in SCI-164+ |
 | `IssueTrackerFactory` / `IssueTrackerPortSupplier` | Config → adapter; keeps HTTP clients out of handlers |
@@ -195,7 +196,7 @@ JQL fragments are **protocol vocabulary**, not user-facing copy. Use `JiraJqlFra
 | Git hosting port name | `GitHostingPort` vs `PullRequestPort` | **GitHostingPort** |
 | DTO rename | Keep `WorkItem` vs `TrackedIssue` | Defer |
 | `GlobalConfigProviderResolver` rename | `IntegrationConfigResolver` | Cosmetic; optional |
-| Split discovery from tracker port | `IssueTrackerDiscoveryPort` | Only if port remains too wide after Linear parity |
+| Split discovery from tracker port | `IssueTrackerDiscoveryPort` | **Partial:** `IssueTrackerLabelGroupsCapable` for Linear-only label groups; full split deferred |
 | `UpdateHandler` + releases | Extend `GitHostingPort` vs dedicated release client | Still uses `GithubGitHostingAdapter` for self-update |
 
 ## 10. Consequences

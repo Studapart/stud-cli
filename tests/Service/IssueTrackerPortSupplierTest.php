@@ -62,6 +62,7 @@ class IssueTrackerPortSupplierTest extends TestCase
 
         $this->assertTrue($result['ok']);
         $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $result['port']);
+        $this->assertInstanceOf(\App\Service\IssueTrackerLabelGroupsCapable::class, $result['port']);
         $this->assertEquals(
             [new StateChange('s1', 'Todo', null, 'unstarted')],
             $result['port']->listProjectStateChanges('SCI'),

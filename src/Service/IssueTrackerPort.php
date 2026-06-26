@@ -113,12 +113,6 @@ interface IssueTrackerPort
      */
     public function listTypeLabels(?string $projectKey = null): array;
 
-    /**
-     * @return list<array{id: string, name: string, labels: list<array{id: string, name: string, color?: string}>}>
-     * @throws ApiException
-     */
-    public function listLabelGroups(string $projectKey, bool $groupsOnly = false): array;
-
     /** @throws ApiException */
     public function ping(): void;
 
