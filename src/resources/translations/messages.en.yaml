@@ -19,6 +19,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -268,6 +269,7 @@ item:
     col_path: "Path"
     error_key_or_url: "Provide a Jira issue key or --url with a Jira attachment content URL."
     error_fetch: "Failed to load attachments: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Path cannot contain parent directory segments (..)."
     error_partial: "%filename%: %message%"
   upload:
@@ -281,6 +283,7 @@ item:
     error_not_found: "File not found."
     error_not_file: "Path is not a readable file."
     error_cwd: "Cannot determine current working directory."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -346,6 +349,7 @@ project:
     no_state_changes: "No state changes found for project %project%."
     error_ambiguous_provider: "workItemProvider is ambiguous. Set jira or linear in .git/stud.config or run stud config:project-init."
     error_no_provider: "No work-item provider configured. Run stud config:init."
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: "ID"
     column_name: "Name"
     column_target_status: "Target status"
@@ -354,6 +358,7 @@ project:
   labels:
     section: "Project label groups"
     labels_not_supported_for_jira: "Label group discovery is not available for Jira. Use Linear or configure linearTypeLabelGroupId manually."
+    error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: "No label groups found for project %project%."
     column_group_id: "Group ID"
     column_group_name: "Group name"

@@ -27,7 +27,9 @@ class ConfluenceShowHandler implements ConfluenceAware
         try {
             $pageId = $this->resolvePageId($input);
         } catch (ApiException $e) {
-            return ConfluenceShowResponse::error($e->getMessage());
+            return ConfluenceShowResponse::error(
+                MessageRef::key('confluence.show.error_resolve', ['error' => $e->getMessage()])
+            );
         }
         if ($pageId === null) {
             return ConfluenceShowResponse::error(

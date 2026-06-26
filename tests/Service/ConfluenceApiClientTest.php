@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Exception\ApiException;
-use App\Service\ConfluenceService;
+use App\Service\ConfluenceApiClient;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class ConfluenceServiceTest extends TestCase
+class ConfluenceApiClientTest extends TestCase
 {
-    private ConfluenceService $confluenceService;
+    private ConfluenceApiClient $confluenceService;
     private HttpClientInterface&MockObject $httpClientMock;
 
     protected function setUp(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->confluenceService = new ConfluenceService($this->httpClientMock);
+        $this->confluenceService = new ConfluenceApiClient($this->httpClientMock);
     }
 
     public function testGetSpacesReturnsMappedList(): void

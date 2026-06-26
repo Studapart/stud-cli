@@ -127,7 +127,7 @@ use App\Service\CommandMap;
 use App\Service\CommandOutputBuffer;
 use App\Service\CommandReferenceGenerator;
 use App\Service\ConfigRemediationService;
-use App\Service\ConfluenceService;
+use App\Service\ConfluenceApiClient;
 use App\Service\ConfluenceWikiAdapter;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
@@ -141,6 +141,7 @@ use App\Service\GlobalMigrationService;
 use App\Service\InitProjectConfigFollowUpService;
 use App\Service\IssueTrackerFactory;
 use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
@@ -362,7 +363,7 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
     return _get_jira_api_client();
 }
 
-function _get_linear_metadata_client(): ?\App\Service\LinearMetadataClient
+function _get_linear_api_client(): ?\App\Service\LinearApiClient
 {
     $config = _get_config();
     $apiKey = $config['LINEAR_API_KEY'] ?? null;
@@ -378,7 +379,27 @@ function _get_linear_metadata_client(): ?\App\Service\LinearMetadataClient
         ],
     ]);
 
-    return new \App\Service\LinearMetadataClient($client);
+    return new \App\Service\LinearApiClient($client);
+}
+
+function _get_jira_attachment_service_if_configured(): ?JiraAttachmentService
+{
+    if (_get_jira_api_client_if_configured() === null) {
+        return null;
+    }
+
+    return _get_jira_attachment_service();
+}
+
+function _get_issue_tracker_port_supplier(): IssueTrackerPortSupplier
+{
+    return new IssueTrackerPortSupplier(
+        _get_issue_tracker_factory(),
+        new IssueTrackerResolver(),
+        _get_jira_api_client_if_configured(),
+        _get_jira_attachment_service_if_configured(),
+        _get_linear_api_client(),
+    );
 }
 
 function _get_jira_attachment_service(): JiraAttachmentService
@@ -417,10 +438,10 @@ function _get_confluence_base_url(?string $urlOverride = null): string
     return $scheme . '://' . $host . '/wiki';
 }
 
-function _get_confluence_service(?string $urlOverride = null): ConfluenceService
+function _get_confluence_api_client(?string $urlOverride = null): ConfluenceApiClient
 {
-    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "confluenceService") && \App\Tests\TestKernel::$confluenceService !== null) {
-        return \App\Tests\TestKernel::$confluenceService;
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", "confluenceApiClient") && \App\Tests\TestKernel::$confluenceApiClient !== null) {
+        return \App\Tests\TestKernel::$confluenceApiClient;
     }
     $baseUrl = rtrim(_get_confluence_base_url($urlOverride), '/') . '/';
     $config = _get_jira_config();
@@ -434,12 +455,12 @@ function _get_confluence_service(?string $urlOverride = null): ConfluenceService
         ],
     ]);
 
-    return new ConfluenceService($client);
+    return new ConfluenceApiClient($client);
 }
 
 function _get_wiki_port(?string $urlOverride = null): WikiPort
 {
-    return new ConfluenceWikiAdapter(_get_confluence_service($urlOverride));
+    return new ConfluenceWikiAdapter(_get_confluence_api_client($urlOverride));
 }
 
 /**
@@ -596,9 +617,7 @@ function _get_git_setup_service(): GitSetupService
 function _get_project_metadata_prompt_service(): ProjectMetadataPromptService
 {
     return new ProjectMetadataPromptService(
-        _get_jira_api_client_if_configured(),
-        _get_linear_metadata_client(),
-        new IssueTrackerResolver(),
+        _get_issue_tracker_port_supplier(),
         new ProjectsWorkflowNormalizer(),
         _get_config(),
         _get_prompt(),
@@ -779,7 +798,12 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?Iss
         $factory->assertCredentials($type, $globalConfig);
 
         if ($type === 'linear') {
-            return $factory->create($type);
+            $linearApiClient = _get_linear_api_client();
+            if ($linearApiClient === null) {
+                throw IssueTrackerException::missingLinearApiKey();
+            }
+
+            return $factory->create($type, linearApiClient: $linearApiClient);
         }
 
         $jiraService = _get_jira_api_client_if_configured();
@@ -1975,9 +1999,7 @@ function projects_workflow(
     }
 
     $handler = new ProjectsWorkflowHandler(
-        _get_jira_api_client_if_configured(),
-        _get_linear_metadata_client(),
-        new IssueTrackerResolver(),
+        _get_issue_tracker_port_supplier(),
         new ProjectsWorkflowNormalizer(),
         _get_config(),
         $projectConfig,
@@ -2034,8 +2056,7 @@ function projects_labels(
     }
 
     $handler = new ProjectsLabelsHandler(
-        _get_linear_metadata_client(),
-        new IssueTrackerResolver(),
+        _get_issue_tracker_port_supplier(),
         _get_config(),
         $projectConfig,
     );
@@ -3370,9 +3391,9 @@ function confluence_page_labels(
     }
 
     try {
-        $confluenceService = _get_confluence_service($url);
+        $confluenceApiClient = _get_confluence_api_client($url);
         _get_logger()->writeln(Logger::VERBOSITY_VERBOSE, '<info>POST rest/api/content/' . $pageId . '/label with: ' . implode(', ', $labelList) . '</info>');
-        $confluenceService->addPageLabels($pageId, $labelList);
+        $confluenceApiClient->addPageLabels($pageId, $labelList);
         _get_logger()->success(Logger::VERBOSITY_NORMAL, 'Labels added: ' . implode(', ', $labelList));
     } catch (\App\Exception\ApiException $e) {
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $e->getMessage() . ($e->getTechnicalDetails() !== '' ? ' ' . $e->getTechnicalDetails() : ''));

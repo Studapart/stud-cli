@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -269,6 +270,7 @@ item:
     col_path: "Ruta"
     error_key_or_url: "Indica una clave de issue de Jira o --url con una URL de contenido de adjunto de Jira."
     error_fetch: "Error al cargar los adjuntos: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "La ruta no puede contener segmentos de directorio padre (..)."
     error_partial: "%filename%: %message%"
   upload:
@@ -282,6 +284,7 @@ item:
     error_not_found: "Archivo no encontrado."
     error_not_file: "La ruta no es un archivo legible."
     error_cwd: "No se puede determinar el directorio de trabajo actual."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
@@ -341,6 +344,7 @@ project:
     no_state_changes: No se encontraron cambios de estado para el proyecto %project%.
     error_ambiguous_provider: workItemProvider es ambiguo. Establezca jira o linear en .git/stud.config o ejecute stud config:project-init.
     error_no_provider: No hay proveedor de tickets configurado. Ejecute stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID
     column_name: Nombre
     column_target_status: Estado destino
@@ -349,6 +353,7 @@ project:
   labels:
     section: Grupos de etiquetas del proyecto
     labels_not_supported_for_jira: El descubrimiento de grupos de etiquetas no está disponible para Jira. Use Linear o configure linearTypeLabelGroupId manualmente.
+    error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: No se encontraron grupos de etiquetas para el proyecto %project%.
     column_group_id: ID de grupo
     column_group_name: Nombre del grupo

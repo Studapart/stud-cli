@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -269,6 +270,7 @@ item:
     col_path: "Путь"
     error_key_or_url: "Укажите ключ задачи Jira или --url с URL содержимого вложения Jira."
     error_fetch: "Не удалось загрузить вложения: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
     error_partial: "%filename%: %message%"
   upload:
@@ -282,6 +284,7 @@ item:
     error_not_found: "Файл не найден."
     error_not_file: "Путь не является читаемым файлом."
     error_cwd: "Не удалось определить текущий рабочий каталог."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -341,6 +344,7 @@ project:
     no_state_changes: Для проекта %project% не найдено изменений состояния.
     error_ambiguous_provider: workItemProvider неоднозначен. Укажите jira или linear в .git/stud.config или выполните stud config:project-init.
     error_no_provider: Провайдер задач не настроен. Выполните stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID
     column_name: Название
     column_target_status: Целевой статус
@@ -349,6 +353,7 @@ project:
   labels:
     section: Группы меток проекта
     labels_not_supported_for_jira: Обнаружение групп меток недоступно для Jira. Используйте Linear или задайте linearTypeLabelGroupId вручную.
+    error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Группы меток для проекта %project% не найдены.
     column_group_id: ID группы
     column_group_name: Имя группы

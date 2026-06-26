@@ -135,17 +135,15 @@ class ItemDownloadHandler implements WorkItemJiraAware
         $files = $this->pullOneAttachment($filename, $url, $targetDir, $files, $errors);
 
         if ($files === [] && $errors !== []) {
-            $first = $errors[0]['message'];
-
-            return ItemDownloadResponse::fatal((string) $first);
+            return ItemDownloadResponse::fatal($errors[0]['message']);
         }
 
         return ItemDownloadResponse::result($files, $errors);
     }
 
     /**
-     * @param list<array{filename: string, path: string}>             $files
-     * @param list<array{filename: string|null, message: string}> $errors
+     * @param list<array{filename: string, path: string}>                                    $files
+     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
      * @return list<array{filename: string, path: string}>
      */
     private function pullOneAttachment(
@@ -162,11 +160,17 @@ class ItemDownloadHandler implements WorkItemJiraAware
         try {
             $this->provider->downloadAttachment($contentUrl, $relativePath);
         } catch (ApiException $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
+            $errors[] = [
+                'filename' => $originalFilename,
+                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
+            ];
 
             return $files;
         } catch (\Throwable $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
+            $errors[] = [
+                'filename' => $originalFilename,
+                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
+            ];
 
             return $files;
         }

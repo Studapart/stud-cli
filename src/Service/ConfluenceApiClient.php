@@ -8,7 +8,7 @@ use App\Exception\ApiException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class ConfluenceService
+class ConfluenceApiClient
 {
     /** Relative to Confluence base URL (base must end with / so path is appended under /wiki). */
     private const API_PREFIX = 'api/v2';

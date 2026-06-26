@@ -7,23 +7,23 @@ namespace App\Service;
 final class ConfluenceWikiAdapter implements WikiPort
 {
     public function __construct(
-        private readonly ConfluenceService $confluenceService,
+        private readonly ConfluenceApiClient $confluenceApiClient,
     ) {
     }
 
     public function getPageWithBody(string $pageId): array
     {
-        return $this->confluenceService->getPageWithBody($pageId);
+        return $this->confluenceApiClient->getPageWithBody($pageId);
     }
 
     public function extractPageIdFromUrl(string $url): string
     {
-        return $this->confluenceService->extractPageIdFromUrl($url);
+        return $this->confluenceApiClient->extractPageIdFromUrl($url);
     }
 
     public function getPage(string $pageId): array
     {
-        return $this->confluenceService->getPage($pageId);
+        return $this->confluenceApiClient->getPage($pageId);
     }
 
     public function updatePage(
@@ -33,17 +33,17 @@ final class ConfluenceWikiAdapter implements WikiPort
         int $versionNumber,
         string $versionMessage = 'Updated via stud-cli',
     ): array {
-        return $this->confluenceService->updatePage($pageId, $title, $adfJsonString, $versionNumber, $versionMessage);
+        return $this->confluenceApiClient->updatePage($pageId, $title, $adfJsonString, $versionNumber, $versionMessage);
     }
 
     public function getFolder(string $folderId): array
     {
-        return $this->confluenceService->getFolder($folderId);
+        return $this->confluenceApiClient->getFolder($folderId);
     }
 
     public function resolveSpaceId(string $spaceKey): string
     {
-        return $this->confluenceService->resolveSpaceId($spaceKey);
+        return $this->confluenceApiClient->resolveSpaceId($spaceKey);
     }
 
     public function createPage(
@@ -53,16 +53,16 @@ final class ConfluenceWikiAdapter implements WikiPort
         ?string $parentId = null,
         string $status = 'current',
     ): array {
-        return $this->confluenceService->createPage($spaceId, $title, $adfJsonString, $parentId, $status);
+        return $this->confluenceApiClient->createPage($spaceId, $title, $adfJsonString, $parentId, $status);
     }
 
     public function getDirectChildPages(string $parentPageId): array
     {
-        return $this->confluenceService->getDirectChildPages($parentPageId);
+        return $this->confluenceApiClient->getDirectChildPages($parentPageId);
     }
 
     public function getDirectChildPagesOfFolder(string $folderId): array
     {
-        return $this->confluenceService->getDirectChildPagesOfFolder($folderId);
+        return $this->confluenceApiClient->getDirectChildPagesOfFolder($folderId);
     }
 }

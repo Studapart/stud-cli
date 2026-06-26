@@ -152,6 +152,9 @@ class ConfluenceShowHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertSame('Invalid Confluence URL: no path.', $response->getError());
+        $error = $response->getErrorMessage();
+        self::assertInstanceOf(\App\DTO\MessageRef::class, $error);
+        self::assertSame('confluence.show.error_resolve', $error->key);
+        self::assertSame('Invalid Confluence URL: no path.', $error->parameters['error']);
     }
 }

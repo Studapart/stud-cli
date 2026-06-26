@@ -10,22 +10,16 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\Capability\WorkItemLinearAware;
 use App\Response\ProjectsWorkflowResponse;
-use App\Service\IssueTrackerResolver;
-use App\Service\JiraApiClient;
-use App\Service\LinearMetadataClient;
+use App\Service\IssueTrackerPortSupplier;
 use App\Service\ProjectsWorkflowNormalizer;
 
 /**
  * Lists workflow transitions (Jira) or workflow states (Linear) for a project/team key.
- *
- * Jira discovery: locate a representative open issue via JQL, then call issue transitions.
  */
 class ProjectsWorkflowHandler implements WorkItemJiraAware, WorkItemLinearAware
 {
     public function __construct(
-        private readonly ?JiraApiClient $jiraService,
-        private readonly ?LinearMetadataClient $linearClient,
-        private readonly IssueTrackerResolver $providerResolver,
+        private readonly IssueTrackerPortSupplier $portSupplier,
         private readonly ProjectsWorkflowNormalizer $normalizer,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,
@@ -36,53 +30,30 @@ class ProjectsWorkflowHandler implements WorkItemJiraAware, WorkItemLinearAware
 
     public function handle(string $projectKey): ProjectsWorkflowResponse
     {
-        $resolution = $this->providerResolver->resolveActiveProvider($this->globalConfig, $this->projectConfig);
+        $resolution = $this->portSupplier->resolve($this->globalConfig, $this->projectConfig);
         if (! $resolution['ok']) {
             return ProjectsWorkflowResponse::error($resolution['error']);
         }
 
         try {
-            $stateChanges = $resolution['provider'] === 'linear'
-                ? $this->fetchLinearStateChanges($projectKey)
-                : $this->fetchJiraStateChanges($projectKey);
+            $stateChanges = $resolution['port']->listProjectStateChanges($projectKey);
+        } catch (ApiException $e) {
+            return ProjectsWorkflowResponse::error(
+                MessageRef::key('project.workflow.error_fetch', ['error' => $e->getMessage()])
+            );
         } catch (\Throwable $e) {
-            return ProjectsWorkflowResponse::error($e->getMessage());
+            return ProjectsWorkflowResponse::error(
+                MessageRef::key('project.workflow.error_fetch', ['error' => $e->getMessage()])
+            );
         }
 
-        if ($stateChanges === []) {
+        $mapped = $this->normalizer->fromStateChanges($stateChanges, $resolution['provider']);
+        if ($mapped === []) {
             return ProjectsWorkflowResponse::success([], [
                 ResponseMessage::warning(MessageRef::key('project.workflow.no_state_changes', ['project' => $projectKey])),
             ]);
         }
 
-        return ProjectsWorkflowResponse::success($stateChanges);
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    protected function fetchJiraStateChanges(string $projectKey): array
-    {
-        if ($this->jiraService === null) {
-            throw new ApiException('Jira is not configured.', 'JIRA credentials are missing from global config.');
-        }
-
-        $transitions = $this->jiraService->getProjectTransitions($projectKey);
-
-        return $this->normalizer->fromJiraTransitions($transitions);
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    protected function fetchLinearStateChanges(string $projectKey): array
-    {
-        if ($this->linearClient === null) {
-            throw new ApiException('Linear is not configured.', 'LINEAR_API_KEY is missing from global config.');
-        }
-
-        $states = $this->linearClient->getTeamWorkflowStates($projectKey);
-
-        return $this->normalizer->fromLinearStates($states);
+        return ProjectsWorkflowResponse::success($mapped);
     }
 }

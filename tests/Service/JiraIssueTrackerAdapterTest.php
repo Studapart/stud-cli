@@ -10,6 +10,7 @@ use App\DTO\Project;
 use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
 use App\Service\JiraIssueTrackerAdapter;
@@ -273,6 +274,11 @@ class JiraIssueTrackerAdapterTest extends TestCase
         $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
 
         $this->assertSame([], $this->provider->listTypeLabels());
+    }
+
+    public function testDoesNotImplementLabelGroupsCapability(): void
+    {
+        $this->assertNotInstanceOf(IssueTrackerLabelGroupsCapable::class, $this->provider);
     }
 
     public function testPingDelegatesToGetProjects(): void

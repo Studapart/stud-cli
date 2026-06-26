@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\StateChange;
+use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsWorkflowHandler;
-use App\Service\IssueTrackerResolver;
-use App\Service\LinearMetadataClient;
+use App\Service\IssueTrackerPort;
+use App\Service\IssueTrackerPortSupplier;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Tests\CommandTestCase;
 
@@ -14,14 +18,18 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 {
     public function testHandleReturnsJiraWorkflows(): void
     {
-        $this->jiraApiClient->expects($this->once())
-            ->method('getProjectTransitions')
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
             ->with('SCI')
             ->willReturn([
-                ['id' => 11, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress']],
+                new StateChange('11', 'Start Progress', 'In Progress'),
             ]);
 
-        $handler = $this->createHandler();
+        $handler = $this->createHandler(
+            port: $port,
+            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+        );
         $response = $handler->handle('SCI');
 
         $this->assertTrue($response->isSuccess());
@@ -32,17 +40,17 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsLinearWorkflows(): void
     {
-        $linearClient = $this->createMock(LinearMetadataClient::class);
-        $linearClient->expects($this->once())
-            ->method('getTeamWorkflowStates')
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
             ->with('SCI')
             ->willReturn([
-                ['id' => 'state-1', 'name' => 'Todo', 'type' => 'unstarted'],
+                new StateChange('state-1', 'Todo', null, 'unstarted'),
             ]);
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            linearClient: $linearClient,
+            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
         );
         $response = $handler->handle('SCI');
 
@@ -52,12 +60,16 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsWarningWhenNoWorkflowsFound(): void
     {
-        $this->jiraApiClient->expects($this->once())
-            ->method('getProjectTransitions')
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
             ->with('SCI')
             ->willReturn([]);
 
-        $response = $this->createHandler()->handle('SCI');
+        $response = $this->createHandler(
+            port: $port,
+            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+        )->handle('SCI');
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->stateChanges);
@@ -69,6 +81,10 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
             projectConfig: [],
+            resolveResult: [
+                'ok' => false,
+                'error' => MessageRef::key('project.workflow.error_ambiguous_provider'),
+            ],
         );
 
         $response = $handler->handle('SCI');
@@ -76,66 +92,100 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         $this->assertFalse($response->isSuccess());
     }
 
-    public function testHandleReturnsErrorWhenJiraApiClientMissing(): void
+    public function testHandleReturnsErrorWhenJiraNotConfigured(): void
     {
-        $handler = new ProjectsWorkflowHandler(
-            null,
-            null,
-            new IssueTrackerResolver(),
-            new ProjectsWorkflowNormalizer(),
-            ['WORK_ITEM_PROVIDERS' => ['jira']],
-            [],
+        $handler = $this->createHandler(
+            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira']],
+            resolveResult: [
+                'ok' => false,
+                'error' => IssueTrackerException::missingJiraConfiguration()->messageRef,
+            ],
         );
 
         $response = $handler->handle('SCI');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira is not configured.', $response->getError());
+        $this->assertSame(
+            'work_item_provider.missing_jira_configuration',
+            (string) $response->getErrorMessage(),
+        );
     }
 
-    public function testHandleReturnsErrorWhenLinearClientMissing(): void
+    public function testHandleReturnsErrorWhenLinearNotConfigured(): void
     {
-        $handler = new ProjectsWorkflowHandler(
-            $this->jiraApiClient,
-            null,
-            new IssueTrackerResolver(),
-            new ProjectsWorkflowNormalizer(),
-            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            [],
+        $handler = $this->createHandler(
+            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            resolveResult: [
+                'ok' => false,
+                'error' => IssueTrackerException::missingLinearApiKey()->messageRef,
+            ],
         );
 
         $response = $handler->handle('SCI');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Linear is not configured.', $response->getError());
+        $this->assertSame(
+            'work_item_provider.missing_linear_api_key',
+            (string) $response->getErrorMessage(),
+        );
+    }
+
+    public function testHandleReturnsErrorWhenWorkflowFetchFailsWithApiException(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Jira unavailable', 'HTTP 503'));
+
+        $response = $this->createHandler(
+            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+        )->handle('SCI');
+
+        $this->assertFalse($response->isSuccess());
+        $error = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $error);
+        $this->assertSame('project.workflow.error_fetch', $error->key);
     }
 
     public function testHandleReturnsErrorWhenWorkflowFetchFails(): void
     {
-        $this->jiraApiClient->expects($this->once())
-            ->method('getProjectTransitions')
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
             ->with('SCI')
             ->willThrowException(new \RuntimeException('Jira unavailable'));
 
-        $response = $this->createHandler()->handle('SCI');
+        $response = $this->createHandler(
+            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+        )->handle('SCI');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira unavailable', $response->getError());
+        $error = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $error);
+        $this->assertSame('project.workflow.error_fetch', $error->key);
     }
 
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
+     * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
         array $globalConfig = ['WORK_ITEM_PROVIDERS' => ['jira']],
         array $projectConfig = [],
-        ?LinearMetadataClient $linearClient = null,
+        ?IssueTrackerPort $port = null,
+        array $resolveResult = [],
     ): ProjectsWorkflowHandler {
+        if ($resolveResult === [] && $port !== null) {
+            $resolveResult = ['ok' => true, 'provider' => 'jira', 'port' => $port];
+        }
+
+        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier->method('resolve')->willReturn($resolveResult);
+
         return new ProjectsWorkflowHandler(
-            $this->jiraApiClient,
-            $linearClient,
-            new IssueTrackerResolver(),
+            $supplier,
             new ProjectsWorkflowNormalizer(),
             $globalConfig,
             $projectConfig,

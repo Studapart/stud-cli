@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 /**
  * Read-only Linear GraphQL client for project metadata discovery (workflow states, labels).
  */
-class LinearMetadataClient
+class LinearApiClient
 {
     private const TEAM_STATES_QUERY = <<<'GQL'
         query TeamStates($teamKey: String!) {

@@ -128,9 +128,18 @@ class IssueTrackerFactoryTest extends TestCase
 
     public function testCreateReturnsLinearAdapter(): void
     {
-        $provider = $this->factory->create('linear');
+        $linearApiClient = $this->createMock(\App\Service\LinearApiClient::class);
+
+        $provider = $this->factory->create('linear', linearApiClient: $linearApiClient);
 
         $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $provider);
+    }
+
+    public function testCreateRequiresLinearClientForLinearType(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->factory->create('linear');
     }
 
     public function testCreateRequiresJiraDependenciesForJiraType(): void
@@ -138,6 +147,22 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $this->factory->create('jira');
+    }
+
+    public function testCreateForProviderThrowsWhenJiraClientsMissing(): void
+    {
+        $this->expectException(IssueTrackerException::class);
+        $this->expectExceptionMessage('work_item_provider.missing_jira_configuration');
+
+        $this->factory->createForProvider('jira', null, null, null);
+    }
+
+    public function testCreateForProviderThrowsWhenLinearClientMissing(): void
+    {
+        $this->expectException(IssueTrackerException::class);
+        $this->expectExceptionMessage('work_item_provider.missing_linear_api_key');
+
+        $this->factory->createForProvider('linear', null, null, null);
     }
 
     public function testResolveTypeRejectsUnknownOverride(): void

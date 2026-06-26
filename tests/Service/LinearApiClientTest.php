@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Exception\ApiException;
-use App\Service\LinearMetadataClient;
+use App\Service\LinearApiClient;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
-class LinearMetadataClientTest extends TestCase
+class LinearApiClientTest extends TestCase
 {
     public function testGetTeamWorkflowStatesReturnsNodes(): void
     {
@@ -28,7 +28,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
         $states = $service->getTeamWorkflowStates('SCI');
 
         $this->assertSame([
@@ -44,7 +44,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         try {
             $service->getTeamWorkflowStates('SCI');
@@ -62,7 +62,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamWorkflowStates('SCI');
@@ -74,7 +74,7 @@ class LinearMetadataClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         try {
             $service->getTeamWorkflowStates('SCI');
@@ -103,7 +103,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertSame([
             ['id' => 'state-2', 'name' => 'Done', 'type' => 'completed'],
@@ -124,7 +124,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertSame([], $service->getTeamWorkflowStates('SCI'));
     }
@@ -134,8 +134,8 @@ class LinearMetadataClientTest extends TestCase
         $response = $this->createMock(\Symfony\Contracts\HttpClient\ResponseInterface::class);
         $response->method('getContent')->with(false)->willReturn('linear error body');
 
-        $service = new LinearMetadataClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearMetadataClient::class, 'extractTechnicalDetails');
+        $service = new LinearApiClient(new MockHttpClient());
+        $method = new \ReflectionMethod(LinearApiClient::class, 'extractTechnicalDetails');
         $method->setAccessible(true);
 
         $this->assertSame('linear error body', $method->invoke($service, $response));
@@ -147,8 +147,8 @@ class LinearMetadataClientTest extends TestCase
         $response->method('getStatusCode')->willReturn(502);
         $response->method('getContent')->with(false)->willThrowException(new \RuntimeException('broken stream'));
 
-        $service = new LinearMetadataClient(new MockHttpClient());
-        $method = new \ReflectionMethod(LinearMetadataClient::class, 'extractTechnicalDetails');
+        $service = new LinearApiClient(new MockHttpClient());
+        $method = new \ReflectionMethod(LinearApiClient::class, 'extractTechnicalDetails');
         $method->setAccessible(true);
 
         $this->assertSame('HTTP 502', $method->invoke($service, $response));
@@ -184,7 +184,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR));
         });
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
         $groups = $service->getTeamLabelGroups('SCI', true);
 
         $this->assertSame([
@@ -234,7 +234,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
         $groups = $service->getTeamLabelGroups('SCI', false);
 
         $this->assertCount(2, $groups);
@@ -251,7 +251,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamLabelGroups('SCI', true);
@@ -272,7 +272,7 @@ class LinearMetadataClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         try {
             $service->getTeamLabelGroups('SCI', false);
@@ -289,7 +289,7 @@ class LinearMetadataClientTest extends TestCase
             new MockResponse('Service unavailable', ['http_code' => 503]),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         try {
             $service->getTeamLabelGroups('SCI', true);
@@ -326,7 +326,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertSame([
             [
@@ -353,7 +353,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertSame([], $service->getTeamLabelGroups('SCI', true));
     }
@@ -391,7 +391,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertCount(1, $service->getTeamLabelGroups('SCI', false));
     }
@@ -419,7 +419,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->assertSame([], $service->getTeamLabelGroups('SCI', false));
     }
@@ -441,7 +441,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
 
         $this->expectException(ApiException::class);
         $service->getTeamLabelGroups('SCI', false);
@@ -473,7 +473,7 @@ class LinearMetadataClientTest extends TestCase
             ], JSON_THROW_ON_ERROR)),
         ]);
 
-        $service = new LinearMetadataClient($client);
+        $service = new LinearApiClient($client);
         $groups = $service->getTeamLabelGroups('SCI', false);
 
         $this->assertCount(1, $groups);
