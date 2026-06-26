@@ -2896,7 +2896,7 @@ CHANGELOG;
         @unlink($tempFile);
     }
 
-    public function testCreateGithubProviderWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2915,12 +2915,12 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithGitToken(): void
+    public function testCreateGithubGitHostingAdapterWithGitToken(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2939,20 +2939,20 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithHttpClientProvided(): void
+    public function testCreateGithubGitHostingAdapterWithHttpClientProvided(): void
     {
         // Test the path where httpClient is provided (not null)
-        $provider = $this->callPrivateMethod($this->handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($this->handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithGitTokenAndHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithGitTokenAndHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2971,9 +2971,9 @@ CHANGELOG;
             $this->httpClient // httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
     public function testFindPharAssetWithAssetMissingNameKey(): void

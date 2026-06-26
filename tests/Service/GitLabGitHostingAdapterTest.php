@@ -4,26 +4,26 @@ namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackIds;
-use App\Service\GitLabProvider;
+use App\Service\GitLabGitHostingAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class GitLabProviderTest extends TestCase
+class GitLabGitHostingAdapterTest extends TestCase
 {
     private const GITLAB_TOKEN = 'test_token';
     private const GITLAB_OWNER = 'test_owner';
     private const GITLAB_REPO = 'test_repo';
     private const PROJECT_PATH = 'test_owner%2Ftest_repo';
 
-    private GitLabProvider $gitlabProvider;
+    private GitLabGitHostingAdapter $gitlabProvider;
     private HttpClientInterface&MockObject $httpClientMock;
 
     protected function setUp(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->gitlabProvider = new GitLabProvider(
+        $this->gitlabProvider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             self::GITLAB_OWNER,
             self::GITLAB_REPO,
@@ -1611,7 +1611,7 @@ class GitLabProviderTest extends TestCase
 
     public function testCreatePullRequestWithNestedGroupPath(): void
     {
-        $nestedGroupProvider = new GitLabProvider(
+        $nestedGroupProvider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             'group/subgroup',
             'test_repo',
@@ -1665,7 +1665,7 @@ class GitLabProviderTest extends TestCase
 
     public function testCreatePullRequestWithDeeplyNestedGroupPath(): void
     {
-        $deeplyNestedProvider = new GitLabProvider(
+        $deeplyNestedProvider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             'group/subgroup/subsubgroup',
             'test_repo',
@@ -1710,7 +1710,7 @@ class GitLabProviderTest extends TestCase
     public function testGetClientCreatesClientWhenNotProvided(): void
     {
         // Create provider without passing a client
-        $provider = new GitLabProvider(
+        $provider = new GitLabGitHostingAdapter(
             self::GITLAB_TOKEN,
             self::GITLAB_OWNER,
             self::GITLAB_REPO,

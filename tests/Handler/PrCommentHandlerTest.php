@@ -11,7 +11,7 @@ use App\DTO\PullRequestFeedbackConversation;
 use App\DTO\PullRequestFeedbackIds;
 use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentHandler;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\PullRequestFeedbackTargetResolver;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -19,13 +19,13 @@ use App\Tests\TestKernel;
 class PrCommentHandlerTest extends CommandTestCase
 {
     private PrCommentHandler $handler;
-    private GitProviderInterface $gitProvider;
+    private GitHostingPort $gitProvider;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->gitProvider = $this->createMock(GitProviderInterface::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
         $this->handler = new PrCommentHandler(

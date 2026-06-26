@@ -12,17 +12,17 @@ use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueFieldResolver;
+use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Prompt\PromptInterface;
-use App\Service\WorkItemProviderInterface;
 
 class ItemCreateHandler implements WorkItemJiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,
         private readonly ItemCreatePromptService $promptService,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         private readonly IssueFieldResolver $fieldResolver,
         private readonly FieldsParser $fieldsParser,
         private readonly PromptInterface $prompt,

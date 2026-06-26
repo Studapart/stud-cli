@@ -10,7 +10,7 @@ use App\DTO\MessageRef;
  * Resolves the active work-item provider for project-scoped commands
  * using global WORK_ITEM_PROVIDERS and optional project workItemProvider.
  */
-final class WorkItemProviderResolver
+final class IssueTrackerResolver
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),

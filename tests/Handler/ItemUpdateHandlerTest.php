@@ -22,7 +22,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
     private function createHandler(): ItemUpdateHandler
     {
         return new ItemUpdateHandler(
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->translationService,
             $this->fieldsParser
         );
@@ -30,11 +30,11 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateSummarySuccess(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->with('SCI-71', $this->callback(fn ($f) => $f['summary'] === 'New title'));
 
@@ -47,15 +47,15 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateDescriptionPlainSuccess(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
             ->willReturn(['description' => ['required' => false, 'name' => 'Description']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('formatDescription')
             ->with('New desc', 'plain')
             ->willReturn(['type' => 'doc', 'content' => []]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->with('SCI-71', $this->callback(fn ($f) => isset($f['description'])));
 
@@ -67,14 +67,14 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateDescriptionMarkdownSuccess(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['description' => ['required' => false, 'name' => 'Description']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('formatDescription')
             ->with('# Heading', 'markdown')
             ->willReturn(['type' => 'doc', 'content' => []]);
-        $this->workItemProvider->expects($this->once())->method('update');
+        $this->issueTracker->expects($this->once())->method('update');
 
         $handler = $this->createHandler();
         $response = $handler->handle(new ItemUpdateInput('SCI-71', descriptionOption: '# Heading', descriptionFormat: 'markdown'));
@@ -84,14 +84,14 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateViaFieldsOption(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->with('SCI-71')
             ->willReturn([
                 'labels' => ['required' => false, 'name' => 'Labels'],
                 'priority' => ['required' => false, 'name' => 'Priority'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->with('SCI-71', $this->callback(function ($f) {
                 return $f['labels'] === ['AI-Generated', 'DX']
@@ -109,10 +109,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateViaFieldsMap(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['labels' => ['required' => false, 'name' => 'Labels']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->with('SCI-71', $this->callback(fn ($f) => $f['labels'] === ['Bug']));
 
@@ -127,10 +127,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUnmatchedFieldsReportedAsSkipped(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['labels' => ['required' => false, 'name' => 'Labels']]);
-        $this->workItemProvider->expects($this->once())->method('update');
+        $this->issueTracker->expects($this->once())->method('update');
 
         $handler = $this->createHandler();
         $response = $handler->handle(new ItemUpdateInput(
@@ -161,7 +161,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorEditmetaFetchFailure(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new ApiException('Not found', 'HTTP 404', 404));
 
@@ -174,7 +174,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorEditmetaThrowableFailure(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new \RuntimeException('Network error'));
 
@@ -187,10 +187,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorUpdateApiFailure(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->willThrowException(new ApiException('Forbidden', 'HTTP 403', 403));
 
@@ -203,10 +203,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testErrorUpdateThrowableFailure(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->willThrowException(new \RuntimeException('Timeout'));
 
@@ -219,10 +219,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testEmptyDescriptionIsIgnored(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->with('SCI-71', $this->callback(fn ($f) => ! isset($f['description']) && $f['summary'] === 'Title'));
 
@@ -234,10 +234,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testEmptyFieldsOptionIsIgnored(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())->method('update');
+        $this->issueTracker->expects($this->once())->method('update');
 
         $handler = $this->createHandler();
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title', fieldsOption: '  '));
@@ -247,7 +247,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testApiExceptionWithEmptyTechnicalDetails(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willThrowException(new ApiException('Not found', '', 404));
 
@@ -259,10 +259,10 @@ class ItemUpdateHandlerTest extends CommandTestCase
 
     public function testUpdateApiExceptionWithEmptyTechnicalDetails(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getEditMetaFields')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('update')
             ->willThrowException(new ApiException('Error', '', 400));
 

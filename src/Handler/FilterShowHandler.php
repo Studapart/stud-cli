@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\FilterShowResponse;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class FilterShowHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
     ) {
     }
 
@@ -22,7 +23,9 @@ class FilterShowHandler implements WorkItemJiraAware
 
             return FilterShowResponse::success($issues, $filterName);
         } catch (\Exception $e) {
-            return FilterShowResponse::error($e->getMessage());
+            return FilterShowResponse::error(
+                MessageRef::key('filter.show.error_fetch', ['error' => $e->getMessage()])
+            );
         }
     }
 }

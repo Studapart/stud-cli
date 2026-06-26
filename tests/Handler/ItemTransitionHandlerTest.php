@@ -27,7 +27,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->prompt = $this->createMock(PromptInterface::class);
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->translationService,
             $this->prompt
         );
@@ -48,7 +48,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
         return new ItemTransitionHandler(
             $this->gitRepository,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->translationService,
             $prompt
         );
@@ -81,21 +81,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             new StateChange('21', 'Done', 'Done'),
         ];
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-35', '11');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $output = new BufferedOutput();
@@ -135,21 +135,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-35', '11');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $output = new BufferedOutput();
@@ -190,21 +190,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-36')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-36')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-36', '11');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $output = new BufferedOutput();
@@ -246,21 +246,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             ->method('getJiraKeyFromBranchName')
             ->willReturn(null);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-37')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-37')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-37', '11');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $output = new BufferedOutput();
@@ -323,12 +323,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFound(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $response = $this->handler->handle('TPW-35');
@@ -338,7 +338,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFoundApiException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
@@ -367,9 +367,9 @@ class ItemTransitionHandlerTest extends CommandTestCase
             new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->workItemProvider->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
-        $this->workItemProvider->expects($this->once())->method('listItemStateChanges')->with('TPW-35')->willReturn($transitions);
-        $this->workItemProvider->expects($this->never())->method('applyStateChange');
+        $this->issueTracker->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
+        $this->issueTracker->expects($this->once())->method('listItemStateChanges')->with('TPW-35')->willReturn($transitions);
+        $this->issueTracker->expects($this->never())->method('applyStateChange');
 
         $this->prompt->expects($this->once())
             ->method('choice')
@@ -394,20 +394,20 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn([]);
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('applyStateChange');
 
         $response = $this->handler->handle('TPW-35');
@@ -429,20 +429,20 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Failed to fetch transitions'));
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('applyStateChange');
 
         $response = $this->handler->handle('TPW-35');
@@ -464,12 +464,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not fetch transitions for issue "TPW-35".', 'HTTP 500: Internal Server Error', 500));
@@ -498,22 +498,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
             new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-35', '11')
             ->willThrowException(new \Exception('Failed to execute transition'));
 
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('assign');
 
         $output = new BufferedOutput();
@@ -549,17 +549,17 @@ class ItemTransitionHandlerTest extends CommandTestCase
             new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-35', '11')
             ->willThrowException(new \App\Exception\ApiException('Could not execute transition 11 for issue "TPW-35".', 'HTTP 400: Bad Request', 400));
@@ -592,17 +592,17 @@ class ItemTransitionHandlerTest extends CommandTestCase
             new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('applyStateChange')
             ->with('TPW-35', '11');
 

@@ -16,9 +16,9 @@ class StatusHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$workItemProvider = $this->workItemProvider;
+        TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new StatusHandler($this->gitRepository, $this->workItemProvider, $this->translationService);
+        $this->handler = new StatusHandler($this->gitRepository, $this->issueTracker, $this->translationService);
     }
 
     public function testHandle(): void
@@ -38,7 +38,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->workItemProvider->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -57,26 +57,26 @@ class StatusHandlerTest extends CommandTestCase
         $this->assertSame(0, $response->exitCode);
     }
 
-    public function testHandleWithJiraServiceException(): void
+    public function testHandleWithJiraApiClientException(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->workItemProvider->method('getIssue')->willThrowException(new \Exception('Jira API error'));
+        $this->issueTracker->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle();
 
         $this->assertSame(0, $response->exitCode);
     }
 
-    public function testHandleWithJiraServiceApiException(): void
+    public function testHandleWithJiraApiClientApiException(): void
     {
         $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->workItemProvider->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+        $this->issueTracker->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
         $response = $this->handler->handle();
 
@@ -101,7 +101,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->workItemProvider->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -125,7 +125,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->workItemProvider->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 

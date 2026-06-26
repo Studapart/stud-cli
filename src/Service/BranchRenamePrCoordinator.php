@@ -18,8 +18,8 @@ class BranchRenamePrCoordinator
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly WorkItemProviderInterface $workItemProvider,
-        private readonly ?GitProviderInterface $githubProvider,
+        private readonly IssueTrackerPort $workItemProvider,
+        private readonly ?GitHostingPort $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly mixed $translator,

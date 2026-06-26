@@ -7,8 +7,8 @@ namespace App\Tests\Handler;
 use App\DTO\IssueAttachment;
 use App\Handler\ItemDownloadHandler;
 use App\Service\FileSystem;
+use App\Service\IssueTrackerPort;
 use App\Service\TranslationService;
-use App\Service\WorkItemProviderInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
@@ -16,7 +16,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
 {
     private FileSystem $fileSystem;
 
-    private WorkItemProviderInterface&MockObject $provider;
+    private IssueTrackerPort&MockObject $provider;
 
     private TranslationService $translator;
 
@@ -27,7 +27,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->provider = $this->createMock(WorkItemProviderInterface::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(static function (string $id, array $parameters = []): string {
             if ($parameters !== []) {
@@ -109,7 +109,8 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $response = $this->handler->handle('KEY-X', null, null);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('load failed', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'item.download.error_fetch');
+        $this->assertSame('load failed', $message->parameters['error']);
     }
 
     public function testHandleSingleUrlModeSuccess(): void
@@ -170,7 +171,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
     public function testAllocateFilenameFallsBackToRandomWhenManyCollisions(): void
     {
         $fileSystem = $this->createMock(FileSystem::class);
-        $provider = $this->createMock(WorkItemProviderInterface::class);
+        $provider = $this->createMock(IssueTrackerPort::class);
         $translator = $this->createMock(TranslationService::class);
         $translator->method('trans')->willReturnArgument(0);
         $handler = new ItemDownloadHandler($fileSystem, $provider, $translator);

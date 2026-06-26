@@ -17,7 +17,7 @@ class SubmitLabelResolver
     private const LABEL_RETRY_OPTION = 'Retry: Abort the command and re-run with a corrected list';
 
     public function __construct(
-        private readonly GitProviderInterface $gitProvider,
+        private readonly GitHostingPort $gitProvider,
         mixed $translator,
         private readonly PromptInterface $prompt,
     ) {

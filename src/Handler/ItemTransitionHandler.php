@@ -14,8 +14,8 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
-use App\Service\WorkItemProviderInterface;
 
 class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
 {
@@ -23,7 +23,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
         private readonly PromptInterface $prompt,
     ) {

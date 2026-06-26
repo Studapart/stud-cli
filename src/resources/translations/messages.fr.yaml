@@ -251,6 +251,7 @@ item:
     section: Détails du ticket %key%
     fetching: 'Récupération des détails pour le ticket : %key%'
     error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    error_fetch: "Échec de la récupération des détails du ticket : %error%"
     label_key: Clé
     label_title: Titre
     label_status: Statut
@@ -267,6 +268,7 @@ item:
     col_filename: "Fichier"
     col_path: "Chemin"
     error_key_or_url: "Indiquez une clé de ticket Jira ou --url avec une URL de contenu de pièce jointe Jira."
+    error_fetch: "Échec du chargement des pièces jointes : %error%"
     error_path_traversal: "Le chemin ne peut pas contenir de segments parent (..)."
     error_partial: "%filename% : %message%"
   upload:

@@ -14,14 +14,14 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
-use App\Service\WorkItemProviderInterface;
 
 class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly PromptInterface $prompt

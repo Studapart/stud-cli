@@ -9,7 +9,7 @@ use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\PrCommentsResponse;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 
 /**
@@ -20,7 +20,7 @@ class PrCommentsHandler implements GitProviderGithubAware, GitProviderGitlabAwar
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly ?GitProviderInterface $gitProvider,
+        private readonly ?GitHostingPort $gitProvider,
         mixed $_translator
     ) {
         unset($_translator);

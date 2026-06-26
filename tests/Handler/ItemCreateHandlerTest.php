@@ -27,7 +27,7 @@ class ItemCreateHandlerTest extends CommandTestCase
     {
         parent::setUp();
         $this->gitRepository = $this->createMock(GitRepository::class);
-        $this->fieldResolver = new IssueFieldResolver($this->jiraService, new DurationParser());
+        $this->fieldResolver = new IssueFieldResolver($this->jiraApiClient, new DurationParser());
         $this->fieldsParser = new FieldsParser(new DurationParser());
         $this->prompt = $this->createMock(PromptInterface::class);
     }
@@ -35,9 +35,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     private function createHandler(): ItemCreateHandler
     {
         return new ItemCreateHandler(
-            new ItemCreateProjectResolver($this->gitRepository, $this->jiraService, $this->prompt),
-            new ItemCreatePromptService($this->jiraService, $this->fieldResolver, $this->prompt),
-            $this->workItemProvider,
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $this->issueTracker,
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
@@ -47,15 +47,15 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandleSuccessWithAllOptions(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -64,7 +64,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'description' => ['required' => false, 'name' => 'Description'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function ($fields) {
                 return $fields['project']['key'] === 'PROJ'
@@ -88,15 +88,15 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['JIRA_DEFAULT_PROJECT' => 'CONF']);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('CONF')
             ->willReturn(new Project('CONF', 'Config Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('CONF')
             ->willReturn([['id' => '10002', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('CONF', '10002')
             ->willReturn([
@@ -104,7 +104,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->willReturn(['key' => 'CONF-1', 'self' => 'https://jira/issue/1']);
 
@@ -121,7 +121,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([]);
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -136,11 +136,11 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn(['JIRA_DEFAULT_PROJECT' => 'PROJ']);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -158,23 +158,23 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'customfield_10001' => ['required' => true, 'name' => 'Custom'],
         ];
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -187,16 +187,16 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenIssueTypeNotFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Task']]);
-        $this->workItemProvider->expects($this->never())->method('getCreateMetaFields');
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('getCreateMetaFields');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -208,16 +208,16 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenGetCreateMetaIssueTypesThrows(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willThrowException(new \RuntimeException('API unavailable'));
-        $this->workItemProvider->expects($this->never())->method('getCreateMetaFields');
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('getCreateMetaFields');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -229,19 +229,19 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenGetCreateMetaFieldsThrows(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willThrowException(new \RuntimeException('Fields API error'));
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -253,15 +253,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenCreateIssueThrowsNonApiException(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -269,7 +269,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->willThrowException(new \RuntimeException('Network error'));
 
@@ -283,15 +283,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenCreateIssueThrows(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -299,7 +299,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->willThrowException(new ApiException('API error', 'details', 400));
 
@@ -313,15 +313,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleIncludesDescriptionWhenProvided(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -330,11 +330,11 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'description' => ['required' => false, 'name' => 'Description'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('descriptionToAdf')
             ->with('Body text', 'plain')
             ->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function ($fields) {
                 return isset($fields['description'])
@@ -351,15 +351,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleWithParentCreatesSubTaskWithParentKey(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10002', 'name' => 'Sub-task']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10002')
             ->willReturn([
@@ -368,7 +368,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'parent' => ['required' => true, 'name' => 'Parent'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function ($fields) {
                 return isset($fields['parent']['key'])
@@ -390,15 +390,15 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -406,7 +406,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
@@ -428,11 +428,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractivePromptsForExtraRequiredFieldsThenCreates(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -442,15 +442,15 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'customfield_10001' => ['required' => true, 'name' => 'Team'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
@@ -481,26 +481,26 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'customfield_10001' => ['required' => true, 'name' => 'Team'],
         ];
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->exactly(2))
+        $this->jiraApiClient->expects($this->exactly(2))
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturnOnConsecutiveCalls(
                 $this->throwException(new \RuntimeException('API error')),
                 $fieldsMeta
             );
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
         $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
@@ -511,11 +511,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveNumericCustomFieldIdSentAsCustomfieldPrefix(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Task']]);
@@ -525,15 +525,15 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             '15' => ['required' => true, 'name' => 'Team'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
@@ -558,11 +558,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveSkipsEmptyExtraRequiredFieldValues(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -573,15 +573,15 @@ class ItemCreateHandlerTest extends CommandTestCase
             'customfield_10001' => ['required' => true, 'name' => 'Team'],
             'customfield_10002' => ['required' => true, 'name' => 'Sprint'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
@@ -611,11 +611,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredProjectInferredFromKeyNoPrompt(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -624,11 +624,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             'issuetype' => ['required' => true, 'name' => 'Issue Type'],
             'summary' => ['required' => true, 'name' => 'Summary'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['project']) && $fields['project'] === ['key' => 'PROJ'];
@@ -647,11 +647,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredReporterDefaultsToCurrentUserNoPrompt(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -661,14 +661,14 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'reporter' => ['required' => true, 'name' => 'Reporter'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-account-id');
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['reporter'])
@@ -688,15 +688,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredAssigneeDefaultsToCurrentUserWhenOptionNull(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -705,10 +705,10 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => true, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-account-id');
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
@@ -725,15 +725,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredAssigneeUsesFieldsOptionWhenProvided(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -742,10 +742,10 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => true, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-account-id');
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
@@ -762,15 +762,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleOptionalAssigneeDefaultsToCurrentUserWhenFieldPresent(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -779,10 +779,10 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => false, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-account-id');
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
@@ -799,15 +799,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleOptionalAssigneeUsesFieldsOptionWhenProvided(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -816,10 +816,10 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'assignee' => ['required' => false, 'name' => 'Assignee'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-account-id');
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['assignee'])
@@ -836,11 +836,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredIssueTypeAndSummaryTakenFromResolvedNoPrompt(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Task']]);
@@ -851,11 +851,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
             'Summary' => ['required' => true, 'name' => 'Summary'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['issuetype']) && $fields['issuetype'] === ['id' => '10001']
@@ -875,12 +875,12 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveNoTypeProvidedShowsIssueTypeChoice(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
         $issueTypes = [['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Task']];
-        $this->jiraService->expects($this->exactly(2))
+        $this->jiraApiClient->expects($this->exactly(2))
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn($issueTypes);
@@ -890,15 +890,15 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'Issue Type' => ['required' => true, 'name' => 'Issue Type'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['issuetype']) && $fields['issuetype'] === ['id' => '10002'];
@@ -920,12 +920,12 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenProjectNotFoundAndNonInteractive(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('INVALID')
             ->willThrowException(new ApiException('Project "INVALID" not found.', 'details', 404));
-        $this->jiraService->expects($this->never())->method('getCreateMetaIssueTypes');
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
 
@@ -937,7 +937,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundPromptsForKeyThenSucceeds(): void
     {
-        $this->jiraService->expects($this->exactly(2))
+        $this->jiraApiClient->expects($this->exactly(2))
             ->method('getProject')
             ->willReturnCallback(function (string $key) {
                 if ($key === 'BAD') {
@@ -946,11 +946,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
                 return new Project('PROJ', 'Project');
             });
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -958,7 +958,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
@@ -977,12 +977,12 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundAndUserGivesEmptyKeyReturnsError(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('BAD')
             ->willThrowException(new ApiException('Not found', 'details', 404));
-        $this->workItemProvider->expects($this->never())->method('getCreateMetaFields');
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('getCreateMetaFields');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $this->prompt->expects($this->once())
             ->method('ask')
@@ -999,7 +999,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveProjectNotFoundAndRetryKeyAlsoNotFoundReturnsError(): void
     {
-        $this->jiraService->expects($this->exactly(2))
+        $this->jiraApiClient->expects($this->exactly(2))
             ->method('getProject')
             ->willReturnCallback(function (string $key) {
                 if ($key === 'BAD' || $key === 'ALSO_BAD') {
@@ -1008,8 +1008,8 @@ class ItemCreateHandlerTest extends CommandTestCase
 
                 return new Project($key, 'Project');
             });
-        $this->workItemProvider->expects($this->never())->method('getCreateMetaFields');
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('getCreateMetaFields');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $this->prompt->expects($this->once())
             ->method('ask')
@@ -1033,11 +1033,11 @@ class ItemCreateHandlerTest extends CommandTestCase
             'customfield_10001' => ['required' => true, 'name' => 'Custom'],
         ];
         $callCount = 0;
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturnCallback(function () use ($fieldsMeta, &$callCount) {
@@ -1048,15 +1048,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
                 return $fieldsMeta;
             });
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->never())->method('create');
+        $this->issueTracker->expects($this->never())->method('create');
 
         $handler = $this->createHandler();
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
@@ -1067,11 +1067,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleInteractiveExtraRequiredDescriptionPromptsAndFills(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -1081,19 +1081,19 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'description' => ['required' => true, 'name' => 'Description'],
         ];
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn($fieldsMeta);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('plainTextToDescriptionAdf')
             ->with('Typed description')
             ->willReturn(['type' => 'doc', 'content' => []]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['description']) && $fields['description'] === ['type' => 'doc', 'content' => []];
@@ -1115,7 +1115,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsProjectFillsKey(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['project' => ['required' => true, 'name' => 'Project']]);
@@ -1128,11 +1128,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsReporterDefaultsToCurrentUser(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['reporter' => ['required' => true, 'name' => 'Reporter']]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
         $handler = $this->createHandler();
@@ -1144,11 +1144,11 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsAssigneeDefaultsToCurrentUser(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['assignee' => ['required' => true, 'name' => 'Assignee']]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('current-user-id');
         $handler = $this->createHandler();
@@ -1160,7 +1160,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsIssueTypeWhenTypeExplicitlyProvided(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1177,7 +1177,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsSummaryFillsFromArgument(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
@@ -1192,7 +1192,7 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testPromptForExtraRequiredFieldsDescriptionWhenAdfProvided(): void
     {
         $descriptionAdf = ['type' => 'doc', 'version' => 1, 'content' => []];
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn(['description' => ['required' => true, 'name' => 'Description']]);
@@ -1206,13 +1206,13 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptForExtraRequiredFieldsDescriptionPromptWhenDescriptionAdfNull(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
                 'description' => ['required' => true, 'name' => 'Description'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('plainTextToDescriptionAdf')
             ->with('User typed description')
             ->willReturn(['type' => 'doc', 'content' => []]);
@@ -1236,15 +1236,15 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testHandleRequiredDescriptionAndDescriptionProvidedFillsDescription(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProject')
             ->with('PROJ')
             ->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1253,11 +1253,11 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'description' => ['required' => true, 'name' => 'Description'],
             ]);
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('descriptionToAdf')
             ->with('Body text', 'plain')
             ->willReturn(['type' => 'doc', 'content' => []]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['description']) && $fields['description'] === ['type' => 'doc', 'content' => []];
@@ -1274,9 +1274,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandle_labelsWhenCreatemetaHasLabels_addsToPayload(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1285,7 +1285,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'labels' => ['required' => false, 'name' => 'Labels'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['labels']) && $fields['labels'] === ['a', 'b'];
@@ -1303,9 +1303,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandle_labelsWhenCreatemetaDoesNotHaveLabels_skippedAndCreateSucceeds(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1313,7 +1313,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return ! isset($fields['labels']);
@@ -1332,9 +1332,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandle_originalEstimateWhenCreatemetaHasIt_addsToPayload(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1343,7 +1343,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['timeoriginalestimate']) && $fields['timeoriginalestimate'] === 86400;
@@ -1361,9 +1361,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandle_originalEstimateWhenCreatemetaDoesNotHaveIt_skippedAndCreateSucceeds(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1371,7 +1371,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'issuetype' => ['required' => true, 'name' => 'Issue Type'],
                 'summary' => ['required' => true, 'name' => 'Summary'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return ! isset($fields['timeoriginalestimate']);
@@ -1390,9 +1390,9 @@ class ItemCreateHandlerTest extends CommandTestCase
     public function testHandle_invalidOriginalEstimate_passedThroughAsRawValue(): void
     {
         $this->gitRepository->expects($this->never())->method('readProjectConfig');
-        $this->jiraService->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
-        $this->jiraService->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
-        $this->workItemProvider->expects($this->once())
+        $this->jiraApiClient->expects($this->once())->method('getProject')->with('PROJ')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())->method('getCreateMetaIssueTypes')->with('PROJ')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -1401,7 +1401,7 @@ class ItemCreateHandlerTest extends CommandTestCase
                 'summary' => ['required' => true, 'name' => 'Summary'],
                 'timeoriginalestimate' => ['required' => false, 'name' => 'Time Original Estimate'],
             ]);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return isset($fields['timeoriginalestimate'])
@@ -1418,7 +1418,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testPromptIssueTypeValueReturnsNullWhenChooseIssueTypeReturnsNull(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([]);
@@ -1437,7 +1437,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testChooseIssueTypeInteractivelyReturnsNullWhenNoIssueTypes(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([]);
@@ -1451,7 +1451,7 @@ class ItemCreateHandlerTest extends CommandTestCase
 
     public function testChooseIssueTypeInteractivelyReturnsNullWhenChoiceDoesNotMatchAnyName(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);

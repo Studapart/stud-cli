@@ -251,6 +251,7 @@ item:
     section: Besonderhede vir item %key%
     fetching: 'Kry besonderhede vir item: %key%'
     error_not_found: Kon nie Jira item met sleutel "%key%" vind nie.
+    error_fetch: "Kon nie kwessiebesonderhede laai nie: %error%"
     label_key: Sleutel
     label_title: Titel
     label_status: Status
@@ -267,6 +268,7 @@ item:
     col_filename: "Lêernaam"
     col_path: "Pad"
     error_key_or_url: "Gee 'n Jira-itemsleutel of --url met 'n Jira-aanhegsel-inhoud-URL."
+    error_fetch: "Kon nie aanhangsels laai nie: %error%"
     error_path_traversal: "Pad mag ouermappe (..) nie bevat nie."
     error_partial: "%filename%: %message%"
   upload:

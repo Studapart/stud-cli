@@ -7,11 +7,11 @@ namespace App\Service;
 use App\DTO\WorkItem;
 
 /**
- * Linear adapter for WorkItemProviderInterface (SCI-164+ implements delegation).
+ * Linear adapter for IssueTrackerPort (SCI-164+ implements delegation).
  *
  * @codeCoverageIgnore
  */
-final class LinearWorkItemProvider implements WorkItemProviderInterface
+final class LinearIssueTrackerAdapter implements IssueTrackerPort
 {
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {

@@ -14,9 +14,9 @@ use App\Guard\CapabilityDiscovery;
 use App\Guard\CommandHandlerRegistry;
 use App\Service\CommandMap;
 use App\Service\ConfluenceService;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\JiraApiClient;
 use PHPUnit\Framework\TestCase;
 
 class CommandGuardRegistryTest extends TestCase
@@ -54,9 +54,9 @@ class CommandGuardRegistryTest extends TestCase
     public function testHandlerMarkersMatchConstructorDependencies(): void
     {
         $dependencyToMarker = [
-            JiraService::class => WorkItemJiraAware::class,
+            JiraApiClient::class => WorkItemJiraAware::class,
             GitRepository::class => GitRepositoryAware::class,
-            GitProviderInterface::class => GitProviderGithubAware::class,
+            GitHostingPort::class => GitProviderGithubAware::class,
             ConfluenceService::class => ConfluenceAware::class,
         ];
 
@@ -99,11 +99,11 @@ class CommandGuardRegistryTest extends TestCase
                 }
 
                 $expected = $dependencyToMarker[$typeName];
-                if ($typeName === GitProviderInterface::class) {
+                if ($typeName === GitHostingPort::class) {
                     $this->assertTrue(
                         $capabilities->has(GitProviderGithubAware::class)
                         || $capabilities->has(GitProviderGitlabAware::class),
-                        "{$handlerClass} injects GitProviderInterface but lacks git provider markers",
+                        "{$handlerClass} injects GitHostingPort but lacks git provider markers",
                     );
 
                     continue;

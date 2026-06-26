@@ -16,7 +16,7 @@ class ItemShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new ItemShowHandler($this->workItemProvider);
+        $this->handler = new ItemShowHandler($this->issueTracker);
     }
 
     public function testHandleReturnsSuccessResponse(): void
@@ -34,7 +34,7 @@ class ItemShowHandlerTest extends CommandTestCase
             '<p>This is a test description.</p>'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willReturn($issue);
@@ -48,7 +48,7 @@ class ItemShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willThrowException(new RuntimeException('Issue not found'));
@@ -57,8 +57,22 @@ class ItemShowHandlerTest extends CommandTestCase
 
         $this->assertInstanceOf(ItemShowResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Issue not found', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'item.show.error_fetch');
+        $this->assertSame('Issue not found', $message->parameters['error']);
         $this->assertNull($response->issue);
+    }
+
+    public function testHandleReturnsNotFoundOnApiException(): void
+    {
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('TPW-35', true)
+            ->willThrowException(new \App\Exception\ApiException('not found', '404', 404));
+
+        $response = $this->handler->handle('TPW-35');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.show.error_not_found', ['key' => 'TPW-35']);
     }
 
     public function testHandleNormalizesKeyToUppercase(): void
@@ -76,7 +90,7 @@ class ItemShowHandlerTest extends CommandTestCase
             null
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35', true)
             ->willReturn($issue);

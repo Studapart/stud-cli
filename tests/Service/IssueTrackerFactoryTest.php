@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Exception\WorkItemProviderException;
+use App\Exception\IssueTrackerException;
+use App\Service\IssueTrackerFactory;
+use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
-use App\Service\JiraService;
-use App\Service\JiraWorkItemProvider;
-use App\Service\LinearWorkItemProvider;
-use App\Service\WorkItemProviderFactory;
+use App\Service\JiraIssueTrackerAdapter;
+use App\Service\LinearIssueTrackerAdapter;
 use PHPUnit\Framework\TestCase;
 
-class WorkItemProviderFactoryTest extends TestCase
+class IssueTrackerFactoryTest extends TestCase
 {
-    private WorkItemProviderFactory $factory;
+    private IssueTrackerFactory $factory;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->factory = new WorkItemProviderFactory();
+        $this->factory = new IssueTrackerFactory();
     }
 
     public function testResolveTypeUsesCliOverride(): void
@@ -86,7 +86,7 @@ class WorkItemProviderFactoryTest extends TestCase
 
     public function testResolveTypeThrowsWhenNoProviderConfigured(): void
     {
-        $this->expectException(WorkItemProviderException::class);
+        $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.not_configured');
 
         $this->factory->resolveType(null, $this->bothProvidersGlobal(), []);
@@ -94,7 +94,7 @@ class WorkItemProviderFactoryTest extends TestCase
 
     public function testAssertCredentialsThrowsWhenLinearSelectedWithoutApiKey(): void
     {
-        $this->expectException(WorkItemProviderException::class);
+        $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_linear_api_key');
 
         $this->factory->assertCredentials('linear', $this->linearOnlyGlobal());
@@ -102,7 +102,7 @@ class WorkItemProviderFactoryTest extends TestCase
 
     public function testAssertCredentialsThrowsWhenJiraSelectedWithoutCredentials(): void
     {
-        $this->expectException(WorkItemProviderException::class);
+        $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_jira_configuration');
 
         $this->factory->assertCredentials('jira', $this->jiraOnlyGlobal());
@@ -118,19 +118,19 @@ class WorkItemProviderFactoryTest extends TestCase
 
     public function testCreateReturnsJiraAdapter(): void
     {
-        $jira = $this->createMock(JiraService::class);
+        $jira = $this->createMock(JiraApiClient::class);
         $attachments = $this->createMock(JiraAttachmentService::class);
 
         $provider = $this->factory->create('jira', $jira, $attachments);
 
-        $this->assertInstanceOf(JiraWorkItemProvider::class, $provider);
+        $this->assertInstanceOf(JiraIssueTrackerAdapter::class, $provider);
     }
 
     public function testCreateReturnsLinearAdapter(): void
     {
         $provider = $this->factory->create('linear');
 
-        $this->assertInstanceOf(LinearWorkItemProvider::class, $provider);
+        $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $provider);
     }
 
     public function testCreateRequiresJiraDependenciesForJiraType(): void

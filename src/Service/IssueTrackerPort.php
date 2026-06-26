@@ -17,7 +17,7 @@ use App\Exception\ApiException;
  * Handlers depend on this interface only; adapters map stud-cli concepts
  * (StateChange, WorkItem) to provider APIs internally.
  */
-interface WorkItemProviderInterface
+interface IssueTrackerPort
 {
     /** @throws ApiException */
     public function getIssue(string $key, bool $renderFields = false): WorkItem;

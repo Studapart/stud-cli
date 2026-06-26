@@ -15,7 +15,7 @@ class FilterShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new FilterShowHandler($this->workItemProvider);
+        $this->handler = new FilterShowHandler($this->issueTracker);
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
@@ -31,7 +31,7 @@ class FilterShowHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('runFilterOrView')
             ->with('My Filter')
             ->willReturn([$issue]);
@@ -47,7 +47,7 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('runFilterOrView')
             ->with('My Filter')
             ->willReturn([]);
@@ -62,7 +62,7 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('runFilterOrView')
             ->with('My Filter')
             ->willThrowException(new \Exception('Jira API error'));
@@ -71,7 +71,8 @@ class FilterShowHandlerTest extends CommandTestCase
 
         $this->assertInstanceOf(FilterShowResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.show.error_fetch');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertEmpty($response->issues);
     }
 }

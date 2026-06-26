@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemListResponse;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class ItemListHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
     ) {
     }
 
@@ -26,7 +27,9 @@ class ItemListHandler implements WorkItemJiraAware
 
             return ItemListResponse::success($issues, $all, $project);
         } catch (\Exception $e) {
-            return ItemListResponse::error($e->getMessage());
+            return ItemListResponse::error(
+                MessageRef::key('item.list.error_fetch', ['error' => $e->getMessage()])
+            );
         }
     }
 

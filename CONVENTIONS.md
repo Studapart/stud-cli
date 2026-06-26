@@ -50,7 +50,7 @@ The `final` keyword must **not** be used on injectable services (Handlers, Provi
 
 **Do NOT use `final` for:**
 - Handler classes (e.g., `UpdateHandler`, `CommitHandler`)
-- Service classes (e.g., `GitRepository`, `JiraService`, `GithubProvider`)
+- Service classes (e.g., `GitRepository`, `JiraApiClient`, `GithubGitHostingAdapter`)
 - Any class that is injected via dependency injection
 
 ### Visibility Guidelines
@@ -449,7 +449,7 @@ try {
 // ❌ BAD: Using real service instances
 public function testHandler() {
     $gitRepository = new GitRepository(); // Real instance
-    $jiraService = new JiraService(); // Real instance
+    $jiraService = new JiraApiClient(); // Real instance
     $handler = new UpdateHandler($gitRepository, $jiraService);
     // This test may make real API calls or modify the file system!
 }
@@ -457,7 +457,7 @@ public function testHandler() {
 // ✅ GOOD: Using mocks
 public function testHandler() {
     $gitRepository = $this->createMock(GitRepository::class);
-    $jiraService = $this->createMock(JiraService::class);
+    $jiraService = $this->createMock(JiraApiClient::class);
     $handler = new UpdateHandler($gitRepository, $jiraService);
     // This test is isolated and predictable
 }
@@ -465,7 +465,7 @@ public function testHandler() {
 
 **What to mock:**
 - Handler classes (e.g., `UpdateHandler`, `CommitHandler`)
-- Service classes (e.g., `GitRepository`, `JiraService`, `GithubProvider`)
+- Service classes (e.g., `GitRepository`, `JiraApiClient`, `GithubGitHostingAdapter`)
 - Any class that is injected via dependency injection
 
 **What NOT to mock (acceptable to use real instances):**

@@ -13,7 +13,7 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
 {
@@ -21,7 +21,7 @@ class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
     ) {
         unset($_translator);

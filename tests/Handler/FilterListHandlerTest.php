@@ -15,14 +15,14 @@ class FilterListHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->handler = new FilterListHandler($this->workItemProvider, $this->translationService);
+        $this->handler = new FilterListHandler($this->issueTracker, $this->translationService);
     }
 
     public function testHandleReturnsSuccessWithFilters(): void
     {
         $filter = new Filter('My Filter', 'Filter description');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listFiltersOrViews')
             ->willReturn([$filter]);
 
@@ -36,7 +36,7 @@ class FilterListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessWithEmptyFilters(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listFiltersOrViews')
             ->willReturn([]);
 
@@ -46,9 +46,9 @@ class FilterListHandlerTest extends CommandTestCase
         $this->assertCount(0, $response->filters);
     }
 
-    public function testHandleReturnsErrorOnJiraServiceException(): void
+    public function testHandleReturnsErrorOnJiraApiClientException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listFiltersOrViews')
             ->willThrowException(new \Exception('Jira API error'));
 
@@ -67,7 +67,7 @@ class FilterListHandlerTest extends CommandTestCase
         $filter2 = new Filter('Alpha Filter', 'Description 2');
         $filter3 = new Filter('Beta Filter', 'Description 3');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listFiltersOrViews')
             ->willReturn([$filter1, $filter2, $filter3]);
 
@@ -84,7 +84,7 @@ class FilterListHandlerTest extends CommandTestCase
     {
         $filter = new Filter('My Filter', null);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listFiltersOrViews')
             ->willReturn([$filter]);
 

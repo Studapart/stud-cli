@@ -251,6 +251,7 @@ item:
     section: Chi tiết cho issue %key%
     fetching: 'Đang lấy chi tiết cho issue: %key%'
     error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    error_fetch: "Không thể tải chi tiết work item: %error%"
     label_key: Khóa
     label_title: Tiêu đề
     label_status: Trạng thái
@@ -267,6 +268,7 @@ item:
     col_filename: "Tên tệp"
     col_path: "Đường dẫn"
     error_key_or_url: "Cung cấp mã issue Jira hoặc --url với URL nội dung tệp đính kèm Jira."
+    error_fetch: "Không thể tải tệp đính kèm: %error%"
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
     error_partial: "%filename%: %message%"
   upload:

@@ -9,7 +9,7 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class ItemDownloadHandler implements WorkItemJiraAware
 {
@@ -17,7 +17,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
 
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator
     ) {
         unset($_translator);
@@ -113,7 +113,9 @@ class ItemDownloadHandler implements WorkItemJiraAware
         try {
             $attachments = $this->provider->listAttachments($issueKey);
         } catch (ApiException $e) {
-            return ItemDownloadResponse::fatal($e->getMessage());
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_fetch', ['error' => $e->getMessage()])
+            );
         }
 
         $files = [];

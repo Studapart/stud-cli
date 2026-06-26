@@ -15,7 +15,7 @@ class ItemListHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new ItemListHandler($this->workItemProvider);
+        $this->handler = new ItemListHandler($this->issueTracker);
     }
 
     public function testHandleDefaultReturnsSuccessResponse(): void
@@ -31,7 +31,7 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, true)
             ->willReturn([$issue]);
@@ -59,7 +59,7 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, false)
             ->willReturn([$issue]);
@@ -85,7 +85,7 @@ class ItemListHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with('MYPROJ', true)
             ->willReturn([$issue]);
@@ -103,7 +103,7 @@ class ItemListHandlerTest extends CommandTestCase
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-35', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, true)
             ->willReturn([$issue1, $issue2, $issue3]);
@@ -123,7 +123,7 @@ class ItemListHandlerTest extends CommandTestCase
         $issue2 = new WorkItem('1001', 'TPW-10', 'Feature B', 'To Do', 'Jane Doe', 'description', ['tests'], 'Task');
         $issue3 = new WorkItem('1002', 'TPW-100', 'Feature C', 'In Progress', 'John Doe', 'description', ['tests'], 'Task');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, true)
             ->willReturn([$issue1, $issue2, $issue3]);
@@ -139,7 +139,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, true)
             ->willReturn([]);
@@ -153,7 +153,7 @@ class ItemListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('listAssignedActive')
             ->with(null, true)
             ->willThrowException(new \Exception('Jira API error'));
@@ -162,7 +162,8 @@ class ItemListHandlerTest extends CommandTestCase
 
         $this->assertInstanceOf(ItemListResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'item.list.error_fetch');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertEmpty($response->issues);
     }
 }

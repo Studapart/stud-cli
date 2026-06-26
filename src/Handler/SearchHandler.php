@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\SearchResponse;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class SearchHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
     ) {
     }
 
@@ -22,7 +23,9 @@ class SearchHandler implements WorkItemJiraAware
 
             return SearchResponse::success($issues, $jql);
         } catch (\Exception $e) {
-            return SearchResponse::error($e->getMessage());
+            return SearchResponse::error(
+                MessageRef::key('search.error_search', ['error' => $e->getMessage()])
+            );
         }
     }
 }

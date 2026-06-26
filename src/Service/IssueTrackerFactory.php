@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Exception\WorkItemProviderException;
+use App\Exception\IssueTrackerException;
 
-class WorkItemProviderFactory
+class IssueTrackerFactory
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
@@ -41,25 +41,25 @@ class WorkItemProviderFactory
     public function assertCredentials(string $type, array $globalConfig): void
     {
         if ($type === 'jira' && ! $this->hasJiraCredentials($globalConfig)) {
-            throw WorkItemProviderException::missingJiraConfiguration();
+            throw IssueTrackerException::missingJiraConfiguration();
         }
 
         if ($type === 'linear' && ! $this->hasLinearCredentials($globalConfig)) {
-            throw WorkItemProviderException::missingLinearApiKey();
+            throw IssueTrackerException::missingLinearApiKey();
         }
     }
 
     public function create(
         string $type,
-        ?JiraService $jiraService = null,
+        ?JiraApiClient $jiraService = null,
         ?JiraAttachmentService $attachmentService = null,
-    ): WorkItemProviderInterface {
+    ): IssueTrackerPort {
         return match ($type) {
-            'jira' => new JiraWorkItemProvider(
+            'jira' => new JiraIssueTrackerAdapter(
                 $jiraService ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
                 $attachmentService ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
             ),
-            'linear' => new LinearWorkItemProvider(),
+            'linear' => new LinearIssueTrackerAdapter(),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
     }
@@ -124,7 +124,7 @@ class WorkItemProviderFactory
             return 'linear';
         }
 
-        throw WorkItemProviderException::notConfigured();
+        throw IssueTrackerException::notConfigured();
     }
 
     /**

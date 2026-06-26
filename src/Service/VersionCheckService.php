@@ -112,7 +112,7 @@ class VersionCheckService
     protected function fetchLatestVersionFromGitHub(): ?string
     {
         try {
-            $githubProvider = $this->createGithubProvider();
+            $githubProvider = $this->createGithubGitHostingAdapter();
             $release = $githubProvider->getLatestRelease();
 
             return ltrim($release['tag_name'] ?? '', 'v');
@@ -122,7 +122,7 @@ class VersionCheckService
         }
     }
 
-    protected function createGithubProvider(): GithubProvider
+    protected function createGithubGitHostingAdapter(): GithubGitHostingAdapter
     {
         $headers = [
             'Accept' => 'application/vnd.github.v3+json',
@@ -137,7 +137,7 @@ class VersionCheckService
             'headers' => $headers,
         ]);
 
-        return new GithubProvider($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
+        return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
     }
 
     protected function writeCache(string $cachePath, ?string $latestVersion): void

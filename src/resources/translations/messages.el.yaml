@@ -251,6 +251,7 @@ item:
     section: Λεπτομέρειες για το θέμα %key%
     fetching: 'Λήψη λεπτομερειών για το θέμα: %key%'
     error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+    error_fetch: "Αποτυχία λήψης λεπτομερειών θέματος: %error%"
     label_key: Κλειδί
     label_title: Τίτλος
     label_status: Κατάσταση
@@ -267,6 +268,7 @@ item:
     col_filename: "Όνομα αρχείου"
     col_path: "Διαδρομή"
     error_key_or_url: "Δώστε κλειδί θέματος Jira ή --url με URL περιεχομένου συνημμένου Jira."
+    error_fetch: "Αποτυχία φόρτωσης συνημμένων: %error%"
     error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
     error_partial: "%filename%: %message%"
   upload:

@@ -92,7 +92,7 @@ flowchart TB
 | **Provider** (config) | Which vendor integration is enabled in YAML / init | `enum WorkItemProvider`, `GIT_PROVIDERS`, `WORK_ITEM_PROVIDERS` |
 | **Port** | Outbound interface handlers depend on; stud-facing vocabulary | `IssueTrackerPort`, `GitHostingPort`, `WikiPort` |
 | **Adapter** | Port implementation for one vendor; anti-corruption layer | `JiraIssueTrackerAdapter`, `GithubGitHostingAdapter` |
-| **Client** | HTTP/GraphQL + JSON mapping; no handler-facing API | Today: `JiraService`, `ConfluenceService`, inline clients in `GithubProvider` |
+| **Client** | HTTP/GraphQL + JSON mapping; no handler-facing API | Today: `JiraApiClient`, `ConfluenceService`, inline clients in `GithubGitHostingAdapter` |
 
 **Repository-shaped** describes operation style (`getByKey`, `search`, `create`, `update`). It does not require the class name *Repository* for remote APIs.
 
@@ -106,11 +106,11 @@ Target names are authoritative for new code and renames. Legacy names remain unt
 
 | Target | Current (legacy) | Notes |
 |--------|------------------|-------|
-| `IssueTrackerPort` | `WorkItemProviderInterface` | Issue CRUD, search, transitions, attachments, project/team list, discovery metadata |
-| `JiraIssueTrackerAdapter` | `JiraWorkItemProvider` | JQL and Jira REST delegation stay inside adapter |
-| `LinearIssueTrackerAdapter` | `LinearWorkItemProvider` | SCI-164+ |
-| `JiraApiClient` | `JiraService` (+ `JiraAttachmentService`, mappers) | Low-level Jira REST |
-| `WorkItemProviderFactory` | same | Resolves config → adapter; rename optional later |
+| `IssueTrackerPort` | `IssueTrackerPort` | Issue CRUD, search, transitions, attachments, project/team list, discovery metadata |
+| `JiraIssueTrackerAdapter` | `JiraIssueTrackerAdapter` | JQL and Jira REST delegation stay inside adapter |
+| `LinearIssueTrackerAdapter` | `LinearIssueTrackerAdapter` | SCI-164+ |
+| `JiraApiClient` | `JiraApiClient` (+ `JiraAttachmentService`, mappers) | Low-level Jira REST |
+| `IssueTrackerFactory` | same | Resolves config → adapter; rename optional later |
 
 `WorkItem` DTO and `items:*` commands stay for user-facing stability. The port name *IssueTracker* reflects stud scope; the DTO rename is an open question (§9).
 
@@ -118,9 +118,9 @@ Target names are authoritative for new code and renames. Legacy names remain unt
 
 | Target | Current (legacy) | Notes |
 |--------|------------------|-------|
-| `GitHostingPort` | `GitProviderInterface` | PR/MR, comments, labels, assign |
-| `GithubGitHostingAdapter` | `GithubProvider` | |
-| `GitLabGitHostingAdapter` | `GitLabProvider` | |
+| `GitHostingPort` | `GitHostingPort` | PR/MR, comments, labels, assign |
+| `GithubGitHostingAdapter` | `GithubGitHostingAdapter` | |
+| `GitLabGitHostingAdapter` | `GitLabGitHostingAdapter` | |
 
 ### Wiki
 
@@ -150,7 +150,7 @@ Handlers inject these directly — no polymorphic port.
 
 ### 6.1 Drop `$context` on `search()`
 
-`WorkItemProviderInterface::search(string $query, ?string $context = null)` loses the `$context` parameter.
+`IssueTrackerPort::search(string $query, ?string $context = null)` loses the `$context` parameter.
 
 * Jira: `$query` is JQL end-to-end.
 * Linear: `$query` is a search term (SCI-174/175).
@@ -175,7 +175,7 @@ JQL fragments are **protocol vocabulary**, not user-facing copy.
 **Do:**
 
 * Class constants for repeated fragments (e.g. `assignee = currentUser()`).
-* Backed enum `JiraStatusCategory` for the closed Jira set: `To Do`, `In Progress`, `Done` — used when building JQL (including aligning `JiraService::getProjectTransitions` `statusCategory != Done` when that code is touched).
+* Backed enum `JiraStatusCategory` for the closed Jira set: `To Do`, `In Progress`, `Done` — used when building JQL (including aligning `JiraApiClient::getProjectTransitions` `statusCategory != Done` when that code is touched).
 * One focused builder or private methods on the Jira issue-tracker adapter for `listAssignedActive` JQL.
 
 **Do not (out of scope):**
@@ -184,7 +184,7 @@ JQL fragments are **protocol vocabulary**, not user-facing copy.
 * Enums for operators (`in`, `!=`, `ORDER BY`).
 * Linear query enums until Linear implementation stories need them.
 
-Consolidate duplicated JQL in `ItemListHandler`, `ItemListResponder`, and `JiraWorkItemProvider` when SCI-162 moves list logic behind the port.
+Consolidate duplicated JQL in `ItemListHandler`, `ItemListResponder`, and `JiraIssueTrackerAdapter` when SCI-162 moves list logic behind the port.
 
 ## 7. What we deliberately do not do
 
@@ -201,10 +201,10 @@ Consolidate duplicated JQL in `ItemListHandler`, `ItemListResponder`, and `JiraW
 |-------|------|---------|
 | **A — Finish epic port wiring** | SCI-162+ | Handlers depend on issue tracker port only; drop `$context`; JQL inside Jira adapter; internal errors → `MessageRef` in touched handlers |
 | **B — Glossary in code** | With A or immediately after | ADR-023 (this document); cross-link from ADR-021 |
-| **C — Adapter renames** | Touch-driven | `JiraWorkItemProvider` → `JiraIssueTrackerAdapter`; keep class alias or single PR if churn is low |
-| **D — Port interface rename** | After C or same PR | `WorkItemProviderInterface` → `IssueTrackerPort`; factory/resolver names follow |
-| **E — Git hosting + wiki ports** | Optional chore | `GitProviderInterface` → `GitHostingPort`; introduce `WikiPort` + `ConfluenceWikiAdapter` when confluence handlers need clearer tests |
-| **F — Client renames** | Low priority | `JiraService` → `JiraApiClient` internal only |
+| **C — Adapter renames** | Touch-driven | `JiraIssueTrackerAdapter` → `JiraIssueTrackerAdapter`; keep class alias or single PR if churn is low |
+| **D — Port interface rename** | After C or same PR | `IssueTrackerPort` → `IssueTrackerPort`; factory/resolver names follow |
+| **E — Git hosting + wiki ports** | Optional chore | `GitHostingPort` → `GitHostingPort`; introduce `WikiPort` + `ConfluenceWikiAdapter` when confluence handlers need clearer tests |
+| **F — Client renames** | Low priority | `JiraApiClient` → `JiraApiClient` internal only |
 
 Phases C–F are **not** blockers for SCI-143 completion.
 
@@ -212,7 +212,7 @@ Phases C–F are **not** blockers for SCI-143 completion.
 
 | Question | Options | Notes |
 |----------|---------|-------|
-| Port name | `IssueTrackerPort` vs `PmPort` vs keep `WorkItemProviderInterface` | This ADR prefers **IssueTrackerPort** for new docs; legacy name until Phase D |
+| Port name | `IssueTrackerPort` vs `PmPort` vs keep `IssueTrackerPort` | This ADR prefers **IssueTrackerPort** for new docs; legacy name until Phase D |
 | Git hosting port name | `GitHostingPort` vs `PullRequestPort` vs `CodeReviewPort` | **GitHostingPort** — covers PRs, comments, labels; not only PRs |
 | DTO rename | Keep `WorkItem` vs `TrackedIssue` / `PmIssue` | User-facing `items:*` unchanged; DTO rename high churn, defer |
 | `GlobalConfigProviderResolver` rename | `IntegrationConfigResolver` | Cosmetic; optional |

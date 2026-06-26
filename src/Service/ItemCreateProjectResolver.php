@@ -13,7 +13,7 @@ class ItemCreateProjectResolver
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly JiraApiClient $jiraService,
         private readonly PromptInterface $prompt,
     ) {
     }

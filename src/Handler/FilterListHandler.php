@@ -8,12 +8,12 @@ use App\DTO\Filter;
 use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\FilterListResponse;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class FilterListHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
     ) {
         unset($_translator);

@@ -29,7 +29,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -54,7 +54,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         return new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -91,7 +91,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Issue not found', 'HTTP 404', 404));
@@ -118,7 +118,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
@@ -126,7 +126,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -157,12 +157,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123')
             ->willThrowException(new \RuntimeException('Assignment failed'));
@@ -212,12 +212,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -266,12 +266,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
@@ -282,7 +282,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = new ItemTakeoverHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->itemStartHandler,
             'origin/develop',
             $this->translationService,
@@ -335,12 +335,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -408,12 +408,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -481,12 +481,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -553,12 +553,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -627,12 +627,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -704,12 +704,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -781,12 +781,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -834,12 +834,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -922,12 +922,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -993,12 +993,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1047,12 +1047,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1097,12 +1097,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1173,12 +1173,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 
@@ -1246,12 +1246,12 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('assign')
             ->with('PROJ-123');
 

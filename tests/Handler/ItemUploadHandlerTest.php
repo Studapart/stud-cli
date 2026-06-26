@@ -7,8 +7,8 @@ namespace App\Tests\Handler;
 use App\DTO\ItemUploadInput;
 use App\Handler\ItemUploadHandler;
 use App\Service\FileSystem;
+use App\Service\IssueTrackerPort;
 use App\Service\TranslationService;
-use App\Service\WorkItemProviderInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
@@ -16,7 +16,7 @@ class ItemUploadHandlerTest extends CommandTestCase
 {
     private FileSystem $fileSystem;
 
-    private WorkItemProviderInterface&MockObject $provider;
+    private IssueTrackerPort&MockObject $provider;
 
     private TranslationService $translator;
 
@@ -27,7 +27,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->provider = $this->createMock(WorkItemProviderInterface::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(static function (string $id, array $parameters = []): string {
             if ($parameters !== []) {

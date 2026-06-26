@@ -420,7 +420,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $this->assertFalse($response->updated);
     }
 
-    public function testAgentWritesLinearWorkItemProviderAndFields(): void
+    public function testAgentWritesLinearIssueTrackerAdapterAndFields(): void
     {
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');

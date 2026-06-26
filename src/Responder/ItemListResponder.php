@@ -7,6 +7,7 @@ namespace App\Responder;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ItemListResponse;
+use App\Service\Jira\JiraAssignedActiveJqlBuilder;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\View\Column;
@@ -68,16 +69,7 @@ class ItemListResponder
 
     protected function buildJql(ItemListResponse $response): string
     {
-        $jqlParts = [];
-        if (! $response->all) {
-            $jqlParts[] = 'assignee = currentUser()';
-        }
-        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
-        if ($response->project) {
-            $jqlParts[] = 'project = ' . strtoupper($response->project);
-        }
-
-        return implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
+        return JiraAssignedActiveJqlBuilder::build($response->project, ! $response->all);
     }
 
     protected function respondJson(ItemListResponse $response): AgentJsonResponse

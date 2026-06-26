@@ -19,12 +19,12 @@ use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\CanConvertToMarkdownInterface;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\MarkdownHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\SubmitLabelResolver;
-use App\Service\WorkItemProviderInterface;
 
 class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
 {
@@ -35,8 +35,8 @@ class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, G
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly WorkItemProviderInterface $provider,
-        private readonly ?GitProviderInterface $githubProvider,
+        private readonly IssueTrackerPort $provider,
+        private readonly ?GitHostingPort $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly mixed $translator,

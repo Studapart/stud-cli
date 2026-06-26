@@ -15,8 +15,8 @@ use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
-use App\Service\WorkItemProviderInterface;
 
 class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
 {
@@ -28,7 +28,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         private readonly ItemStartHandler $itemStartHandler,
         private readonly string $baseBranch,
         mixed $_translator,

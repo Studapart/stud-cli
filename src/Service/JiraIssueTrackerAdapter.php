@@ -7,42 +7,34 @@ namespace App\Service;
 use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
+use App\Service\Jira\JiraAssignedActiveJqlBuilder;
 
 /**
- * Jira adapter for {@see WorkItemProviderInterface}; delegates to existing Jira services.
+ * Jira adapter for {@see IssueTrackerPort}; delegates to existing Jira services.
  */
-final class JiraWorkItemProvider implements WorkItemProviderInterface
+final class JiraIssueTrackerAdapter implements IssueTrackerPort
 {
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly JiraApiClient $jiraApiClient,
         private readonly JiraAttachmentService $attachmentService,
     ) {
     }
 
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
-        return $this->jiraService->getIssue($key, $renderFields);
+        return $this->jiraApiClient->getIssue($key, $renderFields);
     }
 
     public function search(string $query): array
     {
-        return array_values($this->jiraService->searchIssues($query));
+        return array_values($this->jiraApiClient->searchIssues($query));
     }
 
     public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array
     {
-        $jqlParts = [];
-        if ($onlyMine) {
-            $jqlParts[] = 'assignee = currentUser()';
-        }
-        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
-        if ($projectKey !== null && $projectKey !== '') {
-            $jqlParts[] = 'project = ' . strtoupper($projectKey);
-        }
+        $jql = JiraAssignedActiveJqlBuilder::build($projectKey, $onlyMine);
 
-        $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
-
-        return array_values($this->jiraService->searchIssues($jql));
+        return array_values($this->jiraApiClient->searchIssues($jql));
     }
 
     /**
@@ -51,7 +43,7 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
      */
     public function create(array $input): array
     {
-        return $this->jiraService->createIssue($input);
+        return $this->jiraApiClient->createIssue($input);
     }
 
     /**
@@ -59,59 +51,59 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
      */
     public function update(string $key, array $input): void
     {
-        $this->jiraService->updateIssue($key, $input);
+        $this->jiraApiClient->updateIssue($key, $input);
     }
 
     public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
     {
-        return $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+        return $this->jiraApiClient->getCreateMetaFields($projectKey, $issueTypeId);
     }
 
     public function getEditMetaFields(string $key): array
     {
-        return $this->jiraService->getEditMetaFields($key);
+        return $this->jiraApiClient->getEditMetaFields($key);
     }
 
     public function formatDescription(string $text, string $format = 'plain'): array
     {
-        return $this->jiraService->descriptionToAdf($text, $format);
+        return $this->jiraApiClient->descriptionToAdf($text, $format);
     }
 
     public function listProjectStateChanges(string $projectKey): array
     {
-        return $this->mapJiraTransitions($this->jiraService->getProjectTransitions($projectKey));
+        return $this->mapJiraTransitions($this->jiraApiClient->getProjectTransitions($projectKey));
     }
 
     public function listItemStateChanges(string $itemKey): array
     {
-        return $this->mapJiraTransitions($this->jiraService->getTransitions($itemKey));
+        return $this->mapJiraTransitions($this->jiraApiClient->getTransitions($itemKey));
     }
 
     public function applyStateChange(string $itemKey, string $changeId): void
     {
-        $this->jiraService->transitionIssue($itemKey, (int) $changeId);
+        $this->jiraApiClient->transitionIssue($itemKey, (int) $changeId);
     }
 
     public function assign(string $key, ?string $user = null): void
     {
-        $this->jiraService->assignIssue($key, $user ?? 'currentUser()');
+        $this->jiraApiClient->assignIssue($key, $user ?? 'currentUser()');
     }
 
     public function listTeams(): array
     {
-        return array_values($this->jiraService->getProjects());
+        return array_values($this->jiraApiClient->getProjects());
     }
 
     public function listFiltersOrViews(): array
     {
-        return array_values($this->jiraService->getFilters());
+        return array_values($this->jiraApiClient->getFilters());
     }
 
     public function runFilterOrView(string $name): array
     {
         $jql = 'filter = "' . $name . '"';
 
-        return array_values($this->jiraService->searchIssues($jql));
+        return array_values($this->jiraApiClient->searchIssues($jql));
     }
 
     public function listWorkflowMetadata(?string $projectKey = null): array
@@ -121,7 +113,7 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
         }
 
         return [
-            'issueTypes' => $this->jiraService->getCreateMetaIssueTypes($projectKey),
+            'issueTypes' => $this->jiraApiClient->getCreateMetaIssueTypes($projectKey),
         ];
     }
 
@@ -131,7 +123,7 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
             return [];
         }
 
-        $issueTypes = $this->jiraService->getCreateMetaIssueTypes($projectKey);
+        $issueTypes = $this->jiraApiClient->getCreateMetaIssueTypes($projectKey);
 
         return array_values(array_map(
             static fn (array $type): string => $type['name'],
@@ -141,12 +133,12 @@ final class JiraWorkItemProvider implements WorkItemProviderInterface
 
     public function ping(): void
     {
-        $this->jiraService->getProjects();
+        $this->jiraApiClient->getProjects();
     }
 
     public function listAttachments(string $key): array
     {
-        return $this->jiraService->getIssue($key, true)->attachments;
+        return $this->jiraApiClient->getIssue($key, true)->attachments;
     }
 
     public function uploadAttachment(string $key, string $localPath): void

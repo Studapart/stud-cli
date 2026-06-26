@@ -10,12 +10,12 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
-use App\Service\WorkItemProviderInterface;
+use App\Service\IssueTrackerPort;
 
 class ItemUpdateHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly WorkItemProviderInterface $provider,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
         private readonly FieldsParser $fieldsParser
     ) {

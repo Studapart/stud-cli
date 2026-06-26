@@ -25,7 +25,7 @@ class UpdateReleaseFetcher
     /**
      * @codeCoverageIgnore
      */
-    public function createGithubProvider(): GithubProvider
+    public function createGithubGitHostingAdapter(): GithubGitHostingAdapter
     {
         $headers = [
             'Accept' => 'application/vnd.github.v3+json',
@@ -40,7 +40,7 @@ class UpdateReleaseFetcher
             'headers' => $headers,
         ]);
 
-        return new GithubProvider($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
+        return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
     }
 
     /**
@@ -48,7 +48,7 @@ class UpdateReleaseFetcher
      *
      * @codeCoverageIgnore
      */
-    public function fetchLatestRelease(GithubProvider $githubProvider, WorkflowEntryRecorder $recorder): array
+    public function fetchLatestRelease(GithubGitHostingAdapter $githubProvider, WorkflowEntryRecorder $recorder): array
     {
         try {
             return ['release' => $githubProvider->getLatestRelease(), 'is404' => false];
@@ -84,7 +84,7 @@ class UpdateReleaseFetcher
     /**
      * @return int|array<string, mixed>
      */
-    public function getReleaseOrExitCode(GithubProvider $githubProvider, WorkflowEntryRecorder $recorder): int|array
+    public function getReleaseOrExitCode(GithubGitHostingAdapter $githubProvider, WorkflowEntryRecorder $recorder): int|array
     {
         $releaseResult = $this->fetchLatestRelease($githubProvider, $recorder);
         if ($releaseResult['is404']) {

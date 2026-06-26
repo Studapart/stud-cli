@@ -10,8 +10,8 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\Capability\WorkItemLinearAware;
 use App\Response\ProjectsLabelsResponse;
+use App\Service\IssueTrackerResolver;
 use App\Service\LinearMetadataClient;
-use App\Service\WorkItemProviderResolver;
 
 /**
  * Lists Linear LabelGroups and child labels for a team key.
@@ -22,7 +22,7 @@ class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
 {
     public function __construct(
         private readonly ?LinearMetadataClient $linearClient,
-        private readonly WorkItemProviderResolver $providerResolver,
+        private readonly IssueTrackerResolver $providerResolver,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,
         /** @var array<string, mixed> */

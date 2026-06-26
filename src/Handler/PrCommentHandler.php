@@ -11,7 +11,7 @@ use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\PrCommentResponse;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use App\Service\MarkdownHelper;
 use App\Service\PullRequestFeedbackTargetResolver;
@@ -20,7 +20,7 @@ class PrCommentHandler implements GitProviderGithubAware, GitProviderGitlabAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly ?GitProviderInterface $gitProvider,
+        private readonly ?GitHostingPort $gitProvider,
         mixed $_translator,
         private readonly PullRequestFeedbackTargetResolver $targetResolver = new PullRequestFeedbackTargetResolver(),
     ) {

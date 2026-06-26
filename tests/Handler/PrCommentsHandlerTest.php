@@ -11,20 +11,20 @@ use App\DTO\PullRequestFeedbackIds;
 use App\DTO\PullRequestFeedbackState;
 use App\Handler\PrCommentsHandler;
 use App\Response\PrCommentsResponse;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class PrCommentsHandlerTest extends CommandTestCase
 {
-    /** @var GitProviderInterface&MockObject */
+    /** @var GitHostingPort&MockObject */
     private $gitProvider;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->gitProvider = $this->createMock(GitProviderInterface::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
     }
 
     public function testHandleReturnsSuccessWithComments(): void

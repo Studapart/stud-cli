@@ -18,9 +18,9 @@ use App\Service\Prompt\PromptInterface;
 class ProjectMetadataPromptService
 {
     public function __construct(
-        private readonly ?JiraService $jiraService,
+        private readonly ?JiraApiClient $jiraService,
         private readonly ?LinearMetadataClient $linearClient,
-        private readonly WorkItemProviderResolver $providerResolver,
+        private readonly IssueTrackerResolver $providerResolver,
         private readonly ProjectsWorkflowNormalizer $normalizer,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,

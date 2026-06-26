@@ -15,7 +15,7 @@ class SearchHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new SearchHandler($this->workItemProvider);
+        $this->handler = new SearchHandler($this->issueTracker);
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
@@ -31,7 +31,7 @@ class SearchHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('search')
             ->with('project = TPW')
             ->willReturn([$issue]);
@@ -47,7 +47,7 @@ class SearchHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('search')
             ->with('project = TPW')
             ->willReturn([]);
@@ -62,7 +62,7 @@ class SearchHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('search')
             ->with('project = TPW')
             ->willThrowException(new \Exception('Jira API error'));
@@ -71,7 +71,8 @@ class SearchHandlerTest extends CommandTestCase
 
         $this->assertInstanceOf(SearchResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'search.error_search');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertEmpty($response->issues);
     }
 }

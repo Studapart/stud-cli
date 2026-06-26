@@ -6,22 +6,22 @@ namespace App\Tests\Handler;
 
 use App\Handler\ConfigValidateHandler;
 use App\Response\ConfigValidateResponse;
-use App\Service\GitProviderInterface;
-use App\Service\WorkItemProviderInterface;
+use App\Service\GitHostingPort;
+use App\Service\IssueTrackerPort;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class ConfigValidateHandlerTest extends CommandTestCase
 {
-    private GitProviderInterface&MockObject $gitProvider;
+    private GitHostingPort&MockObject $gitProvider;
 
     /**
-     * @param WorkItemProviderInterface|MockObject|null|false $workItemProvider false uses setUp mock; null means not configured
-     * @param GitProviderInterface|MockObject|null|false $gitProvider false uses setUp mock; null means not configured
+     * @param IssueTrackerPort|MockObject|null|false $workItemProvider false uses setUp mock; null means not configured
+     * @param GitHostingPort|MockObject|null|false $gitProvider false uses setUp mock; null means not configured
      */
     private function createHandler(
-        WorkItemProviderInterface|MockObject|null|false $workItemProvider = false,
-        GitProviderInterface|MockObject|null|false $gitProvider = false,
+        IssueTrackerPort|MockObject|null|false $workItemProvider = false,
+        GitHostingPort|MockObject|null|false $gitProvider = false,
         bool $skipJira = false,
         bool $skipGit = false,
         bool $skipLinear = false,
@@ -30,7 +30,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
         bool $validateLinear = true,
     ): ConfigValidateHandler {
         return new ConfigValidateHandler(
-            $workItemProvider === false ? $this->workItemProvider : $workItemProvider,
+            $workItemProvider === false ? $this->issueTracker : $workItemProvider,
             $gitProvider === false ? $this->gitProvider : $gitProvider,
             $skipJira,
             $skipGit,
@@ -45,12 +45,12 @@ class ConfigValidateHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->gitProvider = $this->createMock(GitProviderInterface::class);
+        $this->gitProvider = $this->createMock(GitHostingPort::class);
     }
 
     public function testHandleReturnsAllOkWhenBothServicesSucceed(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
@@ -70,7 +70,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsJiraFailWhenGetProjectsThrows(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping')
             ->willThrowException(new \RuntimeException('Jira API error'));
         $this->gitProvider->expects($this->once())
@@ -88,7 +88,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsGitFailWhenGetLabelsThrows(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
@@ -105,7 +105,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsBothSkippedWhenSkipFlagsTrue(): void
     {
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
@@ -121,14 +121,14 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsJiraWhenValidateJiraFalse(): void
     {
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
             ->willReturn([]);
 
         $handler = new ConfigValidateHandler(
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->gitProvider,
             false,
             false,
@@ -146,13 +146,13 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsGitWhenValidateGitFalse(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
 
         $handler = new ConfigValidateHandler(
-            $this->workItemProvider,
+            $this->issueTracker,
             $this->gitProvider,
             false,
             false,
@@ -188,7 +188,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsJiraOnlyWhenSkipJiraTrue(): void
     {
-        $this->workItemProvider->expects($this->never())
+        $this->issueTracker->expects($this->never())
             ->method('ping');
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
@@ -204,12 +204,12 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsGitOnlyWhenSkipGitTrue(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping');
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
 
-        $handler = $this->createHandler($this->workItemProvider, null, false, true);
+        $handler = $this->createHandler($this->issueTracker, null, false, true);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -217,7 +217,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->gitStatus);
     }
 
-    public function testHandleReturnsJiraFailWhenJiraServiceNullAndNotSkipped(): void
+    public function testHandleReturnsJiraFailWhenJiraApiClientNullAndNotSkipped(): void
     {
         $this->gitProvider->expects($this->once())
             ->method('getLabels')
@@ -233,10 +233,10 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsGitFailWhenGitProviderNullAndNotSkipped(): void
     {
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping');
 
-        $handler = $this->createHandler($this->workItemProvider, null);
+        $handler = $this->createHandler($this->issueTracker, null);
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -247,7 +247,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
     public function testShortReasonTruncatesLongMessages(): void
     {
         $longMessage = str_repeat('x', 150);
-        $this->workItemProvider->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('ping')
             ->willThrowException(new \RuntimeException($longMessage));
         $this->gitProvider->expects($this->once())
