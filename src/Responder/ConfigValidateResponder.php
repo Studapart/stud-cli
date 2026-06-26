@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\MessageRef;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ConfigValidateResponse;
@@ -87,15 +88,28 @@ class ConfigValidateResponder
 
         return new AgentJsonResponse(true, data: [
             'jiraStatus' => $response->jiraStatus,
-            'jiraMessage' => $response->jiraMessage,
+            'jiraMessage' => $this->formatMessageForAgent($response->jiraMessage),
             'gitStatus' => $response->gitStatus,
-            'gitMessage' => $response->gitMessage,
+            'gitMessage' => $this->formatMessageForAgent($response->gitMessage),
             'linearStatus' => $response->linearStatus,
-            'linearMessage' => $response->linearMessage,
+            'linearMessage' => $this->formatMessageForAgent($response->linearMessage),
         ], diagnostics: $diagnostics);
     }
 
-    protected function formatStatus(string $status, ?string $message): string
+    protected function formatMessageForAgent(MessageRef|string|null $message): ?string
+    {
+        if ($message === null) {
+            return null;
+        }
+
+        if ($message instanceof MessageRef) {
+            return $this->helper->translator->transForAgentText($message->key, $message->parameters);
+        }
+
+        return $message;
+    }
+
+    protected function formatStatus(string $status, MessageRef|string|null $message): string
     {
         if ($status === ConfigValidateResponse::STATUS_OK) {
             return $this->helper->translator->trans('config.validate.status_ok');
@@ -106,9 +120,23 @@ class ConfigValidateResponder
         }
 
         $failLabel = $this->helper->translator->trans('config.validate.status_fail');
+        $detail = $this->formatComponentMessage($message);
 
-        return $message !== null && $message !== ''
-            ? $failLabel . ' (' . $message . ')'
+        return $detail !== null && $detail !== ''
+            ? $failLabel . ' (' . $detail . ')'
             : $failLabel;
+    }
+
+    protected function formatComponentMessage(MessageRef|string|null $message): ?string
+    {
+        if ($message === null) {
+            return null;
+        }
+
+        if ($message instanceof MessageRef) {
+            return $this->helper->translator->trans($message->key, $message->parameters);
+        }
+
+        return $message;
     }
 }

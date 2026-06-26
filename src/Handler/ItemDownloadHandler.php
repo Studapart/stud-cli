@@ -41,13 +41,20 @@ class ItemDownloadHandler implements WorkItemJiraAware
 
         try {
             $targetDir = $this->resolveTargetDirectory($path);
-        } catch (\InvalidArgumentException|\RuntimeException $e) {
-            $message = $e->getMessage();
-            if ($message === 'item.download.error_path_traversal') {
-                return ItemDownloadResponse::fatal(MessageRef::key($message));
+        } catch (\InvalidArgumentException) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_path_traversal')
+            );
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'item.download.error_cwd') {
+                return ItemDownloadResponse::fatal(
+                    MessageRef::key('item.download.error_cwd')
+                );
             }
 
-            return ItemDownloadResponse::fatal($message);
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_target_dir', ['error' => $e->getMessage()])
+            );
         }
 
         if ($key !== '') {
@@ -84,7 +91,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
         $cwd = getcwd();
         // @codeCoverageIgnoreStart
         if ($cwd === false) {
-            throw new \RuntimeException('Cannot determine current working directory.');
+            throw new \RuntimeException('item.download.error_cwd');
         }
         // @codeCoverageIgnoreEnd
 
@@ -103,7 +110,7 @@ class ItemDownloadHandler implements WorkItemJiraAware
         $normalized = str_replace('\\', '/', $path);
         foreach (explode('/', $normalized) as $segment) {
             if ($segment === '..') {
-                throw new \InvalidArgumentException('item.download.error_path_traversal');
+                throw new \InvalidArgumentException('Path traversal');
             }
         }
     }

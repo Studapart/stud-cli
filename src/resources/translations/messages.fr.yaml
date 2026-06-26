@@ -97,6 +97,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira n'est pas configuré."
+    error_git_not_configured: "Le fournisseur Git n'est pas configuré."
+    error_jira_ping: "Échec de la connexion Jira : %error%"
+    error_git_ping: "Échec de la connexion au fournisseur Git : %error%"
   project_init:
     section_title: "Configuration du projet"
     not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
@@ -272,6 +276,8 @@ item:
     error_fetch: "Échec du chargement des pièces jointes : %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Le chemin ne peut pas contenir de segments parent (..)."
+    error_cwd: "Impossible de déterminer le répertoire de travail actuel."
+    error_target_dir: "Échec de la création du répertoire cible : %error%"
     error_partial: "%filename% : %message%"
   upload:
     section: "Pièces jointes envoyées"

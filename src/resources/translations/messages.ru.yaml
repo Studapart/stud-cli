@@ -97,6 +97,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira не настроен."
+    error_git_not_configured: "Git-провайдер не настроен."
+    error_jira_ping: "Ошибка подключения к Jira: %error%"
+    error_git_ping: "Ошибка подключения к Git-провайдеру: %error%"
   project_init:
     section_title: "Конфигурация проекта"
     not_git_repository: "Вы не в репозитории Git. Запускайте команду из рабочей копии репозитория."
@@ -272,6 +276,8 @@ item:
     error_fetch: "Не удалось загрузить вложения: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
+    error_cwd: "Не удалось определить текущий рабочий каталог."
+    error_target_dir: "Не удалось создать целевой каталог: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Загруженные вложения"

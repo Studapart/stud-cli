@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **ADR-023 exception boundaries:** `ItemDownloadHandler` and `ConfigValidateHandler` wrap integration failures in `MessageRef`; architecture tests ban raw `$e->getMessage()` errors in integration handlers and `MessageRef` in integration clients.
 - **Command guard (SCI-182 prep):** `IssueTrackerResolver` delegates to `IssueTrackerFactory::resolveType`, so `workItemProvider: auto` with both PM providers resolves to Jira when Jira credentials exist — same as runtime `_get_issue_tracker`. Fixes false `missing required configuration key: workItemProvider` on `stud submit`.
 
 ### Added

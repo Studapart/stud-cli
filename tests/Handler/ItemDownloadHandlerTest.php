@@ -65,7 +65,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $response = $this->handler->handle('KEY-1', null, 'downloads');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('mkdir failed', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.download.error_target_dir', ['error' => 'mkdir failed']);
     }
 
     public function testHandleDownloadsAllForIssue(): void

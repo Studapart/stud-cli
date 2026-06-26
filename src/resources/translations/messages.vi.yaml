@@ -97,6 +97,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira chưa được cấu hình."
+    error_git_not_configured: "Nhà cung cấp Git chưa được cấu hình."
+    error_jira_ping: "Kết nối Jira thất bại: %error%"
+    error_git_ping: "Kết nối nhà cung cấp Git thất bại: %error%"
   project_init:
     section_title: "Cấu hình dự án"
     not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."
@@ -272,6 +276,8 @@ item:
     error_fetch: "Không thể tải tệp đính kèm: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
+    error_cwd: "Không xác định được thư mục làm việc hiện tại."
+    error_target_dir: "Không thể tạo thư mục đích: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Đã tải lên tệp đính kèm"

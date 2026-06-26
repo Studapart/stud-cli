@@ -97,6 +97,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira is niet geconfigureerd."
+    error_git_not_configured: "Git-provider is niet geconfigureerd."
+    error_jira_ping: "Jira-verbinding mislukt: %error%"
+    error_git_ping: "Git-providerverbinding mislukt: %error%"
   project_init:
     section_title: "Projectconfiguratie"
     not_git_repository: "U bevindt zich niet in een Git-repository. Voer deze opdracht uit vanuit een checkout van een repository."
@@ -272,6 +276,8 @@ item:
     error_fetch: "Kan bijlagen niet laden: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
+    error_cwd: "Kan de huidige werkmap niet bepalen."
+    error_target_dir: "Doelmap kon niet worden aangemaakt: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Geüploade bijlagen"

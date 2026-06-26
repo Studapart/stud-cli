@@ -97,6 +97,10 @@ config:
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
     warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
     warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Το Jira δεν έχει ρυθμιστεί."
+    error_git_not_configured: "Ο πάροχος Git δεν έχει ρυθμιστεί."
+    error_jira_ping: "Αποτυχία σύνδεσης Jira: %error%"
+    error_git_ping: "Αποτυχία σύνδεσης παρόχου Git: %error%"
   project_init:
     section_title: "Ρύθμιση έργου"
     not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."
@@ -272,6 +276,8 @@ item:
     error_fetch: "Αποτυχία φόρτωσης συνημμένων: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
+    error_cwd: "Δεν ήταν δυνατός ο προσδιορισμός του τρέχοντος καταλόγου εργασίας."
+    error_target_dir: "Αποτυχία δημιουργίας καταλόγου προορισμού: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Ανεβασμένα συνημμένα"
