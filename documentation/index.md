@@ -49,5 +49,6 @@ Central map for `stud-cli` documentation.
 | [020](adr-020-global-init-wizard-director-and-strategy.md) | Global init wizard: Director + Strategy decomposition |
 | [021](adr-021-command-readiness-guard.md) | Command readiness guard |
 | [022](adr-022-jira-linear-work-item-scope-mapping.md) | Jira and Linear work-item scope mapping |
+| [023](adr-023-integration-layering-and-naming.md) | Integration layering and naming (ports, adapters, config providers) |
 
 New ADRs: use [adr-template.md](adr-template.md).
