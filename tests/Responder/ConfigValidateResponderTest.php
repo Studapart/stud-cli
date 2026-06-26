@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
 use App\Responder\ConfigValidateResponder;
 use App\Response\ConfigValidateResponse;
@@ -194,6 +196,27 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->assertSame('ok', $result->data['jiraStatus']);
         $this->assertSame('ok', $result->data['gitStatus']);
         $this->assertSame('skipped', $result->data['linearStatus']);
+    }
+
+    public function testRespondJsonIncludesWarningDiagnostics(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            messages: [
+                ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
+            ],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertArrayHasKey('warnings', $result->diagnostics);
+        $this->assertCount(1, $result->diagnostics['warnings']);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void

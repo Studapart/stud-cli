@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Guard;
 
 use App\Guard\Resolver\ConfigResolver;
+use App\Guard\Resolver\EffectiveProviderResolver;
 use App\Guard\Resolver\EnvironmentResolver;
-use App\Guard\Resolver\ProviderContextResolver;
 use Symfony\Component\Console\Event\ConsoleCommandEvent;
 
 /**
@@ -16,7 +16,7 @@ class CommandContextFactory
 {
     public function __construct(
         private readonly ConfigResolver $configResolver = new ConfigResolver(),
-        private readonly ProviderContextResolver $providerContextResolver = new ProviderContextResolver(),
+        private readonly EffectiveProviderResolver $effectiveProviderResolver = new EffectiveProviderResolver(),
     ) {
     }
 
@@ -29,21 +29,32 @@ class CommandContextFactory
         array $globalConfig,
         ?array $projectConfig,
         bool $hasGitRepository,
+        ?string $resolvedGitProvider = null,
     ): CommandContext {
         $configData = $this->configResolver->resolve($globalConfig, $projectConfig);
-        $providers = $this->providerContextResolver->resolve($configData['global']);
         $environment = EnvironmentResolver::fromEvent($event, $hasGitRepository);
         $flags = $environment->resolveFlags($event->getInput());
+        $effectiveGitProviders = $this->effectiveProviderResolver->resolveGitProviders(
+            $configData['global'],
+            $configData['project'],
+            $environment->hasGitRepository(),
+            $resolvedGitProvider,
+        );
+        $workItemResolution = $this->effectiveProviderResolver->resolveWorkItemProviders(
+            $configData['global'],
+            $configData['project'],
+        );
 
         return new CommandContext(
             globalConfig: $configData['global'],
             projectConfig: $configData['project'],
             hasGitRepository: $environment->hasGitRepository(),
-            workItemProviders: $providers['workItem'],
-            gitProviders: $providers['git'],
+            workItemProviders: $workItemResolution['providers'],
+            gitProviders: $effectiveGitProviders,
             isInteractive: $flags['interactive'],
             isQuiet: $flags['quiet'],
             isAgent: $flags['agent'],
+            workItemProviderAmbiguous: $workItemResolution['ambiguous'],
         );
     }
 }

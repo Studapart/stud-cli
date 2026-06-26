@@ -152,7 +152,44 @@ class CommandGuardTest extends TestCase
         $this->assertTrue($result->canProceed);
     }
 
-    public function testDualGitProvidersRequireBothTokens(): void
+    public function testDualGitProvidersRequireBothTokensWhenNoEffectiveProvider(): void
+    {
+        $capabilities = CapabilitySet::fromList([
+            GitProviderGithubAware::class,
+            GitProviderGitlabAware::class,
+            ProjectBaseBranchAware::class,
+        ]);
+        $context = $this->context(
+            ['GITHUB_TOKEN' => 'gh-token'],
+            ['baseBranch' => 'develop'],
+            gitProviders: ['github', 'gitlab'],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
+        $this->assertSame(['GITLAB_TOKEN'], $result->missingGlobalKeys);
+    }
+
+    public function testEffectiveGithubProviderIgnoresMissingGitlabToken(): void
+    {
+        $capabilities = CapabilitySet::fromList([
+            GitProviderGithubAware::class,
+            GitProviderGitlabAware::class,
+            ProjectBaseBranchAware::class,
+        ]);
+        $context = $this->context(
+            ['GITHUB_TOKEN' => 'gh-token'],
+            ['baseBranch' => 'develop', 'gitProvider' => 'github'],
+            gitProviders: ['github'],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+    }
+
+    public function testDualGitProvidersRequireBothTokensWhenBothEffective(): void
     {
         $capabilities = CapabilitySet::fromList([
             GitProviderGithubAware::class,
@@ -168,6 +205,47 @@ class CommandGuardTest extends TestCase
         $result = $this->guard->check($capabilities, $context);
 
         $this->assertTrue($result->canProceed);
+    }
+
+    public function testGithubTokenAcceptedFromLegacyGitToken(): void
+    {
+        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $context = $this->context(
+            ['GIT_TOKEN' => 'legacy-token', 'GIT_PROVIDER' => 'github'],
+            [],
+            gitProviders: ['github'],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+    }
+
+    public function testAmbiguousWorkItemProviderRequiresProjectSelection(): void
+    {
+        $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class, WorkItemLinearAware::class]);
+        $context = new CommandContext(
+            globalConfig: [
+                'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            projectConfig: ['workItemProvider' => 'auto'],
+            hasGitRepository: true,
+            workItemProviders: ['jira', 'linear'],
+            gitProviders: ['github'],
+            isInteractive: true,
+            isQuiet: false,
+            isAgent: false,
+            workItemProviderAmbiguous: true,
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
+        $this->assertSame(['workItemProvider'], $result->missingProjectKeys);
+        $this->assertSame([], $result->missingGlobalKeys);
     }
 
     public function testConfluenceRequiresJiraCredentials(): void

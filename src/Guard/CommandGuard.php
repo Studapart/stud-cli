@@ -39,12 +39,19 @@ class CommandGuard
             $environmentFailures[] = 'git_repository';
         }
 
-        if ($capabilities->has(WorkItemJiraAware::class)
+        if ($context->workItemProviderAmbiguous
+            && ($capabilities->has(WorkItemJiraAware::class) || $capabilities->has(WorkItemLinearAware::class))) {
+            $missingProject[] = 'workItemProvider';
+        }
+
+        if (! $context->workItemProviderAmbiguous
+            && $capabilities->has(WorkItemJiraAware::class)
             && $this->providerResolver->collectsJira($context->workItemProviders)) {
             $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(self::JIRA_KEYS, $context->globalConfig));
         }
 
-        if ($capabilities->has(WorkItemLinearAware::class)
+        if (! $context->workItemProviderAmbiguous
+            && $capabilities->has(WorkItemLinearAware::class)
             && $this->providerResolver->collectsLinear($context->workItemProviders)) {
             $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(['LINEAR_API_KEY'], $context->globalConfig));
         }
@@ -100,13 +107,30 @@ class CommandGuard
     protected function hasGithubToken(CommandContext $context): bool
     {
         return $this->hasNonEmptyConfigValue($context->globalConfig, 'GITHUB_TOKEN')
-            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'githubToken');
+            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'githubToken')
+            || $this->hasLegacyGitToken($context, 'github');
     }
 
     protected function hasGitlabToken(CommandContext $context): bool
     {
         return $this->hasNonEmptyConfigValue($context->globalConfig, 'GITLAB_TOKEN')
-            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'gitlabToken');
+            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'gitlabToken')
+            || $this->hasLegacyGitToken($context, 'gitlab');
+    }
+
+    protected function hasLegacyGitToken(CommandContext $context, string $provider): bool
+    {
+        $legacyToken = $context->globalConfig['GIT_TOKEN'] ?? null;
+        if (! is_string($legacyToken) || trim($legacyToken) === '') {
+            return false;
+        }
+
+        $legacyProvider = $context->globalConfig['GIT_PROVIDER'] ?? null;
+        if (! is_string($legacyProvider)) {
+            return false;
+        }
+
+        return strtolower(trim($legacyProvider)) === $provider;
     }
 
     /**

@@ -60,15 +60,29 @@ class ConfigValidateResponder
             [$linearLabel => $linearValue],
         );
 
+        foreach ($response->getWarnings() as $warning) {
+            $message = $warning->message;
+            $text = $message instanceof \App\DTO\MessageRef
+                ? $this->helper->translator->trans($message->key, $message->parameters)
+                : (string) $message;
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $text);
+        }
+
         return null;
     }
 
     protected function respondJson(ConfigValidateResponse $response): AgentJsonResponse
     {
+        $diagnostics = $response->diagnosticsPayload();
+
         if (! $response->isSuccess()) {
             $error = $response->getError() ?? 'Validation failed';
 
-            return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error));
+            return new AgentJsonResponse(
+                false,
+                error: $this->helper->translator->transForAgentText($error),
+                diagnostics: $diagnostics,
+            );
         }
 
         return new AgentJsonResponse(true, data: [
@@ -78,7 +92,7 @@ class ConfigValidateResponder
             'gitMessage' => $response->gitMessage,
             'linearStatus' => $response->linearStatus,
             'linearMessage' => $response->linearMessage,
-        ]);
+        ], diagnostics: $diagnostics);
     }
 
     protected function formatStatus(string $status, ?string $message): string
