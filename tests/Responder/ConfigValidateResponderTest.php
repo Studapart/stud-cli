@@ -50,6 +50,50 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->responder->respond($io, $response);
     }
 
+    public function testRespondOutputsCliWarnings(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            messages: [
+                ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing')),
+            ],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with($this->anything(), $this->isType('string'));
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondOutputsCliWarningsForPlainStringMessages(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            messages: [
+                ResponseMessage::warning('plain warning'),
+            ],
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->once())
+            ->method('warning')
+            ->with($this->anything(), 'plain warning');
+
+        $this->responder->respond($io, $response);
+    }
+
     public function testRespondOutputsErrorWhenResponseHasError(): void
     {
         $response = ConfigValidateResponse::error('config.error.not_found');

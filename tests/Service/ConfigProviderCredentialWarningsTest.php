@@ -70,4 +70,60 @@ class ConfigProviderCredentialWarningsTest extends TestCase
             $messages[0]->message instanceof MessageRef ? $messages[0]->message->key : null,
         );
     }
+
+    public function testWarnsWhenGithubListedWithoutToken(): void
+    {
+        $messages = $this->warnings->collect([
+            'GIT_PROVIDERS' => ['github'],
+            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'JIRA_URL' => 'https://example.atlassian.net',
+            'JIRA_EMAIL' => 'user@example.com',
+            'JIRA_API_TOKEN' => 'token',
+        ]);
+
+        $keys = array_map(
+            static fn ($message) => $message->message instanceof MessageRef ? $message->message->key : null,
+            $messages,
+        );
+        $this->assertContains('config.validate.warn_github_token_missing', $keys);
+    }
+
+    public function testWarnsWhenJiraListedWithoutCompleteCredentials(): void
+    {
+        $messages = $this->warnings->collect([
+            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'JIRA_URL' => 'https://example.atlassian.net',
+            'GIT_PROVIDERS' => ['github'],
+            'GITHUB_TOKEN' => 'gh-token',
+        ]);
+
+        $keys = array_map(
+            static fn ($message) => $message->message instanceof MessageRef ? $message->message->key : null,
+            $messages,
+        );
+        $this->assertContains('config.validate.warn_jira_credentials_missing', $keys);
+    }
+
+    public function testHasGithubTokenFromLegacyGitToken(): void
+    {
+        $this->assertTrue($this->warnings->hasGithubToken([
+            'GIT_TOKEN' => 'legacy-token',
+            'GIT_PROVIDER' => 'github',
+        ]));
+    }
+
+    public function testHasGitlabTokenFromLegacyGitToken(): void
+    {
+        $this->assertTrue($this->warnings->hasGitlabToken([
+            'GIT_TOKEN' => 'legacy-token',
+            'GIT_PROVIDER' => 'gitlab',
+        ]));
+    }
+
+    public function testLegacyGitTokenIgnoredWhenProviderMissing(): void
+    {
+        $this->assertFalse($this->warnings->hasGithubToken([
+            'GIT_TOKEN' => 'legacy-token',
+        ]));
+    }
 }

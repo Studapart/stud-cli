@@ -82,4 +82,15 @@ class EffectiveProviderResolverTest extends TestCase
         $this->assertTrue($result['ambiguous']);
         $this->assertSame(['jira', 'linear'], $result['providers']);
     }
+
+    public function testResolveWorkItemProvidersWithoutProjectConfigUsesGlobalList(): void
+    {
+        $result = $this->resolver->resolveWorkItemProviders(
+            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            null,
+        );
+
+        $this->assertFalse($result['ambiguous']);
+        $this->assertSame(['linear'], $result['providers']);
+    }
 }

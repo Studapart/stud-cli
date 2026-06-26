@@ -221,6 +221,35 @@ class CommandGuardTest extends TestCase
         $this->assertTrue($result->canProceed);
     }
 
+    public function testGitlabTokenAcceptedFromLegacyGitToken(): void
+    {
+        $capabilities = CapabilitySet::fromList([GitProviderGitlabAware::class]);
+        $context = $this->context(
+            ['GIT_TOKEN' => 'legacy-token', 'GIT_PROVIDER' => 'gitlab'],
+            [],
+            gitProviders: ['gitlab'],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+    }
+
+    public function testLegacyTokenRejectedWhenGitProviderMissing(): void
+    {
+        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $context = $this->context(
+            ['GIT_TOKEN' => 'legacy-token'],
+            [],
+            gitProviders: ['github'],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
+        $this->assertSame(['GITHUB_TOKEN'], $result->missingGlobalKeys);
+    }
+
     public function testAmbiguousWorkItemProviderRequiresProjectSelection(): void
     {
         $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class, WorkItemLinearAware::class]);
