@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Command guard (SCI-182 prep):** `IssueTrackerResolver` delegates to `IssueTrackerFactory::resolveType`, so `workItemProvider: auto` with both PM providers resolves to Jira when Jira credentials exist — same as runtime `_get_issue_tracker`. Fixes false `missing required configuration key: workItemProvider` on `stud submit`.
+
 ### Added
 
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.

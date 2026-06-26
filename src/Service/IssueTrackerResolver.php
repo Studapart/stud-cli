@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\MessageRef;
+use App\Exception\IssueTrackerException;
 
 /**
  * Resolves the active work-item provider for project-scoped commands
@@ -12,48 +13,32 @@ use App\DTO\MessageRef;
  */
 final class IssueTrackerResolver
 {
+    private readonly IssueTrackerFactory $factory;
+
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
     ) {
+        $this->factory = new IssueTrackerFactory($this->globalResolver);
     }
 
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
+     *
      * @return array{ok: true, provider: 'jira'|'linear'}|array{ok: false, error: MessageRef}
      */
     public function resolveActiveProvider(array $globalConfig, array $projectConfig): array
     {
-        $globalProviders = $this->globalResolver->resolveWorkItemProviders($globalConfig);
-        $hasJira = $this->globalResolver->collectsJira($globalProviders);
-        $hasLinear = $this->globalResolver->collectsLinear($globalProviders);
+        try {
+            $provider = $this->factory->resolveType(null, $globalConfig, $projectConfig);
 
-        if ($hasJira && $hasLinear) {
-            $stored = isset($projectConfig['workItemProvider']) && is_string($projectConfig['workItemProvider'])
-                ? strtolower(trim($projectConfig['workItemProvider']))
-                : 'auto';
-
-            if ($stored === 'jira' || $stored === 'linear') {
-                return ['ok' => true, 'provider' => $stored];
-            }
-
-            return [
-                'ok' => false,
-                'error' => MessageRef::key('project.workflow.error_ambiguous_provider'),
-            ];
+            return match ($provider) {
+                'jira' => ['ok' => true, 'provider' => 'jira'],
+                'linear' => ['ok' => true, 'provider' => 'linear'],
+                default => ['ok' => false, 'error' => IssueTrackerException::notConfigured()->messageRef],
+            };
+        } catch (IssueTrackerException $e) {
+            return ['ok' => false, 'error' => $e->messageRef];
         }
-
-        if ($hasJira) {
-            return ['ok' => true, 'provider' => 'jira'];
-        }
-
-        if ($hasLinear) {
-            return ['ok' => true, 'provider' => 'linear'];
-        }
-
-        return [
-            'ok' => false,
-            'error' => MessageRef::key('project.workflow.error_no_provider'),
-        ];
     }
 }
