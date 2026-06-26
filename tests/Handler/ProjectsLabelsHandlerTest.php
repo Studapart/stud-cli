@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\MessageRef;
+use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsLabelsHandler;
 use App\Service\IssueTrackerPort;
@@ -112,6 +113,26 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             'work_item_provider.missing_linear_api_key',
             (string) $response->getErrorMessage(),
         );
+    }
+
+    public function testHandleReturnsErrorWhenLabelFetchFailsWithApiException(): void
+    {
+        $port = $this->createLinearPortMock();
+        $port->expects($this->once())
+            ->method('listLabelGroups')
+            ->willThrowException(new ApiException('Linear unavailable', 'HTTP 503'));
+
+        $handler = $this->createHandler(
+            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
+        );
+
+        $response = $handler->handle('SCI', false);
+
+        $this->assertFalse($response->isSuccess());
+        $error = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $error);
+        $this->assertSame('project.labels.error_fetch', $error->key);
     }
 
     public function testHandleReturnsErrorWhenLabelFetchFails(): void

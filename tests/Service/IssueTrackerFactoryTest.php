@@ -149,6 +149,22 @@ class IssueTrackerFactoryTest extends TestCase
         $this->factory->create('jira');
     }
 
+    public function testCreateForProviderThrowsWhenJiraClientsMissing(): void
+    {
+        $this->expectException(IssueTrackerException::class);
+        $this->expectExceptionMessage('work_item_provider.missing_jira_configuration');
+
+        $this->factory->createForProvider('jira', null, null, null);
+    }
+
+    public function testCreateForProviderThrowsWhenLinearClientMissing(): void
+    {
+        $this->expectException(IssueTrackerException::class);
+        $this->expectExceptionMessage('work_item_provider.missing_linear_api_key');
+
+        $this->factory->createForProvider('linear', null, null, null);
+    }
+
     public function testResolveTypeRejectsUnknownOverride(): void
     {
         $this->expectException(\InvalidArgumentException::class);

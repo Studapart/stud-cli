@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\DTO\MessageRef;
 use App\DTO\StateChange;
 use App\Service\IssueTrackerFactory;
 use App\Service\IssueTrackerPortSupplier;
@@ -67,5 +68,43 @@ class IssueTrackerPortSupplierTest extends TestCase
             [new StateChange('s1', 'Todo', null, 'unstarted')],
             $result['port']->listProjectStateChanges('SCI'),
         );
+    }
+
+    public function testResolveReturnsErrorWhenProviderResolutionFails(): void
+    {
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $this->createMock(JiraApiClient::class),
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $result = $supplier->resolve(
+            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            [],
+        );
+
+        $this->assertFalse($result['ok']);
+        $this->assertInstanceOf(MessageRef::class, $result['error']);
+    }
+
+    public function testResolveReturnsErrorWhenLinearClientMissing(): void
+    {
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            null,
+            null,
+            null,
+        );
+
+        $result = $supplier->resolve(
+            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            [],
+        );
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('work_item_provider.missing_linear_api_key', $result['error']->key);
     }
 }

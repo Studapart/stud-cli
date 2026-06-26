@@ -6,6 +6,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
+use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsWorkflowHandler;
 use App\Service\IssueTrackerPort;
@@ -127,6 +128,24 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
             'work_item_provider.missing_linear_api_key',
             (string) $response->getErrorMessage(),
         );
+    }
+
+    public function testHandleReturnsErrorWhenWorkflowFetchFailsWithApiException(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Jira unavailable', 'HTTP 503'));
+
+        $response = $this->createHandler(
+            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+        )->handle('SCI');
+
+        $this->assertFalse($response->isSuccess());
+        $error = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $error);
+        $this->assertSame('project.workflow.error_fetch', $error->key);
     }
 
     public function testHandleReturnsErrorWhenWorkflowFetchFails(): void
