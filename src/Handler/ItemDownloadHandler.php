@@ -39,6 +39,15 @@ class ItemDownloadHandler implements WorkItemJiraAware
             );
         }
 
+        $cwd = getcwd();
+        // @codeCoverageIgnoreStart
+        if ($cwd === false) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_cwd')
+            );
+        }
+        // @codeCoverageIgnoreEnd
+
         try {
             $targetDir = $this->resolveTargetDirectory($path);
         } catch (\InvalidArgumentException) {
@@ -46,12 +55,6 @@ class ItemDownloadHandler implements WorkItemJiraAware
                 MessageRef::key('item.download.error_path_traversal')
             );
         } catch (\RuntimeException $e) {
-            if ($e->getMessage() === 'item.download.error_cwd') {
-                return ItemDownloadResponse::fatal(
-                    MessageRef::key('item.download.error_cwd')
-                );
-            }
-
             return ItemDownloadResponse::fatal(
                 MessageRef::key('item.download.error_target_dir', ['error' => $e->getMessage()])
             );
@@ -88,13 +91,6 @@ class ItemDownloadHandler implements WorkItemJiraAware
      */
     private function resolveTargetDirectory(?string $pathOption): string
     {
-        $cwd = getcwd();
-        // @codeCoverageIgnoreStart
-        if ($cwd === false) {
-            throw new \RuntimeException('item.download.error_cwd');
-        }
-        // @codeCoverageIgnoreEnd
-
         $rel = ($pathOption !== null && trim($pathOption) !== '') ? trim($pathOption) : self::DEFAULT_RELATIVE_DIR;
         $this->assertNoPathTraversal($rel);
         $this->fileSystem->mkdir($rel, 0777, true);

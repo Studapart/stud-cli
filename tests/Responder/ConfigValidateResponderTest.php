@@ -277,4 +277,83 @@ class ConfigValidateResponderTest extends CommandTestCase
 
         $this->assertNotNull($result);
     }
+
+    public function testRespondJsonTranslatesMessageRefAndPlainComponentMessages(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            MessageRef::key('config.validate.error_jira_ping', ['error' => 'timeout']),
+            ConfigValidateResponse::STATUS_OK,
+            'plain git detail',
+            ConfigValidateResponse::STATUS_SKIPPED,
+            MessageRef::key('config.validate.error_git_not_configured'),
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('plain git detail', $result->data['gitMessage']);
+        $this->assertNotNull($result->data['jiraMessage']);
+        $this->assertNotNull($result->data['linearMessage']);
+    }
+
+    public function testRespondOutputsFailStatusWithMessageRef(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            MessageRef::key('config.validate.error_jira_not_configured'),
+            ConfigValidateResponse::STATUS_OK,
+            null,
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())
+            ->method('definitionList')
+            ->with(
+                $this->anything(),
+                $this->callback(function (array $jiraRow) {
+                    $value = array_values($jiraRow)[0] ?? '';
+
+                    return is_string($value)
+                        && str_contains(strtolower($value), 'fail')
+                        && str_contains($value, 'config.validate.error_jira_not_configured');
+                }),
+                $this->anything(),
+                $this->anything(),
+            );
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondOutputsFailStatusWithoutDetailWhenMessageNull(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->once())
+            ->method('definitionList')
+            ->with(
+                $this->anything(),
+                $this->callback(function (array $jiraRow) {
+                    $value = array_values($jiraRow)[0] ?? '';
+
+                    return is_string($value)
+                        && str_contains(strtolower($value), 'fail')
+                        && ! str_contains($value, '(');
+                }),
+                $this->anything(),
+                $this->anything(),
+            );
+
+        $this->responder->respond($io, $response);
+    }
 }

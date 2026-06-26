@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Exception\ApiException;
 use App\Handler\ConfigValidateHandler;
 use App\Response\ConfigValidateResponse;
 use App\Service\GitHostingPort;
@@ -86,6 +87,21 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->gitStatus);
     }
 
+    public function testHandleReturnsJiraFailWhenPingThrowsApiException(): void
+    {
+        $this->issueTracker->expects($this->once())
+            ->method('ping')
+            ->willThrowException(new ApiException('Jira unavailable', 'GET /myself failed'));
+        $this->gitProvider->expects($this->once())
+            ->method('getLabels')
+            ->willReturn([]);
+
+        $response = $this->createHandler()->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_ping', ['error' => 'Jira unavailable']);
+    }
+
     public function testHandleReturnsGitFailWhenGetLabelsThrows(): void
     {
         $this->issueTracker->expects($this->once())
@@ -101,6 +117,20 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->gitStatus);
         $this->assertMessageRef($response->gitMessage, 'config.validate.error_git_ping', ['error' => 'Git provider error']);
+    }
+
+    public function testHandleReturnsGitFailWhenGetLabelsThrowsApiException(): void
+    {
+        $this->issueTracker->expects($this->once())
+            ->method('ping');
+        $this->gitProvider->expects($this->once())
+            ->method('getLabels')
+            ->willThrowException(new ApiException('Git unauthorized', 'GET /labels 401'));
+
+        $response = $this->createHandler()->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->gitMessage, 'config.validate.error_git_ping', ['error' => 'Git unauthorized']);
     }
 
     public function testHandleReturnsBothSkippedWhenSkipFlagsTrue(): void
