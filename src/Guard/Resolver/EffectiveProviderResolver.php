@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Guard\Resolver;
 
 use App\Service\GlobalConfigProviderResolver;
-use App\Service\WorkItemProviderResolver;
+use App\Service\IssueTrackerResolver;
 
 /**
  * Resolves git and work-item providers in the context of the current command run.
@@ -17,7 +17,7 @@ class EffectiveProviderResolver
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
-        private readonly WorkItemProviderResolver $workItemResolver = new WorkItemProviderResolver(),
+        private readonly IssueTrackerResolver $workItemResolver = new IssueTrackerResolver(),
     ) {
     }
 

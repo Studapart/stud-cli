@@ -251,6 +251,7 @@ item:
     section: Details voor ticket %key%
     fetching: 'Details ophalen voor ticket: %key%'
     error_not_found: Kon Jira ticket met sleutel "%key%" niet vinden.
+    error_fetch: "Kan ticketdetails niet ophalen: %error%"
     label_key: Sleutel
     label_title: Titel
     label_status: Status
@@ -267,6 +268,7 @@ item:
     col_filename: "Bestandsnaam"
     col_path: "Pad"
     error_key_or_url: "Geef een Jira-ticketsleutel of --url met een Jira-bijlage-inhouds-URL."
+    error_fetch: "Kan bijlagen niet laden: %error%"
     error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
     error_partial: "%filename%: %message%"
   upload:

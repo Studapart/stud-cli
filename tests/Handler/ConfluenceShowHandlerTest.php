@@ -9,20 +9,20 @@ use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Handler\ConfluenceShowHandler;
 use App\Service\AdfToMarkdownConverter;
-use App\Service\ConfluenceService;
 use App\Service\TranslationService;
+use App\Service\WikiPort;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class ConfluenceShowHandlerTest extends TestCase
 {
-    private ConfluenceService&MockObject $confluenceService;
+    private WikiPort&MockObject $wiki;
     private AdfToMarkdownConverter&MockObject $adfConverter;
     private TranslationService&MockObject $translator;
 
     protected function setUp(): void
     {
-        $this->confluenceService = $this->createMock(ConfluenceService::class);
+        $this->wiki = $this->createMock(WikiPort::class);
         $this->adfConverter = $this->createMock(AdfToMarkdownConverter::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
@@ -33,7 +33,7 @@ class ConfluenceShowHandlerTest extends TestCase
     private function createHandler(): ConfluenceShowHandler
     {
         return new ConfluenceShowHandler(
-            $this->confluenceService,
+            $this->wiki,
             $this->adfConverter,
             $this->translator
         );
@@ -41,7 +41,7 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleSuccessWithPageId(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('12345')
             ->willReturn([
@@ -68,11 +68,11 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleSuccessWithUrlResolvesPageId(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('extractPageIdFromUrl')
             ->with('https://example.atlassian.net/wiki/spaces/DEV/pages/123456')
             ->willReturn('123456');
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('123456')
             ->willReturn([
@@ -93,8 +93,8 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandlePrefersPageIdWhenBothProvided(): void
     {
-        $this->confluenceService->expects(self::never())->method('extractPageIdFromUrl');
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::never())->method('extractPageIdFromUrl');
+        $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('999')
             ->willReturn([
@@ -124,7 +124,7 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleErrorWhenPageNotFound(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPageWithBody')
             ->with('99999')
             ->willThrowException(new ApiException('Not found', '', 404));
@@ -142,7 +142,7 @@ class ConfluenceShowHandlerTest extends TestCase
 
     public function testHandleErrorWhenUrlInvalid(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('extractPageIdFromUrl')
             ->with('not-a-url')
             ->willThrowException(new ApiException('Invalid Confluence URL: no path.', 'url: not-a-url', 400));

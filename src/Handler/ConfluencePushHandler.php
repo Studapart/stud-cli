@@ -9,13 +9,13 @@ use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Guard\Capability\ConfluenceAware;
 use App\Response\ConfluencePushResponse;
-use App\Service\ConfluenceService;
 use App\Service\MarkdownToAdfConverter;
+use App\Service\WikiPort;
 
 class ConfluencePushHandler implements ConfluenceAware
 {
     public function __construct(
-        private readonly ConfluenceService $confluenceService,
+        private readonly WikiPort $wiki,
         private readonly MarkdownToAdfConverter $converter,
         mixed $_translator
     ) {
@@ -41,7 +41,7 @@ class ConfluencePushHandler implements ConfluenceAware
     protected function handleUpdate(ConfluencePushInput $input, string $content, string $baseUrl): ConfluencePushResponse
     {
         try {
-            $page = $this->confluenceService->getPage($input->pageId);
+            $page = $this->wiki->getPage($input->pageId);
         } catch (ApiException $e) {
             return ConfluencePushResponse::error(
                 MessageRef::key('confluence.push.error_page_not_found', ['id' => $input->pageId])
@@ -58,7 +58,7 @@ class ConfluencePushHandler implements ConfluenceAware
         $versionNumber = $page['version']['number'] + 1;
 
         try {
-            $updated = $this->confluenceService->updatePage(
+            $updated = $this->wiki->updatePage(
                 $input->pageId,
                 $title,
                 $adfJson,
@@ -125,7 +125,7 @@ class ConfluencePushHandler implements ConfluenceAware
     protected function resolveSpaceIdFromParent(string $parentId): ConfluencePushResponse|array
     {
         try {
-            $parentPage = $this->confluenceService->getPage($parentId);
+            $parentPage = $this->wiki->getPage($parentId);
 
             return ['spaceId' => $parentPage['spaceId'] ?? null];
         } catch (ApiException $e) {
@@ -136,7 +136,7 @@ class ConfluencePushHandler implements ConfluenceAware
             }
 
             try {
-                $parentFolder = $this->confluenceService->getFolder($parentId);
+                $parentFolder = $this->wiki->getFolder($parentId);
 
                 return ['spaceId' => $parentFolder['spaceId']];
             } catch (ApiException) {
@@ -162,7 +162,7 @@ class ConfluencePushHandler implements ConfluenceAware
         }
 
         try {
-            return $this->confluenceService->resolveSpaceId(trim($space));
+            return $this->wiki->resolveSpaceId(trim($space));
         } catch (ApiException) {
             return ConfluencePushResponse::error(
                 MessageRef::key('confluence.push.error_space_not_found', ['key' => $space])
@@ -214,7 +214,7 @@ class ConfluencePushHandler implements ConfluenceAware
         string $baseUrl
     ): ConfluencePushResponse {
         try {
-            $created = $this->confluenceService->createPage(
+            $created = $this->wiki->createPage(
                 $spaceId,
                 $title,
                 $adfJson,
@@ -264,10 +264,10 @@ class ConfluencePushHandler implements ConfluenceAware
         string $baseUrl
     ): ?ConfluencePushResponse {
         try {
-            $children = $this->confluenceService->getDirectChildPages($parentId);
+            $children = $this->wiki->getDirectChildPages($parentId);
         } catch (ApiException) {
             try {
-                $children = $this->confluenceService->getDirectChildPagesOfFolder($parentId);
+                $children = $this->wiki->getDirectChildPagesOfFolder($parentId);
             } catch (ApiException) {
                 return null;
             }
@@ -275,14 +275,14 @@ class ConfluencePushHandler implements ConfluenceAware
         foreach ($children as $child) {
             if ($child['title'] === $title) {
                 try {
-                    $page = $this->confluenceService->getPage($child['id']);
+                    $page = $this->wiki->getPage($child['id']);
                 } catch (ApiException) {
                     return null;
                 }
                 $versionNumber = $page['version']['number'] + 1;
 
                 try {
-                    $updated = $this->confluenceService->updatePage(
+                    $updated = $this->wiki->updatePage(
                         $child['id'],
                         $title,
                         $adfJson,

@@ -8,7 +8,7 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\BranchAutoCleanDecision;
 use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitBranchService;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +31,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotHandlesProviderFailure(): void
     {
-        $provider = $this->createMock(GitProviderInterface::class);
+        $provider = $this->createMock(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willThrowException(new \RuntimeException('api'));
         $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
 
@@ -42,7 +42,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotLogsRecoverableFailureWhenRecorderProvided(): void
     {
-        $provider = $this->createMock(GitProviderInterface::class);
+        $provider = $this->createMock(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willThrowException(new \RuntimeException('api'));
         $resolver = new BranchDeletionEligibilityResolver($this->createMock(GitRepository::class), $this->createMock(GitBranchService::class), $provider);
         $recorder = new WorkflowRecorder();
@@ -55,7 +55,7 @@ class BranchDeletionEligibilityResolverTest extends TestCase
 
     public function testBuildPullRequestSnapshotFiltersForkPullRequests(): void
     {
-        $provider = $this->createMock(GitProviderInterface::class);
+        $provider = $this->createMock(GitHostingPort::class);
         $provider->method('getAllPullRequests')->willReturn([
             ['head' => [], 'base' => ['repo' => ['full_name' => 'org/repo']]],
             ['head' => ['ref' => 'feat/a', 'repo' => ['full_name' => 'org/repo']], 'base' => ['repo' => ['full_name' => 'org/repo']]],

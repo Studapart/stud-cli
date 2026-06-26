@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Handler\ProjectsLabelsHandler;
+use App\Service\IssueTrackerResolver;
 use App\Service\LinearMetadataClient;
-use App\Service\WorkItemProviderResolver;
 use App\Tests\CommandTestCase;
 
 class ProjectsLabelsHandlerTest extends CommandTestCase
@@ -87,7 +87,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     {
         $handler = new ProjectsLabelsHandler(
             null,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             [],
         );
@@ -127,7 +127,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     ): ProjectsLabelsHandler {
         return new ProjectsLabelsHandler(
             $linearClient,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             $globalConfig,
             $projectConfig,
         );

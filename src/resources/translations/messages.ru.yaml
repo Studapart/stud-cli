@@ -251,6 +251,7 @@ item:
     section: Детали задачи %key%
     fetching: 'Получение деталей для задачи: %key%'
     error_not_found: Не удалось найти задачу Jira с ключом "%key%".
+    error_fetch: "Не удалось получить сведения о задаче: %error%"
     label_key: Ключ
     label_title: Название
     label_status: Статус
@@ -267,6 +268,7 @@ item:
     col_filename: "Имя файла"
     col_path: "Путь"
     error_key_or_url: "Укажите ключ задачи Jira или --url с URL содержимого вложения Jira."
+    error_fetch: "Не удалось загрузить вложения: %error%"
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
     error_partial: "%filename%: %message%"
   upload:

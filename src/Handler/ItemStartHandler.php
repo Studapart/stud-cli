@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
@@ -16,7 +17,7 @@ use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
@@ -30,7 +31,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly array $jiraConfig,
@@ -48,17 +49,13 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
         $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.fetching', ['key' => $key]), WorkflowChannel::Jira);
 
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->provider->getIssue($key);
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 MessageRef::key('item.start.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
-
-            return $this->recorder->toResponse(1);
-        } catch (\Exception $e) {
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.error_not_found', ['key' => $key]));
 
             return $this->recorder->toResponse(1);
         }
@@ -104,7 +101,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
     {
         try {
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.assigning', ['key' => $key]), WorkflowChannel::Jira);
-            $this->jiraService->assignIssue($key);
+            $this->provider->assign($key);
         } catch (ApiException $e) {
             $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.assign_error', ['error' => $e->getMessage()]));
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
@@ -129,13 +126,13 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
     protected function promptForTransitionId(string $key, string $projectKey): ?int
     {
         try {
-            $transitions = $this->jiraService->getTransitions($key);
+            $transitions = $this->provider->listItemStateChanges($key);
             if ($transitions === []) {
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.no_transitions', ['key' => $key]));
 
                 return null;
             }
-            $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+            $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
             $selected = $this->prompt->choice(MessageRef::key('item.start.select_transition'), $options);
             preg_match('/ID: (\d+)\)$/', $selected, $matches);
             if (! isset($matches[1])) {
@@ -163,7 +160,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
     protected function executeTransitionWithLogging(string $key, int $transitionId): void
     {
         try {
-            $this->jiraService->transitionIssue($key, $transitionId);
+            $this->provider->applyStateChange($key, (string) $transitionId);
             $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_success', ['key' => $key]));
         } catch (ApiException $e) {
             $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]));

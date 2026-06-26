@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
 use App\DTO\WorkItem;
 
 final class ItemListResponse extends AbstractResponse
@@ -13,7 +14,7 @@ final class ItemListResponse extends AbstractResponse
      */
     private function __construct(
         bool $success,
-        ?string $error,
+        MessageRef|string|null $error,
         public readonly array $issues,
         public readonly bool $all,
         public readonly ?string $project
@@ -29,7 +30,7 @@ final class ItemListResponse extends AbstractResponse
         return new self(true, null, $issues, $all, $project);
     }
 
-    public static function error(string $error): self
+    public static function error(MessageRef|string $error): self
     {
         return new self(false, $error, [], false, null);
     }

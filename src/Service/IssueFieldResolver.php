@@ -9,7 +9,7 @@ use App\DTO\MessageRef;
 class IssueFieldResolver
 {
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly JiraApiClient $jiraService,
         private readonly DurationParser $durationParser
     ) {
     }

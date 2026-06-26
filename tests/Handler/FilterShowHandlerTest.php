@@ -15,7 +15,7 @@ class FilterShowHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new FilterShowHandler($this->jiraService);
+        $this->handler = new FilterShowHandler($this->issueTracker);
     }
 
     public function testHandleReturnsSuccessResponseWithIssues(): void
@@ -31,9 +31,9 @@ class FilterShowHandlerTest extends CommandTestCase
             'Task'
         );
 
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->issueTracker->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willReturn([$issue]);
 
         $response = $this->handler->handle('My Filter');
@@ -47,9 +47,9 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyIssues(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->issueTracker->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willReturn([]);
 
         $response = $this->handler->handle('My Filter');
@@ -62,16 +62,17 @@ class FilterShowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('searchIssues')
-            ->with('filter = "My Filter"')
+        $this->issueTracker->expects($this->once())
+            ->method('runFilterOrView')
+            ->with('My Filter')
             ->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle('My Filter');
 
         $this->assertInstanceOf(FilterShowResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'filter.show.error_fetch');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertEmpty($response->issues);
     }
 }

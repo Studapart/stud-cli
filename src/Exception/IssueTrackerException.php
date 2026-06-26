@@ -6,7 +6,7 @@ namespace App\Exception;
 
 use App\DTO\MessageRef;
 
-final class WorkItemProviderException extends \RuntimeException
+final class IssueTrackerException extends \RuntimeException
 {
     public function __construct(
         public readonly MessageRef $messageRef,

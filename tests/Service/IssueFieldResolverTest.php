@@ -15,7 +15,7 @@ class IssueFieldResolverTest extends CommandTestCase
     {
         parent::setUp();
         $this->durationParser = new DurationParser();
-        $this->resolver = new IssueFieldResolver($this->jiraService, $this->durationParser);
+        $this->resolver = new IssueFieldResolver($this->jiraApiClient, $this->durationParser);
     }
 
     public function testResolveIssueTypeNameReturnsSubTaskWhenParentKey(): void
@@ -38,7 +38,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsIdWhenFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story'], ['id' => '10002', 'name' => 'Bug']]);
@@ -48,7 +48,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsNullWhenNotFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->with('PROJ')
             ->willReturn([['id' => '10001', 'name' => 'Story']]);
@@ -58,7 +58,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveIssueTypeIdReturnsNullWhenApiThrows(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaIssueTypes')
             ->willThrowException(new \RuntimeException('API error'));
 
@@ -85,7 +85,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testBuildBaseFieldsIncludesDescription(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('descriptionToAdf')
             ->with('desc text', 'plain')
             ->willReturn(['type' => 'doc', 'content' => []]);
@@ -110,7 +110,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testDefaultAssigneeWhenFieldPresent(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('user-123');
 
@@ -123,7 +123,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testDefaultAssigneeUsesOptionWhenProvided(): void
     {
-        $this->jiraService->expects($this->never())->method('getCurrentUserAccountId');
+        $this->jiraApiClient->expects($this->never())->method('getCurrentUserAccountId');
 
         $meta = ['assignee' => ['required' => false, 'name' => 'Assignee']];
         $fields = [];
@@ -158,7 +158,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testGetExtraRequiredFieldsList(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->with('PROJ', '10001')
             ->willReturn([
@@ -173,7 +173,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testGetExtraRequiredFieldsListFallsBackOnApiError(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCreateMetaFields')
             ->willThrowException(new \RuntimeException('API error'));
 
@@ -264,7 +264,7 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testResolveStandardFieldsAndExtraRequired(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getCurrentUserAccountId')
             ->willReturn('user-id');
 

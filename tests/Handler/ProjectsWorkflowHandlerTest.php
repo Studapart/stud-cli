@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Handler\ProjectsWorkflowHandler;
+use App\Service\IssueTrackerResolver;
 use App\Service\LinearMetadataClient;
 use App\Service\ProjectsWorkflowNormalizer;
-use App\Service\WorkItemProviderResolver;
 use App\Tests\CommandTestCase;
 
 class ProjectsWorkflowHandlerTest extends CommandTestCase
 {
     public function testHandleReturnsJiraWorkflows(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->with('SCI')
             ->willReturn([
@@ -52,7 +52,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsWarningWhenNoWorkflowsFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->with('SCI')
             ->willReturn([]);
@@ -76,12 +76,12 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         $this->assertFalse($response->isSuccess());
     }
 
-    public function testHandleReturnsErrorWhenJiraServiceMissing(): void
+    public function testHandleReturnsErrorWhenJiraApiClientMissing(): void
     {
         $handler = new ProjectsWorkflowHandler(
             null,
             null,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             new ProjectsWorkflowNormalizer(),
             ['WORK_ITEM_PROVIDERS' => ['jira']],
             [],
@@ -96,9 +96,9 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenLinearClientMissing(): void
     {
         $handler = new ProjectsWorkflowHandler(
-            $this->jiraService,
+            $this->jiraApiClient,
             null,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             new ProjectsWorkflowNormalizer(),
             ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             [],
@@ -112,7 +112,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorWhenWorkflowFetchFails(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->with('SCI')
             ->willThrowException(new \RuntimeException('Jira unavailable'));
@@ -133,9 +133,9 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         ?LinearMetadataClient $linearClient = null,
     ): ProjectsWorkflowHandler {
         return new ProjectsWorkflowHandler(
-            $this->jiraService,
+            $this->jiraApiClient,
             $linearClient,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             new ProjectsWorkflowNormalizer(),
             $globalConfig,
             $projectConfig,

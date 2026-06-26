@@ -4,32 +4,22 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemListResponse;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 
 class ItemListHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService
+        private readonly IssueTrackerPort $provider,
     ) {
     }
 
     public function handle(bool $all, ?string $project, ?string $sort = null): ItemListResponse
     {
-        $jqlParts = [];
-        if (! $all) {
-            $jqlParts[] = 'assignee = currentUser()';
-        }
-        $jqlParts[] = "statusCategory in ('To Do', 'In Progress')";
-        if ($project) {
-            $jqlParts[] = 'project = ' . strtoupper($project);
-        }
-
-        $jql = implode(' AND ', $jqlParts) . ' ORDER BY updated DESC';
-
         try {
-            $issues = $this->jiraService->searchIssues($jql);
+            $issues = $this->provider->listAssignedActive($project, ! $all);
 
             if ($sort !== null) {
                 $issues = $this->sortIssues($issues, $sort);
@@ -37,13 +27,13 @@ class ItemListHandler implements WorkItemJiraAware
 
             return ItemListResponse::success($issues, $all, $project);
         } catch (\Exception $e) {
-            return ItemListResponse::error($e->getMessage());
+            return ItemListResponse::error(
+                MessageRef::key('item.list.error_fetch', ['error' => $e->getMessage()])
+            );
         }
     }
 
     /**
-     * Sorts issues by the specified field.
-     *
      * @param \App\DTO\WorkItem[] $issues
      * @return \App\DTO\WorkItem[]
      */

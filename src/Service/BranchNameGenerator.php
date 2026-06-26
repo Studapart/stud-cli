@@ -14,13 +14,13 @@ class BranchNameGenerator
     public const PREFIX_CHORE = 'chore';
 
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
     ) {
     }
 
     public function generateBranchNameFromKey(string $key): string
     {
-        $issue = $this->jiraService->getIssue($key);
+        $issue = $this->provider->getIssue($key);
         $prefix = self::prefixForIssueType($issue->issueType);
         $slugger = new AsciiSlugger();
         $slugValue = $slugger->slug($issue->title)->lower()->toString();

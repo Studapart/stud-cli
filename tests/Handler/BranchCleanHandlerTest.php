@@ -14,7 +14,7 @@ use App\Handler\BranchCleanHandler;
 use App\Service\BranchCleanupExecutor;
 use App\Service\BranchCleanupPlanner;
 use App\Service\BranchDeletionEligibilityResolver;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -25,13 +25,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class BranchCleanHandlerTest extends CommandTestCase
 {
     private BranchCleanHandler $handler;
-    private GithubProvider&MockObject $githubProvider;
+    private GithubGitHostingAdapter&MockObject $githubProvider;
     private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->githubProvider = $this->createMock(GithubProvider::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
         $this->prompt = $this->createMock(PromptInterface::class);
         $this->prompt->method('confirm')->willReturn(true);
         $this->prompt->method('ask')->willReturn('develop');

@@ -251,6 +251,7 @@ item:
     section: Detalles del ticket %key%
     fetching: 'Obteniendo detalles del ticket: %key%'
     error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+    error_fetch: "Error al obtener los detalles del ticket: %error%"
     label_key: Clave
     label_title: Título
     label_status: Estado
@@ -267,6 +268,7 @@ item:
     col_filename: "Archivo"
     col_path: "Ruta"
     error_key_or_url: "Indica una clave de issue de Jira o --url con una URL de contenido de adjunto de Jira."
+    error_fetch: "Error al cargar los adjuntos: %error%"
     error_path_traversal: "La ruta no puede contener segmentos de directorio padre (..)."
     error_partial: "%filename%: %message%"
   upload:

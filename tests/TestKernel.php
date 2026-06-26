@@ -5,11 +5,11 @@ namespace App\Tests;
 use App\Service\ConfluenceService;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
+use App\Service\IssueTrackerPort;
+use App\Service\JiraApiClient;
 use App\Service\JiraAttachmentService;
-use App\Service\JiraService;
 use App\Service\ProcessFactory;
 use App\Service\TranslationService;
-use App\Service\WorkItemProviderInterface;
 
 class TestKernel
 {
@@ -17,8 +17,8 @@ class TestKernel
     public static ?GitBranchService $gitBranchService = null;
     public static ?GitRepository $gitRepository = null;
     public static ?JiraAttachmentService $jiraAttachmentService = null;
-    public static ?JiraService $jiraService = null;
+    public static ?JiraApiClient $jiraApiClient = null;
     public static ?ProcessFactory $processFactory = null;
     public static ?TranslationService $translationService = null;
-    public static ?WorkItemProviderInterface $workItemProvider = null;
+    public static ?IssueTrackerPort $issueTracker = null;
 }

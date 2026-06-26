@@ -7,7 +7,7 @@
 
 ## 1. Context and Problem Statement
 
-Central `ConfigValidator::COMMAND_REQUIREMENTS` duplicated provider logic, covered only three commands, and drifted from handler dependencies. Commands failed late in `_get_jira_config()` or `_get_git_provider()` instead of at entry.
+Central `ConfigValidator::COMMAND_REQUIREMENTS` duplicated provider logic, covered only three commands, and drifted from handler dependencies. Commands failed late in `_get_jira_config()` or `_get_git_hosting()` instead of at entry.
 
 **Goal:** Decide **run vs block** before handler execution using runtime capability discovery aligned with handler needs.
 
@@ -67,3 +67,7 @@ Castor task → CommandContextFactory → CommandGuard → handler
 ---
 
 See also: `.cursor/reports/command-readiness-guard-architecture.md`
+
+## 8. Cross-references
+
+* [ADR-023](adr-023-integration-layering-and-naming.md) — ports, adapters, clients glossary and rename phases

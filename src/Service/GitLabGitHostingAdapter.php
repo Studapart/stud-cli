@@ -14,7 +14,7 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class GitLabProvider implements GitProviderInterface
+class GitLabGitHostingAdapter implements GitHostingPort
 {
     private const COMMENTS_PAGE_SIZE = 50;
     private const COMMENTS_MAX_PAGES = 1;

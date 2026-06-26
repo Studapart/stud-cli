@@ -110,7 +110,7 @@ class CommandGuardTest extends TestCase
         $this->assertSame(['git_repository'], $result->environmentFailures);
     }
 
-    public function testGithubTokenMissingWhenGithubProviderActive(): void
+    public function testGithubTokenMissingWhenGithubGitHostingAdapterActive(): void
     {
         $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
         $context = $this->context([], [], gitProviders: ['github']);
@@ -171,7 +171,7 @@ class CommandGuardTest extends TestCase
         $this->assertSame(['GITLAB_TOKEN'], $result->missingGlobalKeys);
     }
 
-    public function testEffectiveGithubProviderIgnoresMissingGitlabToken(): void
+    public function testEffectiveGithubGitHostingAdapterIgnoresMissingGitlabToken(): void
     {
         $capabilities = CapabilitySet::fromList([
             GitProviderGithubAware::class,

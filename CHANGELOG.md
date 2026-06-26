@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Work-item provider (SCI-161):** `JiraWorkItemProvider` delegates all `WorkItemProviderInterface` methods to `JiraService` and `JiraAttachmentService` with unchanged Jira `WorkItem` mapping; `listAssignedActive` encapsulates the JQL used by `items:list`.
+- **ADR-023 integration layering (SCI-162):** Full Phases A–F — `JiraAssignedActiveJqlBuilder` + `JiraStatusCategory` for shared JQL; work-item handler errors use `MessageRef`; renamed ports/adapters/clients (`IssueTrackerPort`, `JiraIssueTrackerAdapter`, `JiraApiClient`, `GitHostingPort`, `GithubGitHostingAdapter`, `GitLabGitHostingAdapter`, `WikiPort`, `ConfluenceWikiAdapter`); castor locators `_get_issue_tracker`, `_get_jira_api_client`, `_get_git_hosting`, `_get_wiki_port`; ADR-021 cross-links ADR-023. Config enum `App\Enum\WorkItemProvider` unchanged.
+- **Work-item provider (SCI-162):** Work-item handlers depend on `IssueTrackerPort`; optional `--provider` / agent `provider` on essential `items:*`; `config:validate` uses `ping()`.
+- **Work-item provider (SCI-161):** `JiraIssueTrackerAdapter` delegates all `IssueTrackerPort` methods to `JiraApiClient` and `JiraAttachmentService`; `listAssignedActive` encapsulates dashboard JQL.
 
 ## [3.19.1] - 2026-06-17
 
@@ -237,7 +239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **README:** User installation restructured: Quick Install (one-liner script) > Manual Install > Global Install > Updating. PHP 8.2+ installation instructions added for Ubuntu/Debian, macOS, Fedora/RHEL, and WSL2. [SCI-73]
 - **Code quality:** Reduce complexity violations to meet CONVENTIONS (CC ≤ 10, CRAP ≤ 10) [SCI-68]
-  - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
+  - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabGitHostingAdapter, PageViewConfig. No change to public API or user-visible behaviour.
 
 ### Added
 - **items:update:** New `stud items:update` (alias `stud iu`) command to update Jira issue fields (summary, description, and arbitrary fields via `--fields`) [SCI-72]
@@ -398,21 +400,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - GitLab support for Merge Requests and Git operations [SCI-43]
-  - Added `GitProviderInterface` to abstract GitHub and GitLab provider implementations
-  - Created `GitLabProvider` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
+  - Added `GitHostingPort` to abstract GitHub and GitLab provider implementations
+  - Created `GitLabGitHostingAdapter` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
   - Refactored `GitRepository` to support both GitHub and GitLab URL parsing (SSH and HTTPS formats)
-  - Updated all handlers to use `GitProviderInterface` instead of concrete `GithubProvider`
-  - Added provider factory function `_get_git_provider()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
+  - Updated all handlers to use `GitHostingPort` instead of concrete `GithubGitHostingAdapter`
+  - Added provider factory function `_get_git_hosting()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
   - Support for self-hosted GitLab instances via optional `GITLAB_INSTANCE_URL` config
   - All existing GitHub functionality remains intact (no regression)
-  - Comprehensive test coverage for GitLabProvider and updated GitRepository tests
+  - Comprehensive test coverage for GitLabGitHostingAdapter and updated GitRepository tests
   - Updated documentation with GitLab token setup and configuration instructions
 
 ### Optimized
 - Optimize PR lookups for branch management commands to reduce GitHub API calls [SCi-45]
   - `branches:list` and `branches:clean` now fetch all PRs once (1-2 API calls) instead of per-branch calls (20-40 calls)
-  - Added `GithubProvider::getAllPullRequests()` method with pagination support (handles 100+ PRs)
-  - Added `GithubProvider::hasNextPage()` helper to parse GitHub API Link headers for pagination
+  - Added `GithubGitHostingAdapter::getAllPullRequests()` method with pagination support (handles 100+ PRs)
+  - Added `GithubGitHostingAdapter::hasNextPage()` helper to parse GitHub API Link headers for pagination
   - `BranchListHandler` and `BranchCleanHandler` now use cached PR map for efficient lookups
   - Graceful fallback to per-branch API calls if bulk fetch fails
   - Maintains backward compatibility and handles edge cases (fork PRs, missing repo info)
@@ -422,8 +424,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Display technical error details from Git and API errors alongside user-friendly messages [SCI-41]
   - Created `GitException` and `ApiException` classes with `getTechnicalDetails()` method
   - `GitRepository::run()` now captures Git error output and throws `GitException` with technical details
-  - `JiraService` methods now throw `ApiException` with API response body and status code
-  - `GithubProvider` methods now throw `ApiException` with API response details
+  - `JiraApiClient` methods now throw `ApiException` with API response body and status code
+  - `GithubGitHostingAdapter` methods now throw `ApiException` with API response details
   - Added `Logger::errorWithDetails()` method to display both user-friendly and technical error messages
   - All handlers now catch `GitException` and `ApiException` and display both messages using `errorWithDetails()`
   - Technical details are truncated to 500 characters to avoid overwhelming output
@@ -444,8 +446,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `stud branches:clean` (alias `bc`) interactively cleans up merged/stale branches with `--quiet` option for non-interactive mode
   - Add `--clean` option to `stud deploy` to clean up merged branches after deployment
   - GitRepository methods: `getAllLocalBranches()`, `isBranchMergedInto()`, `getAllRemoteBranches()`
-  - GithubProvider: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
-  - GithubProvider: `findPullRequestByBranchName()` helper method for finding PRs by branch name
+  - GithubGitHostingAdapter: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
+  - GithubGitHostingAdapter: `findPullRequestByBranchName()` helper method for finding PRs by branch name
   - BranchListHandler and BranchCleanHandler following ADR pattern
   - Protected branches (develop, main, master) are never deleted by `branches:clean`
   - All user-facing text uses TranslationService
@@ -530,7 +532,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command prompts to rebase if local is behind remote (default yes, bypass if `--quiet`)
   - Command handles rebase failures gracefully with helpful suggestions
   - Command renames both local and remote branches when both exist
-  - Command detects associated Pull Request (if GithubProvider available)
+  - Command detects associated Pull Request (if GithubGitHostingAdapter available)
   - Command attempts to update PR head branch via GitHub API (may not be supported by GitHub)
   - Command adds comment to PR explaining the rename
   - Command handles PR update failures gracefully (warns but continues)
@@ -538,7 +540,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command asks for confirmation (default yes, bypass if `--quiet`)
   - Command suggests creating PR if none exists after rename
   - Added new GitRepository methods: `renameLocalBranch()`, `renameRemoteBranch()`, `getBranchCommitsAhead()`, `getBranchCommitsBehind()`, `canRebaseBranch()`
-  - Added new GithubProvider method: `updatePullRequestHead()`
+  - Added new GithubGitHostingAdapter method: `updatePullRequestHead()`
   - Added translation keys for branch rename handler in all supported languages
   - Full test coverage with unit tests following project conventions
   - Updated README.md with command documentation and usage examples
@@ -609,7 +611,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Priority column shows priority name (e.g., "High", "Medium", "Low") when available, empty string when not available (when column is visible)
   - Jira URL column displays full URL in format: {JIRA_URL}/browse/{key}
   - Added priority field to WorkItem DTO
-  - Updated JiraService to fetch and map priority field from Jira API
+  - Updated JiraApiClient to fetch and map priority field from Jira API
   - Added translation keys for priority, description, and jira_url in all supported languages
   - Full test coverage with unit tests following project conventions
 - Add filters:list command to display Jira filters [SCI-26]
@@ -659,7 +661,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.6.2] - 2025-12-01
 
 ### Fixed
-- Fix `JiraService::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
+- Fix `JiraApiClient::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
   - Added `getCurrentUserAccountId()` method that calls `/rest/api/3/myself` endpoint to retrieve the authenticated user's accountId
   - Updated `assignIssue()` to use the retrieved accountId instead of passing `null` when assigning to current user
   - Implemented caching to ensure the `/myself` API call is executed only once per application lifecycle
@@ -813,7 +815,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
-- Add `getLatestRelease()` method to `GithubProvider` service for fetching the latest GitHub release.
+- Add `getLatestRelease()` method to `GithubGitHostingAdapter` service for fetching the latest GitHub release.
 - Add "Updating" section to README.md with instructions for using `stud update`.
 
 ### Changed

@@ -9,7 +9,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Fetches issue attachment metadata and downloads attachment bytes using the same Jira-authenticated HTTP client as {@see JiraService}.
+ * Fetches issue attachment metadata and downloads attachment bytes using the same Jira-authenticated HTTP client as {@see JiraApiClient}.
  */
 class JiraAttachmentService
 {

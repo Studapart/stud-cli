@@ -14,14 +14,14 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
 class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly PromptInterface $prompt
@@ -168,7 +168,7 @@ class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
     protected function fetchIssueForCommit(string $key): WorkItem|CommandResponse
     {
         try {
-            return $this->jiraService->getIssue($key);
+            return $this->provider->getIssue($key);
         } catch (ApiException $e) {
             $error = MessageRef::key('commit.error_not_found', ['key' => $key]);
 
@@ -176,8 +176,6 @@ class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
                 $error,
                 [ResponseMessage::error($error, $e->getTechnicalDetails())],
             );
-        } catch (\Exception $e) {
-            return CommandResponse::error(MessageRef::key('commit.error_not_found', ['key' => $key]));
         }
     }
 

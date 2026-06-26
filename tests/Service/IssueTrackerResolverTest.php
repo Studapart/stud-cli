@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\GlobalConfigProviderResolver;
-use App\Service\WorkItemProviderResolver;
+use App\Service\IssueTrackerResolver;
 use PHPUnit\Framework\TestCase;
 
-class WorkItemProviderResolverTest extends TestCase
+class IssueTrackerResolverTest extends TestCase
 {
-    private WorkItemProviderResolver $resolver;
+    private IssueTrackerResolver $resolver;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->resolver = new WorkItemProviderResolver(new GlobalConfigProviderResolver());
+        $this->resolver = new IssueTrackerResolver(new GlobalConfigProviderResolver());
     }
 
     public function testResolvesJiraWhenOnlyJiraConfigured(): void
@@ -83,7 +83,7 @@ class WorkItemProviderResolverTest extends TestCase
         $globalResolver->method('collectsJira')->willReturn(false);
         $globalResolver->method('collectsLinear')->willReturn(false);
 
-        $resolver = new WorkItemProviderResolver($globalResolver);
+        $resolver = new IssueTrackerResolver($globalResolver);
         $result = $resolver->resolveActiveProvider([], []);
 
         $this->assertFalse($result['ok']);

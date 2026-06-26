@@ -250,6 +250,7 @@ item:
     section: "Details for issue %key%"
     fetching: "Fetching details for issue: %key%"
     error_not_found: "Could not find Jira issue with key \"%key%\"."
+    error_fetch: "Failed to fetch issue details: %error%"
     label_key: "Key"
     label_title: "Title"
     label_status: "Status"
@@ -266,6 +267,7 @@ item:
     col_filename: "Filename"
     col_path: "Path"
     error_key_or_url: "Provide a Jira issue key or --url with a Jira attachment content URL."
+    error_fetch: "Failed to load attachments: %error%"
     error_path_traversal: "Path cannot contain parent directory segments (..)."
     error_partial: "%filename%: %message%"
   upload:

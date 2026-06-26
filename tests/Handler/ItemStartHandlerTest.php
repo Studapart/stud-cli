@@ -2,6 +2,7 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
 use App\Response\WorkflowResponse;
@@ -28,12 +29,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$gitBranchService = $this->gitBranchService;
-        TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
         $this->gitBranchService->method('resolveLatestBaseBranch')->willReturn('origin/develop');
         $this->prompt = $this->createMock(PromptInterface::class);
         // Default config with transition disabled for existing tests
-        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
+        $this->handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
     }
 
     private function assertWorkflowExitCode(WorkflowResponse $response, int $expectedExitCode): void
@@ -56,7 +57,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -84,10 +85,10 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
-            ->willThrowException(new \Exception('Issue not found'));
+            ->willThrowException(new \App\Exception\ApiException('Issue not found', 'HTTP 404', 404));
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -100,12 +101,12 @@ class ItemStartHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFoundApiException(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
 
         $response = $handler->handle('TPW-35');
 
@@ -127,7 +128,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -195,15 +196,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         // Mock project config with cached transition
@@ -216,9 +217,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -270,15 +271,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -290,9 +291,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -344,15 +345,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -365,26 +366,12 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn([]); // No cached transition
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
-            [
-                'id' => 21,
-                'name' => 'Done',
-                'to' => [
-                    'name' => 'Done',
-                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
+            new StateChange('21', 'Done', 'Done'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -405,9 +392,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $response = $handler->handle('TPW-35');
 
@@ -443,15 +430,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -464,27 +451,20 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn([]); // No cached transition
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
         $this->gitRepository->expects($this->never())
             ->method('writeProjectConfig'); // User declined to save
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -545,15 +525,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -565,8 +545,8 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn([]);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn([]); // No transitions available
 
@@ -619,15 +599,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Assignment failed'));
 
@@ -640,9 +620,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -693,15 +673,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Assignment failed'));
 
@@ -714,9 +694,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -768,15 +748,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -788,8 +768,8 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn([]);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Failed to fetch transitions'));
 
@@ -842,15 +822,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -862,9 +842,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11)
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11')
             ->willThrowException(new \Exception('Transition execution failed'));
 
         $this->gitRepository->expects($this->once())
@@ -903,15 +883,15 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
 
@@ -924,9 +904,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -966,15 +946,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -986,8 +966,8 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn([]);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Failed to get transitions.', 'HTTP 500: Internal Server Error', 500));
 
@@ -1029,15 +1009,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1049,9 +1029,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11)
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11')
             ->willThrowException(new \App\Exception\ApiException('Failed to execute transition.', 'HTTP 400: Bad Request', 400));
 
         $this->gitRepository->expects($this->once())
@@ -1092,15 +1072,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
 
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $this->prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1112,9 +1092,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('readProjectConfig')
             ->willReturn(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -1166,15 +1146,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1187,18 +1167,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn([]);
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -1206,9 +1179,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'TPW', 'transitionId' => 11]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -1267,15 +1240,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1290,18 +1263,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         // Should fall through to interactive selection
         $transitions = [
-            [
-                'id' => 22,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('22', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -1309,9 +1275,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'TPW', 'transitionId' => 22]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 22);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '22');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -1369,15 +1335,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1392,18 +1358,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         // Should fall through to interactive selection
         $transitions = [
-            [
-                'id' => 22,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('22', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -1411,9 +1370,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'TPW', 'transitionId' => 22]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 22);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '22');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -1473,15 +1432,15 @@ class ItemStartHandlerTest extends CommandTestCase
         $input->setStream($inputStream);
         $io = new SymfonyStyle($input, $output);
         $prompt = new SymfonyPromptService($io);
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1495,18 +1454,11 @@ class ItemStartHandlerTest extends CommandTestCase
 
         // Return transitions that are not 'in_progress' - these should now be shown
         $transitions = [
-            [
-                'id' => 21,
-                'name' => 'Block',
-                'to' => [
-                    'name' => 'Blocked',
-                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
-                ],
-            ],
+            new StateChange('21', 'Block', 'Blocked'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -1514,9 +1466,9 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('writeProjectConfig')
             ->with(['projectKey' => 'TPW', 'transitionId' => 21]);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 21);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '21');
 
         $this->gitRepository->expects($this->once())
             ->method('fetch');
@@ -1568,15 +1520,15 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('choice')
             ->willReturn('Invalid Selection Without ID Pattern');
 
-        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
+        $handler = new ItemStartHandler($this->gitRepository, $this->gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, $jiraConfig, $prompt);
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
         $property->setAccessible(true);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
-        $this->jiraService->expects($this->once())
-            ->method('assignIssue')
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
             ->with('TPW-35');
 
         $this->gitRepository->expects($this->once())
@@ -1589,18 +1541,11 @@ class ItemStartHandlerTest extends CommandTestCase
             ->willReturn([]);
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
@@ -1623,7 +1568,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1665,7 +1610,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1707,7 +1652,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1752,7 +1697,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1794,7 +1739,7 @@ class ItemStartHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1842,7 +1787,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('origin/develop')
             ->willReturn('develop');
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1859,7 +1804,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'develop');
 
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -1889,7 +1834,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('origin/develop')
             ->willReturn('origin/develop');
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -1906,7 +1851,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->method('createBranch')
             ->with('feat/TPW-35-my-awesome-feature', 'origin/develop');
 
-        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->jiraService, 'origin/develop', $this->translationService, [], $this->prompt);
+        $handler = new ItemStartHandler($gitRepository, $gitBranchService, $this->issueTracker, 'origin/develop', $this->translationService, [], $this->prompt);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);

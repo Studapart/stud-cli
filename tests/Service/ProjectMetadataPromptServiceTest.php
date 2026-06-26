@@ -6,20 +6,20 @@ namespace App\Tests\Service;
 
 use App\DTO\WorkflowRecorder;
 use App\Service\BranchNameGenerator;
+use App\Service\IssueTrackerResolver;
 use App\Service\LinearMetadataClient;
 use App\Service\MessageRenderer;
 use App\Service\ProjectMetadataPromptService;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
-use App\Service\WorkItemProviderResolver;
 use App\Tests\CommandTestCase;
 
 class ProjectMetadataPromptServiceTest extends CommandTestCase
 {
     public function testChooseJiraTransitionIdReturnsSelectedTransition(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->with('SCI')
             ->willReturn([
@@ -39,7 +39,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseJiraTransitionIdReturnsNullWhenUserSkips(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->jiraApiClient->expects($this->once())
             ->method('getProjectTransitions')
             ->willReturn([
                 ['id' => 42, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress']],
@@ -214,7 +214,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseJiraTransitionIdReturnsNullWhenChoiceHasInvalidFormat(): void
     {
-        $this->jiraService->method('getProjectTransitions')->willReturn([
+        $this->jiraApiClient->method('getProjectTransitions')->willReturn([
             ['id' => 42, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress']],
         ]);
 
@@ -239,7 +239,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testChooseLinearStartStateIdReturnsNullWhenNoLinearStatesListed(): void
     {
-        $this->jiraService->method('getProjectTransitions')->willReturn([
+        $this->jiraApiClient->method('getProjectTransitions')->willReturn([
             ['id' => 11, 'name' => 'Start', 'to' => ['name' => 'In Progress']],
         ]);
 
@@ -402,7 +402,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
     public function testSkipChoiceLabelUsesMessageRendererWhenProvided(): void
     {
-        $this->jiraService->method('getProjectTransitions')->willReturn([
+        $this->jiraApiClient->method('getProjectTransitions')->willReturn([
             ['id' => 42, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress']],
         ]);
 
@@ -421,9 +421,9 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             ->willReturn('Skip translated');
 
         $service = new ProjectMetadataPromptService(
-            $this->jiraService,
+            $this->jiraApiClient,
             null,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             new ProjectsWorkflowNormalizer(),
             ['WORK_ITEM_PROVIDERS' => ['jira']],
             $prompt,
@@ -497,9 +497,9 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
         unset($projectConfig);
 
         return new ProjectMetadataPromptService(
-            $this->jiraService,
+            $this->jiraApiClient,
             $linearClient,
-            new WorkItemProviderResolver(),
+            new IssueTrackerResolver(),
             new ProjectsWorkflowNormalizer(),
             $globalConfig,
             $prompt,

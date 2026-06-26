@@ -4,25 +4,25 @@ namespace App\Tests\Service;
 
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackIds;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class GithubProviderTest extends TestCase
+class GithubGitHostingAdapterTest extends TestCase
 {
     private const GITHUB_TOKEN = 'test_token';
     private const GITHUB_OWNER = 'test_owner';
     private const GITHUB_REPO = 'test_repo';
 
-    private GithubProvider $githubProvider;
+    private GithubGitHostingAdapter $githubProvider;
     private HttpClientInterface&MockObject $httpClientMock;
 
     protected function setUp(): void
     {
         $this->httpClientMock = $this->createMock(HttpClientInterface::class);
-        $this->githubProvider = new GithubProvider(
+        $this->githubProvider = new GithubGitHostingAdapter(
             self::GITHUB_TOKEN,
             self::GITHUB_OWNER,
             self::GITHUB_REPO,
@@ -1778,7 +1778,7 @@ class GithubProviderTest extends TestCase
     public function testGetClientCreatesClientWhenNotProvided(): void
     {
         // Create provider without passing a client
-        $provider = new GithubProvider(
+        $provider = new GithubGitHostingAdapter(
             self::GITHUB_TOKEN,
             self::GITHUB_OWNER,
             self::GITHUB_REPO,

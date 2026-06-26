@@ -10,7 +10,7 @@ use App\Service\Prompt\PromptInterface;
 class ItemCreatePromptService
 {
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly JiraApiClient $jiraService,
         private readonly IssueFieldResolver $fieldResolver,
         private readonly PromptInterface $prompt,
     ) {

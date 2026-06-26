@@ -10,12 +10,12 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 
 class ItemUpdateHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
         private readonly FieldsParser $fieldsParser
     ) {
@@ -65,7 +65,7 @@ class ItemUpdateHandler implements WorkItemJiraAware
         $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
             ? trim($input->descriptionFormat)
             : 'plain';
-        $fields['description'] = $this->jiraService->descriptionToAdf(trim($desc), $format);
+        $fields['description'] = $this->provider->formatDescription(trim($desc), $format);
     }
 
     /**
@@ -89,7 +89,7 @@ class ItemUpdateHandler implements WorkItemJiraAware
     protected function fetchEditMeta(string $key): array|ItemUpdateResponse
     {
         try {
-            return $this->jiraService->getEditMetaFields($key);
+            return $this->provider->getEditMetaFields($key);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
@@ -107,7 +107,7 @@ class ItemUpdateHandler implements WorkItemJiraAware
     protected function sendUpdate(string $key, array $fields, array $skipped): ItemUpdateResponse
     {
         try {
-            $this->jiraService->updateIssue($key, $fields);
+            $this->provider->update($key, $fields);
 
             return ItemUpdateResponse::success($key, $skipped);
         } catch (ApiException $e) {

@@ -10,7 +10,7 @@ use App\DTO\WorkflowRecorder;
 use App\Response\WorkflowResponse;
 use App\Service\ChangelogParser;
 use App\Service\FileSystem;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use App\Service\GlobalMigrationService;
 use App\Service\PortableUpdateService;
 use App\Service\Prompt\PromptInterface;
@@ -82,7 +82,7 @@ class UpdateHandler
         $this->logVerbose('Current version', $this->currentVersion);
 
         $installContext = (new UpdateInstallDetector())->detect($binaryPath, $this->currentVersion);
-        $githubProvider = $this->createGithubProvider($this->repoOwner, $this->repoName);
+        $githubProvider = $this->createGithubGitHostingAdapter($this->repoOwner, $this->repoName);
         $release = $this->getReleaseOrExitCode($githubProvider);
         if (is_int($release)) {
             return $this->recorder()->toResponse($release);
@@ -162,9 +162,9 @@ class UpdateHandler
     /**
      * @codeCoverageIgnore
      */
-    protected function createGithubProvider(string $repoOwner, string $repoName): GithubProvider
+    protected function createGithubGitHostingAdapter(string $repoOwner, string $repoName): GithubGitHostingAdapter
     {
-        return $this->releaseFetcher->createGithubProvider();
+        return $this->releaseFetcher->createGithubGitHostingAdapter();
     }
 
     /**
@@ -172,7 +172,7 @@ class UpdateHandler
      *
      * @codeCoverageIgnore
      */
-    protected function fetchLatestRelease(GithubProvider $githubProvider): array
+    protected function fetchLatestRelease(GithubGitHostingAdapter $githubProvider): array
     {
         return $this->releaseFetcher->fetchLatestRelease($githubProvider, $this->recorder());
     }
@@ -180,7 +180,7 @@ class UpdateHandler
     /**
      * @return int|array<string, mixed>
      */
-    protected function getReleaseOrExitCode(GithubProvider $githubProvider): int|array
+    protected function getReleaseOrExitCode(GithubGitHostingAdapter $githubProvider): int|array
     {
         return $this->releaseFetcher->getReleaseOrExitCode($githubProvider, $this->recorder());
     }
@@ -343,7 +343,7 @@ class UpdateHandler
      *
      * @codeCoverageIgnore
      */
-    protected function displayChangelog(GithubProvider $githubProvider, array $release): void
+    protected function displayChangelog(GithubGitHostingAdapter $githubProvider, array $release): void
     {
         $this->changelogPresenter->display($this->recorder(), $githubProvider, $release, $this->logVerbose(...));
     }

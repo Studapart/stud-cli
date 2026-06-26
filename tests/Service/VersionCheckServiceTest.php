@@ -3,7 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use App\Service\VersionCheckService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
@@ -500,7 +500,7 @@ class VersionCheckServiceTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testCreateGithubProviderWithoutToken(): void
+    public function testCreateGithubGitHostingAdapterWithoutToken(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -512,24 +512,24 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
         $method->setAccessible(true);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithToken(): void
+    public function testCreateGithubGitHostingAdapterWithToken(): void
     {
         $reflection = new \ReflectionClass($this->service);
-        $method = $reflection->getMethod('createGithubProvider');
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
         $method->setAccessible(true);
 
         $provider = $method->invoke($this->service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -541,14 +541,14 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
         $method->setAccessible(true);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithoutTokenAndWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutTokenAndWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -560,11 +560,11 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
         $method->setAccessible(true);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
     public function testFetchLatestVersionFromGitHubWithNoTagName(): void

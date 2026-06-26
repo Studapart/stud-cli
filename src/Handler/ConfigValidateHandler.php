@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Response\ConfigValidateResponse;
-use App\Service\GitProviderInterface;
-use App\Service\JiraService;
+use App\Service\GitHostingPort;
+use App\Service\IssueTrackerPort;
 
 /**
  * Handler for config:validate: validates that config is loadable and that configured
@@ -17,8 +17,8 @@ class ConfigValidateHandler
     private const MAX_REASON_LENGTH = 120;
 
     public function __construct(
-        private readonly ?JiraService $jiraService,
-        private readonly ?GitProviderInterface $gitProvider,
+        private readonly ?IssueTrackerPort $workItemProvider,
+        private readonly ?GitHostingPort $gitProvider,
         private readonly bool $skipJira,
         private readonly bool $skipGit,
         private readonly bool $skipLinear,
@@ -53,12 +53,12 @@ class ConfigValidateHandler
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
-        if ($this->jiraService === null) {
+        if ($this->workItemProvider === null) {
             return ['status' => ConfigValidateResponse::STATUS_FAIL, 'message' => 'Jira not configured'];
         }
 
         try {
-            $this->jiraService->getProjects();
+            $this->workItemProvider->ping();
 
             return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
         } catch (\Throwable $e) {

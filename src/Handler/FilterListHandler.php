@@ -8,13 +8,13 @@ use App\DTO\Filter;
 use App\DTO\MessageRef;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\FilterListResponse;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 
 class FilterListHandler implements WorkItemJiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService,
-        mixed $_translator
+        private readonly IssueTrackerPort $provider,
+        mixed $_translator,
     ) {
         unset($_translator);
     }
@@ -22,7 +22,7 @@ class FilterListHandler implements WorkItemJiraAware
     public function handle(): FilterListResponse
     {
         try {
-            $filters = $this->jiraService->getFilters();
+            $filters = $this->provider->listFiltersOrViews();
         } catch (\Exception $e) {
             return FilterListResponse::error(
                 MessageRef::key('filter.list.error_fetch', ['error' => $e->getMessage()])

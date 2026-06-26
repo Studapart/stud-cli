@@ -15,7 +15,7 @@ use App\DTO\PullRequestFeedbackIds;
  * This interface defines the contract that all Git provider implementations must follow,
  * ensuring consistent behavior across different hosting platforms.
  */
-interface GitProviderInterface
+interface GitHostingPort
 {
     /**
      * Creates a pull request (GitHub) or merge request (GitLab).

@@ -15,15 +15,15 @@ class ProjectListHandlerTest extends CommandTestCase
     {
         parent::setUp();
 
-        $this->handler = new ProjectListHandler($this->jiraService);
+        $this->handler = new ProjectListHandler($this->issueTracker);
     }
 
     public function testHandleReturnsSuccessResponseWithProjects(): void
     {
         $project = new Project('PROJ', 'My Project');
 
-        $this->jiraService->expects($this->once())
-            ->method('getProjects')
+        $this->issueTracker->expects($this->once())
+            ->method('listTeams')
             ->willReturn([$project]);
 
         $response = $this->handler->handle();
@@ -36,8 +36,8 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessResponseWithEmptyProjects(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('getProjects')
+        $this->issueTracker->expects($this->once())
+            ->method('listTeams')
             ->willReturn([]);
 
         $response = $this->handler->handle();
@@ -49,15 +49,16 @@ class ProjectListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsErrorResponseOnException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('getProjects')
+        $this->issueTracker->expects($this->once())
+            ->method('listTeams')
             ->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle();
 
         $this->assertInstanceOf(ProjectListResponse::class, $response);
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('Jira API error', $response->getError());
+        $message = $this->assertMessageRef($response->getErrorMessage(), 'project.list.error_fetch');
+        $this->assertSame('Jira API error', $message->parameters['error']);
         $this->assertEmpty($response->projects);
     }
 }

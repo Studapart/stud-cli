@@ -7,21 +7,21 @@ namespace App\Tests\Handler;
 use App\DTO\ConfluencePushInput;
 use App\Exception\ApiException;
 use App\Handler\ConfluencePushHandler;
-use App\Service\ConfluenceService;
 use App\Service\MarkdownToAdfConverter;
 use App\Service\TranslationService;
+use App\Service\WikiPort;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class ConfluencePushHandlerTest extends TestCase
 {
-    private ConfluenceService&MockObject $confluenceService;
+    private WikiPort&MockObject $wiki;
     private MarkdownToAdfConverter&MockObject $converter;
     private TranslationService&MockObject $translator;
 
     protected function setUp(): void
     {
-        $this->confluenceService = $this->createMock(ConfluenceService::class);
+        $this->wiki = $this->createMock(WikiPort::class);
         $this->converter = $this->createMock(MarkdownToAdfConverter::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(
@@ -32,7 +32,7 @@ class ConfluencePushHandlerTest extends TestCase
     private function createHandler(): ConfluencePushHandler
     {
         return new ConfluencePushHandler(
-            $this->confluenceService,
+            $this->wiki,
             $this->converter,
             $this->translator
         );
@@ -40,7 +40,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleCreateFlowSuccess(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('DEV')
             ->willReturn('1');
@@ -48,7 +48,7 @@ class ConfluencePushHandlerTest extends TestCase
             ->method('convert')
             ->with('# Hello')
             ->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
                 '1',
@@ -76,7 +76,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateFlowSuccess(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
             ->willReturn([
@@ -89,7 +89,7 @@ class ConfluencePushHandlerTest extends TestCase
             ->method('convert')
             ->with('# Updated')
             ->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->with(
                 '12345',
@@ -115,7 +115,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateKeepsExistingTitleWhenNotProvided(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
             ->willReturn([
@@ -125,7 +125,7 @@ class ConfluencePushHandlerTest extends TestCase
                 '_links' => ['webui' => '/wiki/spaces/DEV/pages/12345'],
             ]);
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->with('12345', 'Existing Title', self::anything(), 2)
             ->willReturn([
@@ -144,8 +144,8 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleReturnsErrorWhenContentEmpty(): void
     {
-        $this->confluenceService->expects(self::never())->method('createPage');
-        $this->confluenceService->expects(self::never())->method('getPage');
+        $this->wiki->expects(self::never())->method('createPage');
+        $this->wiki->expects(self::never())->method('getPage');
 
         $handler = $this->createHandler();
         $input = new ConfluencePushInput('   ', space: 'DEV', title: 'Title');
@@ -177,7 +177,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleCreateReturnsErrorWhenSpaceNotFound(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('resolveSpaceId')
             ->with('MISSING')
             ->willThrowException(new ApiException('Space not found', 'detail', 404));
@@ -193,7 +193,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateReturnsErrorWhenPageNotFound(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('99999')
             ->willThrowException(new ApiException('Page not found', 'detail', 404));
@@ -208,9 +208,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleCreateReturnsErrorOnApiException(): void
     {
-        $this->confluenceService->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
+        $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->willThrowException(new ApiException('Server error', 'detail', 500));
 
@@ -224,7 +224,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateReturnsErrorWhenUpdatePageThrows(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
             ->willReturn([
@@ -234,7 +234,7 @@ class ConfluencePushHandlerTest extends TestCase
                 '_links' => ['webui' => '/spaces/DEV/pages/12345'],
             ]);
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->willThrowException(new ApiException('Conflict', 'detail', 409));
 
@@ -248,9 +248,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testBuildPageUrlWithEmptyWebuiReturnsBaseUrl(): void
     {
-        $this->confluenceService->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
+        $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->willReturn([
                 'id' => '99',
@@ -268,10 +268,10 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testBuildPageUrlWithAbsoluteUrlReturnsAsIs(): void
     {
-        $this->confluenceService->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
+        $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
         $fullUrl = 'https://other.atlassian.net/wiki/spaces/DEV/pages/999';
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->willReturn([
                 'id' => '999',
@@ -290,17 +290,17 @@ class ConfluencePushHandlerTest extends TestCase
     public function testCreateWithParentAsFolderUsesFolderSpaceId(): void
     {
         $parentId = '5315756039';
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with($parentId)
             ->willThrowException(new ApiException('Not found', 'detail', 404));
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getFolder')
             ->with($parentId)
             ->willReturn(['id' => $parentId, 'title' => 'Research', 'spaceId' => '42']);
-        $this->confluenceService->expects(self::never())->method('resolveSpaceId');
+        $this->wiki->expects(self::never())->method('resolveSpaceId');
         $this->converter->expects(self::once())->method('convert')->with('# Doc')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->with('42', 'My Doc', self::anything(), $parentId, 'current')
             ->willReturn([
@@ -320,11 +320,11 @@ class ConfluencePushHandlerTest extends TestCase
     public function testCreateWithParentNotFoundReturnsError(): void
     {
         $parentId = '99999';
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with($parentId)
             ->willThrowException(new ApiException('Not found', 'detail', 404));
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getFolder')
             ->with($parentId)
             ->willThrowException(new ApiException('Folder not found', 'detail', 404));
@@ -342,9 +342,9 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $accountId = 'abc-123';
         $displayName = 'Jane Doe';
-        $this->confluenceService->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
+        $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->with('body')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
                 '1',
@@ -391,7 +391,7 @@ class ConfluencePushHandlerTest extends TestCase
             'version' => ['number' => 2],
             '_links' => ['webui' => '/spaces/DEV/pages/child1'],
         ];
-        $this->confluenceService->expects(self::exactly(2))
+        $this->wiki->expects(self::exactly(2))
             ->method('getPage')
             ->willReturnCallback(function (string $id) use ($parentId, $parentPage, $childPage) {
                 if ($id === $parentId) {
@@ -404,17 +404,17 @@ class ConfluencePushHandlerTest extends TestCase
                 throw new \InvalidArgumentException('Unexpected page id: ' . $id);
             });
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->with('1', $title, self::anything(), $parentId, 'current')
             ->willThrowException(
                 new ApiException('Bad request', 'title already exists', 400)
             );
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getDirectChildPages')
             ->with($parentId)
             ->willReturn([['id' => 'child1', 'title' => $title]]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->with('child1', $title, self::anything(), 3)
             ->willReturn([
@@ -434,7 +434,7 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testHandleUpdateWithContactAppendsMentionToAdf(): void
     {
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with('12345')
             ->willReturn([
@@ -444,7 +444,7 @@ class ConfluencePushHandlerTest extends TestCase
                 '_links' => ['webui' => '/spaces/DEV/pages/12345'],
             ]);
         $this->converter->expects(self::once())->method('convert')->with('body')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->with(
                 '12345',
@@ -476,11 +476,11 @@ class ConfluencePushHandlerTest extends TestCase
     public function testCreateWithParentPageReturnsErrorWhenGetPageFailsWithNon404(): void
     {
         $parentId = '99999';
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with($parentId)
             ->willThrowException(new ApiException('Server error', 'detail', 500));
-        $this->confluenceService->expects(self::never())->method('getFolder');
+        $this->wiki->expects(self::never())->method('getFolder');
         $this->converter->expects(self::never())->method('convert');
 
         $handler = $this->createHandler();
@@ -495,7 +495,7 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $parentId = 'folder1';
         $title = 'Same Title';
-        $this->confluenceService->expects(self::exactly(2))
+        $this->wiki->expects(self::exactly(2))
             ->method('getPage')
             ->willReturnCallback(function (string $id) use ($parentId, $title) {
                 if ($id === $parentId) {
@@ -513,17 +513,17 @@ class ConfluencePushHandlerTest extends TestCase
                 throw new \InvalidArgumentException('Unexpected');
             });
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())->method('createPage')
+        $this->wiki->expects(self::once())->method('createPage')
             ->willThrowException(new ApiException('Bad request', 'title already exists', 400));
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getDirectChildPages')
             ->with($parentId)
             ->willThrowException(new ApiException('Failed', 'detail', 500));
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getDirectChildPagesOfFolder')
             ->with($parentId)
             ->willReturn([['id' => 'child1', 'title' => $title]]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('updatePage')
             ->with('child1', $title, self::anything(), 3)
             ->willReturn([
@@ -544,14 +544,14 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $parentId = 'p1';
         $title = 'Same';
-        $this->confluenceService->expects(self::once())->method('getPage')->with($parentId)
+        $this->wiki->expects(self::once())->method('getPage')->with($parentId)
             ->willReturn(['id' => $parentId, 'title' => 'Parent', 'spaceId' => '1']);
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())->method('createPage')
+        $this->wiki->expects(self::once())->method('createPage')
             ->willThrowException(new ApiException('Bad request', 'title already exists', 400));
-        $this->confluenceService->expects(self::once())->method('getDirectChildPages')->with($parentId)
+        $this->wiki->expects(self::once())->method('getDirectChildPages')->with($parentId)
             ->willThrowException(new ApiException('Failed', 'detail', 500));
-        $this->confluenceService->expects(self::once())->method('getDirectChildPagesOfFolder')->with($parentId)
+        $this->wiki->expects(self::once())->method('getDirectChildPagesOfFolder')->with($parentId)
             ->willThrowException(new ApiException('Folder failed', 'detail', 500));
 
         $handler = $this->createHandler();
@@ -566,14 +566,14 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $parentId = 'parent1';
         $title = 'Unique Title';
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('getPage')
             ->with($parentId)
             ->willReturn(['id' => $parentId, 'title' => 'Parent', 'spaceId' => '1']);
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())->method('createPage')
+        $this->wiki->expects(self::once())->method('createPage')
             ->willThrowException(new ApiException('Bad request', 'title already exists', 400));
-        $this->confluenceService->expects(self::once())->method('getDirectChildPages')->with($parentId)
+        $this->wiki->expects(self::once())->method('getDirectChildPages')->with($parentId)
             ->willReturn([['id' => 'other', 'title' => 'Other Title']]);
 
         $handler = $this->createHandler();
@@ -588,7 +588,7 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $parentId = 'p1';
         $title = 'Same';
-        $this->confluenceService->expects(self::exactly(2))
+        $this->wiki->expects(self::exactly(2))
             ->method('getPage')
             ->willReturnCallback(function (string $id) use ($parentId) {
                 if ($id === $parentId) {
@@ -601,9 +601,9 @@ class ConfluencePushHandlerTest extends TestCase
                 throw new \InvalidArgumentException('Unexpected');
             });
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())->method('createPage')
+        $this->wiki->expects(self::once())->method('createPage')
             ->willThrowException(new ApiException('Bad request', 'title already exists', 400));
-        $this->confluenceService->expects(self::once())->method('getDirectChildPages')->with($parentId)
+        $this->wiki->expects(self::once())->method('getDirectChildPages')->with($parentId)
             ->willReturn([['id' => 'child1', 'title' => $title]]);
 
         $handler = $this->createHandler();
@@ -618,7 +618,7 @@ class ConfluencePushHandlerTest extends TestCase
     {
         $parentId = 'p1';
         $title = 'Same';
-        $this->confluenceService->expects(self::exactly(2))
+        $this->wiki->expects(self::exactly(2))
             ->method('getPage')
             ->willReturnCallback(function (string $id) use ($parentId, $title) {
                 if ($id === $parentId) {
@@ -636,11 +636,11 @@ class ConfluencePushHandlerTest extends TestCase
                 throw new \InvalidArgumentException('Unexpected');
             });
         $this->converter->expects(self::once())->method('convert')->willReturn(['type' => 'doc', 'version' => 1, 'content' => []]);
-        $this->confluenceService->expects(self::once())->method('createPage')
+        $this->wiki->expects(self::once())->method('createPage')
             ->willThrowException(new ApiException('Bad request', 'title already exists', 400));
-        $this->confluenceService->expects(self::once())->method('getDirectChildPages')->with($parentId)
+        $this->wiki->expects(self::once())->method('getDirectChildPages')->with($parentId)
             ->willReturn([['id' => 'child1', 'title' => $title]]);
-        $this->confluenceService->expects(self::once())->method('updatePage')
+        $this->wiki->expects(self::once())->method('updatePage')
             ->willThrowException(new ApiException('Conflict', 'detail', 409));
 
         $handler = $this->createHandler();
@@ -653,9 +653,9 @@ class ConfluencePushHandlerTest extends TestCase
 
     public function testCreateWithContactAppendsMentionWhenAdfHasNoContentKey(): void
     {
-        $this->confluenceService->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
+        $this->wiki->expects(self::once())->method('resolveSpaceId')->with('DEV')->willReturn('1');
         $this->converter->expects(self::once())->method('convert')->with('x')->willReturn(['type' => 'doc', 'version' => 1]);
-        $this->confluenceService->expects(self::once())
+        $this->wiki->expects(self::once())
             ->method('createPage')
             ->with(
                 '1',

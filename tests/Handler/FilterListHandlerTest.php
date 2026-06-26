@@ -15,15 +15,15 @@ class FilterListHandlerTest extends CommandTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->handler = new FilterListHandler($this->jiraService, $this->translationService);
+        $this->handler = new FilterListHandler($this->issueTracker, $this->translationService);
     }
 
     public function testHandleReturnsSuccessWithFilters(): void
     {
         $filter = new Filter('My Filter', 'Filter description');
 
-        $this->jiraService->expects($this->once())
-            ->method('getFilters')
+        $this->issueTracker->expects($this->once())
+            ->method('listFiltersOrViews')
             ->willReturn([$filter]);
 
         $response = $this->handler->handle();
@@ -36,8 +36,8 @@ class FilterListHandlerTest extends CommandTestCase
 
     public function testHandleReturnsSuccessWithEmptyFilters(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('getFilters')
+        $this->issueTracker->expects($this->once())
+            ->method('listFiltersOrViews')
             ->willReturn([]);
 
         $response = $this->handler->handle();
@@ -46,10 +46,10 @@ class FilterListHandlerTest extends CommandTestCase
         $this->assertCount(0, $response->filters);
     }
 
-    public function testHandleReturnsErrorOnJiraServiceException(): void
+    public function testHandleReturnsErrorOnJiraApiClientException(): void
     {
-        $this->jiraService->expects($this->once())
-            ->method('getFilters')
+        $this->issueTracker->expects($this->once())
+            ->method('listFiltersOrViews')
             ->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle();
@@ -67,8 +67,8 @@ class FilterListHandlerTest extends CommandTestCase
         $filter2 = new Filter('Alpha Filter', 'Description 2');
         $filter3 = new Filter('Beta Filter', 'Description 3');
 
-        $this->jiraService->expects($this->once())
-            ->method('getFilters')
+        $this->issueTracker->expects($this->once())
+            ->method('listFiltersOrViews')
             ->willReturn([$filter1, $filter2, $filter3]);
 
         $response = $this->handler->handle();
@@ -84,8 +84,8 @@ class FilterListHandlerTest extends CommandTestCase
     {
         $filter = new Filter('My Filter', null);
 
-        $this->jiraService->expects($this->once())
-            ->method('getFilters')
+        $this->issueTracker->expects($this->once())
+            ->method('listFiltersOrViews')
             ->willReturn([$filter]);
 
         $response = $this->handler->handle();

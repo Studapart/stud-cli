@@ -10,10 +10,10 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\Capability\WorkItemLinearAware;
 use App\Response\ProjectsWorkflowResponse;
-use App\Service\JiraService;
+use App\Service\IssueTrackerResolver;
+use App\Service\JiraApiClient;
 use App\Service\LinearMetadataClient;
 use App\Service\ProjectsWorkflowNormalizer;
-use App\Service\WorkItemProviderResolver;
 
 /**
  * Lists workflow transitions (Jira) or workflow states (Linear) for a project/team key.
@@ -23,9 +23,9 @@ use App\Service\WorkItemProviderResolver;
 class ProjectsWorkflowHandler implements WorkItemJiraAware, WorkItemLinearAware
 {
     public function __construct(
-        private readonly ?JiraService $jiraService,
+        private readonly ?JiraApiClient $jiraService,
         private readonly ?LinearMetadataClient $linearClient,
-        private readonly WorkItemProviderResolver $providerResolver,
+        private readonly IssueTrackerResolver $providerResolver,
         private readonly ProjectsWorkflowNormalizer $normalizer,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,

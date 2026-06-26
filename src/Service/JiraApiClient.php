@@ -7,10 +7,11 @@ namespace App\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
+use App\Enum\JiraStatusCategory;
 use App\Exception\ApiException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class JiraService
+class JiraApiClient
 {
     /**
      * Explicit field ids when requesting rendered HTML plus attachment metadata for {@see getIssue()} (renderFields=true).
@@ -171,7 +172,7 @@ class JiraService
     public function getProjectTransitions(string $projectKey): array
     {
         $escapedKey = $this->escapeJqlProjectKey($projectKey);
-        $issues = $this->searchIssues("project = {$escapedKey} AND statusCategory != Done ORDER BY created DESC");
+        $issues = $this->searchIssues("project = {$escapedKey} AND " . JiraStatusCategory::notDoneJqlClause() . ' ORDER BY created DESC');
         if ($issues === []) {
             $issues = $this->searchIssues("project = {$escapedKey} ORDER BY created DESC");
         }
