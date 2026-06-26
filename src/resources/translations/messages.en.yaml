@@ -328,6 +328,11 @@ item:
     no_items: "No items found matching your criteria."
     error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
+work_item_provider:
+  missing_linear_api_key: "Linear is selected but LINEAR_API_KEY is not configured. Run \"stud config:init\" or set LINEAR_API_KEY in ~/.config/stud/config.yml."
+  missing_jira_configuration: "Jira is selected but Jira credentials are not configured. Run \"stud config:init\"."
+  not_configured: "No work-item provider is configured. Run \"stud config:init\" to set up Jira or Linear."
+
 # Project List Handler
 project:
   list:

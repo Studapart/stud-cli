@@ -325,6 +325,10 @@ item:
     error_fetch: 'Không thể lấy các mục: %error%'
     no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
     error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira được chọn nhưng thông tin xác thực Jira chưa được cấu hình. Chạy "stud config:init".'
+  not_configured: 'Chưa cấu hình nhà cung cấp work-item. Chạy "stud config:init" để thiết lập Jira hoặc Linear.'
 project:
   list:
     section: Đang lấy các dự án Jira

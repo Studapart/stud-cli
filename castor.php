@@ -40,6 +40,7 @@ use App\DTO\ItemUploadInput;
 use App\DTO\SubmitOptions;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
+use App\Exception\WorkItemProviderException;
 use App\Guard\CommandContextFactory;
 use App\Guard\CommandGuard;
 use App\Guard\CommandGuardResult;
@@ -165,6 +166,8 @@ use App\Service\UpdatePrerequisiteMigrationRunner;
 use App\Service\UpdateReleaseFetcher;
 use App\Service\VersionCheckService;
 use App\Service\WorkflowOutput;
+use App\Service\WorkItemProviderFactory;
+use App\Service\WorkItemProviderInterface;
 use App\Service\WorkItemProviderResolver;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsListener;
@@ -734,6 +737,65 @@ function _get_github_provider(): ?GithubProvider
     $provider = _get_git_provider();
 
     return $provider instanceof GithubProvider ? $provider : null;
+}
+
+function _get_work_item_provider_factory(): WorkItemProviderFactory
+{
+    return new WorkItemProviderFactory();
+}
+
+/**
+ * Resolves the active work-item provider (Jira or Linear) from global and project config.
+ *
+ * @param bool        $quiet    When true, log errors but do not prompt; return null on failure.
+ * @param string|null $override CLI --provider override (jira, linear, auto).
+ */
+function _get_work_item_provider(bool $quiet = false, ?string $override = null): ?WorkItemProviderInterface
+{
+    if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", 'workItemProvider') && \App\Tests\TestKernel::$workItemProvider !== null) {
+        return \App\Tests\TestKernel::$workItemProvider;
+    }
+
+    try {
+        $globalConfig = _get_config();
+        $projectConfig = [];
+
+        try {
+            $projectConfig = _get_git_repository()->readProjectConfig();
+        } catch (\RuntimeException) {
+            $projectConfig = [];
+        }
+
+        $factory = _get_work_item_provider_factory();
+        $type = $factory->resolveType($override, $globalConfig, $projectConfig);
+        $factory->assertCredentials($type, $globalConfig);
+
+        if ($type === 'linear') {
+            return $factory->create($type);
+        }
+
+        $jiraService = _get_jira_service_if_configured();
+        if ($jiraService === null) {
+            throw WorkItemProviderException::missingJiraConfiguration();
+        }
+
+        return $factory->create($type, $jiraService, _get_jira_attachment_service());
+    } catch (WorkItemProviderException $e) {
+        if (! $quiet) {
+            _get_logger()->error(
+                Logger::VERBOSITY_NORMAL,
+                _get_translation_service()->trans($e->messageRef->key, $e->messageRef->parameters),
+            );
+        }
+
+        return null;
+    } catch (\InvalidArgumentException $e) {
+        if (! $quiet) {
+            _get_logger()->error(Logger::VERBOSITY_NORMAL, $e->getMessage());
+        }
+
+        return null;
+    }
 }
 
 function _get_translation_service(): TranslationService

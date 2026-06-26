@@ -325,6 +325,10 @@ item:
     error_fetch: 'Fout bij ophalen van tickets: %error%'
     no_items: Geen tickets gevonden die overeenkomen met uw criteria.
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waarden: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Linear is geselecteerd maar LINEAR_API_KEY is niet geconfigureerd. Voer "stud config:init" uit of stel LINEAR_API_KEY in in ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira is geselecteerd maar Jira-referenties zijn niet geconfigureerd. Voer "stud config:init" uit.'
+  not_configured: 'Geen work-item provider geconfigureerd. Voer "stud config:init" uit om Jira of Linear in te stellen.'
 project:
   list:
     section: Jira Projecten ophalen
