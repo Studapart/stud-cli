@@ -101,11 +101,15 @@ class ItemUploadHandler implements WorkItemJiraAware
             $this->provider->uploadAttachment($issueKey, $absolute);
             $files[] = ['filename' => $uploadName, 'path' => $trimmed];
         } catch (ApiException $e) {
-            $detail = $e->getTechnicalDetails();
-            $message = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
-            $errors[] = ['filename' => $trimmed, 'message' => $message];
+            $errors[] = [
+                'filename' => $trimmed,
+                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
+            ];
         } catch (\Throwable $e) {
-            $errors[] = ['filename' => $trimmed, 'message' => $e->getMessage()];
+            $errors[] = [
+                'filename' => $trimmed,
+                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
+            ];
         }
     }
 

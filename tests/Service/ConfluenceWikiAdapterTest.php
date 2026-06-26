@@ -4,27 +4,27 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Service\ConfluenceService;
+use App\Service\ConfluenceApiClient;
 use App\Service\ConfluenceWikiAdapter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class ConfluenceWikiAdapterTest extends TestCase
 {
-    private ConfluenceService&MockObject $confluenceService;
+    private ConfluenceApiClient&MockObject $confluenceApiClient;
 
     private ConfluenceWikiAdapter $adapter;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->confluenceService = $this->createMock(ConfluenceService::class);
-        $this->adapter = new ConfluenceWikiAdapter($this->confluenceService);
+        $this->confluenceApiClient = $this->createMock(ConfluenceApiClient::class);
+        $this->adapter = new ConfluenceWikiAdapter($this->confluenceApiClient);
     }
 
     public function testGetPageWithBodyDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('getPageWithBody')
             ->with('42')
             ->willReturn(['id' => '42']);
@@ -34,7 +34,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testExtractPageIdFromUrlDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('extractPageIdFromUrl')
             ->with('https://example/wiki/spaces/X/pages/42')
             ->willReturn('42');
@@ -44,7 +44,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testGetPageDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('getPage')
             ->with('42')
             ->willReturn(['id' => '42']);
@@ -54,7 +54,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testUpdatePageDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('updatePage')
             ->with('42', 'Title', '{}', 2, 'msg')
             ->willReturn(['id' => '42']);
@@ -64,7 +64,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testGetFolderDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('getFolder')
             ->with('folder-1')
             ->willReturn(['id' => 'folder-1']);
@@ -74,7 +74,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testResolveSpaceIdDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('resolveSpaceId')
             ->with('SCI')
             ->willReturn('space-id');
@@ -84,7 +84,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testCreatePageDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('createPage')
             ->with('space-id', 'Title', '{}', 'parent', 'current')
             ->willReturn(['id' => '99']);
@@ -94,7 +94,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testGetDirectChildPagesDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('getDirectChildPages')
             ->with('42')
             ->willReturn([['id' => '43']]);
@@ -104,7 +104,7 @@ class ConfluenceWikiAdapterTest extends TestCase
 
     public function testGetDirectChildPagesOfFolderDelegates(): void
     {
-        $this->confluenceService->expects($this->once())
+        $this->confluenceApiClient->expects($this->once())
             ->method('getDirectChildPagesOfFolder')
             ->with('folder-1')
             ->willReturn([['id' => '44']]);

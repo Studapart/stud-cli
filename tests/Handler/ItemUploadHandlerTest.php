@@ -135,7 +135,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertSame('disk full', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => 'disk full']);
     }
 
     public function testHandleRecordsPartialErrorOnApiException(): void
@@ -151,8 +151,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertStringContainsString('Jira said no', $response->errors[0]['message']);
-        $this->assertStringContainsString('detail', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => 'Jira said no']);
     }
 
     public function testHandleSkipsEmptyPathSegments(): void

@@ -53,15 +53,44 @@ class IssueTrackerFactory
         string $type,
         ?JiraApiClient $jiraService = null,
         ?JiraAttachmentService $attachmentService = null,
+        ?LinearApiClient $linearApiClient = null,
     ): IssueTrackerPort {
         return match ($type) {
             'jira' => new JiraIssueTrackerAdapter(
                 $jiraService ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
                 $attachmentService ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
             ),
-            'linear' => new LinearIssueTrackerAdapter(),
+            'linear' => new LinearIssueTrackerAdapter(
+                $linearApiClient ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
+            ),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
+    }
+
+    /**
+     * @param 'jira'|'linear' $type
+     *
+     * @throws IssueTrackerException
+     */
+    public function createForProvider(
+        string $type,
+        ?JiraApiClient $jiraApiClient,
+        ?JiraAttachmentService $attachmentService,
+        ?LinearApiClient $linearApiClient,
+    ): IssueTrackerPort {
+        if ($type === 'jira') {
+            if ($jiraApiClient === null || $attachmentService === null) {
+                throw IssueTrackerException::missingJiraConfiguration();
+            }
+
+            return $this->create('jira', $jiraApiClient, $attachmentService);
+        }
+
+        if ($linearApiClient === null) {
+            throw IssueTrackerException::missingLinearApiKey();
+        }
+
+        return $this->create('linear', linearApiClient: $linearApiClient);
     }
 
     private function normalizeOverride(?string $cliOverride): ?string

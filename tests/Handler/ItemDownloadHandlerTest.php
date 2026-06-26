@@ -146,7 +146,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(null, 'https://x.atlassian.net/rest/api/3/attachment/content/99', null);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('nope', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.download.error_file', ['error' => 'nope']);
     }
 
     public function testHandleUsesSuffixWhenFilenameCollides(): void
@@ -196,7 +196,10 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertCount(1, $response->errors);
-        $this->assertStringContainsString('boom', $response->errors[0]['message']);
+        $message = $response->errors[0]['message'];
+        $this->assertInstanceOf(\App\DTO\MessageRef::class, $message);
+        $this->assertSame('item.download.error_file', $message->key);
+        $this->assertStringContainsString('boom', (string) $message->parameters['error']);
     }
 
     public function testHandleRecordsErrorWhenWriteFails(): void
@@ -211,7 +214,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
-        $this->assertSame('disk full', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.download.error_file', ['error' => 'disk full']);
     }
 
     public function testFilenameHintWhenBasenameIsDotUsesAttachment(): void
@@ -275,6 +278,6 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertCount(1, $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertSame('fail-one', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.download.error_file', ['error' => 'fail-one']);
     }
 }

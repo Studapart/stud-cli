@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers (`projects:workflow`, `projects:labels`) use `IssueTrackerPort` via `IssueTrackerPortSupplier`; `listLabelGroups` on port; remaining handler errors use `MessageRef`; ADR-023 §5/§8 tables updated.
+
 - **ADR-023 integration layering (SCI-162):** Full Phases A–F — `JiraAssignedActiveJqlBuilder` + `JiraStatusCategory` for shared JQL; work-item handler errors use `MessageRef`; renamed ports/adapters/clients (`IssueTrackerPort`, `JiraIssueTrackerAdapter`, `JiraApiClient`, `GitHostingPort`, `GithubGitHostingAdapter`, `GitLabGitHostingAdapter`, `WikiPort`, `ConfluenceWikiAdapter`); castor locators `_get_issue_tracker`, `_get_jira_api_client`, `_get_git_hosting`, `_get_wiki_port`; ADR-021 cross-links ADR-023. Config enum `App\Enum\WorkItemProvider` unchanged.
 - **Work-item provider (SCI-162):** Work-item handlers depend on `IssueTrackerPort`; optional `--provider` / agent `provider` on essential `items:*`; `config:validate` uses `ping()`.
 - **Work-item provider (SCI-161):** `JiraIssueTrackerAdapter` delegates all `IssueTrackerPort` methods to `JiraApiClient` and `JiraAttachmentService`; `listAssignedActive` encapsulates dashboard JQL.

@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\StateChange;
 use App\DTO\WorkItem;
 
 /**
- * Linear adapter for IssueTrackerPort (SCI-164+ implements delegation).
- *
- * @codeCoverageIgnore
+ * Linear adapter for IssueTrackerPort (SCI-164+ implements full delegation).
  */
 final class LinearIssueTrackerAdapter implements IssueTrackerPort
 {
+    public function __construct(
+        private readonly LinearApiClient $linearApiClient,
+    ) {
+    }
+
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
         throw new \BadMethodCallException('Not implemented until SCI-164');
@@ -70,7 +74,16 @@ final class LinearIssueTrackerAdapter implements IssueTrackerPort
 
     public function listProjectStateChanges(string $projectKey): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $states = $this->linearApiClient->getTeamWorkflowStates($projectKey);
+
+        return array_map(
+            static fn (array $state): StateChange => new StateChange(
+                id: (string) $state['id'],
+                name: (string) $state['name'],
+                type: (string) $state['type'],
+            ),
+            $states,
+        );
     }
 
     public function listItemStateChanges(string $itemKey): array
@@ -111,6 +124,11 @@ final class LinearIssueTrackerAdapter implements IssueTrackerPort
     public function listTypeLabels(?string $projectKey = null): array
     {
         throw new \BadMethodCallException('Not implemented until SCI-164');
+    }
+
+    public function listLabelGroups(string $projectKey, bool $groupsOnly = false): array
+    {
+        return $this->linearApiClient->getTeamLabelGroups($projectKey, $groupsOnly);
     }
 
     public function ping(): void

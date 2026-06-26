@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -269,6 +270,7 @@ item:
     col_path: "Pad"
     error_key_or_url: "Geef een Jira-ticketsleutel of --url met een Jira-bijlage-inhouds-URL."
     error_fetch: "Kan bijlagen niet laden: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Pad mag geen bovenliggende map-segmenten (..) bevatten."
     error_partial: "%filename%: %message%"
   upload:
@@ -282,6 +284,7 @@ item:
     error_not_found: "Bestand niet gevonden."
     error_not_file: "Pad is geen leesbaar bestand."
     error_cwd: "Kan de huidige werkmap niet bepalen."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -341,6 +344,7 @@ project:
     no_state_changes: Geen statuswijzigingen gevonden voor project %project%.
     error_ambiguous_provider: workItemProvider is dubbelzinnig. Stel jira of linear in .git/stud.config in of voer stud config:project-init uit.
     error_no_provider: Geen work-item provider geconfigureerd. Voer stud config:init uit.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID
     column_name: Naam
     column_target_status: Doelstatus
@@ -349,6 +353,7 @@ project:
   labels:
     section: Project labelgroepen
     labels_not_supported_for_jira: Labelgroep-ontdekking is niet beschikbaar voor Jira. Gebruik Linear of configureer linearTypeLabelGroupId handmatig.
+    error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Geen labelgroepen gevonden voor project %project%.
     column_group_id: Groep-ID
     column_group_name: Groepsnaam

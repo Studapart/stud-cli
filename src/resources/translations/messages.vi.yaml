@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -269,6 +270,7 @@ item:
     col_path: "Đường dẫn"
     error_key_or_url: "Cung cấp mã issue Jira hoặc --url với URL nội dung tệp đính kèm Jira."
     error_fetch: "Không thể tải tệp đính kèm: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
     error_partial: "%filename%: %message%"
   upload:
@@ -282,6 +284,7 @@ item:
     error_not_found: "Không tìm thấy tệp."
     error_not_file: "Đường dẫn không phải tệp có thể đọc."
     error_cwd: "Không xác định được thư mục làm việc hiện tại."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -341,6 +344,7 @@ project:
     no_state_changes: Không tìm thấy thay đổi trạng thái nào cho dự án %project%.
     error_ambiguous_provider: workItemProvider không rõ ràng. Đặt jira hoặc linear trong .git/stud.config hoặc chạy stud config:project-init.
     error_no_provider: Chưa cấu hình nhà cung cấp work-item. Chạy stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID
     column_name: Tên
     column_target_status: Trạng thái đích
@@ -349,6 +353,7 @@ project:
   labels:
     section: Nhóm nhãn dự án
     labels_not_supported_for_jira: Không hỗ trợ khám phá nhóm nhãn cho Jira. Dùng Linear hoặc cấu hình linearTypeLabelGroupId thủ công.
+    error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Không tìm thấy nhóm nhãn cho dự án %project%.
     column_group_id: ID nhóm
     column_group_name: Tên nhóm

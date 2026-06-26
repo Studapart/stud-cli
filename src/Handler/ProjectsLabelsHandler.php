@@ -10,8 +10,7 @@ use App\Exception\ApiException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\Capability\WorkItemLinearAware;
 use App\Response\ProjectsLabelsResponse;
-use App\Service\IssueTrackerResolver;
-use App\Service\LinearMetadataClient;
+use App\Service\IssueTrackerPortSupplier;
 
 /**
  * Lists Linear LabelGroups and child labels for a team key.
@@ -21,8 +20,7 @@ use App\Service\LinearMetadataClient;
 class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
 {
     public function __construct(
-        private readonly ?LinearMetadataClient $linearClient,
-        private readonly IssueTrackerResolver $providerResolver,
+        private readonly IssueTrackerPortSupplier $portSupplier,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,
         /** @var array<string, mixed> */
@@ -32,7 +30,7 @@ class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
 
     public function handle(string $projectKey, bool $groupsOnly): ProjectsLabelsResponse
     {
-        $resolution = $this->providerResolver->resolveActiveProvider($this->globalConfig, $this->projectConfig);
+        $resolution = $this->portSupplier->resolve($this->globalConfig, $this->projectConfig);
         if (! $resolution['ok']) {
             return ProjectsLabelsResponse::error($resolution['error']);
         }
@@ -44,9 +42,15 @@ class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
         }
 
         try {
-            $groups = $this->fetchLinearLabelGroups($projectKey, $groupsOnly);
+            $groups = $resolution['port']->listLabelGroups($projectKey, $groupsOnly);
+        } catch (ApiException $e) {
+            return ProjectsLabelsResponse::error(
+                MessageRef::key('project.labels.error_fetch', ['error' => $e->getMessage()])
+            );
         } catch (\Throwable $e) {
-            return ProjectsLabelsResponse::error($e->getMessage());
+            return ProjectsLabelsResponse::error(
+                MessageRef::key('project.labels.error_fetch', ['error' => $e->getMessage()])
+            );
         }
 
         if ($groups === []) {
@@ -56,17 +60,5 @@ class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
         }
 
         return ProjectsLabelsResponse::success($groups);
-    }
-
-    /**
-     * @return list<array{id: string, name: string, labels: list<array{id: string, name: string, color?: string}>}>
-     */
-    protected function fetchLinearLabelGroups(string $projectKey, bool $groupsOnly): array
-    {
-        if ($this->linearClient === null) {
-            throw new ApiException('Linear is not configured.', 'LINEAR_API_KEY is missing from global config.');
-        }
-
-        return $this->linearClient->getTeamLabelGroups($projectKey, $groupsOnly);
     }
 }

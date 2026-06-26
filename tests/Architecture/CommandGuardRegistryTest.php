@@ -13,7 +13,7 @@ use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\CapabilityDiscovery;
 use App\Guard\CommandHandlerRegistry;
 use App\Service\CommandMap;
-use App\Service\ConfluenceService;
+use App\Service\ConfluenceApiClient;
 use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use App\Service\JiraApiClient;
@@ -57,7 +57,7 @@ class CommandGuardRegistryTest extends TestCase
             JiraApiClient::class => WorkItemJiraAware::class,
             GitRepository::class => GitRepositoryAware::class,
             GitHostingPort::class => GitProviderGithubAware::class,
-            ConfluenceService::class => ConfluenceAware::class,
+            ConfluenceApiClient::class => ConfluenceAware::class,
         ];
 
         foreach (CommandHandlerRegistry::entries() as $commandName => $entry) {

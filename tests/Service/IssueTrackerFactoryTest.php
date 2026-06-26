@@ -128,9 +128,18 @@ class IssueTrackerFactoryTest extends TestCase
 
     public function testCreateReturnsLinearAdapter(): void
     {
-        $provider = $this->factory->create('linear');
+        $linearApiClient = $this->createMock(\App\Service\LinearApiClient::class);
+
+        $provider = $this->factory->create('linear', linearApiClient: $linearApiClient);
 
         $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $provider);
+    }
+
+    public function testCreateRequiresLinearClientForLinearType(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->factory->create('linear');
     }
 
     public function testCreateRequiresJiraDependenciesForJiraType(): void

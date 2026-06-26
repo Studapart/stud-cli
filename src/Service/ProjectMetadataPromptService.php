@@ -18,9 +18,7 @@ use App\Service\Prompt\PromptInterface;
 class ProjectMetadataPromptService
 {
     public function __construct(
-        private readonly ?JiraApiClient $jiraService,
-        private readonly ?LinearMetadataClient $linearClient,
-        private readonly IssueTrackerResolver $providerResolver,
+        private readonly IssueTrackerPortSupplier $portSupplier,
         private readonly ProjectsWorkflowNormalizer $normalizer,
         /** @var array<string, mixed> */
         private readonly array $globalConfig,
@@ -334,9 +332,7 @@ class ProjectMetadataPromptService
     protected function fetchWorkflow(string $projectKey, array $projectConfig): ProjectsWorkflowResponse
     {
         $handler = new ProjectsWorkflowHandler(
-            $this->jiraService,
-            $this->linearClient,
-            $this->providerResolver,
+            $this->portSupplier,
             $this->normalizer,
             $this->globalConfig,
             $projectConfig,
@@ -351,8 +347,7 @@ class ProjectMetadataPromptService
     protected function fetchLabelGroups(string $projectKey, array $projectConfig): ProjectsLabelsResponse
     {
         $handler = new ProjectsLabelsHandler(
-            $this->linearClient,
-            $this->providerResolver,
+            $this->portSupplier,
             $this->globalConfig,
             $projectConfig,
         );

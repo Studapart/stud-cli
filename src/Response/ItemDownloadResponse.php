@@ -9,8 +9,8 @@ use App\DTO\MessageRef;
 final class ItemDownloadResponse extends AbstractResponse
 {
     /**
-     * @param list<array{filename: string, path: string}>             $files
-     * @param list<array{filename: string|null, message: string}> $errors
+     * @param list<array{filename: string, path: string}>                                    $files
+     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
      */
     private function __construct(
         bool $success,
@@ -22,8 +22,8 @@ final class ItemDownloadResponse extends AbstractResponse
     }
 
     /**
-     * @param list<array{filename: string, path: string}>             $files
-     * @param list<array{filename: string|null, message: string}> $errors
+     * @param list<array{filename: string, path: string}>                                    $files
+     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
      */
     public static function result(array $files, array $errors): self
     {
