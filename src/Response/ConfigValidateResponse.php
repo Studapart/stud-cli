@@ -23,12 +23,15 @@ final class ConfigValidateResponse extends AbstractResponse
         public readonly ?string $gitMessage,
         public readonly string $linearStatus,
         public readonly ?string $linearMessage,
+        array $messages = [],
     ) {
-        parent::__construct($success, $error);
+        parent::__construct($success, $error, $messages);
     }
 
     /**
      * Build a successful response with per-component statuses.
+     *
+     * @param list<\App\DTO\ResponseMessage> $messages
      */
     public static function create(
         string $jiraStatus,
@@ -37,6 +40,7 @@ final class ConfigValidateResponse extends AbstractResponse
         ?string $gitMessage,
         string $linearStatus = self::STATUS_SKIPPED,
         ?string $linearMessage = null,
+        array $messages = [],
     ): self {
         $success = ($jiraStatus !== self::STATUS_FAIL)
             && ($gitStatus !== self::STATUS_FAIL)
@@ -51,6 +55,25 @@ final class ConfigValidateResponse extends AbstractResponse
             $gitMessage,
             $linearStatus,
             $linearMessage,
+            $messages,
+        );
+    }
+
+    /**
+     * @param list<\App\DTO\ResponseMessage> $messages
+     */
+    public function withAdditionalMessages(array $messages): self
+    {
+        return new self(
+            $this->success,
+            $this->getError(),
+            $this->jiraStatus,
+            $this->jiraMessage,
+            $this->gitStatus,
+            $this->gitMessage,
+            $this->linearStatus,
+            $this->linearMessage,
+            array_merge($this->messages, $messages),
         );
     }
 

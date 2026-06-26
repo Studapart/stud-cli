@@ -43,6 +43,7 @@ use App\Exception\AgentModeException;
 use App\Exception\WorkItemProviderException;
 use App\Guard\CommandContextFactory;
 use App\Guard\CommandGuard;
+use App\Guard\CommandGuardResult;
 use App\Guard\CommandHandlerRegistry;
 use App\Handler\BranchCleanHandler;
 use App\Handler\BranchListHandler;
@@ -1421,17 +1422,19 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         // Step 3: Command readiness guard
         $projectConfig = null;
         $hasGitRepository = false;
+        $resolvedGitProvider = null;
 
         try {
             $gitRepository = _get_git_repository();
             $projectConfig = $gitRepository->readProjectConfig();
             $hasGitRepository = true;
+            $resolvedGitProvider = $gitRepository->getGitProvider();
         } catch (\RuntimeException $e) {
             // Not in a git repository
         }
 
         $contextFactory = new CommandContextFactory();
-        $context = $contextFactory->create($event, $config, $projectConfig, $hasGitRepository);
+        $context = $contextFactory->create($event, $config, $projectConfig, $hasGitRepository, $resolvedGitProvider);
         $capabilities = CommandHandlerRegistry::resolveCapabilities($commandName);
         $guard = new CommandGuard();
         $guardResult = $guard->check($capabilities, $context);
@@ -1442,29 +1445,18 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
             $isInteractive = $input->isInteractive();
             $isQuiet = $input->hasOption('quiet') && $input->getOption('quiet');
             $isAgent = _is_agent_mode_request($input);
+
+            if (! empty($guardResult->environmentFailures) || ! $isInteractive || $isQuiet || $isAgent) {
+                _guard_block_command_execution($event, $guardResult, $isAgent, $logger, $translator);
+
+                return;
+            }
+
             $remediation = new ConfigRemediationService(
                 new CommandOutputBuffer($logger, _get_prompt()),
                 $translator,
                 _get_git_branch_service()
             );
-
-            if (! empty($guardResult->environmentFailures) || ! $isInteractive || $isQuiet || $isAgent) {
-                if (in_array('git_repository', $guardResult->environmentFailures, true)) {
-                    $logger->error(Logger::VERBOSITY_NORMAL, 'This command requires a git repository.');
-                } else {
-                    $missingKeys = array_merge($guardResult->missingGlobalKeys, $guardResult->missingProjectKeys);
-                    $logger->error(Logger::VERBOSITY_NORMAL, [
-                        'Missing required configuration keys: ' . implode(', ', $missingKeys),
-                        'Please run "stud config:init" to configure these keys, or run the command without --quiet in interactive mode.',
-                    ]);
-                }
-                $event->disableCommand();
-                $command->setCode(function () {
-                    return 1;
-                });
-
-                return;
-            }
 
             if (! empty($guardResult->missingGlobalKeys)) {
                 $promptedValues = $remediation->promptForMissingKeys($guardResult->missingGlobalKeys, 'global');
@@ -1631,6 +1623,65 @@ function config_show(
 }
 
 /**
+ * Block command execution when the readiness guard fails in non-interactive modes.
+ */
+function _guard_block_command_execution(
+    ConsoleCommandEvent $event,
+    CommandGuardResult $guardResult,
+    bool $isAgent,
+    Logger $logger,
+    \App\Service\TranslationService $translator,
+): void {
+    if (in_array('git_repository', $guardResult->environmentFailures, true)) {
+        $error = $translator->trans('guard.error.git_repository_required');
+        if ($isAgent) {
+            _agent_respond(new AgentJsonResponse(
+                false,
+                error: $translator->transForAgentText('guard.error.git_repository_required'),
+                diagnostics: ['errors' => [['message' => $translator->transForAgentText('guard.error.git_repository_required')]]],
+            ));
+        }
+        $logger->error(Logger::VERBOSITY_NORMAL, $error);
+        $event->disableCommand();
+        $blockedCommand = $event->getCommand();
+        if ($blockedCommand !== null) {
+            $blockedCommand->setCode(static function () {
+                return 1;
+            });
+        }
+
+        return;
+    }
+
+    $missingKeys = array_merge($guardResult->missingGlobalKeys, $guardResult->missingProjectKeys);
+    $error = $translator->trans('guard.error.missing_config_keys', ['%keys%' => implode(', ', $missingKeys)]);
+    if ($isAgent) {
+        $agentError = $translator->transForAgentText('guard.error.missing_config_keys', ['%keys%' => implode(', ', $missingKeys)]);
+        $diagnostics = [
+            'errors' => array_map(
+                static fn (string $key): array => [
+                    'message' => $translator->transForAgentText('guard.error.missing_config_key', ['%key%' => $key]),
+                ],
+                $missingKeys,
+            ),
+        ];
+        _agent_respond(new AgentJsonResponse(false, error: $agentError, diagnostics: $diagnostics));
+    }
+
+    $logger->error(Logger::VERBOSITY_NORMAL, [
+        $error,
+        $translator->trans('guard.error.missing_config_keys_hint'),
+    ]);
+    $event->disableCommand();
+    $command = $event->getCommand();
+    if ($command !== null) {
+        $command->setCode(static function () {
+            return 1;
+        });
+    }
+}
+
+/**
  * Write agent payload to stdout and exit. Uses helper's writeAgentOutput (returns line when no io) then echo and exit.
  *
  * @param array<string, mixed> $payload
@@ -1780,6 +1831,10 @@ function config_validate(
         $validateLinear,
     );
     $response = $handler->handle();
+    $credentialWarnings = (new \App\Service\ConfigProviderCredentialWarnings())->collect($globalConfig);
+    if ($credentialWarnings !== []) {
+        $response = $response->withAdditionalMessages($credentialWarnings);
+    }
     $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {

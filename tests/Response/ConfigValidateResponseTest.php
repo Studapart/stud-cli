@@ -92,4 +92,19 @@ class ConfigValidateResponseTest extends TestCase
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->jiraStatus);
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->gitStatus);
     }
+
+    public function testWithAdditionalMessagesMergesDiagnostics(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+        )->withAdditionalMessages([
+            \App\DTO\ResponseMessage::warning(\App\DTO\MessageRef::key('config.validate.warn_gitlab_token_missing')),
+        ]);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertCount(1, $response->getWarnings());
+    }
 }

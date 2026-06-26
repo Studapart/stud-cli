@@ -92,6 +92,10 @@ config:
     status_ok: "OK"
     status_fail: "Fallo"
     status_skipped: "Omitido"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
   project_init:
     section_title: "Configuración del proyecto"
     not_git_repository: "No está dentro de un repositorio Git. Ejecute este comando desde un checkout del repositorio."
@@ -180,6 +184,13 @@ config:
   missing_global_key: "Falta la clave de configuración global requerida: %key%"
   missing_project_key: "Falta la clave de configuración del proyecto requerida: %key%"
   auto_detected: "Auto-detectado %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Iniciando trabajo en %key%
