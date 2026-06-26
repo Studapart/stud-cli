@@ -314,6 +314,10 @@ item:
     error_fetch: 'Échec de la récupération des tickets : %error%'
     no_items: Aucun ticket trouvé correspondant à vos critères.
     error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira est sélectionné mais les identifiants Jira ne sont pas configurés. Exécutez "stud config:init".'
+  not_configured: 'Aucun fournisseur de work-items configuré. Exécutez "stud config:init" pour configurer Jira ou Linear.'
 project:
   list:
     section: Récupération des projets Jira

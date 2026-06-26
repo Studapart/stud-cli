@@ -314,6 +314,10 @@ item:
     error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
     no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
     error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Επιλέχθηκε Linear αλλά το LINEAR_API_KEY δεν έχει ρυθμιστεί. Εκτελέστε "stud config:init" ή ορίστε LINEAR_API_KEY στο ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Επιλέχθηκε Jira αλλά τα διαπιστευτήρια Jira δεν έχουν ρυθμιστεί. Εκτελέστε "stud config:init".'
+  not_configured: 'Δεν έχει ρυθμιστεί πάροχος work-item. Εκτελέστε "stud config:init" για ρύθμιση Jira ή Linear.'
 project:
   list:
     section: Λήψη Έργων Jira

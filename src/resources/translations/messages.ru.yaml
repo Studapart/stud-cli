@@ -314,6 +314,10 @@ item:
     error_fetch: 'Ошибка при получении задач: %error%'
     no_items: Не найдено задач, соответствующих вашим критериям.
     error_invalid_sort: 'Неверное значение сортировки ''%value%''. Допустимые значения: Key, Status'
+work_item_provider:
+  missing_linear_api_key: 'Выбран Linear, но LINEAR_API_KEY не настроен. Запустите "stud config:init" или задайте LINEAR_API_KEY в ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Выбран Jira, но учётные данные Jira не настроены. Запустите "stud config:init".'
+  not_configured: 'Провайдер work-item не настроен. Запустите "stud config:init" для настройки Jira или Linear.'
 project:
   list:
     section: Получение проектов Jira
