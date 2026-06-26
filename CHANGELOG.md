@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
+
 ### Changed
 
 - **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers use `IssueTrackerPort` via `IssueTrackerPortSupplier`; Linear-only `listLabelGroups` moved to optional `IssueTrackerLabelGroupsCapable` (removed from Jira adapter stub); remaining handler errors use `MessageRef`; ADR-023 §5/§8/§9 updated.

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Exception\ApiException;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Read-only Linear GraphQL client for project metadata discovery (workflow states, labels).
@@ -65,7 +63,7 @@ class LinearApiClient
     private const UNGROUPED_GROUP_ID = '_ungrouped';
 
     public function __construct(
-        private readonly HttpClientInterface $client,
+        private readonly LinearGraphqlClient $graphqlClient,
     ) {
     }
 
@@ -74,25 +72,9 @@ class LinearApiClient
      */
     public function getTeamWorkflowStates(string $teamKey): array
     {
-        $response = $this->client->request('POST', 'graphql', [
-            'json' => [
-                'query' => self::TEAM_STATES_QUERY,
-                'variables' => ['teamKey' => $teamKey],
-            ],
-        ]);
+        $data = $this->queryForTeam($teamKey, 'workflow states', self::TEAM_STATES_QUERY);
 
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Could not fetch Linear workflow states for team \"{$teamKey}\".",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
-        $this->assertNoGraphQlErrors($data, $teamKey, 'workflow states');
-
-        $nodes = $data['data']['team']['states']['nodes'] ?? [];
+        $nodes = $data['team']['states']['nodes'] ?? [];
         if (! is_array($nodes)) {
             return [];
         }
@@ -138,25 +120,9 @@ class LinearApiClient
      */
     protected function fetchLabelGroupNodes(string $teamKey): array
     {
-        $response = $this->client->request('POST', 'graphql', [
-            'json' => [
-                'query' => self::TEAM_LABEL_GROUPS_QUERY,
-                'variables' => ['teamKey' => $teamKey],
-            ],
-        ]);
+        $data = $this->queryForTeam($teamKey, 'label groups', self::TEAM_LABEL_GROUPS_QUERY);
 
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Could not fetch Linear label groups for team \"{$teamKey}\".",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
-        $this->assertNoGraphQlErrors($data, $teamKey, 'label groups');
-
-        $nodes = $data['data']['team']['labels']['nodes'] ?? [];
+        $nodes = $data['team']['labels']['nodes'] ?? [];
         if (! is_array($nodes)) {
             return [];
         }
@@ -193,25 +159,9 @@ class LinearApiClient
      */
     protected function fetchOrphanLabelNodes(string $teamKey): array
     {
-        $response = $this->client->request('POST', 'graphql', [
-            'json' => [
-                'query' => self::TEAM_ORPHAN_LABELS_QUERY,
-                'variables' => ['teamKey' => $teamKey],
-            ],
-        ]);
+        $data = $this->queryForTeam($teamKey, 'labels', self::TEAM_ORPHAN_LABELS_QUERY);
 
-        if ($response->getStatusCode() !== 200) {
-            throw new ApiException(
-                "Could not fetch Linear labels for team \"{$teamKey}\".",
-                $this->extractTechnicalDetails($response),
-                $response->getStatusCode()
-            );
-        }
-
-        $data = $response->toArray();
-        $this->assertNoGraphQlErrors($data, $teamKey, 'labels');
-
-        $nodes = $data['data']['team']['labels']['nodes'] ?? [];
+        $nodes = $data['team']['labels']['nodes'] ?? [];
         if (! is_array($nodes)) {
             return [];
         }
@@ -246,31 +196,19 @@ class LinearApiClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @return array<string, mixed>
      */
-    protected function assertNoGraphQlErrors(array $data, string $teamKey, string $resource): void
-    {
-        if (! isset($data['errors']) || ! is_array($data['errors']) || $data['errors'] === []) {
-            return;
-        }
-
-        $first = $data['errors'][0] ?? [];
-        $message = is_array($first) && isset($first['message']) && is_string($first['message'])
-            ? $first['message']
-            : 'Linear GraphQL request failed.';
-
-        throw new ApiException(
-            "Could not fetch Linear {$resource} for team \"{$teamKey}\".",
-            $message,
-        );
-    }
-
-    protected function extractTechnicalDetails(ResponseInterface $response): string
+    private function queryForTeam(string $teamKey, string $resource, string $query): array
     {
         try {
-            return $response->getContent(false);
-        } catch (\Throwable) {
-            return 'HTTP ' . $response->getStatusCode();
+            return $this->graphqlClient->query($query, ['teamKey' => $teamKey]);
+        } catch (ApiException $e) {
+            throw new ApiException(
+                "Could not fetch Linear {$resource} for team \"{$teamKey}\".",
+                $e->getTechnicalDetails(),
+                $e->getStatusCode(),
+                $e,
+            );
         }
     }
 }
