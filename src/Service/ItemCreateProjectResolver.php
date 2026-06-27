@@ -15,6 +15,7 @@ class ItemCreateProjectResolver
         private readonly GitRepository $gitRepository,
         private readonly JiraApiClient $jiraService,
         private readonly PromptInterface $prompt,
+        private readonly ?LinearApiClient $linearApiClient = null,
     ) {
     }
 
@@ -40,7 +41,12 @@ class ItemCreateProjectResolver
     {
         try {
             return $this->jiraService->getProject($projectKey);
-        } catch (ApiException $e) {
+        } catch (ApiException) {
+            $linearTeam = $this->linearApiClient?->getTeamByKey($projectKey);
+            if ($linearTeam !== null) {
+                return $linearTeam;
+            }
+
             if (! $interactive) {
                 return null;
             }

@@ -561,7 +561,7 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
     $provider = _require_issue_tracker($providerOverride);
 
     return new ItemCreateHandler(
-        new ItemCreateProjectResolver(_get_git_repository(), $jiraService, $prompt),
+        new ItemCreateProjectResolver(_get_git_repository(), $jiraService, $prompt, _get_linear_api_client()),
         new ItemCreatePromptService($jiraService, _get_issue_field_resolver(), $prompt),
         $provider,
         _get_issue_field_resolver(),
@@ -825,7 +825,7 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?Iss
                 throw IssueTrackerException::missingLinearApiKey();
             }
 
-            return $factory->create($type, linearApiClient: $linearApiClient);
+            return $factory->create($type, linearApiClient: $linearApiClient, gitRepository: _get_git_repository());
         }
 
         $jiraService = _get_jira_api_client_if_configured();

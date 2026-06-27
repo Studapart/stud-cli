@@ -364,7 +364,7 @@ class GitRepository
     }
 
     /**
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string, workItemProvider?: string, linearStartStateId?: string, linearTypeLabelGroupId?: string, linearTypeBranchPrefixes?: array<string, string>}
      */
     public function readProjectConfig(): array
     {
@@ -377,7 +377,7 @@ class GitRepository
     }
 
     /**
-     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string} $config
+     * @param array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string, workItemProvider?: string, linearStartStateId?: string, linearTypeLabelGroupId?: string, linearTypeBranchPrefixes?: array<string, string>} $config
      */
     public function writeProjectConfig(array $config): void
     {

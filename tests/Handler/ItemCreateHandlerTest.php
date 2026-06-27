@@ -13,6 +13,8 @@ use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
+use App\Service\LinearApiClient;
+use App\Service\LinearIssueTrackerAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -1478,5 +1480,50 @@ class ItemCreateHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [null]);
 
         $this->assertNull($result);
+    }
+
+    public function testHandleLinearCapableSkipsJiraCreatemeta(): void
+    {
+        $linearApiClient = $this->createMock(LinearApiClient::class);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
+
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('SCI')
+            ->willReturn(new Project('SCI', 'Stud'));
+        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
+
+        $gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+        $linearApiClient->expects($this->once())
+            ->method('resolveTeamId')
+            ->with('SCI')
+            ->willReturn('team-1');
+        $linearApiClient->expects($this->exactly(2))
+            ->method('resolveLabelIds')
+            ->willReturnOnConsecutiveCalls([], []);
+        $linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-42', $response->key);
     }
 }

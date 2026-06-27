@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
 - **Linear issue mapper (SCI-166):** `LinearIssueMapper` maps Linear GraphQL issue nodes to `WorkItem` (Markdown description, attachments, priority labels, type-group `issueType`).
+- **Linear issue create/update (SCI-167):** `LinearIssueTrackerAdapter` implements `create` and `update` via `issueCreate` / `issueUpdate`; `LinearIssueFieldTranslator` maps Jira-shaped handler fields to Linear mutation input; `items:create` skips Jira createmeta when provider implements `IssueTrackerLabelGroupsCapable`; `ItemCreateProjectResolver` falls back to Linear team lookup when Jira project is missing.
 
 ### Changed
 
