@@ -14,6 +14,9 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 {
     public function __construct(
         private readonly LinearApiClient $linearApiClient,
+        private readonly LinearIssueFieldTranslator $fieldTranslator = new LinearIssueFieldTranslator(),
+        private readonly LinearIssueMapper $issueMapper = new LinearIssueMapper(),
+        private readonly ?GitRepository $gitRepository = null,
     ) {
     }
 
@@ -36,11 +39,23 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     /**
      * @param array<string, mixed> $input
+     *
      * @return array{key: string, self: string}
      */
     public function create(array $input): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $mutationInput = $this->fieldTranslator->toCreateInput(
+            $input,
+            $this->linearApiClient,
+            $this->readTypeGroupId(),
+        );
+        $issue = $this->linearApiClient->issueCreate($mutationInput);
+        $mapped = $this->issueMapper->mapCreateResponse($issue);
+
+        return [
+            'key' => $mapped['identifier'],
+            'self' => $mapped['url'],
+        ];
     }
 
     /**
@@ -48,28 +63,44 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
      */
     public function update(string $key, array $input): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $issueId = $this->linearApiClient->resolveIssueId($key);
+        $mutationInput = $this->fieldTranslator->toUpdateInput(
+            $input,
+            $this->linearApiClient,
+            $key,
+            $this->readTypeGroupId(),
+        );
+        $this->linearApiClient->issueUpdate($issueId, $mutationInput);
     }
 
+    /**
+     * @return array<string, array{required: bool, name: string}>
+     */
     public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
     {
         unset($projectKey, $issueTypeId);
 
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        return $this->fieldTranslator->linearFieldMeta();
     }
 
+    /**
+     * @return array<string, array{required: bool, name: string}>
+     */
     public function getEditMetaFields(string $key): array
     {
         unset($key);
 
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        return $this->fieldTranslator->linearFieldMeta();
     }
 
+    /**
+     * @return array{type: string, version: int, content: list<array<string, mixed>>}
+     */
     public function formatDescription(string $text, string $format = 'plain'): array
     {
-        unset($text, $format);
+        unset($format);
 
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        return $this->fieldTranslator->formatDescriptionPayload($text);
     }
 
     public function listProjectStateChanges(string $projectKey): array
@@ -149,5 +180,17 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
     public function downloadAttachment(string $url, string $destPath): void
     {
         throw new \BadMethodCallException('Not implemented until SCI-164');
+    }
+
+    protected function readTypeGroupId(): ?string
+    {
+        if ($this->gitRepository === null) {
+            return null;
+        }
+
+        $config = $this->gitRepository->readProjectConfig();
+        $value = $config['linearTypeLabelGroupId'] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

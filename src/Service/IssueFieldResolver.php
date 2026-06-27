@@ -55,16 +55,16 @@ class IssueFieldResolver
         ?string $parentKey
     ): array {
         $fields = [
-            'project' => ['key' => $projectKey],
-            'issuetype' => ['id' => $issueTypeId],
-            'summary' => $summary,
+            IssueFieldBagKeys::PROJECT => [IssueFieldBagKeys::KEY => $projectKey],
+            IssueFieldBagKeys::ISSUE_TYPE => [IssueFieldBagKeys::ID => $issueTypeId],
+            IssueFieldBagKeys::SUMMARY => $summary,
         ];
         if ($description !== null && $description !== '') {
             $format = ($descriptionFormat !== null && trim($descriptionFormat) !== '') ? trim($descriptionFormat) : 'plain';
-            $fields['description'] = $this->jiraService->descriptionToAdf($description, $format);
+            $fields[IssueFieldBagKeys::DESCRIPTION] = $this->jiraService->descriptionToAdf($description, $format);
         }
         if ($parentKey !== null && trim($parentKey) !== '') {
-            $fields['parent'] = ['key' => trim($parentKey)];
+            $fields[IssueFieldBagKeys::PARENT] = [IssueFieldBagKeys::KEY => trim($parentKey)];
         }
 
         return $fields;
@@ -131,13 +131,13 @@ class IssueFieldResolver
             return false;
         }
         match ($nameLower) {
-            'project' => $fields['project'] = ['key' => $fieldValues['projectKey']],
-            'reporter' => $fields['reporter'] = ['accountId' => $this->jiraService->getCurrentUserAccountId()],
-            'assignee' => $fields['assignee'] = ['accountId' => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
-            'summary' => $fields['summary'] = $fieldValues['summary'],
-            'description' => $fields['description'] = $fieldValues['descriptionAdf'] ?? [],
-            'issue type', 'issuetype' => $fields['issuetype'] = ['id' => $fieldValues['issueTypeId']],
-            'parent' => $fields['parent'] = ['key' => $fieldValues['parentKey'] ?? ''],
+            IssueFieldBagKeys::PROJECT => $fields[IssueFieldBagKeys::PROJECT] = [IssueFieldBagKeys::KEY => $fieldValues['projectKey']],
+            IssueFieldBagKeys::REPORTER => $fields[IssueFieldBagKeys::REPORTER] = [IssueFieldBagKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()],
+            IssueFieldBagKeys::ASSIGNEE => $fields[IssueFieldBagKeys::ASSIGNEE] = [IssueFieldBagKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
+            IssueFieldBagKeys::SUMMARY => $fields[IssueFieldBagKeys::SUMMARY] = $fieldValues['summary'],
+            IssueFieldBagKeys::DESCRIPTION => $fields[IssueFieldBagKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
+            'issue type', IssueFieldBagKeys::ISSUE_TYPE => $fields[IssueFieldBagKeys::ISSUE_TYPE] = [IssueFieldBagKeys::ID => $fieldValues['issueTypeId']],
+            IssueFieldBagKeys::PARENT => $fields[IssueFieldBagKeys::PARENT] = [IssueFieldBagKeys::KEY => $fieldValues['parentKey'] ?? ''],
             // @codeCoverageIgnoreStart
             default => null,
             // @codeCoverageIgnoreEnd
@@ -154,16 +154,16 @@ class IssueFieldResolver
      */
     public function defaultAssigneeWhenFieldPresent(array $allFieldsMeta, array &$fields, ?string $assigneeOption): void
     {
-        if (isset($fields['assignee'])) {
+        if (isset($fields[IssueFieldBagKeys::ASSIGNEE])) {
             return;
         }
         foreach ($allFieldsMeta as $meta) {
             $name = (string) $meta['name'];
-            if (strtolower($name) === 'assignee') {
+            if (strtolower($name) === IssueFieldBagKeys::ASSIGNEE) {
                 $accountId = $assigneeOption !== null
                     ? $assigneeOption
                     : $this->jiraService->getCurrentUserAccountId();
-                $fields['assignee'] = ['accountId' => $accountId];
+                $fields[IssueFieldBagKeys::ASSIGNEE] = [IssueFieldBagKeys::ACCOUNT_ID => $accountId];
 
                 break;
             }
@@ -202,14 +202,14 @@ class IssueFieldResolver
         mixed $translator = null
     ): array {
         $skipped = [];
-        $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'labels', 'labels');
+        $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, IssueFieldBagKeys::LABELS, IssueFieldBagKeys::LABELS);
         $estimatePayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'timeoriginalestimate', 'time original estimate');
 
         if ($labelsOption !== null && trim($labelsOption) !== '') {
             if ($labelsPayloadKey !== null) {
                 $labels = array_values(array_filter(array_map('trim', explode(',', $labelsOption))));
                 if ($labels !== []) {
-                    $fields['labels'] = $labels;
+                    $fields[IssueFieldBagKeys::LABELS] = $labels;
                 }
             } else {
                 $skipped[] = MessageRef::key('item.create.skipped_field_labels');
@@ -251,12 +251,12 @@ class IssueFieldResolver
 
     /** @var array<string, array<string>> */
     private const EXTRA_FIELD_KIND_KEYS = [
-        'project' => ['project'],
-        'reporter' => ['reporter'],
-        'assignee' => ['assignee'],
-        'issuetype' => ['issuetype', 'issue type'],
-        'summary' => ['summary'],
-        'description' => ['description'],
+        IssueFieldBagKeys::PROJECT => [IssueFieldBagKeys::PROJECT],
+        IssueFieldBagKeys::REPORTER => [IssueFieldBagKeys::REPORTER],
+        IssueFieldBagKeys::ASSIGNEE => [IssueFieldBagKeys::ASSIGNEE],
+        IssueFieldBagKeys::ISSUE_TYPE => [IssueFieldBagKeys::ISSUE_TYPE, 'issue type'],
+        IssueFieldBagKeys::SUMMARY => [IssueFieldBagKeys::SUMMARY],
+        IssueFieldBagKeys::DESCRIPTION => [IssueFieldBagKeys::DESCRIPTION],
     ];
 
     public function extraFieldStandardKind(string $fieldIdLower, string $nameLower): ?string

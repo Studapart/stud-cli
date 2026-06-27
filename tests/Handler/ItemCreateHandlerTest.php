@@ -11,8 +11,12 @@ use App\Service\DurationParser;
 use App\Service\FieldsParser;
 use App\Service\GitRepository;
 use App\Service\IssueFieldResolver;
+use App\Service\IssueTrackerLabelGroupsCapable;
+use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
+use App\Service\LinearApiClient;
+use App\Service\LinearIssueTrackerAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -1478,5 +1482,139 @@ class ItemCreateHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'promptDescriptionValue', [null]);
 
         $this->assertNull($result);
+    }
+
+    public function testHandleLinearCapableSkipsJiraCreatemeta(): void
+    {
+        $linearApiClient = $this->createMock(LinearApiClient::class);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
+
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('SCI')
+            ->willReturn(new Project('SCI', 'Stud'));
+        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
+
+        $gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+        $linearApiClient->expects($this->once())
+            ->method('resolveTeamId')
+            ->with('SCI')
+            ->willReturn('team-1');
+        $linearApiClient->expects($this->exactly(2))
+            ->method('resolveLabelIds')
+            ->willReturnOnConsecutiveCalls([], []);
+        $linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Linear issue', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-42', $response->key);
+    }
+
+    public function testHandleLinearCapableReturnsErrorWhenCreateMetaThrows(): void
+    {
+        /** @var IssueTrackerPort&IssueTrackerLabelGroupsCapable&\PHPUnit\Framework\MockObject\MockObject $linearProvider */
+        $linearProvider = $this->createMockForIntersectionOfInterfaces([
+            IssueTrackerPort::class,
+            IssueTrackerLabelGroupsCapable::class,
+        ]);
+        $linearProvider->method('getCreateMetaFields')->willThrowException(new \RuntimeException('Linear API down'));
+        $linearProvider->expects($this->never())->method('create');
+
+        $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+    }
+
+    public function testHandleLinearCapableIncludesDescriptionParentAndMarkdownFormat(): void
+    {
+        $linearApiClient = $this->createMock(LinearApiClient::class);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
+
+        $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
+        $gitRepository->expects($this->once())->method('readProjectConfig')->willReturn([]);
+        $linearApiClient->expects($this->once())->method('resolveTeamId')->willReturn('team-1');
+        $linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
+        $linearApiClient->expects($this->once())->method('resolveIssueId')->with('SCI-9')->willReturn('parent-1');
+        $linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->with($this->callback(function (array $input): bool {
+                return $input['description'] === '## Body'
+                    && $input['parentId'] === 'parent-1';
+            }))
+            ->willReturn(['identifier' => 'SCI-43', 'url' => 'https://linear.app/SCI-43']);
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($gitRepository, $this->jiraApiClient, $this->prompt, $linearApiClient),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        $response = $handler->handle(
+            false,
+            new ItemCreateInput('SCI', 'Story', 'Title', '## Body', parentKey: 'SCI-9', descriptionFormat: 'markdown'),
+        );
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-43', $response->key);
+    }
+
+    public function testResolveLabelGroupsCapableCreateMetadataUsesPlainFormatByDefault(): void
+    {
+        $linearProvider = new LinearIssueTrackerAdapter($this->createMock(LinearApiClient::class));
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        /** @var \App\DTO\IssueCreationState $state */
+        $state = $this->callPrivateMethod($handler, 'resolveLabelGroupsCapableCreateMetadata', [
+            'SCI',
+            'Story',
+            'Summary',
+            new ItemCreateInput('SCI', 'Story', 'Summary', 'plain body'),
+        ]);
+
+        $this->assertSame('linearMarkdown', $state->fields['description']['content'][0]['type']);
+        $this->assertSame('plain body', $state->fields['description']['content'][0]['markdown']);
     }
 }

@@ -144,6 +144,24 @@ class LinearIssueMapperTest extends TestCase
         $this->assertNull($this->mapper->mapToWorkItem($emptyPriorityNode)->priority);
     }
 
+    public function testPriorityNameToValueMapsKnownLabels(): void
+    {
+        $this->assertSame(1, LinearIssueMapper::priorityNameToValue('Urgent'));
+        $this->assertSame(2, LinearIssueMapper::priorityNameToValue('high'));
+        $this->assertNull(LinearIssueMapper::priorityNameToValue('unknown'));
+    }
+
+    public function testMapCreateResponseExtractsIdentifierAndUrl(): void
+    {
+        $mapped = $this->mapper->mapCreateResponse([
+            'identifier' => 'SCI-99',
+            'url' => 'https://linear.app/SCI-99',
+        ]);
+
+        $this->assertSame('SCI-99', $mapped['identifier']);
+        $this->assertSame('https://linear.app/SCI-99', $mapped['url']);
+    }
+
     public function testMapToWorkItemIgnoresLabelsWithoutParentForIssueType(): void
     {
         $node = $this->fullIssueNode();

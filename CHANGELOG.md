@@ -16,8 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
 - **Linear issue mapper (SCI-166):** `LinearIssueMapper` maps Linear GraphQL issue nodes to `WorkItem` (Markdown description, attachments, priority labels, type-group `issueType`).
+- **Linear issue create/update (SCI-167):** `LinearIssueTrackerAdapter` implements `create` and `update` via `issueCreate` / `issueUpdate`; `LinearIssueFieldTranslator` maps Jira-shaped handler fields to Linear mutation input; `items:create` skips Jira createmeta when provider implements `IssueTrackerLabelGroupsCapable`; `ItemCreateProjectResolver` falls back to Linear team lookup when Jira project is missing.
 
 ### Changed
+
+- **Issue field bag keys (SCI-167):** `IssueFieldBagKeys` centralizes Jira-shaped handler field bag keys; `LinearIssueMutationKeys` centralizes Linear GraphQL mutation input keys; Linear team lookup fallbacks log at verbose when Jira project or primary GraphQL team query fails.
 
 - **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers use `IssueTrackerPort` via `IssueTrackerPortSupplier`; Linear-only `listLabelGroups` moved to optional `IssueTrackerLabelGroupsCapable` (removed from Jira adapter stub); remaining handler errors use `MessageRef`; ADR-023 §5/§8/§9 updated.
 
