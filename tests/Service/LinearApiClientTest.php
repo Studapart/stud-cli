@@ -461,4 +461,114 @@ class LinearApiClientTest extends TestCase
         $this->assertSame('_ungrouped', $groups[0]['id']);
         $this->assertSame('orphan-1', $groups[0]['labels'][0]['id']);
     }
+
+    public function testIssueCreateReturnsMappedIssue(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issueCreate' => [
+                        'success' => true,
+                        'issue' => [
+                            'id' => 'issue-new',
+                            'identifier' => 'SCI-99',
+                            'url' => 'https://linear.app/studapart/issue/SCI-99',
+                            'title' => 'New',
+                            'description' => 'Desc',
+                            'priority' => 2,
+                            'state' => ['id' => 's1', 'name' => 'Todo', 'type' => 'unstarted'],
+                            'team' => ['id' => 't1', 'key' => 'SCI', 'name' => 'Team'],
+                            'labels' => ['nodes' => []],
+                            'parent' => null,
+                            'attachments' => ['nodes' => []],
+                            'createdAt' => '2026-01-01T00:00:00.000Z',
+                            'updatedAt' => '2026-01-01T00:00:00.000Z',
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = $this->createService($client);
+        $issue = $service->issueCreate(['teamId' => 't1', 'title' => 'New', 'labelIds' => [], 'description' => null, 'priority' => null, 'parentId' => null]);
+
+        $this->assertSame('SCI-99', $issue['identifier']);
+        $this->assertStringContainsString('SCI-99', $issue['url']);
+    }
+
+    public function testIssueUpdateSucceedsWhenMutationReturnsSuccess(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issueUpdate' => [
+                        'success' => true,
+                        'issue' => [
+                            'id' => 'issue-1',
+                            'identifier' => 'SCI-1',
+                            'title' => 'Updated',
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = $this->createService($client);
+        $service->issueUpdate('issue-1', ['title' => 'Updated']);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testGetTeamByKeyReturnsTeam(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'teams' => [
+                        'nodes' => [
+                            ['id' => 't1', 'key' => 'SCI', 'name' => 'Stud'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = $this->createService($client);
+        $team = $service->getTeamByKey('SCI');
+
+        $this->assertSame('SCI', $team?->key);
+        $this->assertSame('Stud', $team?->name);
+    }
+
+    public function testResolveIssueIdReturnsInternalId(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issue' => [
+                        'id' => 'uuid-1',
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = $this->createService($client);
+        $this->assertSame('uuid-1', $service->resolveIssueId('SCI-1'));
+    }
+
+    public function testResolveTeamKeyFromIssue(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issue' => [
+                        'team' => ['key' => 'ENG'],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = $this->createService($client);
+        $this->assertSame('ENG', $service->resolveTeamKeyFromIssue('ENG-5'));
+    }
 }

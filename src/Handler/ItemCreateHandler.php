@@ -12,6 +12,7 @@ use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueFieldResolver;
+use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
@@ -81,6 +82,10 @@ class ItemCreateHandler implements WorkItemJiraAware
         string $summary,
         ItemCreateInput $input
     ): IssueCreationState|ItemCreateResponse {
+        if ($this->provider instanceof IssueTrackerLabelGroupsCapable) {
+            return $this->resolveLabelGroupsCapableCreateMetadata($projectKey, $type, $summary, $input);
+        }
+
         $issueTypeId = $this->fieldResolver->resolveIssueTypeId($projectKey, $type);
         if ($issueTypeId === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
@@ -97,6 +102,39 @@ class ItemCreateHandler implements WorkItemJiraAware
         $fields = $this->fieldResolver->buildBaseFields($projectKey, $issueTypeId, $summary, $description, $input->descriptionFormat, $input->parentKey);
 
         return new IssueCreationState($projectKey, $issueTypeId, $allFieldsMeta, $requiredFieldIds, $fields);
+    }
+
+    protected function resolveLabelGroupsCapableCreateMetadata(
+        string $projectKey,
+        string $type,
+        string $summary,
+        ItemCreateInput $input,
+    ): IssueCreationState|ItemCreateResponse {
+        try {
+            $allFieldsMeta = $this->provider->getCreateMetaFields($projectKey, $type);
+        } catch (\Throwable) {
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
+        }
+
+        $description = $this->getDescription($input->descriptionOption);
+        $fields = [
+            'project' => ['key' => $projectKey],
+            'issuetype' => ['name' => $type],
+            'summary' => $summary,
+        ];
+
+        if ($description !== null && $description !== '') {
+            $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
+                ? trim($input->descriptionFormat)
+                : 'plain';
+            $fields['description'] = $this->provider->formatDescription($description, $format);
+        }
+
+        if ($input->parentKey !== null && trim($input->parentKey) !== '') {
+            $fields['parent'] = ['key' => trim($input->parentKey)];
+        }
+
+        return new IssueCreationState($projectKey, $type, $allFieldsMeta, [], $fields);
     }
 
     protected function resolveExtrasAndMergeIntoFields(
