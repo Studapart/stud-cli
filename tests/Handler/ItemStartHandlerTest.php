@@ -6,6 +6,7 @@ use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Handler\ItemStartHandler;
 use App\Response\WorkflowResponse;
+use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use App\Service\Prompt\SymfonyPromptService;
 use App\Tests\CommandTestCase;
@@ -1988,5 +1989,312 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertNotEmpty($warnings);
         $this->assertInstanceOf(\App\DTO\MessageRef::class, $warnings[0]->message);
         $this->assertSame('item.start.linear_no_type_label', $warnings[0]->message->key);
+    }
+
+    public function testHandleLinearUsesCachedStartStateAndAssigns(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-35',
+            title: 'Linear feature',
+            status: 'Todo',
+            assignee: 'Unassigned',
+            description: '',
+            labels: ['Story'],
+            issueType: 'Story',
+            components: [],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-35')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
+            ->with('SCI-35');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'workItemProvider' => 'linear',
+                'linearStartStateId' => 'state-in-progress-uuid',
+                'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Story' => 'feat'],
+            ]);
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-35', 'state-in-progress-uuid');
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCI-35')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCI-35-linear-feature', 'origin/develop');
+
+        $response = $handler->handle('SCI-35');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleLinearAgentModeSkipsTransitionWithoutCachedState(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-36',
+            title: 'Linear agent start',
+            status: 'Todo',
+            assignee: 'Unassigned',
+            description: '',
+            labels: [],
+            issueType: 'Story',
+            components: [],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            new NonInteractivePromptService(),
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
+            ->with('SCI-36');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['workItemProvider' => 'linear']);
+
+        $this->issueTracker->expects($this->never())->method('applyStateChange');
+        $this->issueTracker->expects($this->never())->method('listItemStateChanges');
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCI-36-linear-agent-start', 'origin/develop');
+
+        $response = $handler->handle('SCI-36');
+
+        $this->assertWorkflowExitCode($response, 0);
+        $warnings = $response->getWarnings();
+        $this->assertNotEmpty($warnings);
+        $this->assertSame('item.start.no_cached_linear_state_agent', $warnings[0]->message->key);
+    }
+
+    public function testHandleLinearPromptsAndSavesStartState(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-37',
+            title: 'Prompted linear start',
+            status: 'Todo',
+            assignee: 'Unassigned',
+            description: '',
+            labels: [],
+            issueType: 'Story',
+            components: [],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $output = new BufferedOutput();
+        $input = new ArrayInput([]);
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, "0\ny\n");
+        rewind($inputStream);
+        $input->setStream($inputStream);
+        $prompt = new SymfonyPromptService(new SymfonyStyle($input, $output));
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $prompt,
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
+            ->with('SCI-37');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['workItemProvider' => 'linear']);
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-37')
+            ->willReturn([
+                new StateChange(id: 'state-started-uuid', name: 'In Progress', type: 'started'),
+            ]);
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-37', 'state-started-uuid');
+
+        $this->gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with(['linearStartStateId' => 'state-started-uuid']);
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCI-37-prompted-linear-start', 'origin/develop');
+
+        $response = $handler->handle('SCI-37');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testPromptForLinearStartStateIdReturnsNullWhenSelectionInvalid(): void
+    {
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $this->prompt->expects($this->once())
+            ->method('choice')
+            ->willReturn('Invalid option without ID');
+
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-38')
+            ->willReturn([
+                new StateChange(id: 'state-1', name: 'Todo', type: 'unstarted'),
+            ]);
+
+        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-38']);
+
+        $this->assertNull($stateId);
+    }
+
+    public function testPromptForLinearStartStateIdReturnsNullWhenNoStates(): void
+    {
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-39')
+            ->willReturn([]);
+
+        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-39']);
+
+        $this->assertNull($stateId);
+    }
+
+    public function testPromptForLinearStartStateIdReturnsNullOnApiException(): void
+    {
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-40')
+            ->willThrowException(new \App\Exception\ApiException('Failed', 'HTTP 500', 500));
+
+        $stateId = $this->callPrivateMethod($handler, 'promptForLinearStartStateId', ['SCI-40']);
+
+        $this->assertNull($stateId);
+    }
+
+    public function testExecuteStateChangeWithLoggingHandlesGenericException(): void
+    {
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $property = $reflection->getProperty('recorder');
+        $property->setAccessible(true);
+        $property->setValue($handler, new \App\DTO\WorkflowRecorder());
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-41', 'state-1')
+            ->willThrowException(new \RuntimeException('boom'));
+
+        $this->callPrivateMethod($handler, 'executeStateChangeWithLogging', ['SCI-41', 'state-1']);
+
+        $this->addToAssertionCount(1);
     }
 }

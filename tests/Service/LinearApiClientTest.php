@@ -1043,4 +1043,63 @@ class LinearApiClientTest extends TestCase
         $this->expectException(ApiException::class);
         $this->createService($client)->ping();
     }
+
+    public function testGetViewerIdReturnsViewerUuid(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['viewer' => ['id' => 'viewer-uuid-1', 'name' => 'Test']],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame('viewer-uuid-1', $this->createService($client)->getViewerId());
+    }
+
+    public function testAssignIssueUsesViewerWhenAssigneeOmitted(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['issue' => ['id' => 'issue-uuid-1']],
+            ], JSON_THROW_ON_ERROR)),
+            new MockResponse(json_encode([
+                'data' => ['viewer' => ['id' => 'viewer-uuid-1', 'name' => 'Test']],
+            ], JSON_THROW_ON_ERROR)),
+            new MockResponse(json_encode([
+                'data' => ['issueUpdate' => ['success' => true, 'issue' => ['id' => 'issue-uuid-1', 'identifier' => 'SCI-1']]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->assignIssue('SCI-1');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAssignIssueUsesProvidedAssigneeId(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['issue' => ['id' => 'issue-uuid-1']],
+            ], JSON_THROW_ON_ERROR)),
+            new MockResponse(json_encode([
+                'data' => ['issueUpdate' => ['success' => true, 'issue' => ['id' => 'issue-uuid-1', 'identifier' => 'SCI-1']]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->assignIssue('SCI-1', 'other-user-uuid');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testIssueUpdateSendsAssigneeIdField(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['issueUpdate' => ['success' => true, 'issue' => ['id' => 'i1', 'identifier' => 'SCI-1']]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->issueUpdate('issue-1', [
+            'assigneeId' => 'viewer-uuid-1',
+        ]);
+
+        $this->addToAssertionCount(1);
+    }
 }

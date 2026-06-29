@@ -154,7 +154,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function assign(string $key, ?string $user = null): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $this->linearApiClient->assignIssue($key, $user);
     }
 
     public function listTeams(): array
