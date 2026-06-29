@@ -15,19 +15,19 @@ final class ProjectStudConfigFieldMap
      * @var array<string, string>
      */
     public const INPUT_TO_YAML = [
-        'projectKey' => 'projectKey',
-        'transitionId' => 'transitionId',
-        'baseBranch' => 'baseBranch',
-        'gitProvider' => 'gitProvider',
-        'githubToken' => 'githubToken',
-        'gitlabToken' => 'gitlabToken',
-        'gitlabInstanceUrl' => 'gitlabInstanceUrl',
-        'jiraDefaultProject' => 'JIRA_DEFAULT_PROJECT',
-        'confluenceDefaultSpace' => 'CONFLUENCE_DEFAULT_SPACE',
-        'workItemProvider' => 'workItemProvider',
-        'linearStartStateId' => 'linearStartStateId',
-        'linearTypeLabelGroupId' => 'linearTypeLabelGroupId',
-        'linearTypeBranchPrefixes' => 'linearTypeBranchPrefixes',
+        'projectKey' => ProjectStudConfigKeys::PROJECT_KEY,
+        'transitionId' => ProjectStudConfigKeys::TRANSITION_ID,
+        'baseBranch' => ProjectStudConfigKeys::BASE_BRANCH,
+        'gitProvider' => ProjectStudConfigKeys::GIT_PROVIDER,
+        'githubToken' => ProjectStudConfigKeys::GITHUB_TOKEN,
+        'gitlabToken' => ProjectStudConfigKeys::GITLAB_TOKEN,
+        'gitlabInstanceUrl' => ProjectStudConfigKeys::GITLAB_INSTANCE_URL,
+        'jiraDefaultProject' => ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT,
+        'confluenceDefaultSpace' => ProjectStudConfigKeys::CONFLUENCE_DEFAULT_SPACE,
+        'workItemProvider' => ProjectStudConfigKeys::WORK_ITEM_PROVIDER,
+        'linearStartStateId' => ProjectStudConfigKeys::LINEAR_START_STATE_ID,
+        'linearTypeLabelGroupId' => ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID,
+        'linearTypeBranchPrefixes' => ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,
     ];
 
     /**
@@ -45,7 +45,7 @@ final class ProjectStudConfigFieldMap
      * @var list<string>
      */
     public const RESERVED_YAML_KEYS = [
-        'migration_version',
+        ProjectStudConfigKeys::MIGRATION_VERSION,
     ];
 
     /**

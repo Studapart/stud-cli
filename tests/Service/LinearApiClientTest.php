@@ -898,4 +898,134 @@ class LinearApiClientTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testGetIssueReturnsIssueNode(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issue' => [
+                        'id' => 'issue-1',
+                        'identifier' => 'SCI-123',
+                        'title' => 'Show me',
+                        'state' => ['name' => 'Todo'],
+                        'assignee' => ['name' => 'Ada'],
+                        'labels' => ['nodes' => []],
+                        'attachments' => ['nodes' => []],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $issue = $this->createService($client)->getIssue('SCI-123');
+
+        $this->assertSame('SCI-123', $issue['identifier']);
+    }
+
+    public function testGetIssueThrowsWhenMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['issue' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->createService($client)->getIssue('MISSING');
+    }
+
+    public function testListAssignedActiveIssuesReturnsNodes(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issues' => [
+                        'nodes' => [
+                            ['id' => 'i1', 'identifier' => 'ENG-1', 'title' => 'One'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $issues = $this->createService($client)->listAssignedActiveIssues('ENG', true);
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('ENG-1', $issues[0]['identifier']);
+    }
+
+    public function testListAssignedActiveIssuesReturnsEmptyWhenNodesMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['issues' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([], $this->createService($client)->listAssignedActiveIssues(null, false));
+    }
+
+    public function testListTeamsReturnsTeamRows(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'teams' => [
+                        'nodes' => [
+                            ['id' => 't1', 'key' => 'ENG', 'name' => 'Engineering'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $teams = $this->createService($client)->listTeams();
+
+        $this->assertSame([['key' => 'ENG', 'name' => 'Engineering']], $teams);
+    }
+
+    public function testListTeamsSkipsIncompleteNodes(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'teams' => [
+                        'nodes' => [
+                            ['id' => 't1'],
+                            ['key' => 'SCI', 'name' => 'Stud'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([['key' => 'SCI', 'name' => 'Stud']], $this->createService($client)->listTeams());
+    }
+
+    public function testListTeamsReturnsEmptyWhenNodesMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['teams' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([], $this->createService($client)->listTeams());
+    }
+
+    public function testPingSucceedsWhenViewerReturned(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['viewer' => ['id' => 'viewer-1', 'name' => 'Test']],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->ping();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testPingThrowsWhenViewerMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['viewer' => ['id' => '']]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->createService($client)->ping();
+    }
 }

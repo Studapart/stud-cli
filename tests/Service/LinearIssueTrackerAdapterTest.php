@@ -194,6 +194,69 @@ class LinearIssueTrackerAdapterTest extends TestCase
         $this->assertSame($groups, $this->adapter->listLabelGroups('SCI', true));
     }
 
+    public function testGetIssueMapsWorkItemFromLinearApiClient(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn(['linearTypeLabelGroupId' => 'type-group']);
+        $this->linearApiClient->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1')
+            ->willReturn([
+                'id' => 'issue-1',
+                'identifier' => 'SCI-1',
+                'title' => 'Issue',
+                'state' => ['name' => 'Todo'],
+                'assignee' => ['name' => 'Ada'],
+                'description' => 'Body',
+                'labels' => ['nodes' => []],
+                'attachments' => ['nodes' => []],
+            ]);
+
+        $issue = $this->adapter->getIssue('SCI-1');
+
+        $this->assertSame('SCI-1', $issue->key);
+        $this->assertSame('Issue', $issue->title);
+    }
+
+    public function testListAssignedActiveMapsIssues(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listAssignedActiveIssues')
+            ->with('ENG', true)
+            ->willReturn([
+                [
+                    'id' => 'i1',
+                    'identifier' => 'ENG-1',
+                    'title' => 'One',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+
+        $issues = $this->adapter->listAssignedActive('ENG', true);
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('ENG-1', $issues[0]->key);
+    }
+
+    public function testListTeamsMapsProjects(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listTeams')
+            ->willReturn([['key' => 'ENG', 'name' => 'Engineering']]);
+
+        $teams = $this->adapter->listTeams();
+
+        $this->assertCount(1, $teams);
+        $this->assertSame('ENG', $teams[0]->key);
+    }
+
+    public function testPingDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())->method('ping');
+        $this->adapter->ping();
+    }
+
     /**
      * @param list<mixed> $args
      */
@@ -211,18 +274,14 @@ class LinearIssueTrackerAdapterTest extends TestCase
      */
     public static function unimplementedMethodProvider(): iterable
     {
-        yield 'getIssue' => ['getIssue', ['SCI-1', false]];
         yield 'search' => ['search', ['project = SCI']];
-        yield 'listAssignedActive' => ['listAssignedActive', ['SCI', true]];
         yield 'listItemStateChanges' => ['listItemStateChanges', ['SCI-1']];
         yield 'applyStateChange' => ['applyStateChange', ['SCI-1', '11']];
         yield 'assign' => ['assign', ['SCI-1', 'user@example.com']];
-        yield 'listTeams' => ['listTeams', []];
         yield 'listFiltersOrViews' => ['listFiltersOrViews', []];
         yield 'runFilterOrView' => ['runFilterOrView', ['My View']];
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];
         yield 'listTypeLabels' => ['listTypeLabels', ['SCI']];
-        yield 'ping' => ['ping', []];
         yield 'listAttachments' => ['listAttachments', ['SCI-1']];
         yield 'uploadAttachment' => ['uploadAttachment', ['SCI-1', '/tmp/file.txt']];
         yield 'downloadAttachment' => ['downloadAttachment', ['https://linear.app/file', '/tmp/file.txt']];

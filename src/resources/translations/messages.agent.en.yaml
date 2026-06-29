@@ -126,6 +126,8 @@
 "config.validate.error_git_not_configured": "git provider not configured"
 "config.validate.error_jira_ping": "jira connection failed: %error%"
 "config.validate.error_git_ping": "git provider connection failed: %error%"
+"config.validate.error_linear_not_configured": "linear not configured"
+"config.validate.error_linear_ping": "linear connection failed: %error%"
 "config.init.git.description": "configure GitHub/GitLab tokens; repo config can override"
 "config.init.git_provider.menu": "0 GitHub · 1 GitLab · 2 Both"
 "config.init.work_item_provider.menu": "0 Jira · 1 Linear · 2 Both"

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\GlobalStudConfigKeys;
+use App\Config\ProjectStudConfigKeys;
 use App\Exception\IssueTrackerException;
 
 class IssueTrackerFactory
@@ -119,11 +121,11 @@ class IssueTrackerFactory
      */
     private function readProjectProvider(array $projectConfig): ?string
     {
-        if (! isset($projectConfig['workItemProvider']) || ! is_string($projectConfig['workItemProvider'])) {
+        if (! isset($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER]) || ! is_string($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER])) {
             return null;
         }
 
-        $normalized = strtolower(trim($projectConfig['workItemProvider']));
+        $normalized = strtolower(trim($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER]));
         if ($normalized === 'auto') {
             return null;
         }
@@ -164,13 +166,7 @@ class IssueTrackerFactory
      */
     public function hasJiraCredentials(array $globalConfig): bool
     {
-        foreach (['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'] as $key) {
-            if (! isset($globalConfig[$key]) || ! is_string($globalConfig[$key]) || trim($globalConfig[$key]) === '') {
-                return false;
-            }
-        }
-
-        return true;
+        return GlobalStudConfigKeys::hasJiraCredentials($globalConfig);
     }
 
     /**
@@ -178,8 +174,6 @@ class IssueTrackerFactory
      */
     public function hasLinearCredentials(array $globalConfig): bool
     {
-        $apiKey = $globalConfig['LINEAR_API_KEY'] ?? null;
-
-        return is_string($apiKey) && trim($apiKey) !== '';
+        return GlobalStudConfigKeys::hasLinearApiKey($globalConfig);
     }
 }

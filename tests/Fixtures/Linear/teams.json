@@ -1,0 +1,18 @@
+{
+  "data": {
+    "teams": {
+      "nodes": [
+        {
+          "id": "team-uuid-eng",
+          "key": "ENG",
+          "name": "Engineering"
+        },
+        {
+          "id": "team-uuid-sci",
+          "key": "SCI",
+          "name": "Stud CLI"
+        }
+      ]
+    }
+  }
+}
