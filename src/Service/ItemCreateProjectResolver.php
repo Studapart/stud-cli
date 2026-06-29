@@ -15,6 +15,8 @@ class ItemCreateProjectResolver
         private readonly GitRepository $gitRepository,
         private readonly JiraApiClient $jiraService,
         private readonly PromptInterface $prompt,
+        private readonly ?LinearApiClient $linearApiClient = null,
+        private readonly ?Logger $logger = null,
     ) {
     }
 
@@ -40,7 +42,16 @@ class ItemCreateProjectResolver
     {
         try {
             return $this->jiraService->getProject($projectKey);
-        } catch (ApiException $e) {
+        } catch (ApiException) {
+            $this->logger?->writeln(
+                Logger::VERBOSITY_VERBOSE,
+                sprintf('Jira project "%s" not found; trying Linear team lookup.', $projectKey),
+            );
+            $linearTeam = $this->linearApiClient?->getTeamByKey($projectKey);
+            if ($linearTeam !== null) {
+                return $linearTeam;
+            }
+
             if (! $interactive) {
                 return null;
             }

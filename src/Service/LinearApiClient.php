@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\DTO\Project;
 use App\Exception\ApiException;
+use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
  * Read-only Linear GraphQL client for project metadata discovery (workflow states, labels).
@@ -60,10 +62,70 @@ class LinearApiClient
         }
         GQL;
 
+    private const TEAM_ID_QUERY = <<<'GQL'
+        query TeamId($teamKey: String!) {
+          team(id: $teamKey) {
+            id
+            key
+            name
+          }
+        }
+        GQL;
+
+    private const TEAM_BY_KEY_QUERY = <<<'GQL'
+        query TeamByKey($teamKey: String!) {
+          teams(filter: { key: { eq: $teamKey } }, first: 1) {
+            nodes {
+              id
+              key
+              name
+            }
+          }
+        }
+        GQL;
+
+    private const ISSUE_ID_QUERY = <<<'GQL'
+        query IssueId($identifier: String!) {
+          issue(id: $identifier) {
+            id
+            identifier
+            team {
+              key
+            }
+          }
+        }
+        GQL;
+
+    private const ISSUE_CREATE_MUTATION = <<<'GQL'
+        mutation IssueCreate($input: IssueCreateInput!) {
+          issueCreate(input: $input) {
+            success
+            issue {
+              id
+              identifier
+              url
+            }
+          }
+        }
+        GQL;
+
+    private const ISSUE_UPDATE_MUTATION = <<<'GQL'
+        mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
+          issueUpdate(id: $id, input: $input) {
+            success
+            issue {
+              id
+              identifier
+            }
+          }
+        }
+        GQL;
+
     private const UNGROUPED_GROUP_ID = '_ungrouped';
 
     public function __construct(
         private readonly LinearGraphqlClient $graphqlClient,
+        private readonly ?Logger $logger = null,
     ) {
     }
 
@@ -177,6 +239,232 @@ class LinearApiClient
         return $labels;
     }
 
+    public function getTeamByKey(string $teamKey): ?Project
+    {
+        try {
+            $data = $this->graphqlClient->query(self::TEAM_BY_KEY_QUERY, ['teamKey' => $teamKey]);
+        } catch (ApiException) {
+            $this->logVerboseFallback(sprintf(
+                'Linear teams filter lookup failed for "%s"; falling back to team(id) query.',
+                $teamKey,
+            ));
+            $data = $this->graphqlClient->query(self::TEAM_ID_QUERY, ['teamKey' => $teamKey]);
+            $team = $data['team'] ?? null;
+            if (! is_array($team) || ! isset($team['id'], $team['key'], $team['name'])) {
+                return null;
+            }
+
+            return new Project(key: (string) $team['key'], name: (string) $team['name']);
+        }
+
+        $nodes = $data['teams']['nodes'] ?? [];
+        if (! is_array($nodes) || $nodes === []) {
+            return null;
+        }
+
+        $team = $nodes[0];
+        if (! is_array($team) || ! isset($team['key'], $team['name'])) {
+            return null;
+        }
+
+        return new Project(key: (string) $team['key'], name: (string) $team['name']);
+    }
+
+    public function resolveTeamId(string $teamKey): string
+    {
+        try {
+            $data = $this->graphqlClient->query(self::TEAM_ID_QUERY, ['teamKey' => $teamKey]);
+            $teamId = $data['team']['id'] ?? null;
+            if (is_string($teamId) && $teamId !== '') {
+                return $teamId;
+            }
+        } catch (ApiException) {
+            // fall through to teams filter lookup
+        }
+
+        $this->logVerboseFallback(sprintf(
+            'Linear team(id) lookup failed for "%s"; falling back to teams filter query.',
+            $teamKey,
+        ));
+
+        $data = $this->graphqlClient->query(self::TEAM_BY_KEY_QUERY, ['teamKey' => $teamKey]);
+        $nodes = $data['teams']['nodes'] ?? [];
+        if (is_array($nodes) && isset($nodes[0]['id']) && is_string($nodes[0]['id']) && $nodes[0]['id'] !== '') {
+            return $nodes[0]['id'];
+        }
+
+        throw new ApiException(
+            sprintf('Could not resolve Linear team id for key "%s".', $teamKey),
+            'Team lookup returned no nodes.',
+            404,
+        );
+    }
+
+    public function resolveIssueId(string $identifier): string
+    {
+        $data = $this->graphqlClient->query(self::ISSUE_ID_QUERY, ['identifier' => $identifier]);
+        $issueId = $data['issue']['id'] ?? null;
+        if (! is_string($issueId) || $issueId === '') {
+            throw new ApiException(
+                sprintf('Could not resolve Linear issue id for key "%s".', $identifier),
+                'Issue lookup returned no id.',
+                404,
+            );
+        }
+
+        return $issueId;
+    }
+
+    public function resolveTeamKeyFromIssue(string $identifier): string
+    {
+        $data = $this->graphqlClient->query(self::ISSUE_ID_QUERY, ['identifier' => $identifier]);
+        $teamKey = $data['issue']['team']['key'] ?? null;
+        if (! is_string($teamKey) || $teamKey === '') {
+            throw new ApiException(
+                sprintf('Could not resolve Linear team for issue "%s".', $identifier),
+                'Issue lookup returned no team key.',
+                404,
+            );
+        }
+
+        return $teamKey;
+    }
+
+    /**
+     * @param list<string> $labelNames
+     *
+     * @return list<string>
+     */
+    public function resolveLabelIds(string $teamKey, array $labelNames, ?string $typeGroupId = null): array
+    {
+        if ($labelNames === []) {
+            return [];
+        }
+
+        $groups = $this->getTeamLabelGroups($teamKey, false);
+        $nameIndex = $this->buildLabelNameIndex($groups, $typeGroupId);
+        $ids = [];
+
+        foreach ($labelNames as $name) {
+            $normalized = strtolower(trim($name));
+            if ($normalized === '' || ! isset($nameIndex[$normalized])) {
+                continue;
+            }
+            $ids[] = $nameIndex[$normalized];
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @param array{teamId: string, title: string, description: ?string, labelIds: list<string>, priority: ?int, parentId: ?string} $input
+     *
+     * @return array{identifier: string, url: string}
+     */
+    public function issueCreate(array $input): array
+    {
+        $payload = [
+            LinearIssueMutationKeys::TEAM_ID => $input[LinearIssueMutationKeys::TEAM_ID],
+            LinearIssueMutationKeys::TITLE => $input[LinearIssueMutationKeys::TITLE],
+        ];
+
+        if ($input[LinearIssueMutationKeys::DESCRIPTION] !== null && $input[LinearIssueMutationKeys::DESCRIPTION] !== '') {
+            $payload[LinearIssueMutationKeys::DESCRIPTION] = $input[LinearIssueMutationKeys::DESCRIPTION];
+        }
+        if ($input[LinearIssueMutationKeys::LABEL_IDS] !== []) {
+            $payload[LinearIssueMutationKeys::LABEL_IDS] = $input[LinearIssueMutationKeys::LABEL_IDS];
+        }
+        if ($input[LinearIssueMutationKeys::PRIORITY] !== null) {
+            $payload[LinearIssueMutationKeys::PRIORITY] = $input[LinearIssueMutationKeys::PRIORITY];
+        }
+        if ($input[LinearIssueMutationKeys::PARENT_ID] !== null && $input[LinearIssueMutationKeys::PARENT_ID] !== '') {
+            $payload[LinearIssueMutationKeys::PARENT_ID] = $input[LinearIssueMutationKeys::PARENT_ID];
+        }
+
+        $data = $this->graphqlClient->query(self::ISSUE_CREATE_MUTATION, ['input' => $payload]);
+        $result = $data['issueCreate'] ?? null;
+        if (! is_array($result) || ! ($result['success'] ?? false)) {
+            throw new ApiException(
+                'Could not create Linear issue.',
+                json_encode($result, JSON_UNESCAPED_UNICODE) ?: 'issueCreate returned success=false',
+            );
+        }
+
+        $issue = $result['issue'] ?? null;
+        if (! is_array($issue) || ! isset($issue['identifier'], $issue['url'])) {
+            throw new ApiException(
+                'Could not create Linear issue.',
+                'issueCreate response missing issue identifier or url.',
+            );
+        }
+
+        return [
+            'identifier' => (string) $issue['identifier'],
+            'url' => (string) $issue['url'],
+        ];
+    }
+
+    /**
+     * @param array{title?: string, description?: ?string, labelIds?: list<string>, priority?: ?int} $input
+     */
+    public function issueUpdate(string $issueId, array $input): void
+    {
+        if ($input === []) {
+            return;
+        }
+
+        $payload = [];
+        if (isset($input[LinearIssueMutationKeys::TITLE])) {
+            $payload[LinearIssueMutationKeys::TITLE] = $input[LinearIssueMutationKeys::TITLE];
+        }
+        if (array_key_exists(LinearIssueMutationKeys::DESCRIPTION, $input)) {
+            $payload[LinearIssueMutationKeys::DESCRIPTION] = $input[LinearIssueMutationKeys::DESCRIPTION];
+        }
+        if (isset($input[LinearIssueMutationKeys::LABEL_IDS])) {
+            $payload[LinearIssueMutationKeys::LABEL_IDS] = $input[LinearIssueMutationKeys::LABEL_IDS];
+        }
+        if (array_key_exists(LinearIssueMutationKeys::PRIORITY, $input)) {
+            $payload[LinearIssueMutationKeys::PRIORITY] = $input[LinearIssueMutationKeys::PRIORITY];
+        }
+
+        $data = $this->graphqlClient->query(self::ISSUE_UPDATE_MUTATION, [
+            'id' => $issueId,
+            'input' => $payload,
+        ]);
+        $result = $data['issueUpdate'] ?? null;
+        if (! is_array($result) || ! ($result['success'] ?? false)) {
+            throw new ApiException(
+                'Could not update Linear issue.',
+                json_encode($result, JSON_UNESCAPED_UNICODE) ?: 'issueUpdate returned success=false',
+            );
+        }
+    }
+
+    /**
+     * @param list<array{id: string, name: string, labels: list<array{id: string, name: string, color?: string}>}> $groups
+     *
+     * @return array<string, string>
+     */
+    protected function buildLabelNameIndex(array $groups, ?string $typeGroupId): array
+    {
+        $index = [];
+        foreach ($groups as $group) {
+            $groupId = $group['id'];
+            if ($typeGroupId !== null && $typeGroupId !== '' && $groupId !== $typeGroupId) {
+                continue;
+            }
+
+            foreach ($group['labels'] as $label) {
+                $name = strtolower(trim($label['name']));
+                if ($name !== '') {
+                    $index[$name] = (string) $label['id'];
+                }
+            }
+        }
+
+        return $index;
+    }
+
     /**
      * @param array<string, mixed> $node
      * @return array{id: string, name: string, color?: string}
@@ -193,6 +481,11 @@ class LinearApiClient
         }
 
         return $label;
+    }
+
+    protected function logVerboseFallback(string $message): void
+    {
+        $this->logger?->writeln(Logger::VERBOSITY_VERBOSE, $message);
     }
 
     /**

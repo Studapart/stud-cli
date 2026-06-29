@@ -20,6 +20,22 @@ class LinearIssueMapper
         4 => 'Low',
     ];
 
+    /** @var array<string, int> */
+    private const PRIORITY_NAME_TO_VALUE = [
+        'no priority' => 0,
+        'urgent' => 1,
+        'high' => 2,
+        'medium' => 3,
+        'low' => 4,
+    ];
+
+    public static function priorityNameToValue(string $name): ?int
+    {
+        $normalized = strtolower(trim($name));
+
+        return self::PRIORITY_NAME_TO_VALUE[$normalized] ?? null;
+    }
+
     /**
      * @param array<string, mixed> $node
      */
@@ -157,6 +173,19 @@ class LinearIssueMapper
         }
 
         return self::PRIORITY_LABELS[$value] ?? null;
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     *
+     * @return array{identifier: string, url: string}
+     */
+    public function mapCreateResponse(array $node): array
+    {
+        return [
+            'identifier' => (string) ($node['identifier'] ?? ''),
+            'url' => (string) ($node['url'] ?? ''),
+        ];
     }
 
     /**
