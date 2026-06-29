@@ -60,7 +60,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         $mutationInput = $this->fieldTranslator->toCreateInput(
             $input,
             $this->linearApiClient,
-            $this->readTypeGroupId(),
+            $this->readProjectConfig(),
         );
         $issue = $this->linearApiClient->issueCreate($mutationInput);
         $mapped = $this->issueMapper->mapCreateResponse($issue);
@@ -212,13 +212,21 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         throw new \BadMethodCallException('Not implemented until SCI-164');
     }
 
-    protected function readTypeGroupId(): ?string
+    /**
+     * @return array<string, mixed>
+     */
+    protected function readProjectConfig(): array
     {
         if ($this->gitRepository === null) {
-            return null;
+            return [];
         }
 
-        $config = $this->gitRepository->readProjectConfig();
+        return $this->gitRepository->readProjectConfig();
+    }
+
+    protected function readTypeGroupId(): ?string
+    {
+        $config = $this->readProjectConfig();
         $value = $config[ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;

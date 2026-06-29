@@ -1536,10 +1536,6 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn('TPW');
 
-        $this->gitRepository->expects($this->once())
-            ->method('readProjectConfig')
-            ->willReturn([]);
-
         $transitions = [
             new StateChange('11', 'Start Progress', 'In Progress'),
         ];
@@ -1549,7 +1545,7 @@ class ItemStartHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem]);
+        $this->callPrivateMethod($handler, 'handleTransition', ['TPW-35', $workItem, []]);
 
         $this->addToAssertionCount(1);
     }
@@ -1859,5 +1855,138 @@ class ItemStartHandlerTest extends CommandTestCase
         $response = $handler->handle('TPW-35');
 
         $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleUsesLinearTypeLabelPrefixForBug(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-123',
+            title: 'Fix login',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: '',
+            labels: ['Bug', 'DX'],
+            issueType: '',
+            components: [],
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'workItemProvider' => 'linear',
+                'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Bug' => 'fix', 'Story' => 'feat'],
+                'projectKey' => 'SCI',
+            ]);
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-123')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCI-123')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('fix/SCI-123-fix-login', 'origin/develop');
+
+        $response = $this->handler->handle('SCI-123');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleUsesLinearTeamKeyFromIssueWhenProjectKeyMissing(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-456',
+            title: 'Fix login',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: '',
+            labels: ['Bug'],
+            issueType: '',
+            components: [],
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'workItemProvider' => 'linear',
+                'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Bug' => 'fix'],
+            ]);
+        $this->gitRepository->expects($this->once())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('SCI-456')
+            ->willReturn('SCI');
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-456')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCI-456')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('fix/SCI-456-fix-login', 'origin/develop');
+
+        $response = $this->handler->handle('SCI-456');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleWarnsWhenLinearIssueHasNoTypeLabel(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-789',
+            title: 'Improve DX',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: '',
+            labels: ['DX'],
+            issueType: '',
+            components: [],
+        );
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'workItemProvider' => 'linear',
+                'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Bug' => 'fix', 'Story' => 'feat'],
+                'projectKey' => 'SCI',
+            ]);
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-789')
+            ->willReturn($workItem);
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCI-789')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCI-789-improve-dx', 'origin/develop');
+
+        $response = $this->handler->handle('SCI-789');
+
+        $this->assertWorkflowExitCode($response, 0);
+        $warnings = $response->getWarnings();
+        $this->assertNotEmpty($warnings);
+        $this->assertInstanceOf(\App\DTO\MessageRef::class, $warnings[0]->message);
+        $this->assertSame('item.start.linear_no_type_label', $warnings[0]->message->key);
     }
 }

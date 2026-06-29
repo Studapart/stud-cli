@@ -115,8 +115,8 @@ class GitSetupServiceTest extends TestCase
             ->with('origin')
             ->willReturn(['feature-branch']);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Base branch not configured and could not be auto-detected.');
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $this->expectExceptionMessage('config.base_branch_auto_detect_failed');
 
         $this->callProtected('getBaseBranch');
     }
@@ -188,7 +188,7 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('getProjectConfigPath')
             ->willThrowException(new \RuntimeException('Not in a git repository.'));
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.base_branch_required');
 
         $this->gitSetupService->ensureBaseBranchConfigured($io);
@@ -204,7 +204,7 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('remoteBranchExists')->willReturn(false);
         $this->logger->method('ask')->willReturn('invalid-branch');
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.base_branch_invalid');
 
         $this->gitSetupService->ensureBaseBranchConfigured($io);
@@ -219,7 +219,7 @@ class GitSetupServiceTest extends TestCase
         $this->gitBranchService->method('getAllRemoteBranches')->willReturn([]);
         $this->logger->method('ask')->willReturn(null);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.base_branch_required');
 
         $this->gitSetupService->ensureBaseBranchConfigured($io);
@@ -239,8 +239,8 @@ class GitSetupServiceTest extends TestCase
                 try {
                     $validator('');
                     $this->fail('Validator should throw for empty string');
-                } catch (\RuntimeException $e) {
-                    $this->assertSame('Base branch name cannot be empty.', $e->getMessage());
+                } catch (\App\Exception\StudConfigException $e) {
+                    $this->assertSame('config.base_branch_name_empty', $e->messageRef->key);
                 }
 
                 return $validator('develop');
@@ -281,8 +281,8 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
         $this->gitRepository->method('remoteBranchExists')->willReturn(false);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('does not exist on remote');
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $this->expectExceptionMessage('config.base_branch_default_missing');
 
         $this->gitSetupService->ensureBaseBranchConfigured($io, true);
     }
@@ -295,7 +295,7 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('readProjectConfig')->willReturn(['baseBranch' => 'nonexistent']);
         $this->gitRepository->method('remoteBranchExists')->with('origin', 'nonexistent')->willReturn(false);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.base_branch_invalid');
 
         $this->gitSetupService->ensureBaseBranchConfigured($io, true);
@@ -315,7 +315,7 @@ class GitSetupServiceTest extends TestCase
     {
         $this->gitRepository->method('remoteBranchExists')->willReturn(false);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
 
         $this->gitSetupService->validateBaseBranchOnRemote('missing-branch');
     }
@@ -324,7 +324,7 @@ class GitSetupServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->never())->method('remoteBranchExists');
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
 
         $this->gitSetupService->validateBaseBranchOnRemote('origin/');
     }
@@ -368,7 +368,7 @@ class GitSetupServiceTest extends TestCase
             $this->translator
         );
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.git_provider_required');
 
         $gitSetupService->ensureGitProviderConfigured($io);
@@ -399,8 +399,8 @@ class GitSetupServiceTest extends TestCase
         $this->gitRepository->method('readProjectConfig')->willReturn([]);
         $this->gitRepository->method('parseGitUrl')->willReturn([]);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Git provider is not configured');
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $this->expectExceptionMessage('config.git_provider_quiet_unavailable');
 
         $this->gitSetupService->ensureGitProviderConfigured($io, true);
     }
@@ -453,7 +453,7 @@ class GitSetupServiceTest extends TestCase
             $this->translator
         );
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.git_provider_required');
 
         $gitSetupService->ensureGitProviderConfigured($io);
@@ -522,7 +522,7 @@ class GitSetupServiceTest extends TestCase
             $this->translator
         );
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
         $this->expectExceptionMessage('config.git_token_required');
 
         $gitSetupService->ensureGitTokenConfigured('github', $io, []);

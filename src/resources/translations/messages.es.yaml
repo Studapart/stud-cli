@@ -161,12 +161,16 @@ config:
   base_branch_saved: "Rama base configurada: %branch%"
   base_branch_invalid: La rama base '%branch%' no existe en el remoto. Por favor verifique el nombre de la rama.
   base_branch_required: La rama base es requerida. El comando no puede continuar sin una rama base válida.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Proveedor Git no configurado para este repositorio.
   git_provider_prompt: Seleccione el proveedor Git para este repositorio
   git_provider_detected: "Proveedor Git detectado: %provider%"
   git_provider_saving: Guardando configuración del proveedor Git...
   git_provider_saved: "Proveedor Git configurado: %provider%"
   git_provider_required: El proveedor Git es requerido. El comando no puede continuar sin un proveedor Git válido.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Token Git no configurado para este repositorio.
   git_token_prompt: Ingrese su PAT de %provider% (deje en blanco para omitir)
   git_token_saving: Guardando configuración del token Git...
@@ -218,6 +222,9 @@ item:
     transition_success: ✅ Ticket %key% transitado a 'En progreso'
     transition_error: 'Error al obtener transiciones: %error%'
     transition_exec_error: 'Error al ejecutar transición: %error%. Continuando con la creación de rama.'
+    linear_no_type_label: 'No se encontró etiqueta de tipo Linear en el ticket; se usa el prefijo feat/.'
+    linear_unknown_type_label: 'La etiqueta de tipo Linear "%label%" no tiene mapeo de prefijo; se usa feat/.'
+    linear_type_label_matched: 'Usando prefijo %prefix% de la etiqueta de tipo Linear %label%.'
     using_advanced_base: 'La base configurada ''%configured%'' está detrás de ''%resolved%''; usando ''%resolved%'' como base.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -305,11 +312,15 @@ item:
     prompt_custom_field: Value for "%name%" (required)
     prompt_issue_type_choice: Issue type
     error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: Summary is required. Set --summary/-m or run interactively.
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -341,6 +352,7 @@ item:
 work_item_provider:
   missing_linear_api_key: 'Linear está seleccionado pero LINEAR_API_KEY no está configurado. Ejecute "stud config:init" o configure LINEAR_API_KEY en ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira está seleccionado pero las credenciales de Jira no están configuradas. Ejecute "stud config:init".'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'No hay proveedor de work-items configurado. Ejecute "stud config:init" para configurar Jira o Linear.'
 project:
   list:

@@ -223,6 +223,20 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->linearStatus);
     }
 
+    public function testHandleReturnsLinearFailWhenPingThrowsIssueTrackerException(): void
+    {
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())
+            ->method('ping')
+            ->willThrowException(\App\Exception\IssueTrackerException::missingLinearApiKey());
+
+        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
+        $this->assertMessageRef($response->linearMessage, 'work_item_provider.missing_linear_api_key');
+    }
+
     public function testHandleReturnsLinearFailWhenPingThrows(): void
     {
         $linearProvider = $this->createMock(IssueTrackerPort::class);

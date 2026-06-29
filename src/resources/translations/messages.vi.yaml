@@ -161,12 +161,16 @@ config:
   base_branch_saved: "Nhánh cơ sở đã được cấu hình: %branch%"
   base_branch_invalid: "Nhánh cơ sở '%branch%' không tồn tại trên remote. Vui lòng kiểm tra tên nhánh."
   base_branch_required: Nhánh cơ sở là bắt buộc. Lệnh không thể tiếp tục mà không có nhánh cơ sở hợp lệ.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Nhà cung cấp Git chưa được cấu hình cho kho lưu trữ này.
   git_provider_prompt: Chọn nhà cung cấp Git cho kho lưu trữ này
   git_provider_detected: "Đã phát hiện nhà cung cấp Git: %provider%"
   git_provider_saving: Đang lưu cấu hình nhà cung cấp Git...
   git_provider_saved: "Nhà cung cấp Git đã được cấu hình: %provider%"
   git_provider_required: Nhà cung cấp Git là bắt buộc. Lệnh không thể tiếp tục mà không có nhà cung cấp Git hợp lệ.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Token Git chưa được cấu hình cho kho lưu trữ này.
   git_token_prompt: Nhập PAT %provider% của bạn (để trống để bỏ qua)
   git_token_saving: Đang lưu cấu hình token Git...
@@ -218,6 +222,9 @@ item:
     transition_success: ✅ Issue %key% đã chuyển sang 'Đang thực hiện'
     transition_error: 'Lỗi lấy chuyển đổi: %error%'
     transition_exec_error: 'Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh.'
+    linear_no_type_label: 'Không tìm thấy nhãn loại Linear trên issue; dùng tiền tố nhánh mặc định feat/.'
+    linear_unknown_type_label: 'Nhãn loại Linear "%label%" không có ánh xạ tiền tố nhánh; dùng feat/.'
+    linear_type_label_matched: 'Dùng tiền tố nhánh %prefix% từ nhãn loại Linear %label%.'
     using_advanced_base: 'Nhánh cơ sở đã cấu hình ''%configured%'' đang đứng sau ''%resolved%''; sử dụng ''%resolved%'' làm cơ sở.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -305,11 +312,15 @@ item:
     prompt_custom_field: "Value for \"%name%\" (required)"
     prompt_issue_type_choice: "Issue type"
     error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: "Summary is required. Set --summary/-m or run interactively."
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -341,6 +352,7 @@ item:
 work_item_provider:
   missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira được chọn nhưng thông tin xác thực Jira chưa được cấu hình. Chạy "stud config:init".'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Chưa cấu hình nhà cung cấp work-item. Chạy "stud config:init" để thiết lập Jira hoặc Linear.'
 project:
   list:

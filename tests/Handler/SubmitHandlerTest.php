@@ -1089,8 +1089,8 @@ class SubmitHandlerTest extends CommandTestCase
         $method = $reflection->getMethod('validateAndProcessLabels');
         $method->setAccessible(true);
 
-        $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('A Git provider is required to resolve submit labels.');
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $this->expectExceptionMessage('config.git_provider_not_configured');
 
         $method->invoke($handler, 'bug');
     }

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Exception\ApiException;
+use App\Config\ProjectStudConfigKeys;
+use App\Exception\StudConfigException;
 use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
@@ -25,20 +26,27 @@ class LinearIssueFieldTranslator
 
     /**
      * @param array<string, mixed> $fields
+     * @param array<string, mixed> $projectConfig
      *
      * @return array{teamId: string, title: string, description: ?string, labelIds: list<string>, priority: ?int, parentId: ?string}
      */
-    public function toCreateInput(array $fields, LinearApiClient $client, ?string $typeGroupId = null): array
+    public function toCreateInput(array $fields, LinearApiClient $client, array $projectConfig = []): array
     {
         $teamKey = $this->resolveTeamKey($fields);
         $teamId = $client->resolveTeamId($teamKey);
 
         $labelNames = $this->resolveLabelNames($fields);
         $typeName = $this->resolveIssueTypeName($fields);
+        $typeGroupId = $this->readTypeGroupId($projectConfig);
 
         $labelIds = $client->resolveLabelIds($teamKey, $labelNames, null);
         if ($typeName !== null && $typeName !== '') {
-            $typeLabelIds = $client->resolveLabelIds($teamKey, [$typeName], $typeGroupId);
+            $typeLabelResolver = new LinearTypeLabelResolver($client);
+            if ($typeGroupId !== null) {
+                $typeLabelIds = [$typeLabelResolver->resolveTypeLabelId($typeName, $projectConfig, $teamKey)];
+            } else {
+                $typeLabelIds = $client->resolveLabelIds($teamKey, [$typeName], null);
+            }
             $labelIds = array_values(array_unique(array_merge($labelIds, $typeLabelIds)));
         }
 
@@ -86,6 +94,16 @@ class LinearIssueFieldTranslator
     }
 
     /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function readTypeGroupId(array $projectConfig): ?string
+    {
+        $value = $projectConfig[ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
      * @return array{type: string, version: int, content: list<array<string, mixed>>}
      */
     public function formatDescriptionPayload(string $text): array
@@ -109,7 +127,7 @@ class LinearIssueFieldTranslator
             return $project[IssueFieldBagKeys::KEY];
         }
 
-        throw new ApiException('Team key is required to create a Linear issue.', 'Missing project key in create payload.');
+        throw StudConfigException::linearTeamKeyRequired();
     }
 
     /**

@@ -12,6 +12,7 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
+use App\Exception\StudConfigException;
 use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
@@ -381,7 +382,7 @@ class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, G
     protected function createLabelResolver(): SubmitLabelResolver
     {
         if (! $this->githubProvider) {
-            throw new \LogicException('A Git provider is required to resolve submit labels.');
+            throw StudConfigException::gitProviderNotConfigured();
         }
 
         return new SubmitLabelResolver($this->githubProvider, $this->translator, $this->prompt);

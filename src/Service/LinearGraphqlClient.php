@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -36,11 +37,7 @@ final class LinearGraphqlClient
 
         $statusCode = $response->getStatusCode();
         if ($statusCode === 401) {
-            throw new ApiException(
-                'Invalid or missing LINEAR_API_KEY.',
-                $this->extractTechnicalDetails($response),
-                401,
-            );
+            throw IssueTrackerException::missingLinearApiKey();
         }
 
         if ($statusCode !== 200) {

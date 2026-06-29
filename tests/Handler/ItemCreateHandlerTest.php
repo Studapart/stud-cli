@@ -5,6 +5,9 @@ namespace App\Tests\Handler;
 use App\DTO\ItemCreateInput;
 use App\DTO\Project;
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
+use App\Exception\LinearTypeLabelException;
+use App\Exception\StudConfigException;
 use App\Handler\ItemCreateHandler;
 use App\Response\ItemCreateResponse;
 use App\Service\DurationParser;
@@ -313,6 +316,96 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
+    }
+
+    public function testHandleReturnsLinearTypeLabelErrorWhenCreateThrowsLinearTypeLabelException(): void
+    {
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('PROJ')
+            ->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->willThrowException(LinearTypeLabelException::labelNotFound('Bug'));
+
+        $handler = $this->createHandler();
+
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.linear_type_label_not_found', $response->getError() ?? '');
+    }
+
+    public function testHandleReturnsStudConfigErrorWhenLinearTeamKeyMissing(): void
+    {
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('PROJ')
+            ->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->willThrowException(StudConfigException::linearTeamKeyRequired());
+
+        $handler = $this->createHandler();
+
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('item.create.error_no_linear_team', $response->getError() ?? '');
+    }
+
+    public function testHandleReturnsIssueTrackerErrorWhenCreateThrowsIssueTrackerException(): void
+    {
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('PROJ')
+            ->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->expects($this->once())
+            ->method('getCreateMetaIssueTypes')
+            ->with('PROJ')
+            ->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('PROJ', '10001')
+            ->willReturn([
+                'project' => ['required' => true, 'name' => 'Project'],
+                'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+                'summary' => ['required' => true, 'name' => 'Summary'],
+            ]);
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->willThrowException(IssueTrackerException::missingLinearApiKey());
+
+        $handler = $this->createHandler();
+
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertStringContainsString('work_item_provider.missing_linear_api_key', $response->getError() ?? '');
     }
 
     public function testHandleIncludesDescriptionWhenProvided(): void

@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
 use App\Response\ConfigValidateResponse;
 use App\Service\GitHostingPort;
 use App\Service\IssueTrackerPort;
@@ -139,6 +140,13 @@ class ConfigValidateHandler
                 'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
             ];
         } catch (\Throwable $e) {
+            if ($e instanceof IssueTrackerException) {
+                return [
+                    'status' => ConfigValidateResponse::STATUS_FAIL,
+                    'message' => $e->messageRef,
+                ];
+            }
+
             return [
                 'status' => ConfigValidateResponse::STATUS_FAIL,
                 'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
