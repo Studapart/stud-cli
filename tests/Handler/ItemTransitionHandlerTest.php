@@ -622,6 +622,48 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->assertWorkflowExitCode($response, 0);
     }
 
+    public function testHandleAppliesLinearWorkflowStateWithUuidId(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-uuid-1',
+            key: 'SCI-123',
+            title: 'Linear transition',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: '',
+            labels: [],
+            issueType: 'story',
+            components: [],
+        );
+
+        $transitions = [
+            new StateChange('state-started-uuid', 'In Progress', null, 'started'),
+            new StateChange('state-done-uuid', 'Done', null, 'completed'),
+        ];
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-123')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-123')
+            ->willReturn($transitions);
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-123', 'state-started-uuid');
+
+        $this->prompt->expects($this->once())
+            ->method('choice')
+            ->willReturn('In Progress (ID: state-started-uuid)');
+
+        $response = $this->handler->handle('SCI-123');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
     public function testResolveKeyWithProvidedKey(): void
     {
         $key = $this->callPrivateMethod($this->handler, 'resolveKey', ['tpw-35']);

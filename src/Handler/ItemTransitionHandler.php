@@ -46,7 +46,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
         if ($transitions === null) {
             return $this->recorder->toResponse(1);
         }
-        $transitionId = $this->selectTransitionIdFromUser($transitions);
+        $transitionId = $this->selectStateChangeIdFromUser($transitions);
         if ($transitionId === null) {
             return $this->recorder->toResponse(1);
         }
@@ -100,21 +100,21 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
     /**
      * @param list<StateChange> $transitions
      */
-    protected function selectTransitionIdFromUser(array $transitions): ?int
+    protected function selectStateChangeIdFromUser(array $transitions): ?string
     {
         $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
         $selected = $this->prompt->choice(MessageRef::key('item.transition.select_transition'), $options);
-        preg_match('/ID: (\d+)\)$/', $selected, $matches);
-        if (! isset($matches[1])) {
+        preg_match('/ID: ([^)]+)\)$/', (string) $selected, $matches);
+        if (! isset($matches[1]) || trim($matches[1]) === '') {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_fetch', ['error' => 'Unable to extract transition ID from selection']));
 
             return null;
         }
 
-        return (int) $matches[1];
+        return trim($matches[1]);
     }
 
-    protected function executeTransitionAndReturn(string $key, int $transitionId): int
+    protected function executeTransitionAndReturn(string $key, string $transitionId): int
     {
         try {
             $this->provider->applyStateChange($key, (string) $transitionId);

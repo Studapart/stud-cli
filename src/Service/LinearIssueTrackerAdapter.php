@@ -8,6 +8,7 @@ use App\Config\ProjectStudConfigKeys;
 use App\DTO\Project;
 use App\DTO\StateChange;
 use App\DTO\WorkItem;
+use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
  * Linear adapter for IssueTrackerPort (SCI-164+ implements full delegation).
@@ -131,12 +132,24 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listItemStateChanges(string $itemKey): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $teamKey = $this->linearApiClient->resolveTeamKeyFromIssue($itemKey);
+
+        return array_map(
+            static fn (array $state): StateChange => new StateChange(
+                id: (string) $state['id'],
+                name: (string) $state['name'],
+                type: (string) $state['type'],
+            ),
+            $this->linearApiClient->getTeamWorkflowStates($teamKey),
+        );
     }
 
     public function applyStateChange(string $itemKey, string $changeId): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $issueId = $this->linearApiClient->resolveIssueId($itemKey);
+        $this->linearApiClient->issueUpdate($issueId, [
+            LinearIssueMutationKeys::STATE_ID => $changeId,
+        ]);
     }
 
     public function assign(string $key, ?string $user = null): void

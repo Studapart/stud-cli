@@ -20,4 +20,6 @@ final class LinearIssueMutationKeys
     public const PRIORITY = 'priority';
 
     public const PARENT_ID = 'parentId';
+
+    public const STATE_ID = 'stateId';
 }

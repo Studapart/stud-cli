@@ -183,6 +183,38 @@ class LinearIssueTrackerAdapterTest extends TestCase
         );
     }
 
+    public function testListItemStateChangesResolvesTeamAndMapsWorkflowStates(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveTeamKeyFromIssue')
+            ->with('SCI-123')
+            ->willReturn('SCI');
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamWorkflowStates')
+            ->with('SCI')
+            ->willReturn([
+                ['id' => 'state-started-uuid', 'name' => 'In Progress', 'type' => 'started'],
+            ]);
+
+        $this->assertEquals(
+            [new StateChange('state-started-uuid', 'In Progress', null, 'started')],
+            $this->adapter->listItemStateChanges('SCI-123'),
+        );
+    }
+
+    public function testApplyStateChangeDelegatesIssueUpdateWithStateId(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveIssueId')
+            ->with('SCI-123')
+            ->willReturn('issue-uuid-1');
+        $this->linearApiClient->expects($this->once())
+            ->method('issueUpdate')
+            ->with('issue-uuid-1', ['stateId' => 'state-started-uuid']);
+
+        $this->adapter->applyStateChange('SCI-123', 'state-started-uuid');
+    }
+
     public function testListLabelGroupsDelegatesToLinearApiClient(): void
     {
         $groups = [['id' => 'g1', 'name' => 'Type', 'labels' => []]];
@@ -275,8 +307,6 @@ class LinearIssueTrackerAdapterTest extends TestCase
     public static function unimplementedMethodProvider(): iterable
     {
         yield 'search' => ['search', ['project = SCI']];
-        yield 'listItemStateChanges' => ['listItemStateChanges', ['SCI-1']];
-        yield 'applyStateChange' => ['applyStateChange', ['SCI-1', '11']];
         yield 'assign' => ['assign', ['SCI-1', 'user@example.com']];
         yield 'listFiltersOrViews' => ['listFiltersOrViews', []];
         yield 'runFilterOrView' => ['runFilterOrView', ['My View']];
