@@ -486,6 +486,11 @@ class LinearApiClient
 
     public function ping(): void
     {
+        $this->getViewerId();
+    }
+
+    public function getViewerId(): string
+    {
         $data = $this->graphqlClient->query(self::VIEWER_PING_QUERY);
         $viewerId = $data['viewer']['id'] ?? null;
         if (! is_string($viewerId) || $viewerId === '') {
@@ -494,6 +499,16 @@ class LinearApiClient
                 'Viewer query returned no id.',
             );
         }
+
+        return $viewerId;
+    }
+
+    public function assignIssue(string $issueKey, ?string $assigneeId = null): void
+    {
+        $issueId = $this->resolveIssueId($issueKey);
+        $this->issueUpdate($issueId, [
+            LinearIssueMutationKeys::ASSIGNEE_ID => $assigneeId ?? $this->getViewerId(),
+        ]);
     }
 
     /**
@@ -591,7 +606,7 @@ class LinearApiClient
     }
 
     /**
-     * @param array{title?: string, description?: ?string, labelIds?: list<string>, priority?: ?int, stateId?: string} $input
+     * @param array{title?: string, description?: ?string, labelIds?: list<string>, priority?: ?int, stateId?: string, assigneeId?: string} $input
      */
     public function issueUpdate(string $issueId, array $input): void
     {
@@ -614,6 +629,9 @@ class LinearApiClient
         }
         if (isset($input[LinearIssueMutationKeys::STATE_ID])) {
             $payload[LinearIssueMutationKeys::STATE_ID] = $input[LinearIssueMutationKeys::STATE_ID];
+        }
+        if (isset($input[LinearIssueMutationKeys::ASSIGNEE_ID])) {
+            $payload[LinearIssueMutationKeys::ASSIGNEE_ID] = $input[LinearIssueMutationKeys::ASSIGNEE_ID];
         }
 
         $data = $this->graphqlClient->query(self::ISSUE_UPDATE_MUTATION, [

@@ -22,4 +22,6 @@ final class LinearIssueMutationKeys
     public const PARENT_ID = 'parentId';
 
     public const STATE_ID = 'stateId';
+
+    public const ASSIGNEE_ID = 'assigneeId';
 }

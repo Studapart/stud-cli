@@ -289,6 +289,24 @@ class LinearIssueTrackerAdapterTest extends TestCase
         $this->adapter->ping();
     }
 
+    public function testAssignDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('assignIssue')
+            ->with('SCI-1', null);
+
+        $this->adapter->assign('SCI-1');
+    }
+
+    public function testAssignPassesExplicitUserId(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('assignIssue')
+            ->with('SCI-1', 'user-uuid-2');
+
+        $this->adapter->assign('SCI-1', 'user-uuid-2');
+    }
+
     /**
      * @param list<mixed> $args
      */
@@ -307,7 +325,6 @@ class LinearIssueTrackerAdapterTest extends TestCase
     public static function unimplementedMethodProvider(): iterable
     {
         yield 'search' => ['search', ['project = SCI']];
-        yield 'assign' => ['assign', ['SCI-1', 'user@example.com']];
         yield 'listFiltersOrViews' => ['listFiltersOrViews', []];
         yield 'runFilterOrView' => ['runFilterOrView', ['My View']];
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];

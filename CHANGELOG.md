@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Config YAML keys:** `GlobalStudConfigKeys` and `ProjectStudConfigKeys` centralize global/project config key names; field maps and credential checks use them as single source of truth.
 - **Linear workflow transition (SCI-170):** `LinearIssueTrackerAdapter` lists team workflow states and applies `issueUpdate(stateId)`; `ItemTransitionHandler` accepts string state ids (Linear UUIDs and Jira numeric ids).
 - **Linear type branch prefixes (SCI-171):** `LinearTypeLabelResolver` maps LabelGroup type labels to `fix|feat|chore` prefixes on start and resolves create `--type` to label ids under `linearTypeLabelGroupId`; config validation errors use `MessageRef` via `LinearTypeLabelException` and `StudConfigException`.
+- **Linear start and takeover (SCI-172):** `LinearIssueTrackerAdapter::assign` and `ItemStartHandler` apply cached or prompted `linearStartStateId` before branch creation; agent mode skips state transition when uncached; takeover assign works via provider.
 
 - **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers use `IssueTrackerPort` via `IssueTrackerPortSupplier`; Linear-only `listLabelGroups` moved to optional `IssueTrackerLabelGroupsCapable` (removed from Jira adapter stub); remaining handler errors use `MessageRef`; ADR-023 §5/§8/§9 updated.
 

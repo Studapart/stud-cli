@@ -225,6 +225,12 @@ item:
     linear_no_type_label: "No Linear type label found on the issue; using default branch prefix feat/."
     linear_unknown_type_label: "Linear type label \"%label%\" has no branch prefix mapping; using feat/."
     linear_type_label_matched: "Using branch prefix %prefix% from Linear type label %label%."
+    using_cached_linear_state: "Using cached Linear start state ID: %id%"
+    no_cached_linear_state_agent: "No cached Linear start state for issue %key%; skipping state transition in agent mode."
+    no_linear_states: "No workflow states available for issue %key%. Skipping state transition."
+    select_linear_state: "Select the Linear workflow state to apply on start:"
+    save_linear_state: "Would you like to save this state as the default start state for this project?"
+    linear_state_saved: "Linear start state saved to project config."
     using_advanced_base: "Configured base '%configured%' is behind '%resolved%'; using '%resolved%' as base."
   takeover:
     section: "Taking over issue %key%"
