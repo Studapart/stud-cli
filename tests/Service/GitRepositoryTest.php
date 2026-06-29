@@ -32,7 +32,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->gitRepository = GitRepositoryTestKit::create($this->processFactory, $this->fileSystem);
     }
 
-    public function testGetJiraKeyFromBranchName(): void
+    public function testGetIssueKeyFromBranchName(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -49,12 +49,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('feature/PROJ-123-my-feature');
 
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
 
         $this->assertSame('PROJ-123', $key);
     }
 
-    public function testGetJiraKeyFromBranchNameReturnsNullIfNotFound(): void
+    public function testGetIssueKeyFromBranchNameReturnsNullIfNotFound(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -71,12 +71,12 @@ class GitRepositoryTest extends CommandTestCase
             ->method('getOutput')
             ->willReturn('main');
 
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
 
         $this->assertNull($key);
     }
 
-    public function testGetJiraKeyFromBranchNameReturnsNullIfNotSuccessful(): void
+    public function testGetIssueKeyFromBranchNameReturnsNullIfNotSuccessful(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
@@ -90,9 +90,43 @@ class GitRepositoryTest extends CommandTestCase
             ->method('isSuccessful')
             ->willReturn(false);
 
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
 
         $this->assertNull($key);
+    }
+
+    public function testGetIssueKeyFromBranchNameExtractsLinearIdentifierFromFeatBranch(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --abbrev-ref HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('feat/SCI-123-linear-feature-slug');
+
+        $this->assertSame('SCI-123', $this->gitRepository->getIssueKeyFromBranchName());
+    }
+
+    public function testGetIssueKeyFromBranchNameExtractsMultiLetterLinearTeamKey(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git rev-parse --abbrev-ref HEAD')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $process->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('fix/TEAM-456-bugfix-title');
+
+        $this->assertSame('TEAM-456', $this->gitRepository->getIssueKeyFromBranchName());
     }
 
     public function testGetUpstreamBranch(): void

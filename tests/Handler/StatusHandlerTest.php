@@ -23,7 +23,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandle(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php\n D file2.php");
 
@@ -48,7 +48,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithNoJiraKey(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -59,7 +59,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraApiClientException(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -72,7 +72,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraApiClientApiException(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -86,7 +86,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithCleanWorkingDirectory(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -110,7 +110,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutput(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php");
 

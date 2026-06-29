@@ -118,7 +118,7 @@ class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
     {
         $messages = [ResponseMessage::notice(MessageRef::key('commit.note_no_logical'))];
 
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
         if (! $key) {
             return CommandResponse::error(MessageRef::key('commit.error_no_key'), $messages);
         }

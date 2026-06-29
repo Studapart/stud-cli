@@ -132,7 +132,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $this->issueTracker->expects($this->once())
@@ -187,7 +187,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $this->issueTracker->expects($this->once())
@@ -243,7 +243,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $this->issueTracker->expects($this->once())
@@ -282,7 +282,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testHandleWithInvalidKeyFormat(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -303,7 +303,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testHandleWithEmptyKeyPrompt(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -681,7 +681,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testResolveKeyWithNullPromptedKey(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -703,7 +703,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testResolveKeyWithInvalidFormat(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();

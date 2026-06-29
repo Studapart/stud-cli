@@ -334,7 +334,7 @@ class BranchRenameHandler implements GitRepositoryAware
 
     protected function generateBranchNameFromExtractedKey(string $targetBranch): ?string
     {
-        $extractedKey = $this->gitRepository->getJiraKeyFromBranchName();
+        $extractedKey = $this->gitRepository->getIssueKeyFromBranchName();
         if ($extractedKey === null) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
 

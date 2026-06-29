@@ -31,7 +31,7 @@ class StatusHandler implements GitRepositoryAware, WorkItemJiraAware
     {
         $this->recorder = new WorkflowRecorder();
         $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.section'));
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
         $branch = $this->gitRepository->getCurrentBranchName();
 
         if ($key) {

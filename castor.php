@@ -522,12 +522,12 @@ function _get_wiki_port(?string $urlOverride = null): WikiPort
 }
 
 /**
- * Parses the Jira issue key from the current Git branch name.
+ * Parses the work-item issue key from the current Git branch name.
  * Returns the key or null if not found.
  */
 function _get_key_from_branch(): ?string
 {
-    return _get_git_repository()->getJiraKeyFromBranchName();
+    return _get_git_repository()->getIssueKeyFromBranchName();
 }
 
 function _get_process_factory(): ProcessFactory

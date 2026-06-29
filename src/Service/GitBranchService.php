@@ -196,9 +196,9 @@ class GitBranchService
     }
 
     /**
-     * Finds local branches whose names contain the Jira issue key.
+     * Finds local branches whose names contain the work-item key (Jira or Linear identifier).
      *
-     * @param string $key The Jira issue key
+     * @param string $key The issue key (e.g. PROJ-123, SCI-456)
      * @return array<string> Array of matching local branch names
      */
     public function findLocalBranchesContainingIssueKey(string $key): array

@@ -138,7 +138,7 @@ class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
             return strtoupper($key);
         }
 
-        $detectedKey = $this->gitRepository->getJiraKeyFromBranchName();
+        $detectedKey = $this->gitRepository->getIssueKeyFromBranchName();
         if ($detectedKey !== null) {
             $confirmed = $this->prompt->confirm(
                 MessageRef::key('item.transition.detected_key', ['key' => $detectedKey]),
