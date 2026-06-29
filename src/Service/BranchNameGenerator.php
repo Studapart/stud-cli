@@ -42,4 +42,19 @@ class BranchNameGenerator
             null => self::PREFIX_FEAT,
         };
     }
+
+    /**
+     * @param list<string> $issueLabelNames
+     * @param array<string, mixed> $projectConfig
+     */
+    public static function prefixForLinearIssueLabels(
+        array $issueLabelNames,
+        array $projectConfig,
+        ?string $teamKey = null,
+        ?LinearTypeLabelResolver $resolver = null,
+    ): string {
+        $resolver ??= new LinearTypeLabelResolver();
+
+        return $resolver->resolveBranchPrefix($issueLabelNames, $projectConfig, $teamKey)['prefix'];
+    }
 }

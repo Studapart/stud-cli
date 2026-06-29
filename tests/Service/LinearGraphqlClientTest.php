@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
 use App\Service\LinearGraphqlClient;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -60,11 +61,9 @@ class LinearGraphqlClientTest extends TestCase
 
         try {
             $graphql->query('query { viewer { id } }');
-            $this->fail('Expected ApiException was not thrown.');
-        } catch (ApiException $exception) {
-            $this->assertSame('Invalid or missing LINEAR_API_KEY.', $exception->getMessage());
-            $this->assertSame(401, $exception->getStatusCode());
-            $this->assertSame('Unauthorized', $exception->getTechnicalDetails());
+            $this->fail('Expected IssueTrackerException was not thrown.');
+        } catch (IssueTrackerException $exception) {
+            $this->assertSame('work_item_provider.missing_linear_api_key', $exception->messageRef->key);
         }
     }
 

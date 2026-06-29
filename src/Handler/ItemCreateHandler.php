@@ -8,6 +8,9 @@ use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
+use App\Exception\LinearTypeLabelException;
+use App\Exception\StudConfigException;
 use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
@@ -225,6 +228,12 @@ class ItemCreateHandler implements WorkItemJiraAware
             $result = $this->provider->create($fields);
 
             return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
+        } catch (LinearTypeLabelException $e) {
+            return ItemCreateResponse::error($e->messageRef);
+        } catch (StudConfigException $e) {
+            return ItemCreateResponse::error($e->messageRef);
+        } catch (IssueTrackerException $e) {
+            return ItemCreateResponse::error($e->messageRef);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();

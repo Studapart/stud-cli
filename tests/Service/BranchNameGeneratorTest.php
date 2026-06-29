@@ -36,6 +36,20 @@ class BranchNameGeneratorTest extends TestCase
         $this->assertSame(BranchNameGenerator::PREFIX_FIX, $this->generator->getBranchPrefixFromIssueType('Bug'));
     }
 
+    public function testPrefixForLinearIssueLabelsUsesConfiguredMap(): void
+    {
+        $prefix = BranchNameGenerator::prefixForLinearIssueLabels(
+            ['Bug'],
+            [
+                'linearTypeLabelGroupId' => 'group-1',
+                'linearTypeBranchPrefixes' => ['Bug' => 'fix'],
+            ],
+            'SCI',
+        );
+
+        $this->assertSame(BranchNameGenerator::PREFIX_FIX, $prefix);
+    }
+
     public function testGenerateBranchNameFromKey(): void
     {
         $issue = new \App\DTO\WorkItem(

@@ -435,6 +435,11 @@ function _get_linear_api_client(): ?\App\Service\LinearApiClient
     return new \App\Service\LinearApiClient($graphqlClient, _get_logger());
 }
 
+function _get_linear_type_label_resolver(): \App\Service\LinearTypeLabelResolver
+{
+    return new \App\Service\LinearTypeLabelResolver(_get_linear_api_client());
+}
+
 function _get_jira_attachment_service_if_configured(): ?JiraAttachmentService
 {
     if (_get_jira_api_client_if_configured() === null) {
@@ -2703,7 +2708,7 @@ function items_start(
         exit(1);
     }
     $workItemProvider = _require_issue_tracker($providerOverride ?? $provider);
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $workItemProvider, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt());
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $workItemProvider, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2737,7 +2742,7 @@ function items_takeover(
     $gitBranchService = _get_git_branch_service();
     $prompt = _get_prompt();
     $workItemProvider = _require_issue_tracker();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt, _get_linear_type_label_resolver());
     $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
     $response = $handler->handle($key, $quiet);
     _respond_workflow_response($response, $agent, $compact);

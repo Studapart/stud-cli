@@ -27,7 +27,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
         $this->client->expects($this->once())->method('resolveTeamId')->with('ENG')->willReturn('team-1');
         $this->client->expects($this->exactly(2))
             ->method('resolveLabelIds')
-            ->willReturnOnConsecutiveCalls(['label-bug'], []);
+            ->willReturnOnConsecutiveCalls(['label-bug'], ['label-story']);
         $this->client->expects($this->once())->method('resolveIssueId')->with('ENG-9')->willReturn('parent-1');
 
         $input = $this->translator->toCreateInput([
@@ -38,12 +38,12 @@ class LinearIssueFieldTranslatorTest extends TestCase
             'priority' => ['name' => 'Urgent'],
             'parent' => ['key' => 'ENG-9'],
             'issuetype' => ['name' => 'Story'],
-        ], $this->client, 'type-group');
+        ], $this->client, ['linearTypeLabelGroupId' => 'type-group']);
 
         $this->assertSame('team-1', $input['teamId']);
         $this->assertSame('Title', $input['title']);
         $this->assertSame('Body', $input['description']);
-        $this->assertSame(['label-bug'], $input['labelIds']);
+        $this->assertSame(['label-bug', 'label-story'], $input['labelIds']);
         $this->assertSame(1, $input['priority']);
         $this->assertSame('parent-1', $input['parentId']);
     }
@@ -111,7 +111,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
     public function testToCreateInputThrowsWhenProjectKeyMissing(): void
     {
-        $this->expectException(\App\Exception\ApiException::class);
+        $this->expectException(\App\Exception\StudConfigException::class);
 
         $this->translator->toCreateInput(['summary' => 'Title'], $this->client);
     }

@@ -161,12 +161,16 @@ config:
   base_branch_saved: "Branche de base configurée: %branch%"
   base_branch_invalid: "La branche de base '%branch%' n'existe pas sur le dépôt distant. Veuillez vérifier le nom de la branche."
   base_branch_required: La branche de base est requise. La commande ne peut pas continuer sans une branche de base valide.
+  base_branch_name_empty: "Le nom de la branche de base ne peut pas être vide."
+  base_branch_auto_detect_failed: "Branche de base non configurée et détection automatique impossible."
+  base_branch_default_missing: "Branche de base non configurée et la branche par défaut « %branch% » n'existe pas sur le remote. Relancez sans --quiet ou exécutez « stud config:init »."
   git_provider_not_configured: Fournisseur Git non configuré pour ce dépôt.
   git_provider_prompt: Sélectionnez le fournisseur Git pour ce dépôt
   git_provider_detected: "Fournisseur Git détecté: %provider%"
   git_provider_saving: Enregistrement de la configuration du fournisseur Git...
   git_provider_saved: "Fournisseur Git configuré: %provider%"
   git_provider_required: Le fournisseur Git est requis. La commande ne peut pas continuer sans un fournisseur Git valide.
+  git_provider_quiet_unavailable: "Fournisseur Git non configuré et non détecté depuis le remote. Relancez sans --quiet ou exécutez « stud config:init »."
   git_token_not_configured: Jeton Git non configuré pour ce dépôt.
   git_token_prompt: Entrez votre PAT %provider% (laissez vide pour ignorer)
   git_token_saving: Enregistrement de la configuration du jeton Git...
@@ -218,6 +222,9 @@ item:
     transition_success: ✅ Ticket %key% transitionné vers 'En cours'
     transition_error: 'Échec de la récupération des transitions : %error%'
     transition_exec_error: 'Échec de l''exécution de la transition : %error%. Poursuite de la création de branche.'
+    linear_no_type_label: 'Aucun libellé de type Linear sur le ticket ; préfixe feat/ par défaut.'
+    linear_unknown_type_label: 'Le libellé de type Linear « %label% » n''a pas de préfixe mappé ; feat/ utilisé.'
+    linear_type_label_matched: 'Préfixe %prefix% issu du libellé de type Linear %label%.'
     using_advanced_base: 'La base configurée ''%configured%'' est en retard sur ''%resolved%'' ; utilisation de ''%resolved%'' comme base.'
     switching_branch: 'Basculement vers la branche existante : %branch%'
     switching_remote_branch: 'Basculement vers la branche distante : %branch%'
@@ -305,11 +312,15 @@ item:
     prompt_custom_field: "Valeur pour \"%name%\" (requis)"
     prompt_issue_type_choice: "Type de ticket"
     error_no_project: "Le projet est requis. Définissez --project/-p, ou JIRA_DEFAULT_PROJECT dans .git/stud.config, ou exécutez en mode interactif."
+    error_no_linear_team: "La clé d'équipe est requise pour créer un ticket Linear. Indiquez --project/-p ou la clé projet dans la charge utile de création."
     error_project_not_found: "Projet \"%key%\" introuvable."
     error_no_summary: "Le résumé est requis. Définissez --summary/-m ou exécutez en mode interactif."
     error_createmeta: "Impossible de récupérer les métadonnées de création : %error%"
     error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires : %fields%. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
     error_create: "Impossible de créer le ticket : %error%"
+    linear_type_group_not_configured: "Le LabelGroup de type Linear n'est pas configuré. Définissez linearTypeLabelGroupId dans .git/stud.config."
+    linear_type_label_not_found: "Impossible de résoudre le libellé de type Linear « %type% » dans le LabelGroup configuré."
+    linear_type_resolver_unavailable: "Impossible de résoudre le libellé de type Linear ; le client API Linear n'est pas disponible."
     success: "Ticket %key% créé – %url%"
     note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
     skipped_field_labels: "labels"
@@ -341,6 +352,7 @@ item:
 work_item_provider:
   missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira est sélectionné mais les identifiants Jira ne sont pas configurés. Exécutez "stud config:init".'
+  invalid_jira_base_url: "Configuration de l'URL Jira invalide."
   not_configured: 'Aucun fournisseur de work-items configuré. Exécutez "stud config:init" pour configurer Jira ou Linear.'
 project:
   list:

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
+use App\DTO\WorkItem;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
@@ -18,6 +20,7 @@ use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
+use App\Service\LinearTypeLabelResolver;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
@@ -36,6 +39,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
         mixed $_translator,
         private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
+        private readonly LinearTypeLabelResolver $linearTypeLabelResolver = new LinearTypeLabelResolver(),
     ) {
         unset($_translator);
     }
@@ -60,14 +64,16 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
             return $this->recorder->toResponse(1);
         }
 
+        $projectConfig = $this->gitRepository->readProjectConfig();
+
         // Handle Jira transition if enabled
         if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
-            $this->handleTransition($key, $issue);
+            $this->handleTransition($key, $issue, $projectConfig);
             // All error handling is done inside handleTransition with warnings/errors
             // Branch creation continues regardless of transition success/failure
         }
 
-        $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
+        $prefix = $this->resolveBranchPrefix($issue, $projectConfig);
         // Use Symfony's AsciiSlugger to create a clean, lowercase slug for the branch name
         $slugger = new AsciiSlugger();
         $slugValue = $slugger->slug($issue->title)->lower()->toString();
@@ -87,11 +93,14 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
         return $this->recorder->toResponse(0);
     }
 
-    protected function handleTransition(string $key, \App\DTO\WorkItem $issue): void
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function handleTransition(string $key, WorkItem $issue, array $projectConfig): void
     {
         $this->tryAssignIssueToCurrentUser($key);
         $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
-        $transitionId = $this->resolveTransitionId($key, $projectKey);
+        $transitionId = $this->resolveTransitionId($key, $projectKey, $projectConfig);
         if ($transitionId !== null) {
             $this->executeTransitionWithLogging($key, $transitionId);
         }
@@ -110,9 +119,11 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
         }
     }
 
-    protected function resolveTransitionId(string $key, string $projectKey): ?int
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function resolveTransitionId(string $key, string $projectKey, array $projectConfig): ?int
     {
-        $projectConfig = $this->gitRepository->readProjectConfig();
         if (isset($projectConfig['projectKey']) && $projectConfig['projectKey'] === $projectKey && isset($projectConfig['transitionId'])) {
             $id = (int) $projectConfig['transitionId'];
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.using_cached_transition', ['id' => $id]), WorkflowChannel::Jira);
@@ -173,6 +184,49 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
         return BranchNameGenerator::prefixForIssueType($issueType);
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function resolveBranchPrefix(WorkItem $issue, array $projectConfig): string
+    {
+        if (! $this->usesLinearBranchPrefixMapping($projectConfig)) {
+            return $this->getBranchPrefixFromIssueType($issue->issueType);
+        }
+
+        $teamKey = isset($projectConfig[ProjectStudConfigKeys::PROJECT_KEY]) && is_string($projectConfig[ProjectStudConfigKeys::PROJECT_KEY])
+            ? $projectConfig[ProjectStudConfigKeys::PROJECT_KEY]
+            : $this->gitRepository->getProjectKeyFromIssueKey($issue->key);
+
+        $result = $this->linearTypeLabelResolver->resolveBranchPrefix(array_values($issue->labels), $projectConfig, $teamKey);
+        if ($result['warning'] !== null) {
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $result['warning']);
+        }
+        if ($result['matchedLabel'] !== null) {
+            $this->recorder->addLine(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                MessageRef::key('item.start.linear_type_label_matched', [
+                    'label' => $result['matchedLabel'],
+                    'prefix' => $result['prefix'],
+                ]),
+            );
+        }
+
+        return $result['prefix'];
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function usesLinearBranchPrefixMapping(array $projectConfig): bool
+    {
+        $provider = $projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER] ?? null;
+        if (! is_string($provider)) {
+            return false;
+        }
+
+        return strtolower(trim($provider)) === 'linear';
     }
 
     /**

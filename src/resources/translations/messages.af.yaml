@@ -161,12 +161,16 @@ config:
   base_branch_saved: "Basis tak gekonfigureer: %branch%"
   base_branch_invalid: Basis tak '%branch%' bestaan nie op remote nie. Gaan asseblief die tak naam na.
   base_branch_required: Basis tak is vereis. Opdrag kan nie voortgaan sonder 'n geldige basis tak nie.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Git verskaffer nie gekonfigureer vir hierdie repository nie.
   git_provider_prompt: Kies Git verskaffer vir hierdie repository
   git_provider_detected: "Git verskaffer gedetecteer: %provider%"
   git_provider_saving: Stoor Git verskaffer konfigurasie...
   git_provider_saved: "Git verskaffer gekonfigureer: %provider%"
   git_provider_required: Git verskaffer is vereis. Opdrag kan nie voortgaan sonder 'n geldige Git verskaffer nie.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Git token nie gekonfigureer vir hierdie repository nie.
   git_token_prompt: Voer jou %provider% PAT in (laat leeg om oor te slaan)
   git_token_saving: Stoor Git token konfigurasie...
@@ -218,6 +222,9 @@ item:
     transition_success: ✅ Item %key% oorgegaan na 'In Proses'
     transition_error: 'Kry oorgange misluk: %error%'
     transition_exec_error: 'Uitvoer oorgang misluk: %error%. Gaan voort met tak skepping.'
+    linear_no_type_label: 'Geen Linear tipe-etiket op issue; gebruik standaard tak-voorvoegsel feat/.'
+    linear_unknown_type_label: 'Linear tipe-etiket "%label%" het geen tak-voorvoegselkartering nie; gebruik feat/.'
+    linear_type_label_matched: 'Gebruik tak-voorvoegsel %prefix% van Linear tipe-etiket %label%.'
     using_advanced_base: 'Gekonfigureerde basis ''%configured%'' is agter ''%resolved%''; gebruik ''%resolved%'' as basis.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -305,11 +312,15 @@ item:
     prompt_custom_field: Value for "%name%" (required)
     prompt_issue_type_choice: Issue type
     error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: Summary is required. Set --summary/-m or run interactively.
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -341,6 +352,7 @@ item:
 work_item_provider:
   missing_linear_api_key: 'Linear is gekies maar LINEAR_API_KEY is nie gekonfigureer nie. Voer "stud config:init" uit of stel LINEAR_API_KEY in ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira is gekies maar Jira-geloofsbriewe is nie gekonfigureer nie. Voer "stud config:init" uit.'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Geen work-item-verskaffer gekonfigureer nie. Voer "stud config:init" uit om Jira of Linear op te stel.'
 project:
   list:
