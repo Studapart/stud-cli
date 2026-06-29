@@ -591,7 +591,7 @@ class LinearApiClient
     }
 
     /**
-     * @param array{title?: string, description?: ?string, labelIds?: list<string>, priority?: ?int} $input
+     * @param array{title?: string, description?: ?string, labelIds?: list<string>, priority?: ?int, stateId?: string} $input
      */
     public function issueUpdate(string $issueId, array $input): void
     {
@@ -611,6 +611,9 @@ class LinearApiClient
         }
         if (array_key_exists(LinearIssueMutationKeys::PRIORITY, $input)) {
             $payload[LinearIssueMutationKeys::PRIORITY] = $input[LinearIssueMutationKeys::PRIORITY];
+        }
+        if (isset($input[LinearIssueMutationKeys::STATE_ID])) {
+            $payload[LinearIssueMutationKeys::STATE_ID] = $input[LinearIssueMutationKeys::STATE_ID];
         }
 
         $data = $this->graphqlClient->query(self::ISSUE_UPDATE_MUTATION, [

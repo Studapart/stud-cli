@@ -24,8 +24,11 @@ $query = is_array($body) && isset($body['query']) && is_string($body['query']) ?
 $fixture = match (true) {
     str_contains($query, 'ViewerPing') => 'viewer-ping.json',
     str_contains($query, 'IssueShow') => 'issue-show.json',
+    str_contains($query, 'IssueId') => 'issue-id.json',
     str_contains($query, 'AssignedIssues') => 'issues-list.json',
     str_contains($query, 'TeamsList') => 'teams.json',
+    str_contains($query, 'TeamStates') => 'team-states.json',
+    str_contains($query, 'IssueUpdate') => 'issue-update.json',
     default => null,
 };
 

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "team": {
+      "states": {
+        "nodes": [
+          {
+            "id": "state-started-uuid",
+            "name": "In Progress",
+            "type": "started"
+          },
+          {
+            "id": "state-done-uuid",
+            "name": "Done",
+            "type": "completed"
+          }
+        ]
+      }
+    }
+  }
+}

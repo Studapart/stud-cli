@@ -899,6 +899,21 @@ class LinearApiClientTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testIssueUpdateSendsStateIdField(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['issueUpdate' => ['success' => true, 'issue' => ['id' => 'i1', 'identifier' => 'SCI-1']]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->issueUpdate('issue-1', [
+            'stateId' => 'state-started-uuid',
+        ]);
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testGetIssueReturnsIssueNode(): void
     {
         $client = new MockHttpClient([

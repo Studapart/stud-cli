@@ -125,6 +125,20 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
     }
 
+    public function testItemsTransitionAgentModeAppliesFirstWorkflowState(): void
+    {
+        $repo = $this->createRepository('transition');
+        $result = $this->runAgentProcess(
+            ['items:transition', '--agent'],
+            ['key' => 'SCI-123', 'provider' => 'linear'],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+    }
+
     protected function createRepository(string $name): string
     {
         $repo = $this->tempDir . '/' . $name;
