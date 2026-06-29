@@ -101,6 +101,8 @@ config:
     error_git_not_configured: "El proveedor Git no está configurado."
     error_jira_ping: "Error de conexión con Jira: %error%"
     error_git_ping: "Error de conexión con el proveedor Git: %error%"
+    error_linear_not_configured: "Linear no está configurado."
+    error_linear_ping: "Error de conexión con Linear: %error%"
   project_init:
     section_title: "Configuración del proyecto"
     not_git_repository: "No está dentro de un repositorio Git. Ejecute este comando desde un checkout del repositorio."

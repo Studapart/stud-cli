@@ -17,16 +17,16 @@ final class GlobalStudConfigFieldMap
      * @var array<string, string>
      */
     public const INPUT_TO_YAML = [
-        'language' => 'LANGUAGE',
-        'gitProviders' => 'GIT_PROVIDERS',
-        'workItemProviders' => 'WORK_ITEM_PROVIDERS',
-        'jiraUrl' => 'JIRA_URL',
-        'jiraEmail' => 'JIRA_EMAIL',
-        'jiraApiToken' => 'JIRA_API_TOKEN',
-        'jiraTransitionEnabled' => 'JIRA_TRANSITION_ENABLED',
-        'githubToken' => 'GITHUB_TOKEN',
-        'gitlabToken' => 'GITLAB_TOKEN',
-        'linearApiKey' => 'LINEAR_API_KEY',
+        'language' => GlobalStudConfigKeys::LANGUAGE,
+        'gitProviders' => GlobalStudConfigKeys::GIT_PROVIDERS,
+        'workItemProviders' => GlobalStudConfigKeys::WORK_ITEM_PROVIDERS,
+        'jiraUrl' => GlobalStudConfigKeys::JIRA_URL,
+        'jiraEmail' => GlobalStudConfigKeys::JIRA_EMAIL,
+        'jiraApiToken' => GlobalStudConfigKeys::JIRA_API_TOKEN,
+        'jiraTransitionEnabled' => GlobalStudConfigKeys::JIRA_TRANSITION_ENABLED,
+        'githubToken' => GlobalStudConfigKeys::GITHUB_TOKEN,
+        'gitlabToken' => GlobalStudConfigKeys::GITLAB_TOKEN,
+        'linearApiKey' => GlobalStudConfigKeys::LINEAR_API_KEY,
     ];
 
     /**

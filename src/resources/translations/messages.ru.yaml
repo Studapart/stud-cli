@@ -101,6 +101,8 @@ config:
     error_git_not_configured: "Git-провайдер не настроен."
     error_jira_ping: "Ошибка подключения к Jira: %error%"
     error_git_ping: "Ошибка подключения к Git-провайдеру: %error%"
+    error_linear_not_configured: "Linear не настроен."
+    error_linear_ping: "Ошибка подключения к Linear: %error%"
   project_init:
     section_title: "Конфигурация проекта"
     not_git_repository: "Вы не в репозитории Git. Запускайте команду из рабочей копии репозитория."

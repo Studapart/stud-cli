@@ -32,6 +32,7 @@ if (isset($_SERVER['argv']) && in_array('--agent', $_SERVER['argv'], true)) {
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
 use App\Command\StudHelpCommand;
+use App\Config\GlobalStudConfigKeys;
 use App\DTO\ConfluencePushInput;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
@@ -281,7 +282,7 @@ function _get_config(): array
 function _get_jira_config(): array
 {
     $config = _get_config();
-    $missingKeys = array_diff(['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'], array_keys($config));
+    $missingKeys = array_diff(GlobalStudConfigKeys::requiredJiraCredentialKeys(), array_keys($config));
 
     if (! empty($missingKeys)) {
         $translator = _get_translation_service();
@@ -290,6 +291,29 @@ function _get_jira_config(): array
     }
 
     return $config;
+}
+
+/**
+ * @return array<string, mixed>|null Jira config when all required keys are present
+ */
+function _get_jira_config_if_configured(): ?array
+{
+    $config = _get_config();
+    foreach (GlobalStudConfigKeys::requiredJiraCredentialKeys() as $key) {
+        if (! isset($config[$key]) || ! is_string($config[$key]) || trim($config[$key]) === '') {
+            return null;
+        }
+    }
+
+    return $config;
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function _get_jira_config_or_empty(): array
+{
+    return _get_jira_config_if_configured() ?? [];
 }
 
 /**
@@ -305,9 +329,9 @@ function _get_git_config(): array
     // Tokens are optional - we don't require them to be present
     // The provider will be determined per-repository
     return [
-        'GITHUB_TOKEN' => $config['GITHUB_TOKEN'] ?? null,
-        'GITLAB_TOKEN' => $config['GITLAB_TOKEN'] ?? null,
-        'GITLAB_INSTANCE_URL' => $config['GITLAB_INSTANCE_URL'] ?? null,
+        GlobalStudConfigKeys::GITHUB_TOKEN => $config[GlobalStudConfigKeys::GITHUB_TOKEN] ?? null,
+        GlobalStudConfigKeys::GITLAB_TOKEN => $config[GlobalStudConfigKeys::GITLAB_TOKEN] ?? null,
+        GlobalStudConfigKeys::GITLAB_INSTANCE_URL => $config[GlobalStudConfigKeys::GITLAB_INSTANCE_URL] ?? null,
     ];
 }
 
@@ -319,9 +343,9 @@ function _get_html_converter(): \App\Service\JiraHtmlConverter
 function _get_jira_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterface
 {
     $config = _get_jira_config();
-    $auth = base64_encode($config['JIRA_EMAIL'] . ':' . $config['JIRA_API_TOKEN']);
+    $auth = base64_encode($config[GlobalStudConfigKeys::JIRA_EMAIL] . ':' . $config[GlobalStudConfigKeys::JIRA_API_TOKEN]);
 
-    return HttpClient::createForBaseUri($config['JIRA_URL'], [
+    return HttpClient::createForBaseUri($config[GlobalStudConfigKeys::JIRA_URL], [
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => 'Basic ' . $auth,
@@ -354,7 +378,7 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
     }
 
     $config = _get_config();
-    foreach (['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'] as $key) {
+    foreach (GlobalStudConfigKeys::requiredJiraCredentialKeys() as $key) {
         if (! isset($config[$key]) || ! is_string($config[$key]) || trim($config[$key]) === '') {
             return null;
         }
@@ -366,12 +390,19 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
 function _get_linear_http_client(): ?\Symfony\Contracts\HttpClient\HttpClientInterface
 {
     $config = _get_config();
-    $apiKey = $config['LINEAR_API_KEY'] ?? null;
+    $apiKey = $config[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null;
     if (! is_string($apiKey) || trim($apiKey) === '') {
         return null;
     }
 
-    return HttpClient::createForBaseUri('https://api.linear.app/graphql', [
+    $baseUri = getenv('STUD_LINEAR_GRAPHQL_BASE_URI');
+    if (! is_string($baseUri) || trim($baseUri) === '') {
+        $baseUri = 'https://api.linear.app/graphql';
+    } else {
+        $baseUri = rtrim(trim($baseUri), '/') . '/';
+    }
+
+    return HttpClient::createForBaseUri($baseUri, [
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => trim($apiKey),
@@ -1865,6 +1896,30 @@ function config_validate(
 
     $workItemProvider = ($skipJira || ! $validateJira) ? null : _get_issue_tracker(true);
 
+    $linearWorkItemProvider = null;
+    if ($validateLinear && ! $skipLinear) {
+        try {
+            $factory = _get_issue_tracker_factory();
+            $factory->assertCredentials('linear', $globalConfig);
+            $linearApiClient = _get_linear_api_client();
+            if ($linearApiClient !== null) {
+                $gitRepository = null;
+
+                try {
+                    $gitRepository = _get_git_repository();
+                } catch (\RuntimeException) {
+                }
+                $linearWorkItemProvider = $factory->create(
+                    'linear',
+                    linearApiClient: $linearApiClient,
+                    gitRepository: $gitRepository,
+                );
+            }
+        } catch (\Throwable) {
+            $linearWorkItemProvider = null;
+        }
+    }
+
     $gitProvider = null;
     $skipGitForHandler = $skipGit || ! $validateGit;
 
@@ -1894,6 +1949,7 @@ function config_validate(
         $validateJira,
         $validateGit,
         $validateLinear,
+        $linearWorkItemProvider,
     );
     $response = $handler->handle();
     $credentialWarnings = (new \App\Service\ConfigProviderCredentialWarnings())->collect($globalConfig);
@@ -2171,7 +2227,7 @@ function items_list(
 
     $handler = new ItemListHandler(_require_issue_tracker($providerOverride ?? $provider));
     $response = $handler->handle($all, $project, $sort);
-    $responder = new ItemListResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $responder = new ItemListResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2293,7 +2349,7 @@ function items_show(
     }
     $handler = new ItemShowHandler(_require_issue_tracker($providerOverride ?? $provider));
     $response = $handler->handle($key);
-    $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $key, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

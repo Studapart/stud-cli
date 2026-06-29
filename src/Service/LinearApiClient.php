@@ -96,6 +96,94 @@ class LinearApiClient
         }
         GQL;
 
+    private const ISSUE_SHOW_QUERY = <<<'GQL'
+        query IssueShow($identifier: String!) {
+          issue(id: $identifier) {
+            id
+            identifier
+            title
+            description
+            priority
+            url
+            state {
+              name
+            }
+            assignee {
+              name
+            }
+            labels {
+              nodes {
+                id
+                name
+                parent {
+                  id
+                }
+              }
+            }
+            attachments {
+              nodes {
+                id
+                title
+                url
+                size
+                contentType
+              }
+            }
+          }
+        }
+        GQL;
+
+    private const ISSUES_LIST_QUERY = <<<'GQL'
+        query AssignedIssues($filter: IssueFilter) {
+          issues(filter: $filter, first: 50) {
+            nodes {
+              id
+              identifier
+              title
+              description
+              priority
+              url
+              state {
+                name
+              }
+              assignee {
+                name
+              }
+              labels {
+                nodes {
+                  id
+                  name
+                  parent {
+                    id
+                  }
+                }
+              }
+            }
+          }
+        }
+        GQL;
+
+    private const TEAMS_LIST_QUERY = <<<'GQL'
+        query TeamsList {
+          teams {
+            nodes {
+              id
+              key
+              name
+            }
+          }
+        }
+        GQL;
+
+    private const VIEWER_PING_QUERY = <<<'GQL'
+        query ViewerPing {
+          viewer {
+            id
+            name
+          }
+        }
+        GQL;
+
     private const ISSUE_CREATE_MUTATION = <<<'GQL'
         mutation IssueCreate($input: IssueCreateInput!) {
           issueCreate(input: $input) {
@@ -328,6 +416,104 @@ class LinearApiClient
         }
 
         return $teamKey;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getIssue(string $identifier): array
+    {
+        $data = $this->graphqlClient->query(self::ISSUE_SHOW_QUERY, ['identifier' => $identifier]);
+        $issue = $data['issue'] ?? null;
+        if (! is_array($issue) || ! isset($issue['identifier'])) {
+            throw new ApiException(
+                sprintf('Could not fetch Linear issue "%s".', $identifier),
+                'Issue lookup returned no issue node.',
+                404,
+            );
+        }
+
+        return $issue;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listAssignedActiveIssues(?string $teamKey, bool $onlyMine): array
+    {
+        $filter = $this->buildAssignedActiveFilter($teamKey, $onlyMine);
+        $data = $this->graphqlClient->query(self::ISSUES_LIST_QUERY, ['filter' => $filter]);
+
+        $nodes = $data['issues']['nodes'] ?? null;
+        if (! is_array($nodes)) {
+            return [];
+        }
+
+        $issues = [];
+        foreach ($nodes as $node) {
+            if (is_array($node)) {
+                $issues[] = $node;
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * @return list<array{key: string, name: string}>
+     */
+    public function listTeams(): array
+    {
+        $data = $this->graphqlClient->query(self::TEAMS_LIST_QUERY);
+        $nodes = $data['teams']['nodes'] ?? null;
+        if (! is_array($nodes)) {
+            return [];
+        }
+
+        $teams = [];
+        foreach ($nodes as $node) {
+            if (! is_array($node) || ! isset($node['key'], $node['name'])) {
+                continue;
+            }
+            $teams[] = [
+                'key' => (string) $node['key'],
+                'name' => (string) $node['name'],
+            ];
+        }
+
+        return $teams;
+    }
+
+    public function ping(): void
+    {
+        $data = $this->graphqlClient->query(self::VIEWER_PING_QUERY);
+        $viewerId = $data['viewer']['id'] ?? null;
+        if (! is_string($viewerId) || $viewerId === '') {
+            throw new ApiException(
+                'Linear viewer ping failed.',
+                'Viewer query returned no id.',
+            );
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildAssignedActiveFilter(?string $teamKey, bool $onlyMine): array
+    {
+        $filter = [
+            'state' => ['type' => ['nin' => ['completed', 'canceled']]],
+        ];
+
+        if ($onlyMine) {
+            $filter['assignee'] = ['isMe' => ['eq' => true]];
+        }
+
+        if ($teamKey !== null && trim($teamKey) !== '') {
+            $filter['team'] = ['key' => ['eq' => trim($teamKey)]];
+        }
+
+        return $filter;
     }
 
     /**

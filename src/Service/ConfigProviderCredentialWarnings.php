@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\GlobalStudConfigKeys;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\GitProvider;
@@ -55,7 +56,7 @@ class ConfigProviderCredentialWarnings
      */
     public function hasGithubToken(array $globalConfig): bool
     {
-        return $this->nonEmptyString($globalConfig['GITHUB_TOKEN'] ?? null)
+        return GlobalStudConfigKeys::hasNonEmptyStringValue($globalConfig, GlobalStudConfigKeys::GITHUB_TOKEN)
             || $this->hasLegacyGitToken($globalConfig, GitProvider::Github->value);
     }
 
@@ -64,7 +65,7 @@ class ConfigProviderCredentialWarnings
      */
     public function hasGitlabToken(array $globalConfig): bool
     {
-        return $this->nonEmptyString($globalConfig['GITLAB_TOKEN'] ?? null)
+        return GlobalStudConfigKeys::hasNonEmptyStringValue($globalConfig, GlobalStudConfigKeys::GITLAB_TOKEN)
             || $this->hasLegacyGitToken($globalConfig, GitProvider::Gitlab->value);
     }
 
@@ -73,9 +74,7 @@ class ConfigProviderCredentialWarnings
      */
     public function hasJiraCredentials(array $globalConfig): bool
     {
-        return $this->nonEmptyString($globalConfig['JIRA_URL'] ?? null)
-            && $this->nonEmptyString($globalConfig['JIRA_EMAIL'] ?? null)
-            && $this->nonEmptyString($globalConfig['JIRA_API_TOKEN'] ?? null);
+        return GlobalStudConfigKeys::hasJiraCredentials($globalConfig);
     }
 
     /**
@@ -83,7 +82,7 @@ class ConfigProviderCredentialWarnings
      */
     public function hasLinearApiKey(array $globalConfig): bool
     {
-        return $this->nonEmptyString($globalConfig['LINEAR_API_KEY'] ?? null);
+        return GlobalStudConfigKeys::hasLinearApiKey($globalConfig);
     }
 
     /**
@@ -91,20 +90,15 @@ class ConfigProviderCredentialWarnings
      */
     protected function hasLegacyGitToken(array $globalConfig, string $provider): bool
     {
-        if (! $this->nonEmptyString($globalConfig['GIT_TOKEN'] ?? null)) {
+        if (! GlobalStudConfigKeys::hasNonEmptyStringValue($globalConfig, GlobalStudConfigKeys::GIT_TOKEN)) {
             return false;
         }
 
-        $legacyProvider = $globalConfig['GIT_PROVIDER'] ?? null;
+        $legacyProvider = $globalConfig[GlobalStudConfigKeys::GIT_PROVIDER] ?? null;
         if (! is_string($legacyProvider)) {
             return false;
         }
 
         return strtolower(trim($legacyProvider)) === $provider;
-    }
-
-    protected function nonEmptyString(mixed $value): bool
-    {
-        return is_string($value) && trim($value) !== '';
     }
 }

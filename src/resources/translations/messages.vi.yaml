@@ -101,6 +101,8 @@ config:
     error_git_not_configured: "Nhà cung cấp Git chưa được cấu hình."
     error_jira_ping: "Kết nối Jira thất bại: %error%"
     error_git_ping: "Kết nối nhà cung cấp Git thất bại: %error%"
+    error_linear_not_configured: "Linear chưa được cấu hình."
+    error_linear_ping: "Kết nối Linear thất bại: %error%"
   project_init:
     section_title: "Cấu hình dự án"
     not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."

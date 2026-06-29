@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\GlobalStudConfigKeys;
 use App\Enum\GitProvider;
 use App\Enum\WorkItemProvider;
 
@@ -72,8 +73,8 @@ class GlobalConfigProviderResolver
      */
     public function resolveGitProviders(array $global): array
     {
-        if (isset($global['GIT_PROVIDERS']) && is_array($global['GIT_PROVIDERS'])) {
-            $normalized = $this->normalizeGitProviders($this->coerceStringList($global['GIT_PROVIDERS']));
+        if (isset($global[GlobalStudConfigKeys::GIT_PROVIDERS]) && is_array($global[GlobalStudConfigKeys::GIT_PROVIDERS])) {
+            $normalized = $this->normalizeGitProviders($this->coerceStringList($global[GlobalStudConfigKeys::GIT_PROVIDERS]));
             if ($normalized !== []) {
                 return $normalized;
             }
@@ -89,17 +90,17 @@ class GlobalConfigProviderResolver
     public function inferGitProvidersFromLegacy(array $global): array
     {
         $providers = [];
-        if ($this->nonEmptyStoredString($global['GITHUB_TOKEN'] ?? null) !== null) {
+        if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::GITHUB_TOKEN] ?? null) !== null) {
             $providers[] = GitProvider::Github->value;
         }
-        if ($this->nonEmptyStoredString($global['GITLAB_TOKEN'] ?? null) !== null) {
+        if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::GITLAB_TOKEN] ?? null) !== null) {
             $providers[] = GitProvider::Gitlab->value;
         }
 
         if ($providers === []) {
-            $legacyToken = $this->nonEmptyStoredString($global['GIT_TOKEN'] ?? null);
-            $legacyProvider = isset($global['GIT_PROVIDER']) && is_string($global['GIT_PROVIDER'])
-                ? strtolower(trim($global['GIT_PROVIDER']))
+            $legacyToken = $this->nonEmptyStoredString($global[GlobalStudConfigKeys::GIT_TOKEN] ?? null);
+            $legacyProvider = isset($global[GlobalStudConfigKeys::GIT_PROVIDER]) && is_string($global[GlobalStudConfigKeys::GIT_PROVIDER])
+                ? strtolower(trim($global[GlobalStudConfigKeys::GIT_PROVIDER]))
                 : null;
             if ($legacyToken !== null && in_array($legacyProvider, ['github', 'gitlab'], true)) {
                 $providers[] = $legacyProvider;
@@ -118,8 +119,8 @@ class GlobalConfigProviderResolver
      */
     public function resolveWorkItemProviders(array $global): array
     {
-        if (isset($global['WORK_ITEM_PROVIDERS']) && is_array($global['WORK_ITEM_PROVIDERS'])) {
-            $normalized = $this->normalizeWorkItemProviders($this->coerceStringList($global['WORK_ITEM_PROVIDERS']));
+        if (isset($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]) && is_array($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS])) {
+            $normalized = $this->normalizeWorkItemProviders($this->coerceStringList($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]));
             if ($normalized !== []) {
                 return $normalized;
             }
@@ -149,10 +150,10 @@ class GlobalConfigProviderResolver
     public function inferWorkItemProvidersFromCredentials(array $global): array
     {
         $providers = [];
-        if ($this->nonEmptyStoredString($global['JIRA_URL'] ?? null) !== null) {
+        if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::JIRA_URL] ?? null) !== null) {
             $providers[] = WorkItemProvider::Jira->value;
         }
-        if ($this->nonEmptyStoredString($global['LINEAR_API_KEY'] ?? null) !== null) {
+        if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null) !== null) {
             $providers[] = WorkItemProvider::Linear->value;
         }
 
@@ -168,8 +169,8 @@ class GlobalConfigProviderResolver
      */
     public function inferDefaultWorkItemProviders(array $existingConfig): array
     {
-        $hasJira = $this->nonEmptyStoredString($existingConfig['JIRA_URL'] ?? null) !== null;
-        $hasLinear = $this->nonEmptyStoredString($existingConfig['LINEAR_API_KEY'] ?? null) !== null;
+        $hasJira = $this->nonEmptyStoredString($existingConfig[GlobalStudConfigKeys::JIRA_URL] ?? null) !== null;
+        $hasLinear = $this->nonEmptyStoredString($existingConfig[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null) !== null;
 
         if ($hasJira && $hasLinear) {
             return [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value];

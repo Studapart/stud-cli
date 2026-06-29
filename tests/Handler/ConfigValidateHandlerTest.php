@@ -28,7 +28,8 @@ class ConfigValidateHandlerTest extends CommandTestCase
         bool $skipLinear = false,
         bool $validateJira = true,
         bool $validateGit = true,
-        bool $validateLinear = true,
+        bool $validateLinear = false,
+        IssueTrackerPort|MockObject|null|false $linearWorkItemProvider = false,
     ): ConfigValidateHandler {
         return new ConfigValidateHandler(
             $workItemProvider === false ? $this->issueTracker : $workItemProvider,
@@ -39,6 +40,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             $validateJira,
             $validateGit,
             $validateLinear,
+            $linearWorkItemProvider === false ? null : $linearWorkItemProvider,
         );
     }
 
@@ -198,9 +200,60 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->gitStatus);
     }
 
-    public function testHandleSkipsLinearWhenValidateLinearTrueUntilClientExists(): void
+    public function testHandleReturnsLinearFailWhenLinearProviderMissing(): void
     {
-        $handler = new ConfigValidateHandler(null, null, true, true, false, false, false, true);
+        $handler = $this->createHandler(null, null, true, true, false, false, false, true);
+        $response = $handler->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->jiraStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_SKIPPED, $response->gitStatus);
+        $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
+        $this->assertMessageRef($response->linearMessage, 'config.validate.error_linear_not_configured');
+    }
+
+    public function testHandleReturnsLinearOkWhenPingSucceeds(): void
+    {
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())->method('ping');
+
+        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->linearStatus);
+    }
+
+    public function testHandleReturnsLinearFailWhenPingThrows(): void
+    {
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())
+            ->method('ping')
+            ->willThrowException(new ApiException('Linear down', 'viewer missing'));
+
+        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
+        $this->assertMessageRef($response->linearMessage, 'config.validate.error_linear_ping', ['error' => 'Linear down']);
+    }
+
+    public function testHandleReturnsLinearFailWhenPingThrowsRuntimeException(): void
+    {
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())
+            ->method('ping')
+            ->willThrowException(new \RuntimeException('Linear runtime error'));
+
+        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
+        $this->assertMessageRef($response->linearMessage, 'config.validate.error_linear_ping', ['error' => 'Linear runtime error']);
+    }
+
+    public function testHandleSkipsLinearWhenValidateLinearFalse(): void
+    {
+        $handler = new ConfigValidateHandler(null, null, true, true, false, false, false, false);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());

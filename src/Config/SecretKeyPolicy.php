@@ -18,9 +18,10 @@ final class SecretKeyPolicy
      * @var list<string>
      */
     private const KNOWN_SECRET_KEYS = [
-        'JIRA_API_TOKEN',
-        'GITHUB_TOKEN',
-        'GITLAB_TOKEN',
+        GlobalStudConfigKeys::JIRA_API_TOKEN,
+        GlobalStudConfigKeys::GITHUB_TOKEN,
+        GlobalStudConfigKeys::GITLAB_TOKEN,
+        GlobalStudConfigKeys::LINEAR_API_KEY,
     ];
 
     /**
@@ -40,20 +41,20 @@ final class SecretKeyPolicy
     public static function getAllowedKeysForConfigShow(): array
     {
         return [
-            'LANGUAGE',
-            'JIRA_URL',
-            'JIRA_DEFAULT_PROJECT',
-            'CONFLUENCE_DEFAULT_SPACE',
-            'projectKey',
-            'transitionId',
-            'baseBranch',
-            'gitProvider',
-            'gitlabInstanceUrl',
-            'workItemProvider',
-            'linearStartStateId',
-            'linearTypeLabelGroupId',
-            'linearTypeBranchPrefixes',
-            'migration_version',
+            GlobalStudConfigKeys::LANGUAGE,
+            GlobalStudConfigKeys::JIRA_URL,
+            ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT,
+            ProjectStudConfigKeys::CONFLUENCE_DEFAULT_SPACE,
+            ProjectStudConfigKeys::PROJECT_KEY,
+            ProjectStudConfigKeys::TRANSITION_ID,
+            ProjectStudConfigKeys::BASE_BRANCH,
+            ProjectStudConfigKeys::GIT_PROVIDER,
+            ProjectStudConfigKeys::GITLAB_INSTANCE_URL,
+            ProjectStudConfigKeys::WORK_ITEM_PROVIDER,
+            ProjectStudConfigKeys::LINEAR_START_STATE_ID,
+            ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID,
+            ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,
+            GlobalStudConfigKeys::MIGRATION_VERSION,
         ];
     }
 

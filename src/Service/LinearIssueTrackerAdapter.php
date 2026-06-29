@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\ProjectStudConfigKeys;
+use App\DTO\Project;
 use App\DTO\StateChange;
 use App\DTO\WorkItem;
 
@@ -22,7 +24,12 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        unset($renderFields);
+
+        return $this->issueMapper->mapToWorkItem(
+            $this->linearApiClient->getIssue($key),
+            $this->readTypeGroupId(),
+        );
     }
 
     public function search(string $query): array
@@ -32,9 +39,14 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array
     {
-        unset($projectKey, $onlyMine);
+        $nodes = $this->linearApiClient->listAssignedActiveIssues($projectKey, $onlyMine);
+        $typeGroupId = $this->readTypeGroupId();
+        $issues = [];
+        foreach ($nodes as $node) {
+            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+        }
 
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        return $issues;
     }
 
     /**
@@ -134,7 +146,12 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listTeams(): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $teams = [];
+        foreach ($this->linearApiClient->listTeams() as $team) {
+            $teams[] = new Project($team['key'], $team['name']);
+        }
+
+        return $teams;
     }
 
     public function listFiltersOrViews(): array
@@ -164,7 +181,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function ping(): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $this->linearApiClient->ping();
     }
 
     public function listAttachments(string $key): array
@@ -189,7 +206,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         }
 
         $config = $this->gitRepository->readProjectConfig();
-        $value = $config['linearTypeLabelGroupId'] ?? null;
+        $value = $config[ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;
     }

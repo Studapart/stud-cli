@@ -1,0 +1,32 @@
+{
+  "data": {
+    "issue": {
+      "id": "issue-uuid-1",
+      "identifier": "SCI-123",
+      "title": "Linear integration show",
+      "url": "https://linear.app/studapart/issue/SCI-123",
+      "priority": 2,
+      "description": "## Spec\n\nIntegration test body.",
+      "state": {
+        "name": "In Progress"
+      },
+      "assignee": {
+        "name": "Ada Lovelace"
+      },
+      "labels": {
+        "nodes": [
+          {
+            "id": "label-bug",
+            "name": "Bug",
+            "parent": {
+              "id": "type-group-uuid"
+            }
+          }
+        ]
+      },
+      "attachments": {
+        "nodes": []
+      }
+    }
+  }
+}

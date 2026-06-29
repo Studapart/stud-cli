@@ -101,6 +101,8 @@ config:
     error_git_not_configured: "Git-provider is niet geconfigureerd."
     error_jira_ping: "Jira-verbinding mislukt: %error%"
     error_git_ping: "Git-providerverbinding mislukt: %error%"
+    error_linear_not_configured: "Linear is niet geconfigureerd."
+    error_linear_ping: "Linear-verbinding mislukt: %error%"
   project_init:
     section_title: "Projectconfiguratie"
     not_git_repository: "U bevindt zich niet in een Git-repository. Voer deze opdracht uit vanuit een checkout van een repository."

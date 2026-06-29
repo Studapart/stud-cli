@@ -101,6 +101,8 @@ config:
     error_git_not_configured: "Ο πάροχος Git δεν έχει ρυθμιστεί."
     error_jira_ping: "Αποτυχία σύνδεσης Jira: %error%"
     error_git_ping: "Αποτυχία σύνδεσης παρόχου Git: %error%"
+    error_linear_not_configured: "Το Linear δεν έχει ρυθμιστεί."
+    error_linear_ping: "Αποτυχία σύνδεσης Linear: %error%"
   project_init:
     section_title: "Ρύθμιση έργου"
     not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."

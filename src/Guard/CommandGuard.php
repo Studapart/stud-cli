@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Guard;
 
+use App\Config\GlobalStudConfigKeys;
+use App\Config\ProjectStudConfigKeys;
 use App\Guard\Capability\ConfluenceAware;
 use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
@@ -18,8 +20,6 @@ use App\Service\GlobalConfigProviderResolver;
  */
 class CommandGuard
 {
-    private const JIRA_KEYS = ['JIRA_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN'];
-
     public function __construct(
         private readonly GlobalConfigProviderResolver $providerResolver = new GlobalConfigProviderResolver(),
     ) {
@@ -41,41 +41,41 @@ class CommandGuard
 
         if ($context->workItemProviderAmbiguous
             && ($capabilities->has(WorkItemJiraAware::class) || $capabilities->has(WorkItemLinearAware::class))) {
-            $missingProject[] = 'workItemProvider';
+            $missingProject[] = ProjectStudConfigKeys::WORK_ITEM_PROVIDER;
         }
 
         if (! $context->workItemProviderAmbiguous
             && $capabilities->has(WorkItemJiraAware::class)
             && $this->providerResolver->collectsJira($context->workItemProviders)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(self::JIRA_KEYS, $context->globalConfig));
+            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
         }
 
         if (! $context->workItemProviderAmbiguous
             && $capabilities->has(WorkItemLinearAware::class)
             && $this->providerResolver->collectsLinear($context->workItemProviders)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(['LINEAR_API_KEY'], $context->globalConfig));
+            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $context->globalConfig));
         }
 
         if ($capabilities->has(ConfluenceAware::class)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(self::JIRA_KEYS, $context->globalConfig));
+            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
         }
 
         if ($capabilities->has(GitProviderGithubAware::class)
             && $this->providerResolver->collectsGithub($context->gitProviders)
             && ! $this->hasGithubToken($context)) {
-            $missingGlobal[] = 'GITHUB_TOKEN';
+            $missingGlobal[] = GlobalStudConfigKeys::GITHUB_TOKEN;
         }
 
         if ($capabilities->has(GitProviderGitlabAware::class)
             && $this->providerResolver->collectsGitlab($context->gitProviders)
             && ! $this->hasGitlabToken($context)) {
-            $missingGlobal[] = 'GITLAB_TOKEN';
+            $missingGlobal[] = GlobalStudConfigKeys::GITLAB_TOKEN;
         }
 
         if ($capabilities->has(ProjectBaseBranchAware::class)) {
             $missingProject = array_merge(
                 $missingProject,
-                $this->findMissingKeys(['baseBranch'], $context->projectConfig ?? [])
+                $this->findMissingKeys([ProjectStudConfigKeys::BASE_BRANCH], $context->projectConfig ?? [])
             );
         }
 
@@ -106,26 +106,26 @@ class CommandGuard
 
     protected function hasGithubToken(CommandContext $context): bool
     {
-        return $this->hasNonEmptyConfigValue($context->globalConfig, 'GITHUB_TOKEN')
-            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'githubToken')
+        return $this->hasNonEmptyConfigValue($context->globalConfig, GlobalStudConfigKeys::GITHUB_TOKEN)
+            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], ProjectStudConfigKeys::GITHUB_TOKEN)
             || $this->hasLegacyGitToken($context, 'github');
     }
 
     protected function hasGitlabToken(CommandContext $context): bool
     {
-        return $this->hasNonEmptyConfigValue($context->globalConfig, 'GITLAB_TOKEN')
-            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], 'gitlabToken')
+        return $this->hasNonEmptyConfigValue($context->globalConfig, GlobalStudConfigKeys::GITLAB_TOKEN)
+            || $this->hasNonEmptyConfigValue($context->projectConfig ?? [], ProjectStudConfigKeys::GITLAB_TOKEN)
             || $this->hasLegacyGitToken($context, 'gitlab');
     }
 
     protected function hasLegacyGitToken(CommandContext $context, string $provider): bool
     {
-        $legacyToken = $context->globalConfig['GIT_TOKEN'] ?? null;
+        $legacyToken = $context->globalConfig[GlobalStudConfigKeys::GIT_TOKEN] ?? null;
         if (! is_string($legacyToken) || trim($legacyToken) === '') {
             return false;
         }
 
-        $legacyProvider = $context->globalConfig['GIT_PROVIDER'] ?? null;
+        $legacyProvider = $context->globalConfig[GlobalStudConfigKeys::GIT_PROVIDER] ?? null;
         if (! is_string($legacyProvider)) {
             return false;
         }

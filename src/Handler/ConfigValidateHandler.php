@@ -27,6 +27,7 @@ class ConfigValidateHandler
         private readonly bool $validateJira,
         private readonly bool $validateGit,
         private readonly bool $validateLinear,
+        private readonly ?IssueTrackerPort $linearWorkItemProvider = null,
     ) {
     }
 
@@ -121,7 +122,28 @@ class ConfigValidateHandler
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
-        return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
+        if ($this->linearWorkItemProvider === null) {
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_linear_not_configured'),
+            ];
+        }
+
+        try {
+            $this->linearWorkItemProvider->ping();
+
+            return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
+        } catch (ApiException $e) {
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status' => ConfigValidateResponse::STATUS_FAIL,
+                'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
+            ];
+        }
     }
 
     protected function shortReason(\Throwable $e): string

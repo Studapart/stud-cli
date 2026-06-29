@@ -1,0 +1,42 @@
+{
+  "data": {
+    "issues": {
+      "nodes": [
+        {
+          "id": "issue-uuid-1",
+          "identifier": "ENG-1",
+          "title": "First active issue",
+          "url": "https://linear.app/studapart/issue/ENG-1",
+          "priority": 3,
+          "description": "List item one",
+          "state": {
+            "name": "Todo"
+          },
+          "assignee": {
+            "name": "Ada Lovelace"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "id": "issue-uuid-2",
+          "identifier": "ENG-2",
+          "title": "Second active issue",
+          "url": "https://linear.app/studapart/issue/ENG-2",
+          "priority": null,
+          "description": "List item two",
+          "state": {
+            "name": "In Progress"
+          },
+          "assignee": {
+            "name": "Ada Lovelace"
+          },
+          "labels": {
+            "nodes": []
+          }
+        }
+      ]
+    }
+  }
+}
