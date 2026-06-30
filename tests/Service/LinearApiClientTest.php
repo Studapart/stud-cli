@@ -1224,6 +1224,27 @@ class LinearApiClientTest extends TestCase
         $this->assertSame([], $views[0]['filterData']);
     }
 
+    public function testListCustomViewsCoercesNonArrayFilterDataToEmptyArray(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            ['id' => 'view-1', 'name' => 'Broken filter', 'filterData' => 'not-an-array'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $views = $this->createService($client)->listCustomViews();
+
+        $this->assertCount(1, $views);
+        $this->assertSame('Broken filter', $views[0]['name']);
+        $this->assertSame([], $views[0]['filterData']);
+    }
+
     public function testResolveCustomViewByNamePrefersExactMatch(): void
     {
         $client = new MockHttpClient([
