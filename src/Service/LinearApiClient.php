@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\DTO\Project;
 use App\Exception\ApiException;
+use App\Service\Linear\LinearAttachmentMutationKeys;
 use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
@@ -881,9 +882,9 @@ class LinearApiClient
     public function fileUpload(string $filename, string $contentType, int $size): array
     {
         $data = $this->graphqlClient->query(self::FILE_UPLOAD_MUTATION, [
-            'filename' => $filename,
-            'contentType' => $contentType,
-            'size' => $size,
+            LinearAttachmentMutationKeys::FILENAME => $filename,
+            LinearAttachmentMutationKeys::CONTENT_TYPE => $contentType,
+            LinearAttachmentMutationKeys::SIZE => $size,
         ]);
         $result = $data['fileUpload'] ?? null;
         if (! is_array($result) || ! ($result['success'] ?? false)) {
@@ -921,9 +922,9 @@ class LinearApiClient
     {
         $data = $this->graphqlClient->query(self::ATTACHMENT_CREATE_MUTATION, [
             'input' => [
-                'issueId' => $issueId,
-                'title' => $title,
-                'url' => $url,
+                LinearAttachmentMutationKeys::ISSUE_ID => $issueId,
+                LinearIssueMutationKeys::TITLE => $title,
+                LinearAttachmentMutationKeys::URL => $url,
             ],
         ]);
         $result = $data['attachmentCreate'] ?? null;
