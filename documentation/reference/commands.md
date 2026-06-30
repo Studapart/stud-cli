@@ -692,7 +692,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-items-search"></a>
 ### `stud items:search`
 
-Search for issues using JQL.
+Search issues: JQL when Jira is active, plain search term when Linear is active.
 
 - **Alias:** `stud search`
 - **Syntax:** `stud items:search <jql>`

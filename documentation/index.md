@@ -7,6 +7,7 @@ Central map for `stud-cli` documentation.
 - [Setup overview](setup/index.md)
 - [Configuration](setup/configuration.md)
 - [Feature overview](features/index.md)
+- [Work items — search and saved views](features/work-items.md)
 - [Workflow playbook](features/workflow-playbook.md)
 - [Automation and agent mode](features/automation.md)
 - [Command reference](reference/commands.md) (generated — run `stud docs:generate` after command changes)

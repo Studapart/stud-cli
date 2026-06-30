@@ -35,6 +35,7 @@ Use `--portable` only when you deliberately want the bundled-runtime artifact fo
 | Configure GitLab token and MR workflow | [GitLab integration](documentation/integrations/gitlab.md) |
 | Understand the full idea-to-PR workflow | [Workflow playbook](documentation/features/workflow-playbook.md) |
 | Use Jira work item commands | [Jira work items](documentation/features/jira-work-items.md) |
+| Search issues or run saved views (Jira JQL vs Linear) | [Work items — search and saved views](documentation/features/work-items.md) |
 | Use Git workflow commands | [Git workflow](documentation/features/git-workflow.md) |
 | Submit and comment on pull requests | [Pull requests](documentation/features/pull-requests.md) |
 | Use Confluence commands | [Confluence](documentation/features/confluence.md) |
