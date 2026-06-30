@@ -66,4 +66,27 @@ class WorkItemListJsonSerializerTest extends TestCase
         $this->assertSame('PROJ-2', $result[1]['key']);
         $this->assertArrayHasKey('priority', $result[0]);
     }
+
+    public function testSerializeSummaryUsesWorkItemUrlWhenPresent(): void
+    {
+        $issue = new WorkItem(
+            '1',
+            'SCI-42',
+            'Linear issue',
+            'Open',
+            'user',
+            'desc',
+            [],
+            'Story',
+            [],
+            'Medium',
+            null,
+            [],
+            'https://linear.app/studapart/issue/SCI-42',
+        );
+
+        $summary = $this->serializer->serializeSummary($issue, 'https://jira.example.com', true);
+
+        $this->assertSame('https://linear.app/studapart/issue/SCI-42', $summary['url']);
+    }
 }

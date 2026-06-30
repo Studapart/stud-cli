@@ -60,6 +60,38 @@ class SearchHandlerTest extends CommandTestCase
         $this->assertEmpty($response->issues);
     }
 
+    public function testHandleReturnsLinearTermSearchResults(): void
+    {
+        $issue = new WorkItem(
+            'issue-1',
+            'SCI-42',
+            'Login bug',
+            'Todo',
+            'Ada',
+            'description',
+            ['Bug'],
+            'Bug',
+            [],
+            'High',
+            null,
+            [],
+            'https://linear.app/studapart/issue/SCI-42',
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('search')
+            ->with('login bug')
+            ->willReturn([$issue]);
+
+        $response = $this->handler->handle('login bug');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('login bug', $response->jql);
+        $this->assertCount(1, $response->issues);
+        $this->assertSame('SCI-42', $response->issues[0]->key);
+        $this->assertSame('https://linear.app/studapart/issue/SCI-42', $response->issues[0]->url);
+    }
+
     public function testHandleReturnsErrorResponseOnException(): void
     {
         $this->issueTracker->expects($this->once())

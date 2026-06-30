@@ -307,6 +307,31 @@ class LinearIssueTrackerAdapterTest extends TestCase
         $this->adapter->assign('SCI-1', 'user-uuid-2');
     }
 
+    public function testSearchMapsGraphqlNodesToWorkItems(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('searchIssues')
+            ->with('login bug')
+            ->willReturn([
+                [
+                    'id' => 'issue-1',
+                    'identifier' => 'SCI-42',
+                    'title' => 'Login bug',
+                    'url' => 'https://linear.app/studapart/issue/SCI-42',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+
+        $issues = $this->adapter->search('login bug');
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-42', $issues[0]->key);
+        $this->assertSame('Login bug', $issues[0]->title);
+        $this->assertSame('https://linear.app/studapart/issue/SCI-42', $issues[0]->url);
+    }
+
     /**
      * @param list<mixed> $args
      */
@@ -324,7 +349,6 @@ class LinearIssueTrackerAdapterTest extends TestCase
      */
     public static function unimplementedMethodProvider(): iterable
     {
-        yield 'search' => ['search', ['project = SCI']];
         yield 'listFiltersOrViews' => ['listFiltersOrViews', []];
         yield 'runFilterOrView' => ['runFilterOrView', ['My View']];
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];

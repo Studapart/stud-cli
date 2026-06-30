@@ -35,7 +35,14 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function search(string $query): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $nodes = $this->linearApiClient->searchIssues($query);
+        $typeGroupId = $this->readTypeGroupId();
+        $issues = [];
+        foreach ($nodes as $node) {
+            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+        }
+
+        return $issues;
     }
 
     public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array

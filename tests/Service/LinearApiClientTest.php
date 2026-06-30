@@ -976,6 +976,61 @@ class LinearApiClientTest extends TestCase
         $this->assertSame([], $this->createService($client)->listAssignedActiveIssues(null, false));
     }
 
+    public function testSearchIssuesReturnsNodes(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'searchIssues' => [
+                        'nodes' => [
+                            [
+                                'id' => 'issue-1',
+                                'identifier' => 'SCI-99',
+                                'title' => 'Login bug',
+                                'url' => 'https://linear.app/studapart/issue/SCI-99',
+                                'state' => ['name' => 'Todo'],
+                                'labels' => ['nodes' => []],
+                            ],
+                        ],
+                        'pageInfo' => ['hasNextPage' => false, 'endCursor' => null],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $issues = $this->createService($client)->searchIssues('login bug');
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-99', $issues[0]['identifier']);
+    }
+
+    public function testSearchIssuesReturnsEmptyWhenNodesMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['searchIssues' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([], $this->createService($client)->searchIssues('login bug'));
+    }
+
+    public function testSearchIssuesPassesAfterCursorWhenProvided(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'searchIssues' => [
+                        'nodes' => [],
+                        'pageInfo' => ['hasNextPage' => false, 'endCursor' => null],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->searchIssues('login bug', 25, 'cursor-abc');
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testListTeamsReturnsTeamRows(): void
     {
         $client = new MockHttpClient([

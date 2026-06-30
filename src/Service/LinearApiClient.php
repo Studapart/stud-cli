@@ -163,6 +163,40 @@ class LinearApiClient
         }
         GQL;
 
+    private const SEARCH_ISSUES_QUERY = <<<'GQL'
+        query SearchIssues($term: String!, $first: Int, $after: String) {
+          searchIssues(term: $term, first: $first, after: $after) {
+            nodes {
+              id
+              identifier
+              title
+              description
+              priority
+              url
+              state {
+                name
+              }
+              assignee {
+                name
+              }
+              labels {
+                nodes {
+                  id
+                  name
+                  parent {
+                    id
+                  }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+        GQL;
+
     private const TEAMS_LIST_QUERY = <<<'GQL'
         query TeamsList {
           teams {
@@ -445,6 +479,35 @@ class LinearApiClient
         $data = $this->graphqlClient->query(self::ISSUES_LIST_QUERY, ['filter' => $filter]);
 
         $nodes = $data['issues']['nodes'] ?? null;
+        if (! is_array($nodes)) {
+            return [];
+        }
+
+        $issues = [];
+        foreach ($nodes as $node) {
+            if (is_array($node)) {
+                $issues[] = $node;
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function searchIssues(string $term, int $first = 50, ?string $after = null): array
+    {
+        $variables = [
+            'term' => $term,
+            'first' => $first,
+        ];
+        if ($after !== null && $after !== '') {
+            $variables['after'] = $after;
+        }
+
+        $data = $this->graphqlClient->query(self::SEARCH_ISSUES_QUERY, $variables);
+        $nodes = $data['searchIssues']['nodes'] ?? null;
         if (! is_array($nodes)) {
             return [];
         }

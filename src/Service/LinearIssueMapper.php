@@ -57,6 +57,7 @@ class LinearIssueMapper
             priority: $this->mapPriority($node['priority'] ?? null),
             renderedDescription: $description,
             attachments: $this->mapAttachments($node),
+            url: isset($node['url']) && is_string($node['url']) && $node['url'] !== '' ? $node['url'] : null,
         );
     }
 

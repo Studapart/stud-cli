@@ -43,6 +43,7 @@ class LinearIssueMapperTest extends TestCase
         $this->assertSame(2048, $workItem->attachments[0]->size);
         $this->assertSame('https://uploads.linear.app/spec.md', $workItem->attachments[0]->contentUrl);
         $this->assertSame('text/markdown', $workItem->attachments[0]->mimeType);
+        $this->assertSame('https://linear.app/studapart/issue/SCI-166', $workItem->url);
     }
 
     public function testMapToWorkItemUsesUnassignedWhenAssigneeMissing(): void

@@ -24,6 +24,7 @@ class WorkItem
         public ?string $priority = null,
         public ?string $renderedDescription = null,
         public array $attachments = [],
+        public ?string $url = null,
     ) {
     }
 }
