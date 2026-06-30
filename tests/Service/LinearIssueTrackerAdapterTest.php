@@ -434,7 +434,28 @@ class LinearIssueTrackerAdapterTest extends TestCase
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];
         yield 'listTypeLabels' => ['listTypeLabels', ['SCI']];
         yield 'listAttachments' => ['listAttachments', ['SCI-1']];
-        yield 'uploadAttachment' => ['uploadAttachment', ['SCI-1', '/tmp/file.txt']];
         yield 'downloadAttachment' => ['downloadAttachment', ['https://linear.app/file', '/tmp/file.txt']];
+    }
+
+    public function testUploadAttachmentDelegatesToLinearAttachmentService(): void
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'studlinad');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, 'data');
+
+        try {
+            $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+            $attachmentService->expects($this->once())
+                ->method('uploadFileToIssue')
+                ->with('SCI-1', $tmp);
+
+            $adapter = new LinearIssueTrackerAdapter(
+                $this->linearApiClient,
+                linearAttachmentService: $attachmentService,
+            );
+            $adapter->uploadAttachment('SCI-1', $tmp);
+        } finally {
+            unlink($tmp);
+        }
     }
 }

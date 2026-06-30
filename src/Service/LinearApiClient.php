@@ -256,6 +256,34 @@ class LinearApiClient
         }
         GQL;
 
+    private const FILE_UPLOAD_MUTATION = <<<'GQL'
+        mutation FileUpload($filename: String!, $contentType: String!, $size: Int!) {
+          fileUpload(filename: $filename, contentType: $contentType, size: $size) {
+            success
+            uploadFile {
+              uploadUrl
+              assetUrl
+              headers {
+                key
+                value
+              }
+            }
+          }
+        }
+        GQL;
+
+    private const ATTACHMENT_CREATE_MUTATION = <<<'GQL'
+        mutation AttachmentCreate($input: AttachmentCreateInput!) {
+          attachmentCreate(input: $input) {
+            success
+            attachment {
+              id
+              url
+            }
+          }
+        }
+        GQL;
+
     private const UNGROUPED_GROUP_ID = '_ungrouped';
 
     public function __construct(
@@ -845,6 +873,93 @@ class LinearApiClient
     protected function logVerboseFallback(string $message): void
     {
         $this->logger?->writeln(Logger::VERBOSITY_VERBOSE, $message);
+    }
+
+    /**
+     * @return array{uploadUrl: string, assetUrl: string, headers: list<array{key: string, value: string}>}
+     */
+    public function fileUpload(string $filename, string $contentType, int $size): array
+    {
+        $data = $this->graphqlClient->query(self::FILE_UPLOAD_MUTATION, [
+            'filename' => $filename,
+            'contentType' => $contentType,
+            'size' => $size,
+        ]);
+        $result = $data['fileUpload'] ?? null;
+        if (! is_array($result) || ! ($result['success'] ?? false)) {
+            throw new ApiException(
+                'Linear file upload request failed.',
+                json_encode($result, JSON_UNESCAPED_UNICODE) ?: 'fileUpload returned success=false',
+            );
+        }
+
+        $uploadFile = $result['uploadFile'] ?? null;
+        if (! is_array($uploadFile)) {
+            throw new ApiException(
+                'Linear file upload request failed.',
+                'fileUpload response missing uploadFile.',
+            );
+        }
+
+        $uploadUrl = $uploadFile['uploadUrl'] ?? null;
+        $assetUrl = $uploadFile['assetUrl'] ?? null;
+        if (! is_string($uploadUrl) || $uploadUrl === '' || ! is_string($assetUrl) || $assetUrl === '') {
+            throw new ApiException(
+                'Linear file upload request failed.',
+                'fileUpload response missing uploadUrl or assetUrl.',
+            );
+        }
+
+        return [
+            'uploadUrl' => $uploadUrl,
+            'assetUrl' => $assetUrl,
+            'headers' => $this->parseFileUploadHeaders($uploadFile['headers'] ?? null),
+        ];
+    }
+
+    public function attachmentCreate(string $issueId, string $title, string $url): void
+    {
+        $data = $this->graphqlClient->query(self::ATTACHMENT_CREATE_MUTATION, [
+            'input' => [
+                'issueId' => $issueId,
+                'title' => $title,
+                'url' => $url,
+            ],
+        ]);
+        $result = $data['attachmentCreate'] ?? null;
+        if (! is_array($result) || ! ($result['success'] ?? false)) {
+            throw new ApiException(
+                'Could not attach file to Linear issue.',
+                json_encode($result, JSON_UNESCAPED_UNICODE) ?: 'attachmentCreate returned success=false',
+            );
+        }
+    }
+
+    /**
+     * @return list<array{key: string, value: string}>
+     */
+    private function parseFileUploadHeaders(mixed $rawHeaders): array
+    {
+        if (! is_array($rawHeaders)) {
+            return [];
+        }
+
+        $headers = [];
+        foreach ($rawHeaders as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $key = $row['key'] ?? null;
+            $value = $row['value'] ?? null;
+            if (! is_string($key) || $key === '' || ! is_string($value)) {
+                continue;
+            }
+
+            $headers[] = ['key' => $key, 'value' => $value];
+        }
+
+        return $headers;
     }
 
     /**

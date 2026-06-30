@@ -17,11 +17,14 @@ use App\Service\Linear\LinearIssueMutationKeys;
  */
 class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGroupsCapable
 {
+    private ?LinearAttachmentService $defaultAttachmentService = null;
+
     public function __construct(
         private readonly LinearApiClient $linearApiClient,
         private readonly LinearIssueFieldTranslator $fieldTranslator = new LinearIssueFieldTranslator(),
         private readonly LinearIssueMapper $issueMapper = new LinearIssueMapper(),
         private readonly ?GitRepository $gitRepository = null,
+        private readonly ?LinearAttachmentService $linearAttachmentService = null,
     ) {
     }
 
@@ -233,7 +236,7 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function uploadAttachment(string $key, string $localPath): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $this->attachmentService()->uploadFileToIssue($key, $localPath);
     }
 
     public function downloadAttachment(string $url, string $destPath): void
@@ -259,5 +262,11 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         $value = $config[ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function attachmentService(): LinearAttachmentService
+    {
+        return $this->linearAttachmentService
+            ?? ($this->defaultAttachmentService ??= new LinearAttachmentService($this->linearApiClient));
     }
 }
