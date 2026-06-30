@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Config\ProjectStudConfigKeys;
+use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\StateChange;
 use App\DTO\WorkItem;
+use App\Exception\ApiException;
 use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
@@ -176,12 +178,32 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listFiltersOrViews(): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $filters = [];
+        foreach ($this->linearApiClient->listCustomViews() as $view) {
+            $filters[] = new Filter($view['name'], $view['description']);
+        }
+
+        return $filters;
     }
 
     public function runFilterOrView(string $name): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $view = $this->linearApiClient->resolveCustomViewByName($name);
+        if ($view === null) {
+            throw new ApiException(
+                "Could not find Linear custom view \"{$name}\".",
+                'No custom view matched the requested name.',
+            );
+        }
+
+        $nodes = $this->linearApiClient->listIssuesByFilter($view['filterData']);
+        $typeGroupId = $this->readTypeGroupId();
+        $issues = [];
+        foreach ($nodes as $node) {
+            $issues[] = $this->issueMapper->mapToWorkItem($node, $typeGroupId);
+        }
+
+        return $issues;
     }
 
     public function listWorkflowMetadata(?string $projectKey = null): array

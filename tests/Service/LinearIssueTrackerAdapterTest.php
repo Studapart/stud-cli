@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\DTO\StateChange;
+use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
@@ -332,6 +333,87 @@ class LinearIssueTrackerAdapterTest extends TestCase
         $this->assertSame('https://linear.app/studapart/issue/SCI-42', $issues[0]->url);
     }
 
+    public function testListFiltersOrViewsMapsCustomViewsToFilterDtos(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listCustomViews')
+            ->willReturn([
+                [
+                    'id' => 'view-1',
+                    'name' => 'Active Bugs',
+                    'description' => 'Open bugs',
+                    'filterData' => ['state' => ['type' => ['in' => ['started']]]],
+                ],
+                [
+                    'id' => 'view-2',
+                    'name' => 'Empty View',
+                    'description' => null,
+                    'filterData' => [],
+                ],
+            ]);
+
+        $filters = $this->adapter->listFiltersOrViews();
+
+        $this->assertCount(2, $filters);
+        $this->assertSame('Active Bugs', $filters[0]->name);
+        $this->assertSame('Open bugs', $filters[0]->description);
+        $this->assertSame('Empty View', $filters[1]->name);
+        $this->assertNull($filters[1]->description);
+    }
+
+    public function testRunFilterOrViewMapsFilterDataResultsToWorkItems(): void
+    {
+        $filterData = [
+            'labels' => ['some' => ['name' => ['eq' => 'Bug']]],
+        ];
+
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveCustomViewByName')
+            ->with('Active Bugs')
+            ->willReturn([
+                'id' => 'view-1',
+                'name' => 'Active Bugs',
+                'description' => 'Open bugs',
+                'filterData' => $filterData,
+            ]);
+        $this->linearApiClient->expects($this->once())
+            ->method('listIssuesByFilter')
+            ->with($filterData)
+            ->willReturn([
+                [
+                    'id' => 'issue-1',
+                    'identifier' => 'SCI-42',
+                    'title' => 'Login bug',
+                    'url' => 'https://linear.app/studapart/issue/SCI-42',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $issues = $this->adapter->runFilterOrView('Active Bugs');
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-42', $issues[0]->key);
+        $this->assertSame('Login bug', $issues[0]->title);
+    }
+
+    public function testRunFilterOrViewThrowsWhenViewNotFound(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveCustomViewByName')
+            ->with('Missing View')
+            ->willReturn(null);
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Could not find Linear custom view "Missing View".');
+
+        $this->adapter->runFilterOrView('Missing View');
+    }
+
     /**
      * @param list<mixed> $args
      */
@@ -349,8 +431,6 @@ class LinearIssueTrackerAdapterTest extends TestCase
      */
     public static function unimplementedMethodProvider(): iterable
     {
-        yield 'listFiltersOrViews' => ['listFiltersOrViews', []];
-        yield 'runFilterOrView' => ['runFilterOrView', ['My View']];
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];
         yield 'listTypeLabels' => ['listTypeLabels', ['SCI']];
         yield 'listAttachments' => ['listAttachments', ['SCI-1']];

@@ -197,6 +197,19 @@ class LinearApiClient
         }
         GQL;
 
+    private const CUSTOM_VIEWS_QUERY = <<<'GQL'
+        query CustomViews {
+          customViews {
+            nodes {
+              id
+              name
+              description
+              filterData
+            }
+          }
+        }
+        GQL;
+
     private const TEAMS_LIST_QUERY = <<<'GQL'
         query TeamsList {
           teams {
@@ -475,22 +488,75 @@ class LinearApiClient
      */
     public function listAssignedActiveIssues(?string $teamKey, bool $onlyMine): array
     {
-        $filter = $this->buildAssignedActiveFilter($teamKey, $onlyMine);
-        $data = $this->graphqlClient->query(self::ISSUES_LIST_QUERY, ['filter' => $filter]);
+        return $this->fetchIssueNodes(
+            $this->buildAssignedActiveFilter($teamKey, $onlyMine),
+        );
+    }
 
-        $nodes = $data['issues']['nodes'] ?? null;
+    /**
+     * @param array<string, mixed> $filter
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listIssuesByFilter(array $filter): array
+    {
+        return $this->fetchIssueNodes($filter);
+    }
+
+    /**
+     * @return list<array{id: string, name: string, description: ?string, filterData: array<string, mixed>}>
+     */
+    public function listCustomViews(): array
+    {
+        $data = $this->graphqlClient->query(self::CUSTOM_VIEWS_QUERY);
+        $nodes = $data['customViews']['nodes'] ?? null;
         if (! is_array($nodes)) {
             return [];
         }
 
-        $issues = [];
+        $views = [];
         foreach ($nodes as $node) {
-            if (is_array($node)) {
-                $issues[] = $node;
+            if (! is_array($node) || ! isset($node['id'], $node['name'])) {
+                continue;
+            }
+
+            $filterData = $node['filterData'] ?? [];
+            if (! is_array($filterData)) {
+                $filterData = [];
+            }
+
+            $description = $node['description'] ?? null;
+
+            $views[] = [
+                'id' => (string) $node['id'],
+                'name' => (string) $node['name'],
+                'description' => is_string($description) && trim($description) !== '' ? $description : null,
+                'filterData' => $filterData,
+            ];
+        }
+
+        return $views;
+    }
+
+    /**
+     * @return array{id: string, name: string, description: ?string, filterData: array<string, mixed>}|null
+     */
+    public function resolveCustomViewByName(string $name): ?array
+    {
+        $views = $this->listCustomViews();
+        foreach ($views as $view) {
+            if ($view['name'] === $name) {
+                return $view;
             }
         }
 
-        return $issues;
+        foreach ($views as $view) {
+            if (strcasecmp($view['name'], $name) === 0) {
+                return $view;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -708,6 +774,29 @@ class LinearApiClient
                 json_encode($result, JSON_UNESCAPED_UNICODE) ?: 'issueUpdate returned success=false',
             );
         }
+    }
+
+    /**
+     * @param array<string, mixed> $filter
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchIssueNodes(array $filter): array
+    {
+        $data = $this->graphqlClient->query(self::ISSUES_LIST_QUERY, ['filter' => $filter]);
+        $nodes = $data['issues']['nodes'] ?? null;
+        if (! is_array($nodes)) {
+            return [];
+        }
+
+        $issues = [];
+        foreach ($nodes as $node) {
+            if (is_array($node)) {
+                $issues[] = $node;
+            }
+        }
+
+        return $issues;
     }
 
     /**

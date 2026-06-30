@@ -1157,4 +1157,171 @@ class LinearApiClientTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function testListCustomViewsReturnsMappedNodes(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            [
+                                'id' => 'view-1',
+                                'name' => 'Active Bugs',
+                                'description' => 'Open bugs',
+                                'filterData' => ['state' => ['type' => ['in' => ['started']]]],
+                            ],
+                            [
+                                'id' => 'view-2',
+                                'name' => 'No description',
+                                'description' => '   ',
+                                'filterData' => ['number' => ['eq' => -1]],
+                            ],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $views = $this->createService($client)->listCustomViews();
+
+        $this->assertCount(2, $views);
+        $this->assertSame('view-1', $views[0]['id']);
+        $this->assertSame('Active Bugs', $views[0]['name']);
+        $this->assertSame('Open bugs', $views[0]['description']);
+        $this->assertSame(['state' => ['type' => ['in' => ['started']]]], $views[0]['filterData']);
+        $this->assertNull($views[1]['description']);
+    }
+
+    public function testListCustomViewsReturnsEmptyWhenNodesMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['customViews' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([], $this->createService($client)->listCustomViews());
+    }
+
+    public function testListCustomViewsSkipsIncompleteNodes(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            ['name' => 'Missing id'],
+                            ['id' => 'view-1', 'name' => 'Valid'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $views = $this->createService($client)->listCustomViews();
+
+        $this->assertCount(1, $views);
+        $this->assertSame('Valid', $views[0]['name']);
+        $this->assertSame([], $views[0]['filterData']);
+    }
+
+    public function testListCustomViewsCoercesNonArrayFilterDataToEmptyArray(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            ['id' => 'view-1', 'name' => 'Broken filter', 'filterData' => 'not-an-array'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $views = $this->createService($client)->listCustomViews();
+
+        $this->assertCount(1, $views);
+        $this->assertSame('Broken filter', $views[0]['name']);
+        $this->assertSame([], $views[0]['filterData']);
+    }
+
+    public function testResolveCustomViewByNamePrefersExactMatch(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            ['id' => 'view-1', 'name' => 'Active Bugs', 'filterData' => ['a' => 1]],
+                            ['id' => 'view-2', 'name' => 'active bugs', 'filterData' => ['b' => 2]],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $view = $this->createService($client)->resolveCustomViewByName('Active Bugs');
+
+        $this->assertSame('view-1', $view['id']);
+    }
+
+    public function testResolveCustomViewByNameFallsBackToCaseInsensitiveMatch(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'customViews' => [
+                        'nodes' => [
+                            ['id' => 'view-2', 'name' => 'active bugs', 'filterData' => ['b' => 2]],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $view = $this->createService($client)->resolveCustomViewByName('Active Bugs');
+
+        $this->assertSame('view-2', $view['id']);
+    }
+
+    public function testResolveCustomViewByNameReturnsNullWhenMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['customViews' => ['nodes' => []]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertNull($this->createService($client)->resolveCustomViewByName('Missing'));
+    }
+
+    public function testListIssuesByFilterReturnsNodes(): void
+    {
+        $filter = ['labels' => ['some' => ['name' => ['eq' => 'Bug']]]];
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'issues' => [
+                        'nodes' => [
+                            ['id' => 'i1', 'identifier' => 'SCI-9', 'title' => 'Bug fix'],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $issues = $this->createService($client)->listIssuesByFilter($filter);
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-9', $issues[0]['identifier']);
+    }
+
+    public function testListIssuesByFilterReturnsEmptyWhenNodesMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode(['data' => ['issues' => null]], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->assertSame([], $this->createService($client)->listIssuesByFilter(['number' => ['eq' => -1]]));
+    }
 }

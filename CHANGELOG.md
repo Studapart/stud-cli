@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linear branch switch (SCI-173):** Confirmed provider-agnostic `stud switch` for Linear identifiers (`feat/SCI-123-*`); added explicit test coverage for regex and branch lookup; no Linear API calls in switch path.
 - **Git branch issue key:** Renamed `GitRepository::getJiraKeyFromBranchName()` to `getIssueKeyFromBranchName()` (provider-agnostic; Jira and Linear identifiers).
 - **Linear issue search (SCI-175):** `LinearIssueTrackerAdapter::search` calls GraphQL `searchIssues(term:)`; agent JSON echoes term in `jql`; `WorkItemListJsonSerializer` uses Linear issue URLs when present on `WorkItem`.
+- **Linear custom views (SCI-176):** `LinearIssueTrackerAdapter::listFiltersOrViews` and `runFilterOrView` map Linear `customViews` to `filters:list` / `filters:show`; show executes view `filterData` via GraphQL issue filter query; `filters:show` uses optional Jira config when Linear-only.
 
 - **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers use `IssueTrackerPort` via `IssueTrackerPortSupplier`; Linear-only `listLabelGroups` moved to optional `IssueTrackerLabelGroupsCapable` (removed from Jira adapter stub); remaining handler errors use `MessageRef`; ADR-023 §5/§8/§9 updated.
 
