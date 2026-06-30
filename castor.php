@@ -2157,7 +2157,7 @@ function projects_labels(
     }
 }
 
-#[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists all available Jira filters')]
+#[AsTask(name: 'filters:list', aliases: ['fl'], description: 'Lists saved Jira filters or Linear custom views')]
 #[AgentOutput(responseClass: \App\Response\FilterListResponse::class, description: 'List of Jira filters')]
 function filters_list(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -2286,7 +2286,7 @@ function items_search(
     }
 }
 
-#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter')]
+#[AsTask(name: 'filters:show', aliases: ['fs'], description: 'Retrieve issues from a saved Jira filter or Linear custom view')]
 #[AgentOutput(
     properties: [
         'issues' => 'array of slim issue summaries (key, status, title, priority, url)',
@@ -2314,7 +2314,7 @@ function filters_show(
     }
     $handler = new FilterShowHandler(_require_issue_tracker());
     $response = $handler->handle($filterName);
-    $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $responder = new FilterShowResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

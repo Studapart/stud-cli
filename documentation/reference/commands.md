@@ -352,7 +352,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-list"></a>
 ### `stud filters:list`
 
-Lists all available Jira filters.
+Lists saved Jira filters or Linear custom views.
 
 - **Alias:** `stud fl`
 - **Syntax:** `stud filters:list`
@@ -408,7 +408,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-show"></a>
 ### `stud filters:show`
 
-Retrieve issues from a saved Jira filter.
+Retrieve issues from a saved Jira filter or Linear custom view.
 
 - **Alias:** `stud fs`
 - **Syntax:** `stud filters:show <filterName>`

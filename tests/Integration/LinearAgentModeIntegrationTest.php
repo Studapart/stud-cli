@@ -139,6 +139,46 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertTrue($decoded['success'] ?? false);
     }
 
+    public function testFiltersListAgentModeReturnsCustomViews(): void
+    {
+        $repo = $this->createRepository('filters-list');
+        $result = $this->runAgentProcess(
+            ['filters:list', '--agent'],
+            [],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertCount(2, $decoded['data']['filters'] ?? []);
+        self::assertSame('Active Bugs', $decoded['data']['filters'][0]['name'] ?? null);
+        self::assertSame('Open bugs in the team', $decoded['data']['filters'][0]['description'] ?? null);
+        self::assertSame('Empty View', $decoded['data']['filters'][1]['name'] ?? null);
+        self::assertArrayNotHasKey('filterData', $decoded['data']['filters'][0]);
+    }
+
+    public function testFiltersShowAgentModeExecutesCustomViewFilterData(): void
+    {
+        $repo = $this->createRepository('filters-show');
+        $result = $this->runAgentProcess(
+            ['filters:show', '--agent'],
+            ['filterName' => 'Active Bugs'],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('Active Bugs', $decoded['data']['filterName'] ?? null);
+        self::assertCount(2, $decoded['data']['issues'] ?? []);
+        self::assertSame('ENG-1', $decoded['data']['issues'][0]['key'] ?? null);
+        self::assertSame('Todo', $decoded['data']['issues'][0]['status'] ?? null);
+        self::assertSame('First active issue', $decoded['data']['issues'][0]['title'] ?? null);
+        self::assertArrayHasKey('url', $decoded['data']['issues'][0]);
+        self::assertArrayNotHasKey('filterData', $decoded['data']);
+    }
+
     protected function createRepository(string $name): string
     {
         $repo = $this->tempDir . '/' . $name;
