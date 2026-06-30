@@ -21,7 +21,7 @@ class BranchSwitchHandler implements GitRepositoryAware
     }
 
     /**
-     * Switches to the branch matching the Jira issue key, or asks the caller to select one.
+     * Switches to the branch matching the work-item key (Jira or Linear), or asks the caller to select one.
      */
     public function handle(string $key, bool $quiet = false, ?string $selectedBranch = null): BranchSwitchResponse
     {

@@ -81,7 +81,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
@@ -271,7 +271,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
@@ -564,7 +564,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -1074,7 +1074,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
         $this->issueTracker->expects($this->once())
             ->method('getIssue')

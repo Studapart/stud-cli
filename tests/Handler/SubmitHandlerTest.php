@@ -192,7 +192,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -264,7 +264,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -457,7 +457,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -508,7 +508,7 @@ class SubmitHandlerTest extends CommandTestCase
         // Test error path when neither branch name nor commit message has Jira key
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feature-branch');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -530,7 +530,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -582,7 +582,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
@@ -720,7 +720,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
 
         $workItem = new WorkItem(
             id: '10001',
@@ -771,7 +771,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
         $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
         $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
 
         $this->issueTracker->method('getIssue')
             ->with('TPW-35', true)
@@ -2152,7 +2152,7 @@ class SubmitHandlerTest extends CommandTestCase
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
         $this->gitRepository->method('getRepositoryName')->willReturn('my-repo');
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $process = $this->createMock(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);

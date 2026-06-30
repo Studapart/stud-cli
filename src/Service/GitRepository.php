@@ -21,7 +21,10 @@ class GitRepository
     ) {
     }
 
-    public function getJiraKeyFromBranchName(): ?string
+    /**
+     * Extracts the work-item key from the current branch name (Jira or Linear team keys).
+     */
+    public function getIssueKeyFromBranchName(): ?string
     {
         $process = $this->processFactory->create('git rev-parse --abbrev-ref HEAD');
         $process->run();

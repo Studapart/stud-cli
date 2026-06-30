@@ -363,7 +363,7 @@ class CommitHandlerTest extends CommandTestCase
             ->method('findLatestLogicalSha');
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -417,7 +417,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -485,7 +485,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -546,7 +546,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -597,7 +597,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -660,7 +660,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -727,7 +727,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $this->logger->method('addError');
@@ -752,7 +752,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $this->issueTracker->expects($this->once())
@@ -780,7 +780,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $this->issueTracker->expects($this->once())
@@ -814,7 +814,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -887,7 +887,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -955,7 +955,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(
@@ -1031,7 +1031,7 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn(null);
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
         $workItem = new WorkItem(

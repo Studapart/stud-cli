@@ -151,7 +151,7 @@ class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, G
 
     private function resolveJiraKey(string $commitMessage): ?string
     {
-        $jiraKey = $this->gitRepository->getJiraKeyFromBranchName();
+        $jiraKey = $this->gitRepository->getIssueKeyFromBranchName();
         if ($jiraKey === null || $jiraKey === '') {
             preg_match('/(?i)\[([a-z]+-\d+)]/', $commitMessage, $matches);
             $jiraKey = $matches[1] ?? null;
