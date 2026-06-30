@@ -1324,4 +1324,125 @@ class LinearApiClientTest extends TestCase
 
         $this->assertSame([], $this->createService($client)->listIssuesByFilter(['number' => ['eq' => -1]]));
     }
+
+    public function testFileUploadReturnsUploadTarget(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'fileUpload' => [
+                        'success' => true,
+                        'uploadFile' => [
+                            'uploadUrl' => 'https://uploads.linear.app/object',
+                            'assetUrl' => 'https://assets.linear.app/report.md',
+                            'headers' => [
+                                ['key' => 'Content-Type', 'value' => 'text/markdown'],
+                                ['key' => 'bad-row', 'value' => 1],
+                                'not-array',
+                            ],
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $result = $this->createService($client)->fileUpload('report.md', 'text/markdown', 42);
+
+        $this->assertSame('https://uploads.linear.app/object', $result['uploadUrl']);
+        $this->assertSame('https://assets.linear.app/report.md', $result['assetUrl']);
+        $this->assertSame([['key' => 'Content-Type', 'value' => 'text/markdown']], $result['headers']);
+    }
+
+    public function testFileUploadThrowsWhenSuccessFalse(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['fileUpload' => ['success' => false]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Linear file upload request failed.');
+        $this->createService($client)->fileUpload('x.bin', 'application/octet-stream', 1);
+    }
+
+    public function testFileUploadThrowsWhenUploadFileMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['fileUpload' => ['success' => true]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->createService($client)->fileUpload('x.bin', 'application/octet-stream', 1);
+    }
+
+    public function testFileUploadThrowsWhenUrlsMissing(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'fileUpload' => [
+                        'success' => true,
+                        'uploadFile' => ['uploadUrl' => '', 'assetUrl' => 'https://a', 'headers' => []],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->createService($client)->fileUpload('x.bin', 'application/octet-stream', 1);
+    }
+
+    public function testFileUploadCoercesNonArrayHeadersToEmptyList(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'fileUpload' => [
+                        'success' => true,
+                        'uploadFile' => [
+                            'uploadUrl' => 'https://uploads.linear.app/object',
+                            'assetUrl' => 'https://assets.linear.app/x.bin',
+                            'headers' => 'broken',
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $result = $this->createService($client)->fileUpload('x.bin', 'application/octet-stream', 1);
+        $this->assertSame([], $result['headers']);
+    }
+
+    public function testAttachmentCreateSucceeds(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => [
+                    'attachmentCreate' => [
+                        'success' => true,
+                        'attachment' => ['id' => 'att-1', 'url' => 'https://linear.app/file'],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->createService($client)->attachmentCreate('SCI-1', 'report.md', 'https://assets.linear.app/report.md');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAttachmentCreateThrowsWhenSuccessFalse(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse(json_encode([
+                'data' => ['attachmentCreate' => ['success' => false]],
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Could not attach file to Linear issue.');
+        $this->createService($client)->attachmentCreate('SCI-1', 'report.md', 'https://assets.linear.app/report.md');
+    }
 }
