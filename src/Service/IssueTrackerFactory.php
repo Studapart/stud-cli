@@ -57,6 +57,7 @@ class IssueTrackerFactory
         ?JiraAttachmentService $attachmentService = null,
         ?LinearApiClient $linearApiClient = null,
         ?GitRepository $gitRepository = null,
+        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
         return match ($type) {
             'jira' => new JiraIssueTrackerAdapter(
@@ -66,6 +67,7 @@ class IssueTrackerFactory
             'linear' => new LinearIssueTrackerAdapter(
                 $linearApiClient ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
                 gitRepository: $gitRepository,
+                linearAttachmentService: $linearAttachmentService,
             ),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
@@ -82,6 +84,7 @@ class IssueTrackerFactory
         ?JiraAttachmentService $attachmentService,
         ?LinearApiClient $linearApiClient,
         ?GitRepository $gitRepository = null,
+        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
         if ($type === 'jira') {
             if ($jiraApiClient === null || $attachmentService === null) {
@@ -95,7 +98,12 @@ class IssueTrackerFactory
             throw IssueTrackerException::missingLinearApiKey();
         }
 
-        return $this->create('linear', linearApiClient: $linearApiClient, gitRepository: $gitRepository);
+        return $this->create(
+            'linear',
+            linearApiClient: $linearApiClient,
+            gitRepository: $gitRepository,
+            linearAttachmentService: $linearAttachmentService,
+        );
     }
 
     private function normalizeOverride(?string $cliOverride): ?string
