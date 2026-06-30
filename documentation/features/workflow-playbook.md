@@ -65,7 +65,7 @@ stud items:create --project SCI --type Story --summary "Improve stud-cli workflo
 stud items:update SCI-123 --description "Tech spec: https://example.atlassian.net/wiki/spaces/DEV/pages/12345" --fields "labels=DX,docs"
 ```
 
-Use [`stud items:list`](../reference/commands.md#stud-items-list), [`stud items:search`](../reference/commands.md#stud-items-search), and [`stud items:show`](../reference/commands.md#stud-items-show) to rediscover and inspect work before starting.
+Use [`stud items:list`](../reference/commands.md#stud-items-list), [`stud items:search`](../reference/commands.md#stud-items-search), and [`stud items:show`](../reference/commands.md#stud-items-show) to rediscover and inspect work before starting. Jira accepts JQL in search; Linear accepts a plain term — see [Work items — search and saved views](work-items.md).
 
 ### Pick Up Work
 

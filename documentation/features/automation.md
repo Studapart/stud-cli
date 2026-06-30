@@ -25,9 +25,11 @@ that return structured `data` (for example `items:show`, `config:show`) always
 include `data` regardless of `compact`.
 
 List, search, and filter discovery commands (`items:list`, `items:search`,
-`filters:show`) return slim issue summaries in agent mode (`key`, `status`, `title`,
+`filters:list`, `filters:show`) return slim issue summaries in agent mode (`key`, `status`, `title`,
 `url`, and `priority` where shown in the CLI table). Call `items:show` when you need
 the full description or attachments.
+
+For `items:search --agent`, the input field is always named `jql`. With **Jira** active it holds JQL; with **Linear** active it holds a plain search term (not JQL). The response echoes the same string in `data.jql`. See [Work items — search and saved views](work-items.md).
 
 For completion-only commands, compact output omits `data`:
 

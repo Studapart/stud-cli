@@ -56,6 +56,8 @@ Legacy configs without these keys are migrated automatically on the next command
 
 Project config can override the work-item provider with `workItemProvider` (`jira`, `linear`, or `auto`) in `.git/stud.config`.
 
+Search and saved-view commands depend on the active provider: **JQL applies to Jira only**; Linear uses plain search terms and custom views. See [Work items — search and saved views](../features/work-items.md).
+
 ## Jira
 
 You need:

@@ -2,6 +2,8 @@
 
 Jira commands help you find and inspect work without leaving the terminal.
 
+For **search** and **saved filters / custom views**, see [Work items — search and saved views](work-items.md). That page explains JQL (Jira-only) vs Linear plain-term search and documents `filters:list` / `filters:show` for both providers.
+
 ## Browse
 
 ```bash

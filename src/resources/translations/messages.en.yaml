@@ -830,7 +830,7 @@ help:
   command_items_upload: "Uploads one or more local files as Jira issue attachments via REST multipart. Paths are relative to cwd; parent-directory segments (..) are rejected. Same Jira auth as other commands. Agent JSON: key (required), files (array of path strings). Optional inputFile when --agent (same as items:update). No --quiet; use --agent for automation."
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description from STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
-  command_items_search: "Search for issues using JQL."
+  command_items_search: "Search issues: JQL when Jira is active, plain search term when Linear is active."
   command_items_transition: "Transitions a Jira work item to a different status. If key is not provided, attempts to detect from current branch."
   command_filters_list: "Lists saved Jira filters or Linear custom views."
   command_filters_show: "Retrieve issues from a saved Jira filter or Linear custom view."
