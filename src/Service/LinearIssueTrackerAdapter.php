@@ -231,7 +231,10 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function listAttachments(string $key): array
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        return $this->issueMapper->mapToWorkItem(
+            $this->linearApiClient->getIssue($key),
+            $this->readTypeGroupId(),
+        )->attachments;
     }
 
     public function uploadAttachment(string $key, string $localPath): void
@@ -241,7 +244,14 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
 
     public function downloadAttachment(string $url, string $destPath): void
     {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
+        $content = $this->attachmentService()->downloadAttachmentContent($url);
+        if (@file_put_contents($destPath, $content) === false) {
+            throw new ApiException(
+                'Could not write attachment to destination path.',
+                sprintf('Failed to write file: %s', $destPath),
+                500,
+            );
+        }
     }
 
     /**

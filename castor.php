@@ -449,6 +449,36 @@ function _get_jira_attachment_service_if_configured(): ?JiraAttachmentService
     return _get_jira_attachment_service();
 }
 
+function _get_linear_asset_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterface
+{
+    $config = _get_config();
+    $apiKey = $config[GlobalStudConfigKeys::LINEAR_API_KEY] ?? '';
+
+    return HttpClient::create([
+        'headers' => [
+            'User-Agent' => 'stud-cli',
+            'Authorization' => is_string($apiKey) ? trim($apiKey) : '',
+        ],
+    ]);
+}
+
+function _get_linear_attachment_service_if_configured(): ?\App\Service\LinearAttachmentService
+{
+    if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$linearAttachmentService !== null) {
+        return \App\Tests\TestKernel::$linearAttachmentService;
+    }
+
+    $linearApiClient = _get_linear_api_client();
+    if ($linearApiClient === null) {
+        return null;
+    }
+
+    return new \App\Service\LinearAttachmentService(
+        $linearApiClient,
+        assetHttpClient: _get_linear_asset_http_client(),
+    );
+}
+
 function _get_issue_tracker_port_supplier(): IssueTrackerPortSupplier
 {
     return new IssueTrackerPortSupplier(
@@ -457,6 +487,7 @@ function _get_issue_tracker_port_supplier(): IssueTrackerPortSupplier
         _get_jira_api_client_if_configured(),
         _get_jira_attachment_service_if_configured(),
         _get_linear_api_client(),
+        _get_linear_attachment_service_if_configured(),
     );
 }
 

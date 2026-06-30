@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Linear attachment download (SCI-180):** `LinearAttachmentService` lists issue attachments via GraphQL and downloads from allowlisted Linear asset hosts with API key auth; `LinearIssueTrackerAdapter::listAttachments` / `downloadAttachment` delegate so `stud items:download` works for Linear.
 - **Linear attachment upload (SCI-179):** `LinearAttachmentService` runs `fileUpload` → signed PUT (all response headers) → `attachmentCreate`; `LinearIssueTrackerAdapter::uploadAttachment` delegates so `stud items:upload` works for Linear; write inputs use `LinearAttachmentMutationKeys` (title reuses `LinearIssueMutationKeys::TITLE`).
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
 - **Linear issue mapper (SCI-166):** `LinearIssueMapper` maps Linear GraphQL issue nodes to `WorkItem` (Markdown description, attachments, priority labels, type-group `issueType`).
