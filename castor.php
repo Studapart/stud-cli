@@ -2245,16 +2245,16 @@ function items_list(
     }
 }
 
-#[AsTask(name: 'items:search', aliases: ['search'], description: 'Search for issues using JQL')]
+#[AsTask(name: 'items:search', aliases: ['search'], description: 'Search issues: JQL when Jira is active, plain search term when Linear is active')]
 #[AgentOutput(
     properties: [
         'issues' => 'array of slim issue summaries (key, status, title, priority, url)',
         'jql' => 'string',
     ],
-    description: 'JQL search results (agent mode returns slim issue summaries; use items:show for full details)',
+    description: 'Search results (Jira: JQL query echoed in jql; Linear: search term echoed in jql). Agent mode returns slim issue summaries; use items:show for full details.',
 )]
 function items_search(
-    #[AsArgument(name: 'jql', description: 'The JQL query string (or inputFile when --agent)')]
+    #[AsArgument(name: 'jql', description: 'JQL query (Jira) or search term (Linear); or inputFile when --agent')]
     ?string $jql = null,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
