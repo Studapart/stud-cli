@@ -20,6 +20,7 @@ class TestKernel
     public static ?JiraAttachmentService $jiraAttachmentService = null;
     public static ?JiraApiClient $jiraApiClient = null;
     public static ?LinearGraphqlClient $linearGraphqlClient = null;
+    public static ?\App\Service\LinearAttachmentService $linearAttachmentService = null;
     public static ?ProcessFactory $processFactory = null;
     public static ?TranslationService $translationService = null;
     public static ?IssueTrackerPort $issueTracker = null;

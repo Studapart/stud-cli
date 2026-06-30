@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Enum\WorkItemProvider;
 use App\Exception\IssueTrackerException;
 use App\Service\IssueTrackerFactory;
 use App\Service\JiraApiClient;
@@ -25,18 +26,18 @@ class IssueTrackerFactoryTest extends TestCase
     public function testResolveTypeUsesCliOverride(): void
     {
         $global = $this->bothProvidersGlobal();
-        $project = ['workItemProvider' => 'linear'];
+        $project = ['workItemProvider' => WorkItemProvider::Linear->value];
 
-        $this->assertSame('jira', $this->factory->resolveType('jira', $global, $project));
-        $this->assertSame('linear', $this->factory->resolveType('linear', $global, $project));
+        $this->assertSame(WorkItemProvider::Jira->value, $this->factory->resolveType('jira', $global, $project));
+        $this->assertSame(WorkItemProvider::Linear->value, $this->factory->resolveType('linear', $global, $project));
     }
 
     public function testResolveTypeTreatsAutoOverrideAsUnset(): void
     {
         $global = $this->bothProvidersGlobal();
-        $project = ['workItemProvider' => 'linear'];
+        $project = ['workItemProvider' => WorkItemProvider::Linear->value];
 
-        $this->assertSame('linear', $this->factory->resolveType('auto', $global, $project));
+        $this->assertSame(WorkItemProvider::Linear->value, $this->factory->resolveType('auto', $global, $project));
     }
 
     public function testResolveTypeUsesProjectProviderWhenNoOverride(): void
@@ -44,12 +45,12 @@ class IssueTrackerFactoryTest extends TestCase
         $global = $this->bothProvidersGlobal();
 
         $this->assertSame(
-            'linear',
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'linear']),
+            WorkItemProvider::Linear->value,
+            $this->factory->resolveType(null, $global, ['workItemProvider' => WorkItemProvider::Linear->value]),
         );
         $this->assertSame(
-            'jira',
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'jira']),
+            WorkItemProvider::Jira->value,
+            $this->factory->resolveType(null, $global, ['workItemProvider' => WorkItemProvider::Jira->value]),
         );
     }
 
@@ -62,8 +63,8 @@ class IssueTrackerFactoryTest extends TestCase
         $global['LINEAR_API_KEY'] = 'lin';
 
         $this->assertSame(
-            'jira',
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'auto']),
+            WorkItemProvider::Jira->value,
+            $this->factory->resolveType(null, $global, ['workItemProvider' => WorkItemProvider::PROJECT_AUTO]),
         );
     }
 
@@ -73,15 +74,15 @@ class IssueTrackerFactoryTest extends TestCase
         $global['LINEAR_API_KEY'] = 'lin';
 
         $this->assertSame(
-            'linear',
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'auto']),
+            WorkItemProvider::Linear->value,
+            $this->factory->resolveType(null, $global, ['workItemProvider' => WorkItemProvider::PROJECT_AUTO]),
         );
     }
 
     public function testResolveTypeUsesGlobalSingleProvider(): void
     {
-        $this->assertSame('jira', $this->factory->resolveType(null, $this->jiraOnlyGlobal(), []));
-        $this->assertSame('linear', $this->factory->resolveType(null, $this->linearOnlyGlobal(), []));
+        $this->assertSame(WorkItemProvider::Jira->value, $this->factory->resolveType(null, $this->jiraOnlyGlobal(), []));
+        $this->assertSame(WorkItemProvider::Linear->value, $this->factory->resolveType(null, $this->linearOnlyGlobal(), []));
     }
 
     public function testResolveTypeThrowsWhenNoProviderConfigured(): void
@@ -97,7 +98,7 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_linear_api_key');
 
-        $this->factory->assertCredentials('linear', $this->linearOnlyGlobal());
+        $this->factory->assertCredentials(WorkItemProvider::Linear->value, $this->linearOnlyGlobal());
     }
 
     public function testAssertCredentialsThrowsWhenJiraSelectedWithoutCredentials(): void
@@ -105,13 +106,13 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_jira_configuration');
 
-        $this->factory->assertCredentials('jira', $this->jiraOnlyGlobal());
+        $this->factory->assertCredentials(WorkItemProvider::Jira->value, $this->jiraOnlyGlobal());
     }
 
     public function testAssertCredentialsPassesWhenCredentialsPresent(): void
     {
-        $this->factory->assertCredentials('jira', $this->jiraCredentialsGlobal());
-        $this->factory->assertCredentials('linear', ['LINEAR_API_KEY' => 'lin']);
+        $this->factory->assertCredentials(WorkItemProvider::Jira->value, $this->jiraCredentialsGlobal());
+        $this->factory->assertCredentials(WorkItemProvider::Linear->value, ['LINEAR_API_KEY' => 'lin']);
 
         $this->addToAssertionCount(2);
     }
@@ -121,7 +122,7 @@ class IssueTrackerFactoryTest extends TestCase
         $jira = $this->createMock(JiraApiClient::class);
         $attachments = $this->createMock(JiraAttachmentService::class);
 
-        $provider = $this->factory->create('jira', $jira, $attachments);
+        $provider = $this->factory->create(WorkItemProvider::Jira->value, $jira, $attachments);
 
         $this->assertInstanceOf(JiraIssueTrackerAdapter::class, $provider);
     }
@@ -130,7 +131,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $linearApiClient = $this->createMock(\App\Service\LinearApiClient::class);
 
-        $provider = $this->factory->create('linear', linearApiClient: $linearApiClient);
+        $provider = $this->factory->create(WorkItemProvider::Linear->value, linearApiClient: $linearApiClient);
 
         $this->assertInstanceOf(LinearIssueTrackerAdapter::class, $provider);
     }
@@ -139,14 +140,14 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->factory->create('linear');
+        $this->factory->create(WorkItemProvider::Linear->value);
     }
 
     public function testCreateRequiresJiraDependenciesForJiraType(): void
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->factory->create('jira');
+        $this->factory->create(WorkItemProvider::Jira->value);
     }
 
     public function testCreateForProviderThrowsWhenJiraClientsMissing(): void
@@ -154,7 +155,7 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_jira_configuration');
 
-        $this->factory->createForProvider('jira', null, null, null);
+        $this->factory->createForProvider(WorkItemProvider::Jira->value, null, null, null);
     }
 
     public function testCreateForProviderThrowsWhenLinearClientMissing(): void
@@ -162,7 +163,7 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('work_item_provider.missing_linear_api_key');
 
-        $this->factory->createForProvider('linear', null, null, null);
+        $this->factory->createForProvider(WorkItemProvider::Linear->value, null, null, null);
     }
 
     public function testResolveTypeRejectsUnknownOverride(): void
@@ -177,7 +178,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function jiraOnlyGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => ['jira']];
+        return ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]];
     }
 
     /**
@@ -185,7 +186,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function linearOnlyGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => ['linear']];
+        return ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Linear->value]];
     }
 
     /**
@@ -193,7 +194,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function bothProvidersGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']];
+        return ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]];
     }
 
     /**
@@ -202,7 +203,7 @@ class IssueTrackerFactoryTest extends TestCase
     private function jiraCredentialsGlobal(): array
     {
         return [
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value],
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',

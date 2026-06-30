@@ -83,13 +83,13 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
             ? strtolower(trim($existing['workItemProvider']))
-            : 'auto';
-        if (! in_array($current, ['jira', 'linear', 'auto'], true)) {
-            $current = 'auto';
+            : WorkItemProvider::PROJECT_AUTO;
+        if (! WorkItemProvider::isProjectConfigValue($current)) {
+            $current = WorkItemProvider::PROJECT_AUTO;
         }
         $choice = $this->prompt->choice(
             MessageRef::key('config.project_init.prompt_work_item_provider'),
-            ['jira', 'linear', 'auto'],
+            WorkItemProvider::projectConfigValues(),
             $current,
         );
 
@@ -197,27 +197,27 @@ class ConfigProjectInitPromptCollector
         $hasLinear = $this->providerResolver->collectsLinear($globalWorkItemProviders);
 
         if ($hasJira && ! $hasLinear) {
-            return 'jira';
+            return WorkItemProvider::Jira->value;
         }
         if ($hasLinear && ! $hasJira) {
-            return 'linear';
+            return WorkItemProvider::Linear->value;
         }
 
         $stored = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
             ? strtolower(trim($existing['workItemProvider']))
-            : 'auto';
+            : WorkItemProvider::PROJECT_AUTO;
 
-        return in_array($stored, ['jira', 'linear', 'auto'], true) ? $stored : 'auto';
+        return WorkItemProvider::isProjectConfigValue($stored) ? $stored : WorkItemProvider::PROJECT_AUTO;
     }
 
     protected function shouldRunJiraPrompts(string $effectiveProvider): bool
     {
-        return $effectiveProvider === 'jira' || $effectiveProvider === 'auto';
+        return $effectiveProvider === WorkItemProvider::Jira->value || $effectiveProvider === WorkItemProvider::PROJECT_AUTO;
     }
 
     protected function shouldRunLinearPrompts(string $effectiveProvider): bool
     {
-        return $effectiveProvider === 'linear';
+        return $effectiveProvider === WorkItemProvider::Linear->value;
     }
 
     /**

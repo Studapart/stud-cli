@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
+use App\Enum\WorkItemProvider;
 use App\Service\IssueTrackerFactory;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
@@ -32,12 +33,12 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => ['jira']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
             [],
         );
 
         $this->assertTrue($result['ok']);
-        $this->assertSame('jira', $result['provider']);
+        $this->assertSame(WorkItemProvider::Jira->value, $result['provider']);
         $this->assertSame([], $result['port']->listProjectStateChanges('SCI'));
     }
 
@@ -81,7 +82,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             [],
         );
 

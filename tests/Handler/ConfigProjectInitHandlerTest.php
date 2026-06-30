@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Enum\WorkItemProvider;
 use App\Handler\ConfigProjectInitHandler;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Service\GitRepository;
@@ -427,7 +428,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls(
             [],
             [
-                'workItemProvider' => 'linear',
+                'workItemProvider' => WorkItemProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -437,7 +438,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->expects($this->once())
             ->method('writeProjectConfig')
             ->with([
-                'workItemProvider' => 'linear',
+                'workItemProvider' => WorkItemProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -449,7 +450,7 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
-            'workItemProvider' => 'linear',
+            'workItemProvider' => WorkItemProvider::Linear->value,
             'projectKey' => 'SCI',
             'linearStartStateId' => 'state-uuid',
             'linearTypeLabelGroupId' => 'group-uuid',
@@ -655,7 +656,7 @@ class ConfigProjectInitHandlerTest extends TestCase
     {
         $workflowJson = [
             'stateChanges' => [
-                ['id' => '21', 'name' => 'In Progress', 'targetStatus' => 'In Progress', 'provider' => 'jira'],
+                ['id' => '21', 'name' => 'In Progress', 'targetStatus' => 'In Progress', 'provider' => WorkItemProvider::Jira->value],
             ],
         ];
         $labelsJson = [

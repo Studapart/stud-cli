@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Linear attachment download (SCI-180):** `LinearAttachmentService` lists issue attachments via GraphQL and downloads from allowlisted Linear asset hosts with API key auth; `LinearIssueTrackerAdapter::listAttachments` / `downloadAttachment` delegate so `stud items:download` works for Linear.
 - **Linear attachment upload (SCI-179):** `LinearAttachmentService` runs `fileUpload` → signed PUT (all response headers) → `attachmentCreate`; `LinearIssueTrackerAdapter::uploadAttachment` delegates so `stud items:upload` works for Linear; write inputs use `LinearAttachmentMutationKeys` (title reuses `LinearIssueMutationKeys::TITLE`).
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
 - **Linear issue mapper (SCI-166):** `LinearIssueMapper` maps Linear GraphQL issue nodes to `WorkItem` (Markdown description, attachments, priority labels, type-group `issueType`).
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Work-item provider slugs:** `WorkItemProvider` enum is the single source for `jira` / `linear` provider tokens; factory, resolver, project-init, workflow normalizer, and metadata prompts use it instead of scattered literals (`PROJECT_AUTO` for project `workItemProvider: auto`).
 - **Issue field bag keys (SCI-167):** `IssueFieldBagKeys` centralizes Jira-shaped handler field bag keys; `LinearIssueMutationKeys` centralizes Linear GraphQL mutation input keys; Linear team lookup fallbacks log at verbose when Jira project or primary GraphQL team query fails.
 - **Linear list/show integration (SCI-168):** `LinearApiClient` implements issue show, assigned-active list, teams list, and viewer ping; agent-mode integration tests use mocked GraphQL fixtures without network.
 - **Config YAML keys:** `GlobalStudConfigKeys` and `ProjectStudConfigKeys` centralize global/project config key names; field maps and credential checks use them as single source of truth.

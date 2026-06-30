@@ -41,7 +41,7 @@ class GlobalConfigProviderResolver
     {
         $normalized = [];
         foreach ($values as $provider) {
-            $enum = WorkItemProvider::tryFrom(strtolower(trim($provider)));
+            $enum = WorkItemProvider::tryFromNormalized($provider);
             if ($enum !== null) {
                 $normalized[] = $enum->value;
             }

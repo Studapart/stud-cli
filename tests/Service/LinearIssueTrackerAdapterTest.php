@@ -433,8 +433,76 @@ class LinearIssueTrackerAdapterTest extends TestCase
     {
         yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];
         yield 'listTypeLabels' => ['listTypeLabels', ['SCI']];
-        yield 'listAttachments' => ['listAttachments', ['SCI-1']];
-        yield 'downloadAttachment' => ['downloadAttachment', ['https://linear.app/file', '/tmp/file.txt']];
+    }
+
+    public function testListAttachmentsReturnsMappedAttachments(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1')
+            ->willReturn([
+                'id' => 'issue-1',
+                'identifier' => 'SCI-1',
+                'title' => 'Issue',
+                'state' => ['name' => 'Todo'],
+                'assignee' => ['name' => 'Ada'],
+                'labels' => ['nodes' => []],
+                'attachments' => [
+                    'nodes' => [
+                        [
+                            'id' => 'att-1',
+                            'title' => 'report.md',
+                            'url' => 'https://public.linear.app/assets/report.md',
+                            'size' => 8,
+                        ],
+                    ],
+                ],
+            ]);
+
+        $attachments = $this->adapter->listAttachments('SCI-1');
+
+        $this->assertCount(1, $attachments);
+        $this->assertSame('report.md', $attachments[0]->filename);
+        $this->assertSame('https://public.linear.app/assets/report.md', $attachments[0]->contentUrl);
+    }
+
+    public function testDownloadAttachmentDelegatesToLinearAttachmentService(): void
+    {
+        $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+        $attachmentService->expects($this->once())
+            ->method('downloadAttachmentContent')
+            ->with('https://public.linear.app/assets/report.md')
+            ->willReturn('payload');
+
+        $adapter = new LinearIssueTrackerAdapter(
+            $this->linearApiClient,
+            linearAttachmentService: $attachmentService,
+        );
+
+        $dest = tempnam(sys_get_temp_dir(), 'studlindl');
+        $this->assertNotFalse($dest);
+
+        try {
+            $adapter->downloadAttachment('https://public.linear.app/assets/report.md', $dest);
+            $this->assertSame('payload', file_get_contents($dest));
+        } finally {
+            unlink($dest);
+        }
+    }
+
+    public function testDownloadAttachmentThrowsWhenWriteFails(): void
+    {
+        $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+        $attachmentService->method('downloadAttachmentContent')->willReturn('payload');
+
+        $adapter = new LinearIssueTrackerAdapter(
+            $this->linearApiClient,
+            linearAttachmentService: $attachmentService,
+        );
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Could not write attachment to destination path.');
+        $adapter->downloadAttachment('https://public.linear.app/assets/report.md', '/nonexistent/dir/file.bin');
     }
 
     public function testUploadAttachmentDelegatesToLinearAttachmentService(): void

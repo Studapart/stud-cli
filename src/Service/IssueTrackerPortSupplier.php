@@ -20,6 +20,7 @@ class IssueTrackerPortSupplier
         private readonly ?JiraApiClient $jiraApiClient,
         private readonly ?JiraAttachmentService $attachmentService,
         private readonly ?LinearApiClient $linearApiClient,
+        private readonly ?LinearAttachmentService $linearAttachmentService = null,
     ) {
     }
 
@@ -45,6 +46,7 @@ class IssueTrackerPortSupplier
                     $this->jiraApiClient,
                     $this->attachmentService,
                     $this->linearApiClient,
+                    linearAttachmentService: $this->linearAttachmentService,
                 ),
             ];
         } catch (IssueTrackerException $e) {

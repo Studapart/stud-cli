@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\MessageRef;
+use App\Enum\WorkItemProvider;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsLabelsHandler;
@@ -34,7 +35,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', false);
 
@@ -54,7 +55,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', true);
 
@@ -68,7 +69,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
         $port = $this->createMock(IssueTrackerPort::class);
 
         $response = $this->createHandler(
-            resolveResult: ['ok' => true, 'provider' => 'jira', 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
         )->handle('SCI', false);
 
         $this->assertTrue($response->isSuccess());
@@ -83,7 +84,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenProviderAmbiguous(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             projectConfig: [],
             resolveResult: [
                 'ok' => false,
@@ -124,7 +125,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
         );
 
         $response = $handler->handle('SCI', false);
@@ -144,7 +145,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => 'linear', 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
         );
 
         $response = $handler->handle('SCI', false);
@@ -161,7 +162,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
      * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => ['jira']],
+        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
         array $projectConfig = [],
         array $resolveResult = [],
     ): ProjectsLabelsHandler {

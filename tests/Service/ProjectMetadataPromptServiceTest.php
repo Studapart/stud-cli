@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
+use App\Enum\WorkItemProvider;
 use App\Service\BranchNameGenerator;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
@@ -62,7 +63,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -90,7 +91,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -122,7 +123,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -160,7 +161,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -188,7 +189,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertNull(
@@ -210,7 +211,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $recorder = new WorkflowRecorder();
@@ -236,7 +237,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -265,7 +266,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -286,7 +287,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertNull($service->chooseLinearTypeLabelGroupId(new WorkflowRecorder(), 'SCI', []));
@@ -296,7 +297,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -316,7 +317,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $this->createMock(PromptInterface::class),
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
         $recorder = new WorkflowRecorder();
 
@@ -342,7 +343,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertNull($service->buildLinearBranchPrefixMap(new WorkflowRecorder(), 'SCI', [], 'group-1'));
@@ -369,7 +370,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -403,7 +404,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -460,7 +461,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $prompt,
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
 
         $this->assertSame(
@@ -485,7 +486,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             $this->createMock(PromptInterface::class),
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
-            provider: 'linear',
+            provider: WorkItemProvider::Linear->value,
         );
         $recorder = new WorkflowRecorder();
 
@@ -504,7 +505,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
      */
     private function createService(
         PromptInterface $prompt,
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => ['jira']],
+        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
         ?IssueTrackerPort $port = null,
         string $provider = 'jira',
         ?MessageRef $resolveError = null,
