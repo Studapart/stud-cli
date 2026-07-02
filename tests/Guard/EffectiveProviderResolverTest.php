@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Guard;
 
+use App\Enum\WorkItemProvider;
 use App\Guard\Resolver\EffectiveProviderResolver;
 use PHPUnit\Framework\TestCase;
 
@@ -61,10 +62,10 @@ class EffectiveProviderResolverTest extends TestCase
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => 'jira'],
+            ['workItemProvider' => WorkItemProvider::Jira->value],
         );
 
-        $this->assertSame(['jira'], $result['providers']);
+        $this->assertSame([WorkItemProvider::Jira->value], $result['providers']);
         $this->assertFalse($result['ambiguous']);
     }
 
@@ -78,22 +79,22 @@ class EffectiveProviderResolverTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => 'auto'],
+            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
         );
 
         $this->assertFalse($result['ambiguous']);
-        $this->assertSame(['jira'], $result['providers']);
+        $this->assertSame([WorkItemProvider::Jira->value], $result['providers']);
     }
 
     public function testResolveWorkItemProvidersMarksAmbiguousWhenAutoCannotResolve(): void
     {
         $result = $this->resolver->resolveWorkItemProviders(
-            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
-            ['workItemProvider' => 'auto'],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
+            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
         );
 
         $this->assertTrue($result['ambiguous']);
-        $this->assertSame(['jira', 'linear'], $result['providers']);
+        $this->assertSame([WorkItemProvider::Jira->value, WorkItemProvider::Linear->value], $result['providers']);
     }
 
     public function testResolveWorkItemProvidersWithoutProjectConfigUsesGlobalList(): void
@@ -104,6 +105,6 @@ class EffectiveProviderResolverTest extends TestCase
         );
 
         $this->assertFalse($result['ambiguous']);
-        $this->assertSame(['linear'], $result['providers']);
+        $this->assertSame([WorkItemProvider::Linear->value], $result['providers']);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\WorkflowRecorder;
+use App\Enum\WorkItemProvider;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
@@ -365,11 +366,11 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
         );
 
         $this->assertSame(
-            ['workItemProvider' => 'linear', 'gitProvider' => 'github'],
+            ['workItemProvider' => WorkItemProvider::Linear->value, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -404,7 +405,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => ['linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Linear->value]],
             $metadataPrompts,
         );
 
@@ -444,7 +445,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
 
         $this->assertSame(
-            ['workItemProvider' => 'auto', 'gitProvider' => 'github'],
+            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -469,11 +470,11 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
         );
 
         $this->assertSame(
-            ['workItemProvider' => 'auto', 'gitProvider' => 'github'],
+            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -541,7 +542,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => ['linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Linear->value]],
             $metadataPrompts,
         );
 
@@ -562,7 +563,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $this->createMock(GitRepository::class),
             $this->createMock(PromptInterface::class),
             $this->createMock(GitSetupService::class),
-            ['WORK_ITEM_PROVIDERS' => ['jira', 'linear']],
+            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'resolveEffectiveWorkItemProvider');

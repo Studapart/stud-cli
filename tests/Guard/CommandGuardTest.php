@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Guard;
 
+use App\Enum\WorkItemProvider;
 use App\Guard\Capability\ConfluenceAware;
 use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
@@ -39,7 +40,7 @@ class CommandGuardTest extends TestCase
         $context = $this->context(
             ['JIRA_URL' => 'https://example.atlassian.net'],
             [],
-            workItemProviders: ['jira'],
+            workItemProviders: [WorkItemProvider::Jira->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -69,7 +70,7 @@ class CommandGuardTest extends TestCase
         $context = $this->context(
             ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin-key'],
             [],
-            workItemProviders: ['linear'],
+            workItemProviders: [WorkItemProvider::Linear->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -80,7 +81,7 @@ class CommandGuardTest extends TestCase
     public function testLinearOnlyMissingLinearApiKey(): void
     {
         $capabilities = CapabilitySet::fromList([WorkItemLinearAware::class]);
-        $context = $this->context([], [], workItemProviders: ['linear']);
+        $context = $this->context([], [], workItemProviders: [WorkItemProvider::Linear->value]);
 
         $result = $this->guard->check($capabilities, $context);
 
@@ -260,9 +261,9 @@ class CommandGuardTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            projectConfig: ['workItemProvider' => 'auto'],
+            projectConfig: ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
             hasGitRepository: true,
-            workItemProviders: ['jira', 'linear'],
+            workItemProviders: [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value],
             gitProviders: ['github'],
             isInteractive: true,
             isQuiet: false,

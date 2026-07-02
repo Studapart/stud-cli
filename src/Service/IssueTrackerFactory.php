@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
+use App\Enum\WorkItemProvider;
 use App\Exception\IssueTrackerException;
 
 class IssueTrackerFactory
@@ -25,13 +26,13 @@ class IssueTrackerFactory
         array $projectConfig,
     ): string {
         $normalizedOverride = $this->normalizeOverride($cliOverride);
-        if ($normalizedOverride === 'jira' || $normalizedOverride === 'linear') {
-            return $normalizedOverride;
+        if ($normalizedOverride !== null) {
+            return $normalizedOverride->value;
         }
 
         $projectProvider = $this->readProjectProvider($projectConfig);
-        if ($projectProvider === 'jira' || $projectProvider === 'linear') {
-            return $projectProvider;
+        if ($projectProvider !== null) {
+            return $projectProvider->value;
         }
 
         return $this->resolveAutoType($globalConfig);
@@ -42,11 +43,11 @@ class IssueTrackerFactory
      */
     public function assertCredentials(string $type, array $globalConfig): void
     {
-        if ($type === 'jira' && ! $this->hasJiraCredentials($globalConfig)) {
+        if ($type === WorkItemProvider::Jira->value && ! $this->hasJiraCredentials($globalConfig)) {
             throw IssueTrackerException::missingJiraConfiguration();
         }
 
-        if ($type === 'linear' && ! $this->hasLinearCredentials($globalConfig)) {
+        if ($type === WorkItemProvider::Linear->value && ! $this->hasLinearCredentials($globalConfig)) {
             throw IssueTrackerException::missingLinearApiKey();
         }
     }
@@ -57,15 +58,17 @@ class IssueTrackerFactory
         ?JiraAttachmentService $attachmentService = null,
         ?LinearApiClient $linearApiClient = null,
         ?GitRepository $gitRepository = null,
+        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
         return match ($type) {
-            'jira' => new JiraIssueTrackerAdapter(
+            WorkItemProvider::Jira->value => new JiraIssueTrackerAdapter(
                 $jiraService ?? throw new \InvalidArgumentException('Jira service is required for the jira work-item provider'),
                 $attachmentService ?? throw new \InvalidArgumentException('Jira attachment service is required for the jira work-item provider'),
             ),
-            'linear' => new LinearIssueTrackerAdapter(
+            WorkItemProvider::Linear->value => new LinearIssueTrackerAdapter(
                 $linearApiClient ?? throw new \InvalidArgumentException('Linear API client is required for the linear work-item provider'),
                 gitRepository: $gitRepository,
+                linearAttachmentService: $linearAttachmentService,
             ),
             default => throw new \InvalidArgumentException(sprintf('Unknown work-item provider type: %s', $type)),
         };
@@ -82,23 +85,29 @@ class IssueTrackerFactory
         ?JiraAttachmentService $attachmentService,
         ?LinearApiClient $linearApiClient,
         ?GitRepository $gitRepository = null,
+        ?LinearAttachmentService $linearAttachmentService = null,
     ): IssueTrackerPort {
-        if ($type === 'jira') {
+        if ($type === WorkItemProvider::Jira->value) {
             if ($jiraApiClient === null || $attachmentService === null) {
                 throw IssueTrackerException::missingJiraConfiguration();
             }
 
-            return $this->create('jira', $jiraApiClient, $attachmentService);
+            return $this->create(WorkItemProvider::Jira->value, $jiraApiClient, $attachmentService);
         }
 
         if ($linearApiClient === null) {
             throw IssueTrackerException::missingLinearApiKey();
         }
 
-        return $this->create('linear', linearApiClient: $linearApiClient, gitRepository: $gitRepository);
+        return $this->create(
+            WorkItemProvider::Linear->value,
+            linearApiClient: $linearApiClient,
+            gitRepository: $gitRepository,
+            linearAttachmentService: $linearAttachmentService,
+        );
     }
 
-    private function normalizeOverride(?string $cliOverride): ?string
+    private function normalizeOverride(?string $cliOverride): ?WorkItemProvider
     {
         if ($cliOverride === null || trim($cliOverride) === '') {
             return null;
@@ -109,17 +118,18 @@ class IssueTrackerFactory
             return null;
         }
 
-        if ($normalized === 'jira' || $normalized === 'linear') {
-            return $normalized;
+        $provider = WorkItemProvider::tryFrom($normalized);
+        if ($provider === null) {
+            throw new \InvalidArgumentException(sprintf('Unknown work-item provider override: %s', $cliOverride));
         }
 
-        throw new \InvalidArgumentException(sprintf('Unknown work-item provider override: %s', $cliOverride));
+        return $provider;
     }
 
     /**
      * @param array<string, mixed> $projectConfig
      */
-    private function readProjectProvider(array $projectConfig): ?string
+    private function readProjectProvider(array $projectConfig): ?WorkItemProvider
     {
         if (! isset($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER]) || ! is_string($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER])) {
             return null;
@@ -130,7 +140,7 @@ class IssueTrackerFactory
             return null;
         }
 
-        return $normalized;
+        return WorkItemProvider::tryFrom($normalized);
     }
 
     /**
@@ -143,19 +153,19 @@ class IssueTrackerFactory
         $hasLinear = $this->globalResolver->collectsLinear($globalProviders);
 
         if ($hasJira && ! $hasLinear) {
-            return 'jira';
+            return WorkItemProvider::Jira->value;
         }
 
         if ($hasLinear && ! $hasJira) {
-            return 'linear';
+            return WorkItemProvider::Linear->value;
         }
 
         if ($this->hasJiraCredentials($globalConfig)) {
-            return 'jira';
+            return WorkItemProvider::Jira->value;
         }
 
         if ($this->hasLinearCredentials($globalConfig)) {
-            return 'linear';
+            return WorkItemProvider::Linear->value;
         }
 
         throw IssueTrackerException::notConfigured();

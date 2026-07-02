@@ -7,6 +7,7 @@ namespace App\Tests\Responder;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
+use App\Enum\WorkItemProvider;
 use App\Responder\ProjectsWorkflowResponder;
 use App\Response\ProjectsWorkflowResponse;
 use App\Service\Logger;
@@ -33,7 +34,7 @@ class ProjectsWorkflowResponderTest extends CommandTestCase
     public function testRespondRendersTableOnSuccess(): void
     {
         $response = ProjectsWorkflowResponse::success([
-            ['id' => '11', 'name' => 'Start', 'targetStatus' => 'In Progress', 'provider' => 'jira'],
+            ['id' => '11', 'name' => 'Start', 'targetStatus' => 'In Progress', 'provider' => WorkItemProvider::Jira->value],
         ]);
 
         $this->io->expects($this->once())->method('section');
@@ -45,7 +46,7 @@ class ProjectsWorkflowResponderTest extends CommandTestCase
     public function testRespondJsonReturnsWorkflows(): void
     {
         $response = ProjectsWorkflowResponse::success([
-            ['id' => '11', 'name' => 'Start', 'targetStatus' => 'In Progress', 'provider' => 'jira'],
+            ['id' => '11', 'name' => 'Start', 'targetStatus' => 'In Progress', 'provider' => WorkItemProvider::Jira->value],
         ]);
 
         $agentResponse = $this->responder->respond($this->io, $response, OutputFormat::Json);

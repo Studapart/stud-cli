@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\Enum\WorkItemProvider;
 use App\Handler\ProjectsLabelsHandler;
 use App\Handler\ProjectsWorkflowHandler;
 use App\Response\ProjectsLabelsResponse;
@@ -44,7 +45,7 @@ class ProjectMetadataPromptService
 
         $transitions = array_values(array_filter(
             $response->stateChanges,
-            static fn (array $row): bool => ($row['provider'] ?? '') === 'jira',
+            static fn (array $row): bool => ($row['provider'] ?? '') === WorkItemProvider::Jira->value,
         ));
         if ($transitions === []) {
             $this->logWorkflowEmpty($recorder, $projectKey, $response);
@@ -82,7 +83,7 @@ class ProjectMetadataPromptService
 
         $states = array_values(array_filter(
             $response->stateChanges,
-            static fn (array $row): bool => ($row['provider'] ?? '') === 'linear',
+            static fn (array $row): bool => ($row['provider'] ?? '') === WorkItemProvider::Linear->value,
         ));
         if ($states === []) {
             $this->logWorkflowEmpty($recorder, $projectKey, $response);

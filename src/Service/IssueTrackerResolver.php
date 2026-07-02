@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\MessageRef;
+use App\Enum\WorkItemProvider;
 use App\Exception\IssueTrackerException;
 
 /**
@@ -17,8 +18,9 @@ final class IssueTrackerResolver
 
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
+        ?IssueTrackerFactory $factory = null,
     ) {
-        $this->factory = new IssueTrackerFactory($this->globalResolver);
+        $this->factory = $factory ?? new IssueTrackerFactory($this->globalResolver);
     }
 
     /**
@@ -30,13 +32,12 @@ final class IssueTrackerResolver
     public function resolveActiveProvider(array $globalConfig, array $projectConfig): array
     {
         try {
-            $provider = $this->factory->resolveType(null, $globalConfig, $projectConfig);
+            $provider = WorkItemProvider::tryFrom($this->factory->resolveType(null, $globalConfig, $projectConfig));
+            if ($provider === null) {
+                return ['ok' => false, 'error' => IssueTrackerException::notConfigured()->messageRef];
+            }
 
-            return match ($provider) {
-                'jira' => ['ok' => true, 'provider' => 'jira'],
-                'linear' => ['ok' => true, 'provider' => 'linear'],
-                default => ['ok' => false, 'error' => IssueTrackerException::notConfigured()->messageRef],
-            };
+            return ['ok' => true, 'provider' => $provider->value];
         } catch (IssueTrackerException $e) {
             return ['ok' => false, 'error' => $e->messageRef];
         }
