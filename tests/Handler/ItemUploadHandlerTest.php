@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\ItemUploadInput;
+use App\Exception\ApiException;
 use App\Handler\ItemUploadHandler;
 use App\Service\FileSystem;
 use App\Service\IssueTrackerPort;
 use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
+use App\Tests\Handler\Support\AttachmentAgentJsonAssertions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemUploadHandlerTest extends CommandTestCase
 {
+    use AttachmentAgentJsonAssertions;
     private FileSystem $fileSystem;
 
     private IssueTrackerPort&MockObject $provider;
@@ -163,5 +167,46 @@ class ItemUploadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new ItemUploadInput('K-1', ['   ', 'ok.txt']));
 
         $this->assertCount(1, $response->files);
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    #[DataProvider('attachmentProviderLabelProvider')]
+    public function testUploadBatchAgentJsonParityWithProvider(string $providerLabel): void
+    {
+        $this->fileSystem->method('fileExists')->willReturn(true);
+        $this->fileSystem->method('isDir')->willReturn(false);
+        $this->provider->expects($this->exactly(2))
+            ->method('uploadAttachment')
+            ->willReturnCallback(function (string $key, string $path) use ($providerLabel): void {
+                $this->assertSame('SCI-123', $key);
+                if (str_ends_with($path, 'missing.txt')) {
+                    throw new ApiException($providerLabel . ' upload failed', '', 403);
+                }
+            });
+
+        $response = $this->handler->handle(new ItemUploadInput('SCI-123', ['report.md', 'missing.txt']));
+
+        $this->assertUploadHandlerBatchShape($response);
+        $this->assertCount(1, $response->files);
+        $this->assertCount(1, $response->errors);
+        $this->assertSame('report.md', $response->files[0]['filename']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => $providerLabel . ' upload failed']);
+
+        $payload = $this->uploadAgentPayload($response, $this->translator);
+        $this->assertAgentBatchPayloadParity($payload);
+        $this->assertSame($response->files, $payload['data']['files']);
+        $this->assertCount(1, $payload['data']['errors']);
+        $this->assertSame('missing.txt', $payload['data']['errors'][0]['filename']);
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function attachmentProviderLabelProvider(): iterable
+    {
+        yield 'jira provider' => ['jira'];
+        yield 'linear provider' => ['linear'];
     }
 }

@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Linear upload/download agent mode (SCI-181):** `items:upload` and `items:download` use optional Jira config for responders so Linear-only setups no longer hard-exit before agent JSON output.
 - **ADR-023 exception boundaries:** `ItemDownloadHandler` and `ConfigValidateHandler` wrap integration failures in `MessageRef`; architecture tests ban raw `$e->getMessage()` errors in integration handlers and `MessageRef` in integration clients.
 - **Command guard (SCI-182 prep):** `IssueTrackerResolver` delegates to `IssueTrackerFactory::resolveType`, so `workItemProvider: auto` with both PM providers resolves to Jira when Jira credentials exist — same as runtime `_get_issue_tracker`. Fixes false `missing required configuration key: workItemProvider` on `stud submit`.
 
 ### Added
 
+- **Linear attachment agent parity (SCI-181):** Handler and integration tests assert `items:upload` / `items:download` agent JSON `{files, errors}` shape for Linear matches Jira; Linear agent upload integration uses mocked GraphQL fileUpload pipeline.
 - **Linear attachment download (SCI-180):** `LinearAttachmentService` lists issue attachments via GraphQL and downloads from allowlisted Linear asset hosts with API key auth; `LinearIssueTrackerAdapter::listAttachments` / `downloadAttachment` delegate so `stud items:download` works for Linear.
 - **Linear attachment upload (SCI-179):** `LinearAttachmentService` runs `fileUpload` → signed PUT (all response headers) → `attachmentCreate`; `LinearIssueTrackerAdapter::uploadAttachment` delegates so `stud items:upload` works for Linear; write inputs use `LinearAttachmentMutationKeys` (title reuses `LinearIssueMutationKeys::TITLE`).
 - **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.

@@ -180,6 +180,30 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertArrayNotHasKey('filterData', $decoded['data']);
     }
 
+    public function testItemsUploadAgentModeReturnsFilesAndErrorsShape(): void
+    {
+        $repo = $this->createRepository('upload');
+        $result = $this->runAgentProcess(
+            ['items:upload', '--agent'],
+            [
+                'key' => 'SCI-123',
+                'files' => ['tests/Fixtures/Linear/upload-fixture.txt'],
+            ],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertArrayHasKey('files', $decoded['data']);
+        self::assertArrayHasKey('errors', $decoded['data']);
+        self::assertIsArray($decoded['data']['files']);
+        self::assertIsArray($decoded['data']['errors']);
+        self::assertCount(1, $decoded['data']['files']);
+        self::assertSame('upload-fixture.txt', $decoded['data']['files'][0]['filename'] ?? null);
+        self::assertSame([], $decoded['data']['errors']);
+    }
+
     protected function createRepository(string $name): string
     {
         $repo = $this->tempDir . '/' . $name;
