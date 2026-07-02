@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Enum;
 
 use App\Enum\GlobalGitProviderMenu;
-use App\Enum\GlobalWorkItemProviderMenu;
+use App\Enum\GlobalIssueTrackerProviderMenu;
 use App\Service\MessageRenderer;
 use App\Service\TranslationService;
 use PHPUnit\Framework\TestCase;
@@ -30,9 +30,9 @@ class GlobalProviderMenuEnumTest extends TestCase
 
     public function testWorkItemMenuMapsToProviderValues(): void
     {
-        $this->assertSame(['jira'], GlobalWorkItemProviderMenu::JiraOnly->toProviderValues());
-        $this->assertSame(['linear'], GlobalWorkItemProviderMenu::LinearOnly->toProviderValues());
-        $this->assertSame(['jira', 'linear'], GlobalWorkItemProviderMenu::Both->toProviderValues());
+        $this->assertSame(['jira'], GlobalIssueTrackerProviderMenu::JiraOnly->toProviderValues());
+        $this->assertSame(['linear'], GlobalIssueTrackerProviderMenu::LinearOnly->toProviderValues());
+        $this->assertSame(['jira', 'linear'], GlobalIssueTrackerProviderMenu::Both->toProviderValues());
     }
 
     public function testGitMenuRoundTripFromRenderedChoice(): void
@@ -44,11 +44,11 @@ class GlobalProviderMenuEnumTest extends TestCase
 
     public function testWorkItemMenuFromProviderValues(): void
     {
-        $menu = GlobalWorkItemProviderMenu::fromProviderValues(['linear']);
-        $this->assertSame(GlobalWorkItemProviderMenu::LinearOnly, $menu);
+        $menu = GlobalIssueTrackerProviderMenu::fromProviderValues(['linear']);
+        $this->assertSame(GlobalIssueTrackerProviderMenu::LinearOnly, $menu);
 
-        $both = GlobalWorkItemProviderMenu::fromProviderValues(['jira', 'linear']);
-        $this->assertSame(GlobalWorkItemProviderMenu::Both, $both);
+        $both = GlobalIssueTrackerProviderMenu::fromProviderValues(['jira', 'linear']);
+        $this->assertSame(GlobalIssueTrackerProviderMenu::Both, $both);
     }
 
     public function testGitMenuFromProviderValues(): void
@@ -68,7 +68,7 @@ class GlobalProviderMenuEnumTest extends TestCase
 
     public function testWorkItemMenuFallsBackToBothForUnknownRenderedChoice(): void
     {
-        $menu = GlobalWorkItemProviderMenu::fromRenderedChoice('not-a-real-label', $this->renderer);
-        $this->assertSame(GlobalWorkItemProviderMenu::Both, $menu);
+        $menu = GlobalIssueTrackerProviderMenu::fromRenderedChoice('not-a-real-label', $this->renderer);
+        $this->assertSame(GlobalIssueTrackerProviderMenu::Both, $menu);
     }
 }

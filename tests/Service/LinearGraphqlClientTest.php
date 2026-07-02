@@ -63,7 +63,7 @@ class LinearGraphqlClientTest extends TestCase
             $graphql->query('query { viewer { id } }');
             $this->fail('Expected IssueTrackerException was not thrown.');
         } catch (IssueTrackerException $exception) {
-            $this->assertSame('work_item_provider.missing_linear_api_key', $exception->messageRef->key);
+            $this->assertSame('issue_tracker_provider.missing_linear_api_key', $exception->messageRef->key);
         }
     }
 

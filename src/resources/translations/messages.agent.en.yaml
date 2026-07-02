@@ -130,7 +130,7 @@
 "config.validate.error_linear_ping": "linear connection failed: %error%"
 "config.init.git.description": "configure GitHub/GitLab tokens; repo config can override"
 "config.init.git_provider.menu": "0 GitHub · 1 GitLab · 2 Both"
-"config.init.work_item_provider.menu": "0 Jira · 1 Linear · 2 Both"
+"config.init.issue_tracker_provider.menu": "0 Jira · 1 Linear · 2 Both"
 "config.init.linear.api_key_prompt": "Linear API key; blank keeps existing"
 "config.init.git.multiple_tokens_note": "configure one or both tokens; provider is per repo"
 "config.init.project_follow_up.hint_run_later": "run stud config:project-init inside a repo to finish project config"

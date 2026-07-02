@@ -20,7 +20,7 @@ class StudConfigExceptionTest extends TestCase
     {
         $exception = StudConfigException::invalidJiraBaseUrl();
 
-        $this->assertSame('work_item_provider.invalid_jira_base_url', $exception->messageRef->key);
+        $this->assertSame('issue_tracker_provider.invalid_jira_base_url', $exception->messageRef->key);
     }
 
     public function testBaseBranchDefaultMissingIncludesBranchParameter(): void

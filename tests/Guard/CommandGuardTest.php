@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Guard;
 
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Guard\Capability\ConfluenceAware;
 use App\Guard\Capability\GitProviderGithubAware;
 use App\Guard\Capability\GitProviderGitlabAware;
@@ -40,7 +40,7 @@ class CommandGuardTest extends TestCase
         $context = $this->context(
             ['JIRA_URL' => 'https://example.atlassian.net'],
             [],
-            workItemProviders: [WorkItemProvider::Jira->value],
+            workItemProviders: [IssueTrackerProvider::Jira->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -70,7 +70,7 @@ class CommandGuardTest extends TestCase
         $context = $this->context(
             ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin-key'],
             [],
-            workItemProviders: [WorkItemProvider::Linear->value],
+            workItemProviders: [IssueTrackerProvider::Linear->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -81,7 +81,7 @@ class CommandGuardTest extends TestCase
     public function testLinearOnlyMissingLinearApiKey(): void
     {
         $capabilities = CapabilitySet::fromList([WorkItemLinearAware::class]);
-        $context = $this->context([], [], workItemProviders: [WorkItemProvider::Linear->value]);
+        $context = $this->context([], [], workItemProviders: [IssueTrackerProvider::Linear->value]);
 
         $result = $this->guard->check($capabilities, $context);
 
@@ -261,9 +261,9 @@ class CommandGuardTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            projectConfig: ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
+            projectConfig: ['workItemProvider' => IssueTrackerProvider::Auto->value],
             hasGitRepository: true,
-            workItemProviders: [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value],
+            workItemProviders: [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
             gitProviders: ['github'],
             isInteractive: true,
             isQuiet: false,

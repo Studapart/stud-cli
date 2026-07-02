@@ -40,7 +40,7 @@ class CommandContextFactory
             $environment->hasGitRepository(),
             $resolvedGitProvider,
         );
-        $workItemResolution = $this->effectiveProviderResolver->resolveWorkItemProviders(
+        $workItemResolution = $this->effectiveProviderResolver->resolveIssueTrackerProviders(
             $configData['global'],
             $configData['project'],
         );

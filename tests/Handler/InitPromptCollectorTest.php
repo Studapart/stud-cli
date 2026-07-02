@@ -50,7 +50,7 @@ class InitPromptCollectorTest extends TestCase
     public function testResolveWorkItemProvidersUsesAgentInputWhenProvided(): void
     {
         $recorder = new WorkflowRecorder();
-        $method = new \ReflectionMethod($this->collector, 'resolveWorkItemProviders');
+        $method = new \ReflectionMethod($this->collector, 'resolveIssueTrackerProviders');
 
         $result = $method->invoke(
             $this->collector,

@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Ambos"
-    work_item_provider:
+    issue_tracker_provider:
       title: Selección de gestión de proyectos
       menu: "0 Jira · 1 Linear · 2 Ambos"
       prompt: Configurar gestión de proyectos
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Estas claves no se pueden establecer con este comando: %keys%"
     invalid_git_provider: "gitProvider debe ser github o gitlab."
     invalid_transition_id: "transitionId debe ser un entero no negativo."
-    invalid_work_item_provider: "workItemProvider debe ser jira, linear o auto."
+    invalid_issue_tracker_provider: "workItemProvider debe ser jira, linear o auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes debe ser un mapa de etiquetas de tipo no vacías a prefijos de rama no vacíos."
     base_branch_error: "%message%"
     interactive_title: "Configuración stud del proyecto"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "Token de GitHub para este repositorio (oculto)"
     prompt_gitlab_token_hint: "Token de GitLab: deje en blanco para omitir; escriba '.' para conservar el token actual."
     prompt_gitlab_token: "Token de GitLab para este repositorio (oculto)"
-    prompt_work_item_provider: "Proveedor de tickets para este repositorio (cuando la config global admite Jira y Linear)"
+    prompt_issue_tracker_provider: "Proveedor de tickets para este repositorio (cuando la config global admite Jira y Linear)"
     prompt_linear_start_state_id: "ID de estado de workflow de Linear para items:start (opcional)"
     prompt_linear_type_label_group_id: "ID de LabelGroup de Linear para el mapeo de prefijos de rama (opcional)"
     picker_skip: "Omitir (dejar sin definir)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Error al obtener tickets: %error%'
     no_items: No se encontraron tickets que coincidan con sus criterios.
     error_invalid_sort: 'Valor de ordenación inválido ''%value%''. Valores aceptados: Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Linear está seleccionado pero LINEAR_API_KEY no está configurado. Ejecute "stud config:init" o configure LINEAR_API_KEY en ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira está seleccionado pero las credenciales de Jira no están configuradas. Ejecute "stud config:init".'
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'No hay proveedor de work-items configurado. Ejecute "stud config:init" para configurar Jira o Linear.'
+  ambiguous_prefix: 'El prefijo de clave %prefix% coincide con Jira y Linear. Pase --provider o configure projectKey y linearTeamKey distintos en .git/stud.config.'
+  unknown_prefix: 'El prefijo de clave %prefix% no coincide con las claves configuradas (%configuredKeys%). Pase --provider o configure workItemProvider en .git/stud.config.'
+  auto_requires_issue_key: 'workItemProvider es auto pero no se proporcionó clave de issue. Pase una clave o configure workItemProvider como jira o linear.'
+  invalid_override: 'Override de proveedor inválido %value%. Valores permitidos: jira, linear.'
+  unknown_resolved: 'Proveedor de work-item resuelto desconocido %value%. Se esperaba jira o linear.'
 project:
   list:
     section: Obteniendo proyectos de Jira

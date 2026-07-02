@@ -8,7 +8,7 @@ use App\Config\ProjectStudConfigFieldMap;
 use App\Config\SecretKeyPolicy;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\WorkflowRecorder;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -241,8 +241,8 @@ class ConfigProjectInitHandler
 
         if (isset($yamlPatches['workItemProvider'])) {
             $provider = (string) $yamlPatches['workItemProvider'];
-            if (! WorkItemProvider::isProjectConfigValue($provider)) {
-                return ConfigProjectInitResponse::error('config.project_init.invalid_work_item_provider');
+            if (! IssueTrackerProvider::isProjectConfigValue($provider)) {
+                return ConfigProjectInitResponse::error('config.project_init.invalid_issue_tracker_provider');
             }
         }
 

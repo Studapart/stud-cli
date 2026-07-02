@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\DTO\StateChange;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Service\ProjectsWorkflowNormalizer;
 use PHPUnit\Framework\TestCase;
 
@@ -30,7 +30,7 @@ class ProjectsWorkflowNormalizerTest extends TestCase
                 'id' => '11',
                 'name' => 'Start Progress',
                 'targetStatus' => 'In Progress',
-                'provider' => WorkItemProvider::Jira->value,
+                'provider' => IssueTrackerProvider::Jira->value,
             ],
         ], $workflows);
     }
@@ -46,7 +46,7 @@ class ProjectsWorkflowNormalizerTest extends TestCase
                 'id' => 'state-1',
                 'name' => 'In Progress',
                 'type' => 'started',
-                'provider' => WorkItemProvider::Linear->value,
+                'provider' => IssueTrackerProvider::Linear->value,
             ],
         ], $workflows);
     }
@@ -55,14 +55,14 @@ class ProjectsWorkflowNormalizerTest extends TestCase
     {
         $workflows = $this->normalizer->fromStateChanges(
             [new StateChange('11', 'Start Progress', 'In Progress')],
-            WorkItemProvider::Jira->value,
+            IssueTrackerProvider::Jira->value,
         );
 
         $this->assertSame([
             [
                 'id' => '11',
                 'name' => 'Start Progress',
-                'provider' => WorkItemProvider::Jira->value,
+                'provider' => IssueTrackerProvider::Jira->value,
                 'targetStatus' => 'In Progress',
             ],
         ], $workflows);

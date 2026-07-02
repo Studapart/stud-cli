@@ -51,11 +51,11 @@ class EffectiveProviderResolver
      * @param array<string, mixed>|null $projectConfig
      * @return array{providers: list<string>, ambiguous: bool}
      */
-    public function resolveWorkItemProviders(array $globalConfig, ?array $projectConfig): array
+    public function resolveIssueTrackerProviders(array $globalConfig, ?array $projectConfig): array
     {
         if ($projectConfig === null) {
             return [
-                'providers' => $this->globalResolver->resolveWorkItemProviders($globalConfig),
+                'providers' => $this->globalResolver->resolveIssueTrackerProviders($globalConfig),
                 'ambiguous' => false,
             ];
         }
@@ -66,7 +66,7 @@ class EffectiveProviderResolver
         }
 
         return [
-            'providers' => $this->globalResolver->resolveWorkItemProviders($globalConfig),
+            'providers' => $this->globalResolver->resolveIssueTrackerProviders($globalConfig),
             'ambiguous' => true,
         ];
     }

@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Cả hai"
-    work_item_provider:
+    issue_tracker_provider:
       title: Chọn quản lý dự án
       menu: "0 Jira · 1 Linear · 2 Cả hai"
       prompt: Cấu hình quản lý dự án
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
     invalid_git_provider: "gitProvider phải là github hoặc gitlab."
     invalid_transition_id: "transitionId phải là số nguyên không âm."
-    invalid_work_item_provider: "workItemProvider phải là jira, linear hoặc auto."
+    invalid_issue_tracker_provider: "workItemProvider phải là jira, linear hoặc auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes phải là map các nhãn loại không rỗng tới tiền tố nhánh không rỗng."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "Token GitHub cho kho này (ẩn)"
     prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
     prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
-    prompt_work_item_provider: "Nhà cung cấp work-item cho kho lưu trữ này (khi cấu hình toàn cục hỗ trợ cả Jira và Linear)"
+    prompt_issue_tracker_provider: "Nhà cung cấp work-item cho kho lưu trữ này (khi cấu hình toàn cục hỗ trợ cả Jira và Linear)"
     prompt_linear_start_state_id: "ID trạng thái workflow Linear cho items:start (tùy chọn)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear cho ánh xạ tiền tố nhánh (tùy chọn)"
     picker_skip: "Bỏ qua (để trống)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Không thể lấy các mục: %error%'
     no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
     error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira được chọn nhưng thông tin xác thực Jira chưa được cấu hình. Chạy "stud config:init".'
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Chưa cấu hình nhà cung cấp work-item. Chạy "stud config:init" để thiết lập Jira hoặc Linear.'
+  ambiguous_prefix: 'Tiền tố khóa %prefix% khớp cả Jira và Linear. Truyền --provider hoặc đặt projectKey và linearTeamKey khác nhau trong .git/stud.config.'
+  unknown_prefix: 'Tiền tố khóa %prefix% không khớp khóa đã cấu hình (%configuredKeys%). Truyền --provider hoặc đặt workItemProvider trong .git/stud.config.'
+  auto_requires_issue_key: 'workItemProvider là auto nhưng chưa có issue key để phân giải provider. Truyền issue key hoặc đặt workItemProvider thành jira hoặc linear.'
+  invalid_override: 'Override provider không hợp lệ %value%. Giá trị cho phép: jira, linear.'
+  unknown_resolved: 'Provider work-item đã resolve không hợp lệ %value%. Kỳ vọng jira hoặc linear.'
 project:
   list:
     section: Đang lấy các dự án Jira

@@ -7,7 +7,7 @@ namespace App\Handler;
 use App\Config\ProjectStudConfigFieldMap;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
@@ -83,13 +83,13 @@ class ConfigProjectInitPromptCollector
     {
         $current = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
             ? strtolower(trim($existing['workItemProvider']))
-            : WorkItemProvider::PROJECT_AUTO;
-        if (! WorkItemProvider::isProjectConfigValue($current)) {
-            $current = WorkItemProvider::PROJECT_AUTO;
+            : IssueTrackerProvider::Auto->value;
+        if (! IssueTrackerProvider::isProjectConfigValue($current)) {
+            $current = IssueTrackerProvider::Auto->value;
         }
         $choice = $this->prompt->choice(
-            MessageRef::key('config.project_init.prompt_work_item_provider'),
-            WorkItemProvider::projectConfigValues(),
+            MessageRef::key('config.project_init.prompt_issue_tracker_provider'),
+            IssueTrackerProvider::projectConfigValues(),
             $current,
         );
 
@@ -169,22 +169,22 @@ class ConfigProjectInitPromptCollector
     protected function readGlobalWorkItemProviders(): array
     {
         if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
-            return [WorkItemProvider::Jira->value];
+            return [IssueTrackerProvider::Jira->value];
         }
 
         try {
             $config = $this->fileSystem->parseFile($this->globalConfigPath);
         } catch (\Throwable) {
-            return [WorkItemProvider::Jira->value];
+            return [IssueTrackerProvider::Jira->value];
         }
 
         if (isset($config['WORK_ITEM_PROVIDERS']) && is_array($config['WORK_ITEM_PROVIDERS'])) {
             $providers = array_values(array_filter($config['WORK_ITEM_PROVIDERS'], 'is_string'));
 
-            return $this->providerResolver->normalizeWorkItemProviders($providers);
+            return $this->providerResolver->normalizeIssueTrackerProviders($providers);
         }
 
-        return $this->providerResolver->inferDefaultWorkItemProviders($config);
+        return $this->providerResolver->inferDefaultIssueTrackerProviders($config);
     }
 
     /**
@@ -197,27 +197,27 @@ class ConfigProjectInitPromptCollector
         $hasLinear = $this->providerResolver->collectsLinear($globalWorkItemProviders);
 
         if ($hasJira && ! $hasLinear) {
-            return WorkItemProvider::Jira->value;
+            return IssueTrackerProvider::Jira->value;
         }
         if ($hasLinear && ! $hasJira) {
-            return WorkItemProvider::Linear->value;
+            return IssueTrackerProvider::Linear->value;
         }
 
         $stored = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
             ? strtolower(trim($existing['workItemProvider']))
-            : WorkItemProvider::PROJECT_AUTO;
+            : IssueTrackerProvider::Auto->value;
 
-        return WorkItemProvider::isProjectConfigValue($stored) ? $stored : WorkItemProvider::PROJECT_AUTO;
+        return IssueTrackerProvider::isProjectConfigValue($stored) ? $stored : IssueTrackerProvider::Auto->value;
     }
 
     protected function shouldRunJiraPrompts(string $effectiveProvider): bool
     {
-        return $effectiveProvider === WorkItemProvider::Jira->value || $effectiveProvider === WorkItemProvider::PROJECT_AUTO;
+        return $effectiveProvider === IssueTrackerProvider::Jira->value || $effectiveProvider === IssueTrackerProvider::Auto->value;
     }
 
     protected function shouldRunLinearPrompts(string $effectiveProvider): bool
     {
-        return $effectiveProvider === WorkItemProvider::Linear->value;
+        return $effectiveProvider === IssueTrackerProvider::Linear->value;
     }
 
     /**

@@ -405,7 +405,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('work_item_provider.missing_linear_api_key', $response->getError() ?? '');
+        $this->assertStringContainsString('issue_tracker_provider.missing_linear_api_key', $response->getError() ?? '');
     }
 
     public function testHandleIncludesDescriptionWhenProvided(): void

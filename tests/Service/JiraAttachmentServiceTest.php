@@ -170,7 +170,7 @@ class JiraAttachmentServiceTest extends TestCase
         $service = new JiraAttachmentService($client, 'http://');
 
         $this->expectException(\App\Exception\StudConfigException::class);
-        $this->expectExceptionMessage('work_item_provider.invalid_jira_base_url');
+        $this->expectExceptionMessage('issue_tracker_provider.invalid_jira_base_url');
         $service->downloadAttachmentContent('https://acme.atlassian.net/rest/api/3/attachment/content/1');
     }
 

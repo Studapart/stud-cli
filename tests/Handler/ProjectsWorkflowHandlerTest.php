@@ -6,7 +6,7 @@ namespace App\Tests\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsWorkflowHandler;
@@ -29,7 +29,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             port: $port,
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port],
         );
         $response = $handler->handle('SCI');
 
@@ -51,7 +51,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI');
 
@@ -69,7 +69,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
         $response = $this->createHandler(
             port: $port,
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port],
         )->handle('SCI');
 
         $this->assertTrue($response->isSuccess());
@@ -80,7 +80,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenProviderAmbiguous(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             projectConfig: [],
             resolveResult: [
                 'ok' => false,
@@ -96,7 +96,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenJiraNotConfigured(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
             resolveResult: [
                 'ok' => false,
                 'error' => IssueTrackerException::missingJiraConfiguration()->messageRef,
@@ -107,7 +107,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(
-            'work_item_provider.missing_jira_configuration',
+            'issue_tracker_provider.missing_jira_configuration',
             (string) $response->getErrorMessage(),
         );
     }
@@ -126,7 +126,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(
-            'work_item_provider.missing_linear_api_key',
+            'issue_tracker_provider.missing_linear_api_key',
             (string) $response->getErrorMessage(),
         );
     }
@@ -140,7 +140,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
             ->willThrowException(new ApiException('Jira unavailable', 'HTTP 503'));
 
         $response = $this->createHandler(
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port],
         )->handle('SCI');
 
         $this->assertFalse($response->isSuccess());
@@ -158,7 +158,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Jira unavailable'));
 
         $response = $this->createHandler(
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port],
         )->handle('SCI');
 
         $this->assertFalse($response->isSuccess());
@@ -173,13 +173,13 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
      * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
+        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
         array $projectConfig = [],
         ?IssueTrackerPort $port = null,
         array $resolveResult = [],
     ): ProjectsWorkflowHandler {
         if ($resolveResult === [] && $port !== null) {
-            $resolveResult = ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port];
+            $resolveResult = ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port];
         }
 
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);

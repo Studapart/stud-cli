@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Оба"
-    work_item_provider:
+    issue_tracker_provider:
       title: Выбор системы управления проектами
       menu: "0 Jira · 1 Linear · 2 Оба"
       prompt: Настроить управление проектами
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Эти ключи нельзя задать этой командой: %keys%"
     invalid_git_provider: "gitProvider должен быть github или gitlab."
     invalid_transition_id: "transitionId должен быть неотрицательным целым числом."
-    invalid_work_item_provider: "workItemProvider должен быть jira, linear или auto."
+    invalid_issue_tracker_provider: "workItemProvider должен быть jira, linear или auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes должен быть картой непустых меток типов к непустым префиксам веток."
     base_branch_error: "%message%"
     interactive_title: "Конфигурация проекта stud"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "Токен GitHub для этого репозитория (скрыт)"
     prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
     prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
-    prompt_work_item_provider: "Провайдер задач для этого репозитория (когда глобальная конфигурация поддерживает Jira и Linear)"
+    prompt_issue_tracker_provider: "Провайдер задач для этого репозитория (когда глобальная конфигурация поддерживает Jira и Linear)"
     prompt_linear_start_state_id: "ID состояния workflow Linear для items:start (необязательно)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear для сопоставления префиксов веток (необязательно)"
     picker_skip: "Пропустить (оставить пустым)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Ошибка при получении задач: %error%'
     no_items: Не найдено задач, соответствующих вашим критериям.
     error_invalid_sort: 'Неверное значение сортировки ''%value%''. Допустимые значения: Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Выбран Linear, но LINEAR_API_KEY не настроен. Запустите "stud config:init" или задайте LINEAR_API_KEY в ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Выбран Jira, но учётные данные Jira не настроены. Запустите "stud config:init".'
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Провайдер work-item не настроен. Запустите "stud config:init" для настройки Jira или Linear.'
+  ambiguous_prefix: 'Префикс ключа %prefix% совпадает с ключами Jira и Linear. Укажите --provider или задайте разные projectKey и linearTeamKey в .git/stud.config.'
+  unknown_prefix: 'Префикс ключа %prefix% не совпадает с настроенными ключами (%configuredKeys%). Укажите --provider или задайте workItemProvider в .git/stud.config.'
+  auto_requires_issue_key: 'workItemProvider равен auto, но ключ задачи не указан. Передайте ключ задачи или задайте workItemProvider как jira или linear.'
+  invalid_override: 'Недопустимый override провайдера %value%. Допустимые значения: jira, linear.'
+  unknown_resolved: 'Неизвестный разрешённый work-item provider %value%. Ожидается jira или linear.'
 project:
   list:
     section: Получение проектов Jira

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Config;
 
+use App\Enum\IssueTrackerProvider;
+
 /**
  * Canonical YAML key names for ~/.config/stud/config.yml.
  *
@@ -58,6 +60,18 @@ final class GlobalStudConfigKeys
     public static function hasLinearApiKey(array $globalConfig): bool
     {
         return self::hasNonEmptyStringValue($globalConfig, self::LINEAR_API_KEY);
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     */
+    public static function hasCredentialsFor(IssueTrackerProvider $provider, array $globalConfig): bool
+    {
+        return match ($provider) {
+            IssueTrackerProvider::Jira => self::hasJiraCredentials($globalConfig),
+            IssueTrackerProvider::Linear => self::hasLinearApiKey($globalConfig),
+            IssueTrackerProvider::Auto => false,
+        };
     }
 
     /**

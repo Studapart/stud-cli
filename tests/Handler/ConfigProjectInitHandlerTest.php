@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitHandler;
 use App\Handler\ConfigProjectInitPromptCollector;
 use App\Service\GitRepository;
@@ -428,7 +428,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls(
             [],
             [
-                'workItemProvider' => WorkItemProvider::Linear->value,
+                'workItemProvider' => IssueTrackerProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -438,7 +438,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->expects($this->once())
             ->method('writeProjectConfig')
             ->with([
-                'workItemProvider' => WorkItemProvider::Linear->value,
+                'workItemProvider' => IssueTrackerProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -450,7 +450,7 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
-            'workItemProvider' => WorkItemProvider::Linear->value,
+            'workItemProvider' => IssueTrackerProvider::Linear->value,
             'projectKey' => 'SCI',
             'linearStartStateId' => 'state-uuid',
             'linearTypeLabelGroupId' => 'group-uuid',
@@ -473,7 +473,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['workItemProvider' => 'asana'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_work_item_provider', $response->getError());
+        $this->assertSame('config.project_init.invalid_issue_tracker_provider', $response->getError());
     }
 
     public function testAgentInvalidLinearTypeBranchPrefixesReturnsError(): void
@@ -656,7 +656,7 @@ class ConfigProjectInitHandlerTest extends TestCase
     {
         $workflowJson = [
             'stateChanges' => [
-                ['id' => '21', 'name' => 'In Progress', 'targetStatus' => 'In Progress', 'provider' => WorkItemProvider::Jira->value],
+                ['id' => '21', 'name' => 'In Progress', 'targetStatus' => 'In Progress', 'provider' => IssueTrackerProvider::Jira->value],
             ],
         ];
         $labelsJson = [

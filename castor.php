@@ -42,6 +42,7 @@ use App\DTO\SubmitOptions;
 use App\Enum\OutputFormat;
 use App\Exception\AgentModeException;
 use App\Exception\IssueTrackerException;
+use App\Exception\IssueTrackerResolutionException;
 use App\Guard\CommandContextFactory;
 use App\Guard\CommandGuard;
 use App\Guard\CommandGuardResult;
@@ -864,9 +865,10 @@ function _get_issue_tracker_factory(): IssueTrackerFactory
  * Resolves the active work-item provider (Jira or Linear) from global and project config.
  *
  * @param bool        $quiet    When true, log errors but do not prompt; return null on failure.
- * @param string|null $override CLI --provider override (jira, linear, auto).
+ * @param string|null $override CLI --provider override (jira or linear).
+ * @param string|null $issueKey Issue key for auto prefix resolution when workItemProvider is auto.
  */
-function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?IssueTrackerPort
+function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?string $issueKey = null): ?IssueTrackerPort
 {
     if (class_exists("\App\Tests\TestKernel") && property_exists("\App\Tests\TestKernel", 'issueTracker') && \App\Tests\TestKernel::$issueTracker !== null) {
         return \App\Tests\TestKernel::$issueTracker;
@@ -883,7 +885,7 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?Iss
         }
 
         $factory = _get_issue_tracker_factory();
-        $type = $factory->resolveType($override, $globalConfig, $projectConfig);
+        $type = $factory->resolveType($override, $globalConfig, $projectConfig, $issueKey);
         $factory->assertCredentials($type, $globalConfig);
 
         if ($type === 'linear') {
@@ -901,7 +903,7 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?Iss
         }
 
         return $factory->create($type, $jiraService, _get_jira_attachment_service());
-    } catch (IssueTrackerException $e) {
+    } catch (IssueTrackerException|IssueTrackerResolutionException $e) {
         if (! $quiet) {
             _get_logger()->error(
                 Logger::VERBOSITY_NORMAL,
@@ -919,9 +921,9 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null): ?Iss
     }
 }
 
-function _require_issue_tracker(?string $override = null): IssueTrackerPort
+function _require_issue_tracker(?string $override = null, ?string $issueKey = null): IssueTrackerPort
 {
-    $provider = _get_issue_tracker(false, $override);
+    $provider = _get_issue_tracker(false, $override, $issueKey);
     if ($provider === null) {
         exit(1);
     }
@@ -1923,7 +1925,7 @@ function config_validate(
     }
     $globalConfig = _get_config();
     $providerResolver = new \App\Service\GlobalConfigProviderResolver();
-    $workItemProviders = $providerResolver->resolveWorkItemProviders($globalConfig);
+    $workItemProviders = $providerResolver->resolveIssueTrackerProviders($globalConfig);
     $gitProviders = $providerResolver->resolveGitProviders($globalConfig);
     $validateJira = $providerResolver->collectsJira($workItemProviders);
     $validateGit = $providerResolver->collectsGithub($gitProviders)
@@ -2383,7 +2385,7 @@ function items_show(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $handler = new ItemShowHandler(_require_issue_tracker($providerOverride ?? $provider));
+    $handler = new ItemShowHandler(_require_issue_tracker($providerOverride ?? $provider, $key !== '' ? $key : null));
     $response = $handler->handle($key);
     $responder = new ItemShowResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $key, $format);
@@ -2424,7 +2426,11 @@ function items_download(
         $pathRaw = $input['path'] ?? null;
         $path = is_string($pathRaw) ? $pathRaw : null;
     }
-    $handler = new ItemDownloadHandler(_get_file_system(), _require_issue_tracker(), _get_translation_service());
+    $handler = new ItemDownloadHandler(
+        _get_file_system(),
+        _require_issue_tracker(null, is_string($key) && trim($key) !== '' ? trim($key) : null),
+        _get_translation_service(),
+    );
     $response = $handler->handle($key, $url, $path);
     $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
@@ -2492,7 +2498,7 @@ function items_upload(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.upload.error_no_files'));
         exit(1);
     }
-    $handler = new ItemUploadHandler(_get_file_system(), _require_issue_tracker(), $translator);
+    $handler = new ItemUploadHandler(_get_file_system(), _require_issue_tracker(null, trim($key)), $translator);
     $inputDto = new ItemUploadInput(trim($key), $files);
     $response = $handler->handle($inputDto);
     $responder = new ItemUploadResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
@@ -2664,7 +2670,7 @@ function items_update(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('item.update.error_no_key'));
         exit(1);
     }
-    $handler = new ItemUpdateHandler(_require_issue_tracker($providerOverride ?? $provider), _get_translation_service(), _get_fields_parser());
+    $handler = new ItemUpdateHandler(_require_issue_tracker($providerOverride ?? $provider, trim($key)), _get_translation_service(), _get_fields_parser());
     $input = new ItemUpdateInput(trim($key), $summary, $description, $descriptionFormat, $fields, $fieldsMap);
     $response = $handler->handle($input);
     $responder = new ItemUpdateResponder(_get_translation_service(), _get_logger());
@@ -2702,7 +2708,12 @@ function items_transition(
         $key = isset($input['key']) ? (string) $input['key'] : null;
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
-    $handler = new ItemTransitionHandler(_get_git_repository(), _require_issue_tracker($providerOverride ?? $provider), _get_translation_service(), _get_prompt());
+    $handler = new ItemTransitionHandler(
+        _get_git_repository(),
+        _require_issue_tracker($providerOverride ?? $provider, is_string($key) && trim($key) !== '' ? trim($key) : null),
+        _get_translation_service(),
+        _get_prompt(),
+    );
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2738,7 +2749,7 @@ function items_start(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $workItemProvider = _require_issue_tracker($providerOverride ?? $provider);
+    $workItemProvider = _require_issue_tracker($providerOverride ?? $provider, $key);
     $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $workItemProvider, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);

@@ -234,7 +234,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
-        $this->assertMessageRef($response->linearMessage, 'work_item_provider.missing_linear_api_key');
+        $this->assertMessageRef($response->linearMessage, 'issue_tracker_provider.missing_linear_api_key');
     }
 
     public function testHandleReturnsLinearFailWhenPingThrows(): void

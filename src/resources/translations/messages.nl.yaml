@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Beide"
-    work_item_provider:
+    issue_tracker_provider:
       title: Projectbeheer selectie
       menu: "0 Jira · 1 Linear · 2 Beide"
       prompt: Projectbeheer configureren
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Deze sleutels kunnen niet met deze opdracht worden ingesteld: %keys%"
     invalid_git_provider: "gitProvider moet github of gitlab zijn."
     invalid_transition_id: "transitionId moet een niet-negatief geheel getal zijn."
-    invalid_work_item_provider: "workItemProvider moet jira, linear of auto zijn."
+    invalid_issue_tracker_provider: "workItemProvider moet jira, linear of auto zijn."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes moet een map zijn van niet-lege typelabels naar niet-lege branch-prefixen."
     base_branch_error: "%message%"
     interactive_title: "Stud-projectconfiguratie"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "GitHub-token voor deze repository (verborgen)"
     prompt_gitlab_token_hint: "GitLab-token: leeg laten om over te slaan; typ '.' om het bestaande token te behouden."
     prompt_gitlab_token: "GitLab-token voor deze repository (verborgen)"
-    prompt_work_item_provider: "Work-item provider voor deze repository (wanneer globale config zowel Jira als Linear ondersteunt)"
+    prompt_issue_tracker_provider: "Work-item provider voor deze repository (wanneer globale config zowel Jira als Linear ondersteunt)"
     prompt_linear_start_state_id: "Linear workflow state-id voor items:start (optioneel)"
     prompt_linear_type_label_group_id: "Linear LabelGroup-id voor branch-prefix mapping (optioneel)"
     picker_skip: "Overslaan (ongewijzigd laten)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Fout bij ophalen van tickets: %error%'
     no_items: Geen tickets gevonden die overeenkomen met uw criteria.
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waarden: Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Linear is geselecteerd maar LINEAR_API_KEY is niet geconfigureerd. Voer "stud config:init" uit of stel LINEAR_API_KEY in in ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira is geselecteerd maar Jira-referenties zijn niet geconfigureerd. Voer "stud config:init" uit.'
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Geen work-item provider geconfigureerd. Voer "stud config:init" uit om Jira of Linear in te stellen.'
+  ambiguous_prefix: 'Issue key prefix %prefix% komt overeen met zowel Jira- als Linear-projectsleutels. Geef --provider door of stel verschillende projectKey en linearTeamKey in .git/stud.config in.'
+  unknown_prefix: 'Issue key prefix %prefix% komt niet overeen met geconfigureerde sleutels (%configuredKeys%). Geef --provider door of stel workItemProvider in .git/stud.config in.'
+  auto_requires_issue_key: 'workItemProvider is auto maar er is geen issue key opgegeven voor provider-resolutie. Geef een issue key door of stel workItemProvider in op jira of linear.'
+  invalid_override: 'Ongeldige work-item provider override %value%. Toegestane waarden: jira, linear.'
+  unknown_resolved: 'Onbekende opgeloste work-item provider %value%. Verwacht jira of linear.'
 project:
   list:
     section: Jira Projecten ophalen
