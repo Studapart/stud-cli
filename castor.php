@@ -2426,7 +2426,7 @@ function items_download(
     }
     $handler = new ItemDownloadHandler(_get_file_system(), _require_issue_tracker(), _get_translation_service());
     $response = $handler->handle($key, $url, $path);
-    $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $responder = new ItemDownloadResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
@@ -2495,7 +2495,7 @@ function items_upload(
     $handler = new ItemUploadHandler(_get_file_system(), _require_issue_tracker(), $translator);
     $inputDto = new ItemUploadInput(trim($key), $files);
     $response = $handler->handle($inputDto);
-    $responder = new ItemUploadResponder(_get_responder_helper(), _get_jira_config(), _get_logger());
+    $responder = new ItemUploadResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);

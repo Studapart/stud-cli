@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\IssueAttachment;
+use App\Exception\ApiException;
 use App\Handler\ItemDownloadHandler;
 use App\Service\FileSystem;
 use App\Service\IssueTrackerPort;
 use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
+use App\Tests\Handler\Support\AttachmentAgentJsonAssertions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemDownloadHandlerTest extends CommandTestCase
 {
+    use AttachmentAgentJsonAssertions;
     private FileSystem $fileSystem;
 
     private IssueTrackerPort&MockObject $provider;
@@ -279,5 +283,87 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $this->assertCount(1, $response->files);
         $this->assertCount(1, $response->errors);
         $this->assertMessageRef($response->errors[0]['message'], 'item.download.error_file', ['error' => 'fail-one']);
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    #[DataProvider('linearAssetUrlProvider')]
+    public function testHandleDownloadsLinearAssetUrls(string $label, string $assetUrl): void
+    {
+        $this->fileSystem->expects($this->once())->method('mkdir');
+        $this->provider->expects($this->once())
+            ->method('listAttachments')
+            ->with('SCI-123')
+            ->willReturn([
+                new IssueAttachment('att-1', 'report.md', 12, $assetUrl),
+            ]);
+        $this->provider->expects($this->once())
+            ->method('downloadAttachment')
+            ->with($assetUrl, '.cursor/tmp/SCI-123/report.md');
+        $this->fileSystem->method('fileExists')->willReturn(false);
+
+        $response = $this->handler->handle('SCI-123', null, '.cursor/tmp/SCI-123');
+
+        $this->assertDownloadHandlerBatchShape($response);
+        $this->assertCount(1, $response->files);
+        $this->assertSame('report.md', $response->files[0]['filename']);
+        $this->assertSame('.cursor/tmp/SCI-123/report.md', $response->files[0]['path']);
+        $this->assertSame([], $response->errors);
+
+        $payload = $this->downloadAgentPayload($response, $this->translator);
+        $this->assertAgentBatchPayloadParity($payload);
+        $this->assertSame($response->files, $payload['data']['files']);
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function linearAssetUrlProvider(): iterable
+    {
+        yield 'public.linear.app' => ['public', 'https://public.linear.app/assets/report.md'];
+        yield 'uploads.linear.app' => ['uploads', 'https://uploads.linear.app/object/report.md'];
+    }
+
+    public function testHandleLinearSingleUrlAgentJsonParity(): void
+    {
+        $url = 'https://public.linear.app/assets/report.md';
+        $this->fileSystem->expects($this->once())->method('mkdir');
+        $this->provider->expects($this->once())
+            ->method('downloadAttachment')
+            ->with($url, $this->stringContains('.cursor/stud-downloads/'));
+        $this->fileSystem->method('fileExists')->willReturn(false);
+
+        $response = $this->handler->handle(null, $url, null);
+
+        $this->assertDownloadHandlerBatchShape($response);
+        $payload = $this->downloadAgentPayload($response, $this->translator);
+        $this->assertAgentBatchPayloadParity($payload);
+    }
+
+    public function testHandleLinearPartialDownloadAgentJsonParity(): void
+    {
+        $okUrl = 'https://public.linear.app/assets/ok.txt';
+        $badUrl = 'https://public.linear.app/assets/bad.txt';
+        $this->fileSystem->expects($this->once())->method('mkdir');
+        $this->provider->method('listAttachments')->willReturn([
+            new IssueAttachment('1', 'ok.txt', 1, $okUrl),
+            new IssueAttachment('2', 'bad.txt', 1, $badUrl),
+        ]);
+        $this->provider->method('downloadAttachment')->willReturnCallback(function (string $url): void {
+            if (str_contains($url, 'bad.txt')) {
+                throw new ApiException('linear download failed', '', 500);
+            }
+        });
+        $this->fileSystem->method('fileExists')->willReturn(false);
+
+        $response = $this->handler->handle('SCI-123', null, '.cursor/tmp/SCI-123');
+
+        $this->assertDownloadHandlerBatchShape($response);
+        $this->assertCount(1, $response->files);
+        $this->assertCount(1, $response->errors);
+
+        $payload = $this->downloadAgentPayload($response, $this->translator);
+        $this->assertAgentBatchPayloadParity($payload);
     }
 }
