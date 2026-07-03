@@ -7,12 +7,12 @@ namespace App\Guard;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Guard\Capability\ConfluenceAware;
-use App\Guard\Capability\GitProviderGithubAware;
-use App\Guard\Capability\GitProviderGitlabAware;
+use App\Guard\Capability\GitHosting\GithubAware;
+use App\Guard\Capability\GitHosting\GitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
-use App\Guard\Capability\WorkItemJiraAware;
-use App\Guard\Capability\WorkItemLinearAware;
 use App\Service\GlobalConfigProviderResolver;
 
 /**
@@ -39,20 +39,20 @@ class CommandGuard
             $environmentFailures[] = 'git_repository';
         }
 
-        if ($context->workItemProviderAmbiguous
-            && ($capabilities->has(WorkItemJiraAware::class) || $capabilities->has(WorkItemLinearAware::class))) {
-            $missingProject[] = ProjectStudConfigKeys::WORK_ITEM_PROVIDER;
+        if ($context->issueTrackerProviderAmbiguous
+            && ($capabilities->has(JiraAware::class) || $capabilities->has(LinearAware::class))) {
+            $missingProject[] = ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER;
         }
 
-        if (! $context->workItemProviderAmbiguous
-            && $capabilities->has(WorkItemJiraAware::class)
-            && $this->providerResolver->collectsJira($context->workItemProviders)) {
+        if (! $context->issueTrackerProviderAmbiguous
+            && $capabilities->has(JiraAware::class)
+            && $this->providerResolver->collectsJira($context->issueTrackerProviders)) {
             $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
         }
 
-        if (! $context->workItemProviderAmbiguous
-            && $capabilities->has(WorkItemLinearAware::class)
-            && $this->providerResolver->collectsLinear($context->workItemProviders)) {
+        if (! $context->issueTrackerProviderAmbiguous
+            && $capabilities->has(LinearAware::class)
+            && $this->providerResolver->collectsLinear($context->issueTrackerProviders)) {
             $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $context->globalConfig));
         }
 
@@ -60,13 +60,13 @@ class CommandGuard
             $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
         }
 
-        if ($capabilities->has(GitProviderGithubAware::class)
+        if ($capabilities->has(GithubAware::class)
             && $this->providerResolver->collectsGithub($context->gitProviders)
             && ! $this->hasGithubToken($context)) {
             $missingGlobal[] = GlobalStudConfigKeys::GITHUB_TOKEN;
         }
 
-        if ($capabilities->has(GitProviderGitlabAware::class)
+        if ($capabilities->has(GitlabAware::class)
             && $this->providerResolver->collectsGitlab($context->gitProviders)
             && ! $this->hasGitlabToken($context)) {
             $missingGlobal[] = GlobalStudConfigKeys::GITLAB_TOKEN;

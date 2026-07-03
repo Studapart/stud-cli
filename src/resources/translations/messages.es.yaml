@@ -95,8 +95,8 @@ config:
     status_skipped: "Omitido"
     warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
-    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
-    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
     error_jira_not_configured: "Jira no está configurado."
     error_git_not_configured: "El proveedor Git no está configurado."
     error_jira_ping: "Error de conexión con Jira: %error%"
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Estas claves no se pueden establecer con este comando: %keys%"
     invalid_git_provider: "gitProvider debe ser github o gitlab."
     invalid_transition_id: "transitionId debe ser un entero no negativo."
-    invalid_issue_tracker_provider: "workItemProvider debe ser jira, linear o auto."
+    invalid_issue_tracker_provider: "issueTrackerProvider debe ser jira, linear o auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes debe ser un mapa de etiquetas de tipo no vacías a prefijos de rama no vacíos."
     base_branch_error: "%message%"
     interactive_title: "Configuración stud del proyecto"
@@ -361,8 +361,8 @@ issue_tracker_provider:
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'No hay proveedor de work-items configurado. Ejecute "stud config:init" para configurar Jira o Linear.'
   ambiguous_prefix: 'El prefijo de clave %prefix% coincide con Jira y Linear. Pase --provider o configure projectKey y linearTeamKey distintos en .git/stud.config.'
-  unknown_prefix: 'El prefijo de clave %prefix% no coincide con las claves configuradas (%configuredKeys%). Pase --provider o configure workItemProvider en .git/stud.config.'
-  auto_requires_issue_key: 'workItemProvider es auto pero no se proporcionó clave de issue. Pase una clave o configure workItemProvider como jira o linear.'
+  unknown_prefix: 'El prefijo de clave %prefix% no coincide con las claves configuradas (%configuredKeys%). Pase --provider o configure issueTrackerProvider en .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider es auto pero no se proporcionó clave de issue. Pase una clave o configure issueTrackerProvider como jira o linear.'
   invalid_override: 'Override de proveedor inválido %value%. Valores permitidos: jira, linear.'
   unknown_resolved: 'Proveedor de work-item resuelto desconocido %value%. Se esperaba jira o linear.'
 project:
@@ -373,7 +373,7 @@ project:
   workflow:
     section: Estados de workflow del proyecto
     no_state_changes: No se encontraron cambios de estado para el proyecto %project%.
-    error_ambiguous_provider: workItemProvider es ambiguo. Establezca jira o linear en .git/stud.config o ejecute stud config:project-init.
+    error_ambiguous_provider: issueTrackerProvider es ambiguo. Establezca jira o linear en .git/stud.config o ejecute stud config:project-init.
     error_no_provider: No hay proveedor de tickets configurado. Ejecute stud config:init.
     error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID

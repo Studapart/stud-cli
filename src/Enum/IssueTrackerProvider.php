@@ -9,7 +9,7 @@ use App\Exception\IssueTrackerResolutionException;
 /**
  * Issue-tracker vendor slug (Jira, Linear) plus project-level Auto resolution mode.
  *
- * YAML keys stay `workItemProvider` / `WORK_ITEM_PROVIDERS` for backward compatibility.
+ * YAML keys are `issueTrackerProvider` / `ISSUE_TRACKER_PROVIDERS` (legacy `workItem*` read via migrations).
  */
 enum IssueTrackerProvider: string
 {
@@ -39,7 +39,7 @@ enum IssueTrackerProvider: string
     }
 
     /**
-     * Allowed values for project `workItemProvider` YAML / init prompts.
+     * Allowed values for project `issueTrackerProvider` YAML / init prompts.
      *
      * @return list<string>
      */

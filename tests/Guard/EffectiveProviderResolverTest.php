@@ -58,13 +58,13 @@ class EffectiveProviderResolverTest extends TestCase
     {
         $result = $this->resolver->resolveIssueTrackerProviders(
             [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Jira->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Jira->value],
         );
 
         $this->assertSame([IssueTrackerProvider::Jira->value], $result['providers']);
@@ -75,13 +75,13 @@ class EffectiveProviderResolverTest extends TestCase
     {
         $result = $this->resolver->resolveIssueTrackerProviders(
             [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Auto->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
         );
 
         $this->assertTrue($result['ambiguous']);
@@ -91,8 +91,8 @@ class EffectiveProviderResolverTest extends TestCase
     public function testResolveWorkItemProvidersMarksAmbiguousWhenAutoCannotResolve(): void
     {
         $result = $this->resolver->resolveIssueTrackerProviders(
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
-            ['workItemProvider' => IssueTrackerProvider::Auto->value],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
         );
 
         $this->assertTrue($result['ambiguous']);
@@ -102,7 +102,7 @@ class EffectiveProviderResolverTest extends TestCase
     public function testResolveWorkItemProvidersWithoutProjectConfigUsesGlobalList(): void
     {
         $result = $this->resolver->resolveIssueTrackerProviders(
-            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             null,
         );
 

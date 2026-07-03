@@ -70,4 +70,28 @@ class GlobalStudConfigKeysTest extends TestCase
             GlobalStudConfigKeys::JIRA_URL => 'https://example.atlassian.net',
         ], GlobalStudConfigKeys::JIRA_URL));
     }
+
+    public function testReadIssueTrackerProvidersListPrefersCanonicalKey(): void
+    {
+        $config = [
+            GlobalStudConfigKeys::ISSUE_TRACKER_PROVIDERS => ['linear'],
+            GlobalStudConfigKeys::LEGACY_WORK_ITEM_PROVIDERS => ['jira'],
+        ];
+
+        $this->assertSame(['linear'], GlobalStudConfigKeys::readIssueTrackerProvidersList($config));
+    }
+
+    public function testReadIssueTrackerProvidersListFallsBackToLegacyKey(): void
+    {
+        $config = [
+            GlobalStudConfigKeys::LEGACY_WORK_ITEM_PROVIDERS => ['jira', 'linear'],
+        ];
+
+        $this->assertSame(['jira', 'linear'], GlobalStudConfigKeys::readIssueTrackerProvidersList($config));
+    }
+
+    public function testReadIssueTrackerProvidersListReturnsNullWhenUnset(): void
+    {
+        $this->assertNull(GlobalStudConfigKeys::readIssueTrackerProvidersList([]));
+    }
 }

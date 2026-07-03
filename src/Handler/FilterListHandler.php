@@ -6,11 +6,11 @@ namespace App\Handler;
 
 use App\DTO\Filter;
 use App\DTO\MessageRef;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\FilterListResponse;
 use App\Service\IssueTrackerPort;
 
-class FilterListHandler implements WorkItemJiraAware
+class FilterListHandler implements JiraAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,

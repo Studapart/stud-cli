@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\AgentInputAliases;
 use App\Config\ProjectStudConfigFieldMap;
+use App\Config\ProjectStudConfigKeys;
 use App\Config\SecretKeyPolicy;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\WorkflowRecorder;
@@ -41,6 +43,7 @@ class ConfigProjectInitHandler
         }
 
         if ($isAgent) {
+            $rawAgentInput = AgentInputAliases::normalize($rawAgentInput);
             $reserved = $this->findReservedAgentKeys($rawAgentInput);
             if ($reserved !== []) {
                 return ConfigProjectInitResponse::error('config.project_init.reserved_keys', [
@@ -239,8 +242,8 @@ class ConfigProjectInitHandler
             }
         }
 
-        if (isset($yamlPatches['workItemProvider'])) {
-            $provider = (string) $yamlPatches['workItemProvider'];
+        if (isset($yamlPatches[ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER])) {
+            $provider = (string) $yamlPatches[ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER];
             if (! IssueTrackerProvider::isProjectConfigValue($provider)) {
                 return ConfigProjectInitResponse::error('config.project_init.invalid_issue_tracker_provider');
             }
@@ -323,7 +326,7 @@ class ConfigProjectInitHandler
             return strtolower(trim($value));
         }
 
-        if ($key === 'workItemProvider' && is_string($value)) {
+        if ($key === 'issueTrackerProvider' && is_string($value)) {
             return strtolower(trim($value));
         }
 

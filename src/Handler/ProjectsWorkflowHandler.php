@@ -7,8 +7,8 @@ namespace App\Handler;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Exception\ApiException;
-use App\Guard\Capability\WorkItemJiraAware;
-use App\Guard\Capability\WorkItemLinearAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ProjectsWorkflowResponse;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\ProjectsWorkflowNormalizer;
@@ -16,7 +16,7 @@ use App\Service\ProjectsWorkflowNormalizer;
 /**
  * Lists workflow transitions (Jira) or workflow states (Linear) for a project/team key.
  */
-class ProjectsWorkflowHandler implements WorkItemJiraAware, WorkItemLinearAware
+class ProjectsWorkflowHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly IssueTrackerPortSupplier $portSupplier,

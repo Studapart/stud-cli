@@ -50,7 +50,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
             ]);
 
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI');
@@ -80,7 +80,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenProviderAmbiguous(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             projectConfig: [],
             resolveResult: [
                 'ok' => false,
@@ -96,7 +96,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenJiraNotConfigured(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
             resolveResult: [
                 'ok' => false,
                 'error' => IssueTrackerException::missingJiraConfiguration()->messageRef,
@@ -115,7 +115,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenLinearNotConfigured(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: [
                 'ok' => false,
                 'error' => IssueTrackerException::missingLinearApiKey()->messageRef,
@@ -173,7 +173,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
      * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+        array $globalConfig = ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
         array $projectConfig = [],
         ?IssueTrackerPort $port = null,
         array $resolveResult = [],

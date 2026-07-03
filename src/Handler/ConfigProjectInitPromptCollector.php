@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigFieldMap;
+use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
@@ -41,19 +43,19 @@ class ConfigProjectInitPromptCollector
     public function collect(WorkflowEntryRecorder $recorder): array
     {
         $existing = $this->gitRepository->readProjectConfig();
-        $globalWorkItemProviders = $this->readGlobalWorkItemProviders();
+        $globalIssueTrackerProviders = $this->readGlobalIssueTrackerProviders();
         $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_title'));
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.project_init.interactive_hint'));
 
         $patches = [];
-        if ($this->providerResolver->collectsJira($globalWorkItemProviders)
-            && $this->providerResolver->collectsLinear($globalWorkItemProviders)) {
-            $patches = array_merge($patches, $this->promptWorkItemProvider($existing));
+        if ($this->providerResolver->collectsJira($globalIssueTrackerProviders)
+            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+            $patches = array_merge($patches, $this->promptIssueTrackerProvider($existing));
         }
 
-        $effectiveProvider = $this->resolveEffectiveWorkItemProvider(
+        $effectiveProvider = $this->resolveEffectiveIssueTrackerProvider(
             $this->mergeProjectConfig($existing, $patches),
-            $globalWorkItemProviders,
+            $globalIssueTrackerProviders,
         );
 
         $patches = array_merge($patches, $this->promptProjectKey($existing));
@@ -79,11 +81,9 @@ class ConfigProjectInitPromptCollector
      * @param array<string, mixed> $existing
      * @return array<string, mixed>
      */
-    protected function promptWorkItemProvider(array $existing): array
+    protected function promptIssueTrackerProvider(array $existing): array
     {
-        $current = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
-            ? strtolower(trim($existing['workItemProvider']))
-            : IssueTrackerProvider::Auto->value;
+        $current = ProjectStudConfigKeys::readIssueTrackerProvider($existing) ?? IssueTrackerProvider::Auto->value;
         if (! IssueTrackerProvider::isProjectConfigValue($current)) {
             $current = IssueTrackerProvider::Auto->value;
         }
@@ -93,7 +93,7 @@ class ConfigProjectInitPromptCollector
             $current,
         );
 
-        return ['workItemProvider' => (string) $choice];
+        return ['issueTrackerProvider' => (string) $choice];
     }
 
     /**
@@ -166,7 +166,7 @@ class ConfigProjectInitPromptCollector
     /**
      * @return list<string>
      */
-    protected function readGlobalWorkItemProviders(): array
+    protected function readGlobalIssueTrackerProviders(): array
     {
         if (! $this->fileSystem->fileExists($this->globalConfigPath)) {
             return [IssueTrackerProvider::Jira->value];
@@ -178,9 +178,8 @@ class ConfigProjectInitPromptCollector
             return [IssueTrackerProvider::Jira->value];
         }
 
-        if (isset($config['WORK_ITEM_PROVIDERS']) && is_array($config['WORK_ITEM_PROVIDERS'])) {
-            $providers = array_values(array_filter($config['WORK_ITEM_PROVIDERS'], 'is_string'));
-
+        $providers = GlobalStudConfigKeys::readIssueTrackerProvidersList($config);
+        if ($providers !== null) {
             return $this->providerResolver->normalizeIssueTrackerProviders($providers);
         }
 
@@ -189,12 +188,12 @@ class ConfigProjectInitPromptCollector
 
     /**
      * @param array<string, mixed> $existing
-     * @param list<string>         $globalWorkItemProviders
+     * @param list<string>         $globalIssueTrackerProviders
      */
-    protected function resolveEffectiveWorkItemProvider(array $existing, array $globalWorkItemProviders): string
+    protected function resolveEffectiveIssueTrackerProvider(array $existing, array $globalIssueTrackerProviders): string
     {
-        $hasJira = $this->providerResolver->collectsJira($globalWorkItemProviders);
-        $hasLinear = $this->providerResolver->collectsLinear($globalWorkItemProviders);
+        $hasJira = $this->providerResolver->collectsJira($globalIssueTrackerProviders);
+        $hasLinear = $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
 
         if ($hasJira && ! $hasLinear) {
             return IssueTrackerProvider::Jira->value;
@@ -203,9 +202,7 @@ class ConfigProjectInitPromptCollector
             return IssueTrackerProvider::Linear->value;
         }
 
-        $stored = isset($existing['workItemProvider']) && is_string($existing['workItemProvider'])
-            ? strtolower(trim($existing['workItemProvider']))
-            : IssueTrackerProvider::Auto->value;
+        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($existing) ?? IssueTrackerProvider::Auto->value;
 
         return IssueTrackerProvider::isProjectConfigValue($stored) ? $stored : IssueTrackerProvider::Auto->value;
     }

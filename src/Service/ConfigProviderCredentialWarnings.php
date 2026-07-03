@@ -31,7 +31,7 @@ class ConfigProviderCredentialWarnings
     {
         $warnings = [];
         $configuredGitProviders = $this->providerResolver->resolveGitProviders($globalConfig);
-        $configuredWorkItemProviders = $this->providerResolver->resolveIssueTrackerProviders($globalConfig);
+        $configuredIssueTrackerProviders = $this->providerResolver->resolveIssueTrackerProviders($globalConfig);
 
         if ($this->providerResolver->collectsGithub($configuredGitProviders) && ! $this->hasGithubToken($globalConfig)) {
             $warnings[] = ResponseMessage::warning(MessageRef::key('config.validate.warn_github_token_missing'));
@@ -43,7 +43,7 @@ class ConfigProviderCredentialWarnings
 
         foreach (IssueTrackerProvider::vendors() as $vendor) {
             if (
-                $this->providerResolver->collectsIssueTracker($vendor, $configuredWorkItemProviders)
+                $this->providerResolver->collectsIssueTracker($vendor, $configuredIssueTrackerProviders)
                 && ! GlobalStudConfigKeys::hasCredentialsFor($vendor, $globalConfig)
             ) {
                 $warnings[] = ResponseMessage::warning(

@@ -428,7 +428,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls(
             [],
             [
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -438,7 +438,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $gitRepository->expects($this->once())
             ->method('writeProjectConfig')
             ->with([
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'projectKey' => 'SCI',
                 'linearStartStateId' => 'state-uuid',
                 'linearTypeLabelGroupId' => 'group-uuid',
@@ -450,12 +450,34 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
         $response = $handler->handle([
-            'workItemProvider' => IssueTrackerProvider::Linear->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
             'projectKey' => 'SCI',
             'linearStartStateId' => 'state-uuid',
             'linearTypeLabelGroupId' => 'group-uuid',
             'linearTypeBranchPrefixes' => ['Story' => 'feat'],
         ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->updated);
+    }
+
+    public function testAgentLegacyWorkItemProviderAliasAccepted(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls(
+            [],
+            ['issueTrackerProvider' => IssueTrackerProvider::Linear->value],
+        );
+        $gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with(['issueTrackerProvider' => IssueTrackerProvider::Linear->value]);
+
+        $gitSetup = $this->createMock(GitSetupService::class);
+        $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
+
+        $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
+        $response = $handler->handle(['workItemProvider' => IssueTrackerProvider::Linear->value], false, true);
 
         $this->assertTrue($response->isSuccess());
         $this->assertTrue($response->updated);
@@ -470,7 +492,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $prompts = $this->createMock(ConfigProjectInitPromptCollector::class);
 
         $handler = new ConfigProjectInitHandler($gitRepository, $gitSetup, $prompts);
-        $response = $handler->handle(['workItemProvider' => 'asana'], false, true);
+        $response = $handler->handle(['issueTrackerProvider' => 'asana'], false, true);
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame('config.project_init.invalid_issue_tracker_provider', $response->getError());

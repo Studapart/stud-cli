@@ -40,7 +40,7 @@ class CommandContextFactory
             $environment->hasGitRepository(),
             $resolvedGitProvider,
         );
-        $workItemResolution = $this->effectiveProviderResolver->resolveIssueTrackerProviders(
+        $issueTrackerResolution = $this->effectiveProviderResolver->resolveIssueTrackerProviders(
             $configData['global'],
             $configData['project'],
         );
@@ -49,12 +49,12 @@ class CommandContextFactory
             globalConfig: $configData['global'],
             projectConfig: $configData['project'],
             hasGitRepository: $environment->hasGitRepository(),
-            workItemProviders: $workItemResolution['providers'],
+            issueTrackerProviders: $issueTrackerResolution['providers'],
             gitProviders: $effectiveGitProviders,
             isInteractive: $flags['interactive'],
             isQuiet: $flags['quiet'],
             isAgent: $flags['agent'],
-            workItemProviderAmbiguous: $workItemResolution['ambiguous'],
+            issueTrackerProviderAmbiguous: $issueTrackerResolution['ambiguous'],
         );
     }
 }

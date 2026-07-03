@@ -366,11 +366,11 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
         );
 
         $this->assertSame(
-            ['workItemProvider' => IssueTrackerProvider::Linear->value, 'gitProvider' => 'github'],
+            ['issueTrackerProvider' => IssueTrackerProvider::Linear->value, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -405,7 +405,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
             $metadataPrompts,
         );
 
@@ -445,7 +445,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
 
         $this->assertSame(
-            ['workItemProvider' => IssueTrackerProvider::Auto->value, 'gitProvider' => 'github'],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -453,7 +453,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
     public function testCollectDefaultsWorkItemProviderWhenStoredValueInvalid(): void
     {
         $gitRepository = $this->createMock(GitRepository::class);
-        $gitRepository->method('readProjectConfig')->willReturn(['workItemProvider' => 'invalid']);
+        $gitRepository->method('readProjectConfig')->willReturn(['issueTrackerProvider' => 'invalid']);
         $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
 
         $gitSetup = $this->createMock(GitSetupService::class);
@@ -470,11 +470,11 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
         );
 
         $this->assertSame(
-            ['workItemProvider' => IssueTrackerProvider::Auto->value, 'gitProvider' => 'github'],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value, 'gitProvider' => 'github'],
             $collector->collect(new WorkflowRecorder()),
         );
     }
@@ -542,7 +542,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $gitRepository,
             $prompt,
             $gitSetup,
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
             $metadataPrompts,
         );
 
@@ -563,10 +563,10 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             $this->createMock(GitRepository::class),
             $this->createMock(PromptInterface::class),
             $this->createMock(GitSetupService::class),
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
         );
 
-        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'resolveEffectiveWorkItemProvider');
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'resolveEffectiveIssueTrackerProvider');
         $method->setAccessible(true);
 
         $this->assertSame(

@@ -11,7 +11,7 @@ use App\Exception\IssueTrackerResolutionException;
 
 /**
  * Resolves the active work-item provider for project-scoped commands
- * using global WORK_ITEM_PROVIDERS and optional project workItemProvider.
+ * using global ISSUE_TRACKER_PROVIDERS and optional project issueTrackerProvider.
  */
 final class IssueTrackerResolver
 {

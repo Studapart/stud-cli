@@ -17,11 +17,11 @@ class ConfigValidateHandlerTest extends CommandTestCase
     private GitHostingPort&MockObject $gitProvider;
 
     /**
-     * @param IssueTrackerPort|MockObject|null|false $workItemProvider false uses setUp mock; null means not configured
+     * @param IssueTrackerPort|MockObject|null|false $jiraIssueTracker false uses setUp mock; null means not configured
      * @param GitHostingPort|MockObject|null|false $gitProvider false uses setUp mock; null means not configured
      */
     private function createHandler(
-        IssueTrackerPort|MockObject|null|false $workItemProvider = false,
+        IssueTrackerPort|MockObject|null|false $jiraIssueTracker = false,
         GitHostingPort|MockObject|null|false $gitProvider = false,
         bool $skipJira = false,
         bool $skipGit = false,
@@ -29,10 +29,10 @@ class ConfigValidateHandlerTest extends CommandTestCase
         bool $validateJira = true,
         bool $validateGit = true,
         bool $validateLinear = false,
-        IssueTrackerPort|MockObject|null|false $linearWorkItemProvider = false,
+        IssueTrackerPort|MockObject|null|false $linearIssueTracker = false,
     ): ConfigValidateHandler {
         return new ConfigValidateHandler(
-            $workItemProvider === false ? $this->issueTracker : $workItemProvider,
+            $jiraIssueTracker === false ? $this->issueTracker : $jiraIssueTracker,
             $gitProvider === false ? $this->gitProvider : $gitProvider,
             $skipJira,
             $skipGit,
@@ -40,7 +40,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
             $validateJira,
             $validateGit,
             $validateLinear,
-            $linearWorkItemProvider === false ? null : $linearWorkItemProvider,
+            $linearIssueTracker === false ? null : $linearIssueTracker,
         );
     }
 

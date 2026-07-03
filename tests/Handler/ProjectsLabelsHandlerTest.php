@@ -34,7 +34,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             ]);
 
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', false);
@@ -54,7 +54,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             ->willReturn([]);
 
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', true);
@@ -84,7 +84,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenProviderAmbiguous(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             projectConfig: [],
             resolveResult: [
                 'ok' => false,
@@ -100,7 +100,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenLinearNotConfigured(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: [
                 'ok' => false,
                 'error' => IssueTrackerException::missingLinearApiKey()->messageRef,
@@ -124,7 +124,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             ->willThrowException(new ApiException('Linear unavailable', 'HTTP 503'));
 
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
 
@@ -144,7 +144,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
             ->willThrowException(new \RuntimeException('Linear unavailable'));
 
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
             resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
 
@@ -162,7 +162,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
      * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+        array $globalConfig = ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
         array $projectConfig = [],
         array $resolveResult = [],
     ): ProjectsLabelsHandler {

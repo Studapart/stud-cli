@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\FilterShowResponse;
 use App\Service\IssueTrackerPort;
 
-class FilterShowHandler implements WorkItemJiraAware
+class FilterShowHandler implements JiraAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,

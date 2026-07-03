@@ -19,7 +19,7 @@ final class GlobalStudConfigFieldMap
     public const INPUT_TO_YAML = [
         'language' => GlobalStudConfigKeys::LANGUAGE,
         'gitProviders' => GlobalStudConfigKeys::GIT_PROVIDERS,
-        'workItemProviders' => GlobalStudConfigKeys::WORK_ITEM_PROVIDERS,
+        'issueTrackerProviders' => GlobalStudConfigKeys::ISSUE_TRACKER_PROVIDERS,
         'jiraUrl' => GlobalStudConfigKeys::JIRA_URL,
         'jiraEmail' => GlobalStudConfigKeys::JIRA_EMAIL,
         'jiraApiToken' => GlobalStudConfigKeys::JIRA_API_TOKEN,

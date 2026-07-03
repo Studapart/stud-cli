@@ -13,11 +13,11 @@ use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
 use App\Exception\StudConfigException;
-use App\Guard\Capability\GitProviderGithubAware;
-use App\Guard\Capability\GitProviderGitlabAware;
+use App\Guard\Capability\GitHosting\GithubAware;
+use App\Guard\Capability\GitHosting\GitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
-use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitHostingPort;
@@ -27,7 +27,7 @@ use App\Service\MarkdownHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\SubmitLabelResolver;
 
-class SubmitHandler implements GitProviderGithubAware, GitProviderGitlabAware, GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
+class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
     private ?WorkflowEntryRecorder $recorder = null;
 

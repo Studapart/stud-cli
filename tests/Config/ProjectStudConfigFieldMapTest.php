@@ -13,7 +13,7 @@ class ProjectStudConfigFieldMapTest extends TestCase
     {
         $allowed = ProjectStudConfigFieldMap::allowedInputKeys();
 
-        $this->assertContains('workItemProvider', $allowed);
+        $this->assertContains('issueTrackerProvider', $allowed);
         $this->assertContains('linearStartStateId', $allowed);
         $this->assertContains('linearTypeLabelGroupId', $allowed);
         $this->assertContains('linearTypeBranchPrefixes', $allowed);

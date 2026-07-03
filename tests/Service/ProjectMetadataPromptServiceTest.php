@@ -63,7 +63,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -89,7 +89,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -121,7 +121,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -159,7 +159,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -187,7 +187,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -209,7 +209,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -237,7 +237,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -266,7 +266,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -285,7 +285,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -297,7 +297,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     {
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             resolveError: MessageRef::key('project.workflow.error_ambiguous_provider'),
         );
         $recorder = new WorkflowRecorder();
@@ -315,7 +315,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -341,7 +341,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -368,7 +368,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -402,7 +402,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -459,7 +459,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $prompt,
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -484,7 +484,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
 
         $service = $this->createService(
             $this->createMock(PromptInterface::class),
-            globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             port: $port,
             provider: IssueTrackerProvider::Linear->value,
         );
@@ -505,7 +505,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
      */
     private function createService(
         PromptInterface $prompt,
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+        array $globalConfig = ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
         ?IssueTrackerPort $port = null,
         string $provider = 'jira',
         ?MessageRef $resolveError = null,

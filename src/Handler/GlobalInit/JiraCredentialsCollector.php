@@ -27,7 +27,7 @@ class JiraCredentialsCollector
      */
     public function collect(GlobalInitPromptContext $context): array
     {
-        $active = $this->providerResolver->collectsJira($context->workItemProviders);
+        $active = $this->providerResolver->collectsJira($context->issueTrackerProviders);
         $existing = $context->existingConfig;
 
         if ($active && ! $context->isAgent) {
@@ -72,7 +72,7 @@ class JiraCredentialsCollector
 
     public function collectTransitionEnabled(GlobalInitPromptContext $context): bool
     {
-        $active = $this->providerResolver->collectsJira($context->workItemProviders);
+        $active = $this->providerResolver->collectsJira($context->issueTrackerProviders);
         $existing = $context->existingConfig;
 
         if (! $active) {

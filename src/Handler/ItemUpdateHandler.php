@@ -7,12 +7,12 @@ namespace App\Handler;
 use App\DTO\ItemUpdateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueTrackerPort;
 
-class ItemUpdateHandler implements WorkItemJiraAware
+class ItemUpdateHandler implements JiraAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,

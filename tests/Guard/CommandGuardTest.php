@@ -6,12 +6,12 @@ namespace App\Tests\Guard;
 
 use App\Enum\IssueTrackerProvider;
 use App\Guard\Capability\ConfluenceAware;
-use App\Guard\Capability\GitProviderGithubAware;
-use App\Guard\Capability\GitProviderGitlabAware;
+use App\Guard\Capability\GitHosting\GithubAware;
+use App\Guard\Capability\GitHosting\GitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
-use App\Guard\Capability\WorkItemJiraAware;
-use App\Guard\Capability\WorkItemLinearAware;
 use App\Guard\CapabilitySet;
 use App\Guard\CommandContext;
 use App\Guard\CommandGuard;
@@ -36,11 +36,11 @@ class CommandGuardTest extends TestCase
 
     public function testJiraKeysRequiredWhenJiraProviderActive(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class]);
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
         $context = $this->context(
             ['JIRA_URL' => 'https://example.atlassian.net'],
             [],
-            workItemProviders: [IssueTrackerProvider::Jira->value],
+            issueTrackerProviders: [IssueTrackerProvider::Jira->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -52,7 +52,7 @@ class CommandGuardTest extends TestCase
 
     public function testAllJiraKeysPresentProceeds(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class]);
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
         $context = $this->context([
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
@@ -66,11 +66,11 @@ class CommandGuardTest extends TestCase
 
     public function testLinearOnlyRequiresLinearApiKey(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemLinearAware::class]);
+        $capabilities = CapabilitySet::fromList([LinearAware::class]);
         $context = $this->context(
-            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin-key'],
+            ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin-key'],
             [],
-            workItemProviders: [IssueTrackerProvider::Linear->value],
+            issueTrackerProviders: [IssueTrackerProvider::Linear->value],
         );
 
         $result = $this->guard->check($capabilities, $context);
@@ -80,8 +80,8 @@ class CommandGuardTest extends TestCase
 
     public function testLinearOnlyMissingLinearApiKey(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemLinearAware::class]);
-        $context = $this->context([], [], workItemProviders: [IssueTrackerProvider::Linear->value]);
+        $capabilities = CapabilitySet::fromList([LinearAware::class]);
+        $context = $this->context([], [], issueTrackerProviders: [IssueTrackerProvider::Linear->value]);
 
         $result = $this->guard->check($capabilities, $context);
 
@@ -113,7 +113,7 @@ class CommandGuardTest extends TestCase
 
     public function testGithubTokenMissingWhenGithubGitHostingAdapterActive(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $capabilities = CapabilitySet::fromList([GithubAware::class]);
         $context = $this->context([], [], gitProviders: ['github']);
 
         $result = $this->guard->check($capabilities, $context);
@@ -124,7 +124,7 @@ class CommandGuardTest extends TestCase
 
     public function testGitlabTokenMissingWhenGitlabProviderActive(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGitlabAware::class]);
+        $capabilities = CapabilitySet::fromList([GitlabAware::class]);
         $context = $this->context([], [], gitProviders: ['gitlab']);
 
         $result = $this->guard->check($capabilities, $context);
@@ -135,7 +135,7 @@ class CommandGuardTest extends TestCase
 
     public function testGithubTokenFromProjectConfig(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $capabilities = CapabilitySet::fromList([GithubAware::class]);
         $context = $this->context([], ['githubToken' => 'gh-token'], gitProviders: ['github']);
 
         $result = $this->guard->check($capabilities, $context);
@@ -145,7 +145,7 @@ class CommandGuardTest extends TestCase
 
     public function testGitlabTokenFromGlobalConfig(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGitlabAware::class]);
+        $capabilities = CapabilitySet::fromList([GitlabAware::class]);
         $context = $this->context(['GITLAB_TOKEN' => 'gl-token'], [], gitProviders: ['gitlab']);
 
         $result = $this->guard->check($capabilities, $context);
@@ -156,8 +156,8 @@ class CommandGuardTest extends TestCase
     public function testDualGitProvidersRequireBothTokensWhenNoEffectiveProvider(): void
     {
         $capabilities = CapabilitySet::fromList([
-            GitProviderGithubAware::class,
-            GitProviderGitlabAware::class,
+            GithubAware::class,
+            GitlabAware::class,
             ProjectBaseBranchAware::class,
         ]);
         $context = $this->context(
@@ -175,8 +175,8 @@ class CommandGuardTest extends TestCase
     public function testEffectiveGithubGitHostingAdapterIgnoresMissingGitlabToken(): void
     {
         $capabilities = CapabilitySet::fromList([
-            GitProviderGithubAware::class,
-            GitProviderGitlabAware::class,
+            GithubAware::class,
+            GitlabAware::class,
             ProjectBaseBranchAware::class,
         ]);
         $context = $this->context(
@@ -193,8 +193,8 @@ class CommandGuardTest extends TestCase
     public function testDualGitProvidersRequireBothTokensWhenBothEffective(): void
     {
         $capabilities = CapabilitySet::fromList([
-            GitProviderGithubAware::class,
-            GitProviderGitlabAware::class,
+            GithubAware::class,
+            GitlabAware::class,
             ProjectBaseBranchAware::class,
         ]);
         $context = $this->context(
@@ -210,7 +210,7 @@ class CommandGuardTest extends TestCase
 
     public function testGithubTokenAcceptedFromLegacyGitToken(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $capabilities = CapabilitySet::fromList([GithubAware::class]);
         $context = $this->context(
             ['GIT_TOKEN' => 'legacy-token', 'GIT_PROVIDER' => 'github'],
             [],
@@ -224,7 +224,7 @@ class CommandGuardTest extends TestCase
 
     public function testGitlabTokenAcceptedFromLegacyGitToken(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGitlabAware::class]);
+        $capabilities = CapabilitySet::fromList([GitlabAware::class]);
         $context = $this->context(
             ['GIT_TOKEN' => 'legacy-token', 'GIT_PROVIDER' => 'gitlab'],
             [],
@@ -238,7 +238,7 @@ class CommandGuardTest extends TestCase
 
     public function testLegacyTokenRejectedWhenGitProviderMissing(): void
     {
-        $capabilities = CapabilitySet::fromList([GitProviderGithubAware::class]);
+        $capabilities = CapabilitySet::fromList([GithubAware::class]);
         $context = $this->context(
             ['GIT_TOKEN' => 'legacy-token'],
             [],
@@ -253,7 +253,7 @@ class CommandGuardTest extends TestCase
 
     public function testAmbiguousWorkItemProviderRequiresProjectSelection(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class, WorkItemLinearAware::class]);
+        $capabilities = CapabilitySet::fromList([JiraAware::class, LinearAware::class]);
         $context = new CommandContext(
             globalConfig: [
                 'JIRA_URL' => 'https://example.atlassian.net',
@@ -261,20 +261,20 @@ class CommandGuardTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            projectConfig: ['workItemProvider' => IssueTrackerProvider::Auto->value],
+            projectConfig: ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
             hasGitRepository: true,
-            workItemProviders: [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            issueTrackerProviders: [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
             gitProviders: ['github'],
             isInteractive: true,
             isQuiet: false,
             isAgent: false,
-            workItemProviderAmbiguous: true,
+            issueTrackerProviderAmbiguous: true,
         );
 
         $result = $this->guard->check($capabilities, $context);
 
         $this->assertFalse($result->canProceed);
-        $this->assertSame(['workItemProvider'], $result->missingProjectKeys);
+        $this->assertSame(['issueTrackerProvider'], $result->missingProjectKeys);
         $this->assertSame([], $result->missingGlobalKeys);
     }
 
@@ -291,7 +291,7 @@ class CommandGuardTest extends TestCase
 
     public function testEmptyValuesTreatedAsMissing(): void
     {
-        $capabilities = CapabilitySet::fromList([WorkItemJiraAware::class]);
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
         $context = $this->context([
             'JIRA_URL' => '',
             'JIRA_EMAIL' => '   ',
@@ -307,21 +307,21 @@ class CommandGuardTest extends TestCase
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
-     * @param list<string> $workItemProviders
+     * @param list<string> $issueTrackerProviders
      * @param list<string> $gitProviders
      */
     private function context(
         array $globalConfig,
         array $projectConfig,
         bool $hasGitRepository = true,
-        array $workItemProviders = ['jira'],
+        array $issueTrackerProviders = ['jira'],
         array $gitProviders = ['github'],
     ): CommandContext {
         return new CommandContext(
             globalConfig: $globalConfig,
             projectConfig: $projectConfig,
             hasGitRepository: $hasGitRepository,
-            workItemProviders: $workItemProviders,
+            issueTrackerProviders: $issueTrackerProviders,
             gitProviders: $gitProviders,
             isInteractive: true,
             isQuiet: false,

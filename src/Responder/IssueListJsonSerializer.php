@@ -7,9 +7,9 @@ namespace App\Responder;
 use App\DTO\WorkItem;
 
 /**
- * Serializes work items for agent-mode list, search, and filter discovery responses.
+ * Serializes tracked issues for agent-mode list, search, and filter discovery responses.
  */
-class WorkItemListJsonSerializer
+class IssueListJsonSerializer
 {
     /**
      * @param array<int, WorkItem> $issues

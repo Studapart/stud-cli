@@ -21,4 +21,28 @@ class ProjectStudConfigKeysTest extends TestCase
 
         $this->assertContains(ProjectStudConfigKeys::MIGRATION_VERSION, $yamlKeys);
     }
+
+    public function testReadIssueTrackerProviderPrefersCanonicalKey(): void
+    {
+        $config = [
+            ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER => 'linear',
+            ProjectStudConfigKeys::LEGACY_ISSUE_TRACKER_PROVIDER => 'jira',
+        ];
+
+        $this->assertSame('linear', ProjectStudConfigKeys::readIssueTrackerProvider($config));
+    }
+
+    public function testReadIssueTrackerProviderFallsBackToLegacyKey(): void
+    {
+        $config = [
+            ProjectStudConfigKeys::LEGACY_ISSUE_TRACKER_PROVIDER => 'auto',
+        ];
+
+        $this->assertSame('auto', ProjectStudConfigKeys::readIssueTrackerProvider($config));
+    }
+
+    public function testReadIssueTrackerProviderReturnsNullWhenUnset(): void
+    {
+        $this->assertNull(ProjectStudConfigKeys::readIssueTrackerProvider([]));
+    }
 }

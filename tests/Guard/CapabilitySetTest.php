@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Guard;
 
 use App\Guard\Capability\GitRepositoryAware;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\CapabilitySet;
 use PHPUnit\Framework\TestCase;
 
@@ -14,13 +14,13 @@ class CapabilitySetTest extends TestCase
     public function testFromListDeduplicatesCapabilities(): void
     {
         $set = CapabilitySet::fromList([
-            WorkItemJiraAware::class,
-            WorkItemJiraAware::class,
+            JiraAware::class,
+            JiraAware::class,
             GitRepositoryAware::class,
         ]);
 
         $this->assertSame([
-            WorkItemJiraAware::class,
+            JiraAware::class,
             GitRepositoryAware::class,
         ], $set->all());
     }
@@ -29,10 +29,10 @@ class CapabilitySetTest extends TestCase
     {
         $empty = CapabilitySet::fromList([]);
         $this->assertTrue($empty->isEmpty());
-        $this->assertFalse($empty->has(WorkItemJiraAware::class));
+        $this->assertFalse($empty->has(JiraAware::class));
 
-        $set = CapabilitySet::fromList([WorkItemJiraAware::class]);
+        $set = CapabilitySet::fromList([JiraAware::class]);
         $this->assertFalse($set->isEmpty());
-        $this->assertTrue($set->has(WorkItemJiraAware::class));
+        $this->assertTrue($set->has(JiraAware::class));
     }
 }

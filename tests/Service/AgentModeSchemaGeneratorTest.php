@@ -416,7 +416,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $props = $cmd['input']['properties'] ?? [];
         $this->assertArrayHasKey('gitProviders', $props);
         $this->assertSame('array', $props['gitProviders']['type']);
-        $this->assertArrayHasKey('workItemProviders', $props);
+        $this->assertArrayHasKey('issueTrackerProviders', $props);
         $this->assertArrayHasKey('linearApiKey', $props);
         $this->assertArrayHasKey('jiraUrl', $props);
         $this->assertArrayHasKey('jiraTransitionEnabled', $props);
@@ -433,7 +433,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertContains('cpi', $cmd['aliases'] ?? []);
         $props = $cmd['input']['properties'] ?? [];
         $this->assertArrayHasKey('projectKey', $props);
-        $this->assertArrayHasKey('workItemProvider', $props);
+        $this->assertArrayHasKey('issueTrackerProvider', $props);
         $this->assertArrayHasKey('transitionId', $props);
         $this->assertArrayHasKey('linearStartStateId', $props);
         $this->assertArrayHasKey('linearTypeLabelGroupId', $props);

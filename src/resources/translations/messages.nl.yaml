@@ -95,8 +95,8 @@ config:
     status_skipped: "Overgeslagen"
     warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
-    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
-    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
     error_jira_not_configured: "Jira is niet geconfigureerd."
     error_git_not_configured: "Git-provider is niet geconfigureerd."
     error_jira_ping: "Jira-verbinding mislukt: %error%"
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Deze sleutels kunnen niet met deze opdracht worden ingesteld: %keys%"
     invalid_git_provider: "gitProvider moet github of gitlab zijn."
     invalid_transition_id: "transitionId moet een niet-negatief geheel getal zijn."
-    invalid_issue_tracker_provider: "workItemProvider moet jira, linear of auto zijn."
+    invalid_issue_tracker_provider: "issueTrackerProvider moet jira, linear of auto zijn."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes moet een map zijn van niet-lege typelabels naar niet-lege branch-prefixen."
     base_branch_error: "%message%"
     interactive_title: "Stud-projectconfiguratie"
@@ -361,8 +361,8 @@ issue_tracker_provider:
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Geen work-item provider geconfigureerd. Voer "stud config:init" uit om Jira of Linear in te stellen.'
   ambiguous_prefix: 'Issue key prefix %prefix% komt overeen met zowel Jira- als Linear-projectsleutels. Geef --provider door of stel verschillende projectKey en linearTeamKey in .git/stud.config in.'
-  unknown_prefix: 'Issue key prefix %prefix% komt niet overeen met geconfigureerde sleutels (%configuredKeys%). Geef --provider door of stel workItemProvider in .git/stud.config in.'
-  auto_requires_issue_key: 'workItemProvider is auto maar er is geen issue key opgegeven voor provider-resolutie. Geef een issue key door of stel workItemProvider in op jira of linear.'
+  unknown_prefix: 'Issue key prefix %prefix% komt niet overeen met geconfigureerde sleutels (%configuredKeys%). Geef --provider door of stel issueTrackerProvider in .git/stud.config in.'
+  auto_requires_issue_key: 'issueTrackerProvider is auto maar er is geen issue key opgegeven voor provider-resolutie. Geef een issue key door of stel issueTrackerProvider in op jira of linear.'
   invalid_override: 'Ongeldige work-item provider override %value%. Toegestane waarden: jira, linear.'
   unknown_resolved: 'Onbekende opgeloste work-item provider %value%. Verwacht jira of linear.'
 project:
@@ -373,7 +373,7 @@ project:
   workflow:
     section: Project workflow statussen
     no_state_changes: Geen statuswijzigingen gevonden voor project %project%.
-    error_ambiguous_provider: workItemProvider is dubbelzinnig. Stel jira of linear in .git/stud.config in of voer stud config:project-init uit.
+    error_ambiguous_provider: issueTrackerProvider is dubbelzinnig. Stel jira of linear in .git/stud.config in of voer stud config:project-init uit.
     error_no_provider: Geen work-item provider geconfigureerd. Voer stud config:init uit.
     error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID

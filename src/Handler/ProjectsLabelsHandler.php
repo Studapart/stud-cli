@@ -7,8 +7,8 @@ namespace App\Handler;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Exception\ApiException;
-use App\Guard\Capability\WorkItemJiraAware;
-use App\Guard\Capability\WorkItemLinearAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ProjectsLabelsResponse;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPortSupplier;
@@ -18,7 +18,7 @@ use App\Service\IssueTrackerPortSupplier;
  *
  * Jira: returns empty groups with a notice (labels discovery deferred).
  */
-class ProjectsLabelsHandler implements WorkItemJiraAware, WorkItemLinearAware
+class ProjectsLabelsHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly IssueTrackerPortSupplier $portSupplier,

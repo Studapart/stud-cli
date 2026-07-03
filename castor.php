@@ -866,7 +866,7 @@ function _get_issue_tracker_factory(): IssueTrackerFactory
  *
  * @param bool        $quiet    When true, log errors but do not prompt; return null on failure.
  * @param string|null $override CLI --provider override (jira or linear).
- * @param string|null $issueKey Issue key for auto prefix resolution when workItemProvider is auto.
+ * @param string|null $issueKey Issue key for auto prefix resolution when issueTrackerProvider is auto.
  */
 function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?string $issueKey = null): ?IssueTrackerPort
 {
@@ -904,6 +904,9 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?stri
 
         return $factory->create($type, $jiraService, _get_jira_attachment_service());
     } catch (IssueTrackerException|IssueTrackerResolutionException $e) {
+        if (_is_agent_mode_request()) {
+            _agent_fail_issue_tracker($e->messageRef);
+        }
         if (! $quiet) {
             _get_logger()->error(
                 Logger::VERBOSITY_NORMAL,
@@ -913,12 +916,29 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?stri
 
         return null;
     } catch (\InvalidArgumentException $e) {
+        if (_is_agent_mode_request()) {
+            _agent_respond(new AgentJsonResponse(false, error: $e->getMessage()));
+        }
         if (! $quiet) {
             _get_logger()->error(Logger::VERBOSITY_NORMAL, $e->getMessage());
         }
 
         return null;
     }
+}
+
+/**
+ * Emit a single actionable JSON error for issue-tracker resolution failures in agent mode (ADR-012).
+ */
+function _agent_fail_issue_tracker(\App\DTO\MessageRef $messageRef): never
+{
+    $translator = _get_translation_service();
+    _agent_respond(new AgentJsonResponse(
+        false,
+        error: $translator->transForAgentText($messageRef->key, $messageRef->parameters),
+    ));
+
+    exit(1);
 }
 
 function _require_issue_tracker(?string $override = null, ?string $issueKey = null): IssueTrackerPort
@@ -1925,16 +1945,16 @@ function config_validate(
     }
     $globalConfig = _get_config();
     $providerResolver = new \App\Service\GlobalConfigProviderResolver();
-    $workItemProviders = $providerResolver->resolveIssueTrackerProviders($globalConfig);
+    $issueTrackerProviders = $providerResolver->resolveIssueTrackerProviders($globalConfig);
     $gitProviders = $providerResolver->resolveGitProviders($globalConfig);
-    $validateJira = $providerResolver->collectsJira($workItemProviders);
+    $validateJira = $providerResolver->collectsJira($issueTrackerProviders);
     $validateGit = $providerResolver->collectsGithub($gitProviders)
         || $providerResolver->collectsGitlab($gitProviders);
-    $validateLinear = $providerResolver->collectsLinear($workItemProviders);
+    $validateLinear = $providerResolver->collectsLinear($issueTrackerProviders);
 
-    $workItemProvider = ($skipJira || ! $validateJira) ? null : _get_issue_tracker(true);
+    $jiraIssueTracker = ($skipJira || ! $validateJira) ? null : _get_issue_tracker(true);
 
-    $linearWorkItemProvider = null;
+    $linearIssueTracker = null;
     if ($validateLinear && ! $skipLinear) {
         try {
             $factory = _get_issue_tracker_factory();
@@ -1947,14 +1967,14 @@ function config_validate(
                     $gitRepository = _get_git_repository();
                 } catch (\RuntimeException) {
                 }
-                $linearWorkItemProvider = $factory->create(
+                $linearIssueTracker = $factory->create(
                     'linear',
                     linearApiClient: $linearApiClient,
                     gitRepository: $gitRepository,
                 );
             }
         } catch (\Throwable) {
-            $linearWorkItemProvider = null;
+            $linearIssueTracker = null;
         }
     }
 
@@ -1979,7 +1999,7 @@ function config_validate(
     }
 
     $handler = new ConfigValidateHandler(
-        $workItemProvider,
+        $jiraIssueTracker,
         $gitProvider,
         $skipJira,
         $skipGitForHandler,
@@ -1987,7 +2007,7 @@ function config_validate(
         $validateJira,
         $validateGit,
         $validateLinear,
-        $linearWorkItemProvider,
+        $linearIssueTracker,
     );
     $response = $handler->handle();
     $credentialWarnings = (new \App\Service\ConfigProviderCredentialWarnings())->collect($globalConfig);
@@ -2749,8 +2769,8 @@ function items_start(
         _get_logger()->error(Logger::VERBOSITY_NORMAL, 'The "key" argument is required.');
         exit(1);
     }
-    $workItemProvider = _require_issue_tracker($providerOverride ?? $provider, $key);
-    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $workItemProvider, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
+    $issueTracker = _require_issue_tracker($providerOverride ?? $provider, $key);
+    $handler = new ItemStartHandler(_get_git_repository(), _get_git_branch_service(), $issueTracker, _get_base_branch(), _get_translation_service(), _get_jira_config(), _get_prompt(), _get_linear_type_label_resolver());
     $response = $handler->handle($key);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
@@ -2783,9 +2803,9 @@ function items_takeover(
     $baseBranch = _get_base_branch();
     $gitBranchService = _get_git_branch_service();
     $prompt = _get_prompt();
-    $workItemProvider = _require_issue_tracker();
-    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt, _get_linear_type_label_resolver());
-    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $workItemProvider, $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
+    $issueTracker = _require_issue_tracker();
+    $itemStartHandler = new ItemStartHandler(_get_git_repository(), $gitBranchService, $issueTracker, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt, _get_linear_type_label_resolver());
+    $handler = new ItemTakeoverHandler(_get_git_repository(), $gitBranchService, $issueTracker, $itemStartHandler, $baseBranch, _get_translation_service(), _get_jira_config(), $prompt);
     $response = $handler->handle($key, $quiet);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
