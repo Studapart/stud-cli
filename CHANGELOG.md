@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Provider override on essential items commands (SCI-184):** `--provider jira|linear` and agent JSON `provider` on `items:show`, `items:create`, `items:update`, `items:transition`, `items:start`, and `items:list`; explicit `auto` override rejected with allowed-values error; agent help schema documents `provider` as `jira` or `linear`.
 - **Issue-tracker provider naming (SCI-183):** merge `WorkItemProvider` and `WorkItemProviderId` into `IssueTrackerProvider` (`Jira`, `Linear`, `Auto`); rename `WorkItemProviderResolutionException` to `IssueTrackerResolutionException`; translation domain `issue_tracker_provider.*`; `GlobalIssueTrackerProviderMenu`. YAML keys `workItemProvider` / `WORK_ITEM_PROVIDERS` and agent JSON `workItemProviders` unchanged for compatibility.
 - **Dual PM provider resolution (SCI-183):** `IssueTrackerFactory` resolves issue-tracker provider via override, project `workItemProvider`, single configured provider, or `auto` issue-key prefix match against `projectKey` / `linearTeamKey`; `items:*` commands pass issue keys into `_get_issue_tracker()` for auto resolution.
 - **Linear attachment download (SCI-180):** `LinearAttachmentService` lists issue attachments via GraphQL and downloads from allowlisted Linear asset hosts with API key auth; `LinearIssueTrackerAdapter::listAttachments` / `downloadAttachment` delegate so `stud items:download` works for Linear.
