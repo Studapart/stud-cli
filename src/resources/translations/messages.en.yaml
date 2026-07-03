@@ -49,7 +49,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Both"
-    work_item_provider:
+    issue_tracker_provider:
       title: "Project Management Selection"
       menu: "0 Jira · 1 Linear · 2 Both"
       prompt: "Configure project management"
@@ -111,7 +111,7 @@ config:
     reserved_keys: "These keys cannot be set via this command: %keys%"
     invalid_git_provider: "gitProvider must be github or gitlab."
     invalid_transition_id: "transitionId must be a non-negative integer."
-    invalid_work_item_provider: "workItemProvider must be jira, linear, or auto."
+    invalid_issue_tracker_provider: "workItemProvider must be jira, linear, or auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes must be a map of non-empty type labels to non-empty branch prefixes."
     base_branch_error: "%message%"
     interactive_title: "Project stud configuration"
@@ -127,7 +127,7 @@ config:
     prompt_github_token: "GitHub token for this repository (hidden)"
     prompt_gitlab_token_hint: "GitLab token: leave blank to skip; enter '.' to keep the existing token."
     prompt_gitlab_token: "GitLab token for this repository (hidden)"
-    prompt_work_item_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_issue_tracker_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
     prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
     prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     picker_skip: "Skip (leave unset)"
@@ -358,11 +358,16 @@ item:
     no_items: "No items found matching your criteria."
     error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: "Linear is selected but LINEAR_API_KEY is not configured. Run \"stud config:init\" or set LINEAR_API_KEY in ~/.config/stud/config.yml."
   missing_jira_configuration: "Jira is selected but Jira credentials are not configured. Run \"stud config:init\"."
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: "No work-item provider is configured. Run \"stud config:init\" to set up Jira or Linear."
+  ambiguous_prefix: "Issue key prefix %prefix% matches both Jira and Linear project keys. Pass --provider or set distinct projectKey and linearTeamKey in .git/stud.config."
+  unknown_prefix: "Issue key prefix %prefix% does not match configured keys (%configuredKeys%). Pass --provider or set workItemProvider in .git/stud.config."
+  auto_requires_issue_key: "workItemProvider is auto but no issue key was provided for provider resolution. Pass an issue key or set workItemProvider to jira or linear."
+  invalid_override: "Invalid work-item provider override %value%. Allowed values: jira, linear."
+  unknown_resolved: "Unknown resolved work-item provider %value%. Expected jira or linear."
 
 # Project List Handler
 project:

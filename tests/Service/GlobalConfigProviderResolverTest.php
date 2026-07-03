@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Enum\GitProvider;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Service\GlobalConfigProviderResolver;
 use PHPUnit\Framework\TestCase;
 
@@ -30,8 +30,8 @@ class GlobalConfigProviderResolverTest extends TestCase
     public function testNormalizeWorkItemProvidersFiltersUnknownAndDedupes(): void
     {
         $this->assertSame(
-            [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value],
-            $this->resolver->normalizeWorkItemProviders(['JIRA', 'linear', 'nope'])
+            [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            $this->resolver->normalizeIssueTrackerProviders(['JIRA', 'linear', 'nope'])
         );
     }
 
@@ -54,16 +54,16 @@ class GlobalConfigProviderResolverTest extends TestCase
     public function testInferDefaultWorkItemProvidersFromStoredCredentials(): void
     {
         $this->assertSame(
-            [WorkItemProvider::Jira->value],
-            $this->resolver->inferDefaultWorkItemProviders(['JIRA_URL' => 'https://jira.example.com'])
+            [IssueTrackerProvider::Jira->value],
+            $this->resolver->inferDefaultIssueTrackerProviders(['JIRA_URL' => 'https://jira.example.com'])
         );
         $this->assertSame(
-            [WorkItemProvider::Linear->value],
-            $this->resolver->inferDefaultWorkItemProviders(['LINEAR_API_KEY' => 'lin'])
+            [IssueTrackerProvider::Linear->value],
+            $this->resolver->inferDefaultIssueTrackerProviders(['LINEAR_API_KEY' => 'lin'])
         );
         $this->assertSame(
-            [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value],
-            $this->resolver->inferDefaultWorkItemProviders([
+            [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            $this->resolver->inferDefaultIssueTrackerProviders([
                 'JIRA_URL' => 'https://jira.example.com',
                 'LINEAR_API_KEY' => 'lin',
             ])
@@ -73,14 +73,16 @@ class GlobalConfigProviderResolverTest extends TestCase
     public function testCollectsProviderFlags(): void
     {
         $git = [GitProvider::Github->value, GitProvider::Gitlab->value];
-        $work = [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value];
+        $work = [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value];
 
         $this->assertTrue($this->resolver->collectsGithub($git));
         $this->assertTrue($this->resolver->collectsGitlab($git));
         $this->assertTrue($this->resolver->collectsJira($work));
         $this->assertTrue($this->resolver->collectsLinear($work));
+        $this->assertTrue($this->resolver->collectsIssueTracker(IssueTrackerProvider::Jira, $work));
+        $this->assertFalse($this->resolver->collectsIssueTracker(IssueTrackerProvider::Auto, $work));
         $this->assertFalse($this->resolver->collectsGithub([GitProvider::Gitlab->value]));
-        $this->assertFalse($this->resolver->collectsLinear([WorkItemProvider::Jira->value]));
+        $this->assertFalse($this->resolver->collectsLinear([IssueTrackerProvider::Jira->value]));
     }
 
     public function testResolveGitProvidersPrefersExplicitList(): void
@@ -108,8 +110,8 @@ class GlobalConfigProviderResolverTest extends TestCase
     public function testResolveWorkItemProvidersFromCredentials(): void
     {
         $this->assertSame(
-            [WorkItemProvider::Linear->value],
-            $this->resolver->resolveWorkItemProviders([
+            [IssueTrackerProvider::Linear->value],
+            $this->resolver->resolveIssueTrackerProviders([
                 'LINEAR_API_KEY' => 'lin',
             ])
         );
@@ -118,8 +120,8 @@ class GlobalConfigProviderResolverTest extends TestCase
     public function testResolveWorkItemProvidersDefaultsToJiraWhenNoCredentials(): void
     {
         $this->assertSame(
-            [WorkItemProvider::Jira->value],
-            $this->resolver->resolveWorkItemProviders([]),
+            [IssueTrackerProvider::Jira->value],
+            $this->resolver->resolveIssueTrackerProviders([]),
         );
     }
 }

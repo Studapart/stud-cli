@@ -40,7 +40,7 @@ class GitProjectConfigServiceTest extends TestCase
     public function testGetProjectKeyFromIssueKeyThrowsOnInvalidFormat(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid Jira issue key format: bad');
+        $this->expectExceptionMessage('Invalid issue key format: bad');
 
         $this->service->getProjectKeyFromIssueKey('bad');
     }

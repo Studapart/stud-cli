@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Guard;
 
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Guard\Resolver\EffectiveProviderResolver;
 use PHPUnit\Framework\TestCase;
 
@@ -56,22 +56,7 @@ class EffectiveProviderResolverTest extends TestCase
 
     public function testResolveWorkItemProvidersUsesActiveProjectProvider(): void
     {
-        $result = $this->resolver->resolveWorkItemProviders(
-            [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
-                'JIRA_URL' => 'https://example.atlassian.net',
-                'LINEAR_API_KEY' => 'lin',
-            ],
-            ['workItemProvider' => WorkItemProvider::Jira->value],
-        );
-
-        $this->assertSame([WorkItemProvider::Jira->value], $result['providers']);
-        $this->assertFalse($result['ambiguous']);
-    }
-
-    public function testResolveWorkItemProvidersResolvesAutoToJiraWhenBothConfigured(): void
-    {
-        $result = $this->resolver->resolveWorkItemProviders(
+        $result = $this->resolver->resolveIssueTrackerProviders(
             [
                 'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
@@ -79,32 +64,49 @@ class EffectiveProviderResolverTest extends TestCase
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
+            ['workItemProvider' => IssueTrackerProvider::Jira->value],
         );
 
+        $this->assertSame([IssueTrackerProvider::Jira->value], $result['providers']);
         $this->assertFalse($result['ambiguous']);
-        $this->assertSame([WorkItemProvider::Jira->value], $result['providers']);
+    }
+
+    public function testResolveWorkItemProvidersMarksAmbiguousWhenAutoHasNoIssueKey(): void
+    {
+        $result = $this->resolver->resolveIssueTrackerProviders(
+            [
+                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            ['workItemProvider' => IssueTrackerProvider::Auto->value],
+        );
+
+        $this->assertTrue($result['ambiguous']);
+        $this->assertSame([IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value], $result['providers']);
     }
 
     public function testResolveWorkItemProvidersMarksAmbiguousWhenAutoCannotResolve(): void
     {
-        $result = $this->resolver->resolveWorkItemProviders(
-            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
-            ['workItemProvider' => WorkItemProvider::PROJECT_AUTO],
+        $result = $this->resolver->resolveIssueTrackerProviders(
+            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['workItemProvider' => IssueTrackerProvider::Auto->value],
         );
 
         $this->assertTrue($result['ambiguous']);
-        $this->assertSame([WorkItemProvider::Jira->value, WorkItemProvider::Linear->value], $result['providers']);
+        $this->assertSame([IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value], $result['providers']);
     }
 
     public function testResolveWorkItemProvidersWithoutProjectConfigUsesGlobalList(): void
     {
-        $result = $this->resolver->resolveWorkItemProviders(
+        $result = $this->resolver->resolveIssueTrackerProviders(
             ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             null,
         );
 
         $this->assertFalse($result['ambiguous']);
-        $this->assertSame([WorkItemProvider::Linear->value], $result['providers']);
+        $this->assertSame([IssueTrackerProvider::Linear->value], $result['providers']);
     }
 }

@@ -89,7 +89,7 @@ flowchart TB
 
 | Term | Meaning | Use on |
 |------|---------|--------|
-| **Provider** (config) | Which vendor integration is enabled in YAML / init | `enum WorkItemProvider`, `GIT_PROVIDERS`, `WORK_ITEM_PROVIDERS` |
+| **Provider** (config) | Which vendor integration is enabled in YAML / init | `enum IssueTrackerProvider`, `GIT_PROVIDERS`, `WORK_ITEM_PROVIDERS` |
 | **Port** | Outbound interface handlers depend on; stud-facing vocabulary | `IssueTrackerPort`, `GitHostingPort`, `WikiPort` |
 | **Adapter** | Port implementation for one vendor; anti-corruption layer | `JiraIssueTrackerAdapter`, `GithubGitHostingAdapter` |
 | **Client** | HTTP/GraphQL + JSON mapping; no handler-facing API | `JiraApiClient`, `ConfluenceApiClient`, `LinearApiClient`; inline HTTP in git hosting adapters |
@@ -146,7 +146,7 @@ Handlers inject these directly — no polymorphic port.
 
 | Class / enum | Role |
 |--------------|------|
-| `GitProvider`, `WorkItemProvider` | Stored vendor tokens |
+| `GitProvider`, `IssueTrackerProvider` | Stored vendor tokens |
 | `GlobalConfigProviderResolver` | Normalize `*_PROVIDERS` lists |
 
 ## 6. Decisions (near-term implementation)

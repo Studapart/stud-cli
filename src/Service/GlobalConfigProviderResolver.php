@@ -6,7 +6,7 @@ namespace App\Service;
 
 use App\Config\GlobalStudConfigKeys;
 use App\Enum\GitProvider;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 
 /**
  * Normalizes and infers global Git / work-item provider lists for config:init.
@@ -37,11 +37,11 @@ class GlobalConfigProviderResolver
      * @param list<string> $values
      * @return list<string>
      */
-    public function normalizeWorkItemProviders(array $values): array
+    public function normalizeIssueTrackerProviders(array $values): array
     {
         $normalized = [];
         foreach ($values as $provider) {
-            $enum = WorkItemProvider::tryFromNormalized($provider);
+            $enum = IssueTrackerProvider::tryFromNormalized($provider);
             if ($enum !== null) {
                 $normalized[] = $enum->value;
             }
@@ -117,44 +117,44 @@ class GlobalConfigProviderResolver
      * @param array<string, mixed> $global
      * @return list<string>
      */
-    public function resolveWorkItemProviders(array $global): array
+    public function resolveIssueTrackerProviders(array $global): array
     {
         if (isset($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]) && is_array($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS])) {
-            $normalized = $this->normalizeWorkItemProviders($this->coerceStringList($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]));
+            $normalized = $this->normalizeIssueTrackerProviders($this->coerceStringList($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]));
             if ($normalized !== []) {
                 return $normalized;
             }
         }
 
-        return $this->inferWorkItemProvidersFromLegacy($global);
+        return $this->inferIssueTrackerProvidersFromLegacy($global);
     }
 
     /**
      * @param array<string, mixed> $global
      * @return list<string>
      */
-    public function inferWorkItemProvidersFromLegacy(array $global): array
+    public function inferIssueTrackerProvidersFromLegacy(array $global): array
     {
-        $providers = $this->inferWorkItemProvidersFromCredentials($global);
+        $providers = $this->inferIssueTrackerProvidersFromCredentials($global);
         if ($providers !== []) {
             return $providers;
         }
 
-        return [WorkItemProvider::Jira->value];
+        return [IssueTrackerProvider::Jira->value];
     }
 
     /**
      * @param array<string, mixed> $global
      * @return list<string>
      */
-    public function inferWorkItemProvidersFromCredentials(array $global): array
+    public function inferIssueTrackerProvidersFromCredentials(array $global): array
     {
         $providers = [];
         if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::JIRA_URL] ?? null) !== null) {
-            $providers[] = WorkItemProvider::Jira->value;
+            $providers[] = IssueTrackerProvider::Jira->value;
         }
         if ($this->nonEmptyStoredString($global[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null) !== null) {
-            $providers[] = WorkItemProvider::Linear->value;
+            $providers[] = IssueTrackerProvider::Linear->value;
         }
 
         $providers = array_values(array_unique($providers));
@@ -167,19 +167,19 @@ class GlobalConfigProviderResolver
      * @param array<string, mixed> $existingConfig
      * @return list<string>
      */
-    public function inferDefaultWorkItemProviders(array $existingConfig): array
+    public function inferDefaultIssueTrackerProviders(array $existingConfig): array
     {
         $hasJira = $this->nonEmptyStoredString($existingConfig[GlobalStudConfigKeys::JIRA_URL] ?? null) !== null;
         $hasLinear = $this->nonEmptyStoredString($existingConfig[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null) !== null;
 
         if ($hasJira && $hasLinear) {
-            return [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value];
+            return [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value];
         }
         if ($hasLinear) {
-            return [WorkItemProvider::Linear->value];
+            return [IssueTrackerProvider::Linear->value];
         }
 
-        return [WorkItemProvider::Jira->value];
+        return [IssueTrackerProvider::Jira->value];
     }
 
     /**
@@ -201,9 +201,21 @@ class GlobalConfigProviderResolver
     /**
      * @param list<string> $workItemProviders
      */
+    public function collectsIssueTracker(IssueTrackerProvider $provider, array $workItemProviders): bool
+    {
+        if ($provider === IssueTrackerProvider::Auto) {
+            return false;
+        }
+
+        return in_array($provider->value, $workItemProviders, true);
+    }
+
+    /**
+     * @param list<string> $workItemProviders
+     */
     public function collectsJira(array $workItemProviders): bool
     {
-        return in_array(WorkItemProvider::Jira->value, $workItemProviders, true);
+        return $this->collectsIssueTracker(IssueTrackerProvider::Jira, $workItemProviders);
     }
 
     /**
@@ -211,7 +223,7 @@ class GlobalConfigProviderResolver
      */
     public function collectsLinear(array $workItemProviders): bool
     {
-        return in_array(WorkItemProvider::Linear->value, $workItemProviders, true);
+        return $this->collectsIssueTracker(IssueTrackerProvider::Linear, $workItemProviders);
     }
 
     protected function nonEmptyStoredString(mixed $value): ?string

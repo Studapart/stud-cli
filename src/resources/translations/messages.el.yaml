@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Και τα δύο"
-    work_item_provider:
+    issue_tracker_provider:
       title: Επιλογή διαχείρισης έργου
       menu: "0 Jira · 1 Linear · 2 Και τα δύο"
       prompt: Ρύθμιση διαχείρισης έργου
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
     invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
     invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
-    invalid_work_item_provider: "Το workItemProvider πρέπει να είναι jira, linear ή auto."
+    invalid_issue_tracker_provider: "Το workItemProvider πρέπει να είναι jira, linear ή auto."
     invalid_linear_type_branch_prefixes: "Το linearTypeBranchPrefixes πρέπει να είναι χάρτης μη κενών ετικετών τύπου σε μη κενά προθέματα κλάδων."
     base_branch_error: "%message%"
     interactive_title: "Ρύθμιση stud έργου"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
     prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
     prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
-    prompt_work_item_provider: "Πάροχος work-item για αυτό το αποθετήριο (όταν η καθολική ρύθμιση υποστηρίζει Jira και Linear)"
+    prompt_issue_tracker_provider: "Πάροχος work-item για αυτό το αποθετήριο (όταν η καθολική ρύθμιση υποστηρίζει Jira και Linear)"
     prompt_linear_start_state_id: "ID κατάστασης workflow Linear για items:start (προαιρετικό)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear για αντιστοίχιση προθεμάτων κλάδων (προαιρετικό)"
     picker_skip: "Παράλειψη (αφήστε κενό)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
     no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
     error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Επιλέχθηκε Linear αλλά το LINEAR_API_KEY δεν έχει ρυθμιστεί. Εκτελέστε "stud config:init" ή ορίστε LINEAR_API_KEY στο ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Επιλέχθηκε Jira αλλά τα διαπιστευτήρια Jira δεν έχουν ρυθμιστεί. Εκτελέστε "stud config:init".'
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Δεν έχει ρυθμιστεί πάροχος work-item. Εκτελέστε "stud config:init" για ρύθμιση Jira ή Linear.'
+  ambiguous_prefix: 'Το πρόθεμα κλειδιού %prefix% ταιριάζει και με Jira και με Linear. Χρησιμοποιήστε --provider ή ορίστε διαφορετικά projectKey και linearTeamKey στο .git/stud.config.'
+  unknown_prefix: 'Το πρόθεμα κλειδιού %prefix% δεν ταιριάζει με τα ρυθμισμένα κλειδιά (%configuredKeys%). Χρησιμοποιήστε --provider ή ορίστε workItemProvider στο .git/stud.config.'
+  auto_requires_issue_key: 'Το workItemProvider είναι auto αλλά δεν δόθηκε issue key για ανάλυση παρόχου. Δώστε issue key ή ορίστε workItemProvider σε jira ή linear.'
+  invalid_override: 'Μη έγκυρη υπέρβαση παρόχου %value%. Επιτρεπόμενες τιμές: jira, linear.'
+  unknown_resolved: 'Άγνωστος resolved work-item provider %value%. Αναμενόταν jira ή linear.'
 project:
   list:
     section: Λήψη Έργων Jira

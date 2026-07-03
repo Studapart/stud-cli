@@ -10,8 +10,8 @@ use App\DTO\MessageRef;
 use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
+use App\Enum\IssueTrackerProvider;
 use App\Enum\WorkflowChannel;
-use App\Enum\WorkItemProvider;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
@@ -331,7 +331,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
             return false;
         }
 
-        return WorkItemProvider::tryFromNormalized($provider) === WorkItemProvider::Linear;
+        return IssueTrackerProvider::tryFromNormalized($provider) === IssueTrackerProvider::Linear;
     }
 
     /**

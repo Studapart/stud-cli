@@ -21,6 +21,7 @@ final class ProjectStudConfigKeys
     public const JIRA_DEFAULT_PROJECT = 'JIRA_DEFAULT_PROJECT';
     public const CONFLUENCE_DEFAULT_SPACE = 'CONFLUENCE_DEFAULT_SPACE';
     public const WORK_ITEM_PROVIDER = 'workItemProvider';
+    public const LINEAR_TEAM_KEY = 'linearTeamKey';
     public const LINEAR_START_STATE_ID = 'linearStartStateId';
     public const LINEAR_TYPE_LABEL_GROUP_ID = 'linearTypeLabelGroupId';
     public const LINEAR_TYPE_BRANCH_PREFIXES = 'linearTypeBranchPrefixes';
@@ -42,6 +43,7 @@ final class ProjectStudConfigKeys
             self::JIRA_DEFAULT_PROJECT,
             self::CONFLUENCE_DEFAULT_SPACE,
             self::WORK_ITEM_PROVIDER,
+            self::LINEAR_TEAM_KEY,
             self::LINEAR_START_STATE_ID,
             self::LINEAR_TYPE_LABEL_GROUP_ID,
             self::LINEAR_TYPE_BRANCH_PREFIXES,

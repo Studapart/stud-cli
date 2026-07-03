@@ -13,20 +13,20 @@ class IssueTrackerExceptionTest extends TestCase
     {
         $exception = IssueTrackerException::missingLinearApiKey();
 
-        $this->assertSame('work_item_provider.missing_linear_api_key', $exception->messageRef->key);
+        $this->assertSame('issue_tracker_provider.missing_linear_api_key', $exception->messageRef->key);
     }
 
     public function testMissingJiraConfigurationUsesMessageRef(): void
     {
         $exception = IssueTrackerException::missingJiraConfiguration();
 
-        $this->assertSame('work_item_provider.missing_jira_configuration', $exception->messageRef->key);
+        $this->assertSame('issue_tracker_provider.missing_jira_configuration', $exception->messageRef->key);
     }
 
     public function testNotConfiguredUsesMessageRef(): void
     {
         $exception = IssueTrackerException::notConfigured();
 
-        $this->assertSame('work_item_provider.not_configured', $exception->messageRef->key);
+        $this->assertSame('issue_tracker_provider.not_configured', $exception->messageRef->key);
     }
 }

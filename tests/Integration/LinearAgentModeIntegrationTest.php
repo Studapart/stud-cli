@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
@@ -58,7 +58,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('show');
         $result = $this->runAgentProcess(
             ['items:show', '--agent'],
-            ['key' => 'SCI-123', 'provider' => WorkItemProvider::Linear->value],
+            ['key' => 'SCI-123', 'provider' => IssueTrackerProvider::Linear->value],
             $repo,
         );
 
@@ -76,7 +76,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('list');
         $result = $this->runAgentProcess(
             ['items:list', '--agent'],
-            ['all' => false, 'project' => 'ENG', 'provider' => WorkItemProvider::Linear->value],
+            ['all' => false, 'project' => 'ENG', 'provider' => IssueTrackerProvider::Linear->value],
             $repo,
         );
 
@@ -131,7 +131,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('transition');
         $result = $this->runAgentProcess(
             ['items:transition', '--agent'],
-            ['key' => 'SCI-123', 'provider' => WorkItemProvider::Linear->value],
+            ['key' => 'SCI-123', 'provider' => IssueTrackerProvider::Linear->value],
             $repo,
         );
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Config;
 
 use App\Config\GlobalStudConfigKeys;
+use App\Enum\IssueTrackerProvider;
 use PHPUnit\Framework\TestCase;
 
 class GlobalStudConfigKeysTest extends TestCase
@@ -40,6 +41,23 @@ class GlobalStudConfigKeysTest extends TestCase
         $this->assertTrue(GlobalStudConfigKeys::hasLinearApiKey([
             GlobalStudConfigKeys::LINEAR_API_KEY => 'lin_api_123',
         ]));
+    }
+
+    public function testHasCredentialsFor(): void
+    {
+        $jiraConfig = [
+            GlobalStudConfigKeys::JIRA_URL => 'https://example.atlassian.net',
+            GlobalStudConfigKeys::JIRA_EMAIL => 'user@example.com',
+            GlobalStudConfigKeys::JIRA_API_TOKEN => 'token',
+        ];
+
+        $this->assertTrue(GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $jiraConfig));
+        $this->assertFalse(GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, []));
+        $this->assertTrue(GlobalStudConfigKeys::hasCredentialsFor(
+            IssueTrackerProvider::Linear,
+            [GlobalStudConfigKeys::LINEAR_API_KEY => 'lin_api_123'],
+        ));
+        $this->assertFalse(GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Auto, $jiraConfig));
     }
 
     public function testHasNonEmptyStringValue(): void

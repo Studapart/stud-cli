@@ -8,16 +8,16 @@ use App\DTO\MessageRef;
 use App\Service\MessageRenderer;
 
 /**
- * Numbered global init menu for work-item provider selection (0 / 1 / 2).
+ * Numbered global init menu for issue-tracker provider selection (0 / 1 / 2).
  */
-enum GlobalWorkItemProviderMenu: string
+enum GlobalIssueTrackerProviderMenu: string
 {
     case JiraOnly = 'jira_only';
     case LinearOnly = 'linear_only';
     case Both = 'both';
 
     /**
-     * @return list<GlobalWorkItemProviderMenu>
+     * @return list<GlobalIssueTrackerProviderMenu>
      */
     public static function orderedCases(): array
     {
@@ -31,21 +31,21 @@ enum GlobalWorkItemProviderMenu: string
     public function choiceMessageKey(): string
     {
         return match ($this) {
-            self::JiraOnly => 'config.init.work_item_provider.choice_jira',
-            self::LinearOnly => 'config.init.work_item_provider.choice_linear',
-            self::Both => 'config.init.work_item_provider.choice_both',
+            self::JiraOnly => 'config.init.issue_tracker_provider.choice_jira',
+            self::LinearOnly => 'config.init.issue_tracker_provider.choice_linear',
+            self::Both => 'config.init.issue_tracker_provider.choice_both',
         };
     }
 
     /**
-     * @return list<WorkItemProvider>
+     * @return list<IssueTrackerProvider>
      */
-    public function toWorkItemProviders(): array
+    public function toIssueTrackerProviders(): array
     {
         return match ($this) {
-            self::JiraOnly => [WorkItemProvider::Jira],
-            self::LinearOnly => [WorkItemProvider::Linear],
-            self::Both => [WorkItemProvider::Jira, WorkItemProvider::Linear],
+            self::JiraOnly => [IssueTrackerProvider::Jira],
+            self::LinearOnly => [IssueTrackerProvider::Linear],
+            self::Both => [IssueTrackerProvider::Jira, IssueTrackerProvider::Linear],
         };
     }
 
@@ -54,7 +54,7 @@ enum GlobalWorkItemProviderMenu: string
      */
     public function toProviderValues(): array
     {
-        return array_map(static fn (WorkItemProvider $provider): string => $provider->value, $this->toWorkItemProviders());
+        return array_map(static fn (IssueTrackerProvider $provider): string => $provider->value, $this->toIssueTrackerProviders());
     }
 
     /**
@@ -65,10 +65,10 @@ enum GlobalWorkItemProviderMenu: string
         $normalized = array_values(array_unique(array_map('strtolower', $providerValues)));
         sort($normalized);
 
-        if ($normalized === [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]) {
+        if ($normalized === [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]) {
             return self::Both;
         }
-        if ($normalized === [WorkItemProvider::Linear->value]) {
+        if ($normalized === [IssueTrackerProvider::Linear->value]) {
             return self::LinearOnly;
         }
 

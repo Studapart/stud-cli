@@ -7,7 +7,7 @@ namespace App\Handler;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Enum\GlobalGitProviderMenu;
-use App\Enum\GlobalWorkItemProviderMenu;
+use App\Enum\GlobalIssueTrackerProviderMenu;
 use App\Handler\GlobalInit\GitProviderTokensCollector;
 use App\Handler\GlobalInit\GlobalInitPromptContext;
 use App\Handler\GlobalInit\JiraCredentialsCollector;
@@ -62,7 +62,7 @@ class InitPromptCollector
         $languageChoice = $this->promptLanguage($existingConfig, $recorder);
 
         $gitProviders = $this->resolveGitProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
-        $workItemProviders = $this->resolveWorkItemProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
+        $workItemProviders = $this->resolveIssueTrackerProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
 
         $context = new GlobalInitPromptContext(
             $existingConfig,
@@ -109,7 +109,7 @@ class InitPromptCollector
      * @param array<string, mixed> $rawAgentInput
      * @return list<string>
      */
-    protected function resolveWorkItemProviders(
+    protected function resolveIssueTrackerProviders(
         array $existingConfig,
         array $rawAgentInput,
         bool $isAgent,
@@ -118,7 +118,7 @@ class InitPromptCollector
         if ($isAgent && isset($rawAgentInput['workItemProviders']) && is_array($rawAgentInput['workItemProviders'])) {
             $providers = array_values(array_filter($rawAgentInput['workItemProviders'], 'is_string'));
 
-            return $this->providerResolver->normalizeWorkItemProviders($providers);
+            return $this->providerResolver->normalizeIssueTrackerProviders($providers);
         }
 
         return $this->promptWorkItemProviders($existingConfig, $recorder);
@@ -155,23 +155,23 @@ class InitPromptCollector
      */
     protected function promptWorkItemProviders(array $existingConfig, WorkflowEntryRecorder $recorder): array
     {
-        $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.work_item_provider.title'));
-        $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.work_item_provider.menu'));
+        $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.issue_tracker_provider.title'));
+        $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.issue_tracker_provider.menu'));
 
-        $defaultMenu = GlobalWorkItemProviderMenu::fromProviderValues(
-            $this->providerResolver->inferDefaultWorkItemProviders($existingConfig)
+        $defaultMenu = GlobalIssueTrackerProviderMenu::fromProviderValues(
+            $this->providerResolver->inferDefaultIssueTrackerProviders($existingConfig)
         );
         $choices = [];
-        foreach (GlobalWorkItemProviderMenu::orderedCases() as $case) {
+        foreach (GlobalIssueTrackerProviderMenu::orderedCases() as $case) {
             $choices[] = (string) $this->messageRenderer->render(MessageRef::key($case->choiceMessageKey()));
         }
         $choice = $this->prompt->choice(
-            MessageRef::key('config.init.work_item_provider.prompt'),
+            MessageRef::key('config.init.issue_tracker_provider.prompt'),
             $choices,
             $this->messageRenderer->render(MessageRef::key($defaultMenu->choiceMessageKey())),
         );
 
-        return GlobalWorkItemProviderMenu::fromRenderedChoice((string) $choice, $this->messageRenderer)->toProviderValues();
+        return GlobalIssueTrackerProviderMenu::fromRenderedChoice((string) $choice, $this->messageRenderer)->toProviderValues();
     }
 
     /**

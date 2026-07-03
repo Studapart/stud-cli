@@ -6,7 +6,7 @@ namespace App\Tests\Service;
 
 use App\DTO\MessageRef;
 use App\DTO\StateChange;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Service\IssueTrackerFactory;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
@@ -33,12 +33,12 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
+            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
             [],
         );
 
         $this->assertTrue($result['ok']);
-        $this->assertSame(WorkItemProvider::Jira->value, $result['provider']);
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
         $this->assertSame([], $result['port']->listProjectStateChanges('SCI'));
     }
 
@@ -82,7 +82,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
+            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             [],
         );
 
@@ -106,6 +106,6 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $this->assertFalse($result['ok']);
-        $this->assertSame('work_item_provider.missing_linear_api_key', $result['error']->key);
+        $this->assertSame('issue_tracker_provider.missing_linear_api_key', $result['error']->key);
     }
 }

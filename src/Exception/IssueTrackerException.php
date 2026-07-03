@@ -16,16 +16,16 @@ final class IssueTrackerException extends \RuntimeException
 
     public static function missingLinearApiKey(): self
     {
-        return new self(MessageRef::key('work_item_provider.missing_linear_api_key'));
+        return new self(MessageRef::key('issue_tracker_provider.missing_linear_api_key'));
     }
 
     public static function missingJiraConfiguration(): self
     {
-        return new self(MessageRef::key('work_item_provider.missing_jira_configuration'));
+        return new self(MessageRef::key('issue_tracker_provider.missing_jira_configuration'));
     }
 
     public static function notConfigured(): self
     {
-        return new self(MessageRef::key('work_item_provider.not_configured'));
+        return new self(MessageRef::key('issue_tracker_provider.not_configured'));
     }
 }

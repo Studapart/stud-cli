@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\StateChange;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 
 /**
  * Maps provider-specific workflow payloads to the unified projects:workflow shape.
@@ -25,7 +25,7 @@ final class ProjectsWorkflowNormalizer
                 'name' => $change->name,
                 'provider' => $provider,
             ];
-            if ($provider === WorkItemProvider::Jira->value) {
+            if ($provider === IssueTrackerProvider::Jira->value) {
                 $row['targetStatus'] = $change->targetStatus ?? '';
             } else {
                 $row['type'] = $change->type ?? '';
@@ -48,7 +48,7 @@ final class ProjectsWorkflowNormalizer
                 'id' => (string) $transition['id'],
                 'name' => (string) $transition['name'],
                 'targetStatus' => (string) ($transition['to']['name'] ?? ''),
-                'provider' => WorkItemProvider::Jira->value,
+                'provider' => IssueTrackerProvider::Jira->value,
             ];
         }
 
@@ -67,7 +67,7 @@ final class ProjectsWorkflowNormalizer
                 'id' => $state['id'],
                 'name' => $state['name'],
                 'type' => $state['type'],
-                'provider' => WorkItemProvider::Linear->value,
+                'provider' => IssueTrackerProvider::Linear->value,
             ];
         }
 

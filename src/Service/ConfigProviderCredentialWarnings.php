@@ -8,6 +8,7 @@ use App\Config\GlobalStudConfigKeys;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\GitProvider;
+use App\Enum\IssueTrackerProvider;
 
 /**
  * Detects globally configured providers that lack stored credentials.
@@ -30,7 +31,7 @@ class ConfigProviderCredentialWarnings
     {
         $warnings = [];
         $configuredGitProviders = $this->providerResolver->resolveGitProviders($globalConfig);
-        $configuredWorkItemProviders = $this->providerResolver->resolveWorkItemProviders($globalConfig);
+        $configuredWorkItemProviders = $this->providerResolver->resolveIssueTrackerProviders($globalConfig);
 
         if ($this->providerResolver->collectsGithub($configuredGitProviders) && ! $this->hasGithubToken($globalConfig)) {
             $warnings[] = ResponseMessage::warning(MessageRef::key('config.validate.warn_github_token_missing'));
@@ -40,15 +41,27 @@ class ConfigProviderCredentialWarnings
             $warnings[] = ResponseMessage::warning(MessageRef::key('config.validate.warn_gitlab_token_missing'));
         }
 
-        if ($this->providerResolver->collectsJira($configuredWorkItemProviders) && ! $this->hasJiraCredentials($globalConfig)) {
-            $warnings[] = ResponseMessage::warning(MessageRef::key('config.validate.warn_jira_credentials_missing'));
-        }
-
-        if ($this->providerResolver->collectsLinear($configuredWorkItemProviders) && ! $this->hasLinearApiKey($globalConfig)) {
-            $warnings[] = ResponseMessage::warning(MessageRef::key('config.validate.warn_linear_api_key_missing'));
+        foreach (IssueTrackerProvider::vendors() as $vendor) {
+            if (
+                $this->providerResolver->collectsIssueTracker($vendor, $configuredWorkItemProviders)
+                && ! GlobalStudConfigKeys::hasCredentialsFor($vendor, $globalConfig)
+            ) {
+                $warnings[] = ResponseMessage::warning(
+                    MessageRef::key($this->missingCredentialWarningKey($vendor)),
+                );
+            }
         }
 
         return $warnings;
+    }
+
+    private function missingCredentialWarningKey(IssueTrackerProvider $vendor): string
+    {
+        return match ($vendor) {
+            IssueTrackerProvider::Jira => 'config.validate.warn_jira_credentials_missing',
+            IssueTrackerProvider::Linear => 'config.validate.warn_linear_api_key_missing',
+            IssueTrackerProvider::Auto => throw new \LogicException('Auto is not a configured issue-tracker vendor'),
+        };
     }
 
     /**
@@ -67,22 +80,6 @@ class ConfigProviderCredentialWarnings
     {
         return GlobalStudConfigKeys::hasNonEmptyStringValue($globalConfig, GlobalStudConfigKeys::GITLAB_TOKEN)
             || $this->hasLegacyGitToken($globalConfig, GitProvider::Gitlab->value);
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
-    public function hasJiraCredentials(array $globalConfig): bool
-    {
-        return GlobalStudConfigKeys::hasJiraCredentials($globalConfig);
-    }
-
-    /**
-     * @param array<string, mixed> $globalConfig
-     */
-    public function hasLinearApiKey(array $globalConfig): bool
-    {
-        return GlobalStudConfigKeys::hasLinearApiKey($globalConfig);
     }
 
     /**

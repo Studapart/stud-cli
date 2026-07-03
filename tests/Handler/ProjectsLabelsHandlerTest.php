@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\MessageRef;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Handler\ProjectsLabelsHandler;
@@ -35,7 +35,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', false);
 
@@ -55,7 +55,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
         $response = $handler->handle('SCI', true);
 
@@ -69,7 +69,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
         $port = $this->createMock(IssueTrackerPort::class);
 
         $response = $this->createHandler(
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Jira->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Jira->value, 'port' => $port],
         )->handle('SCI', false);
 
         $this->assertTrue($response->isSuccess());
@@ -84,7 +84,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
     public function testHandleReturnsErrorWhenProviderAmbiguous(): void
     {
         $handler = $this->createHandler(
-            globalConfig: ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value, WorkItemProvider::Linear->value]],
+            globalConfig: ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             projectConfig: [],
             resolveResult: [
                 'ok' => false,
@@ -111,7 +111,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(
-            'work_item_provider.missing_linear_api_key',
+            'issue_tracker_provider.missing_linear_api_key',
             (string) $response->getErrorMessage(),
         );
     }
@@ -125,7 +125,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
 
         $response = $handler->handle('SCI', false);
@@ -145,7 +145,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler(
             globalConfig: ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin_api_test'],
-            resolveResult: ['ok' => true, 'provider' => WorkItemProvider::Linear->value, 'port' => $port],
+            resolveResult: ['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port],
         );
 
         $response = $handler->handle('SCI', false);
@@ -162,7 +162,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
      * @param array<string, mixed> $resolveResult
      */
     private function createHandler(
-        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [WorkItemProvider::Jira->value]],
+        array $globalConfig = ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
         array $projectConfig = [],
         array $resolveResult = [],
     ): ProjectsLabelsHandler {

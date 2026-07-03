@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\MessageRef;
-use App\Enum\WorkItemProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Exception\IssueTrackerException;
+use App\Exception\IssueTrackerResolutionException;
 
 /**
  * Resolves the active work-item provider for project-scoped commands
@@ -29,16 +30,18 @@ final class IssueTrackerResolver
      *
      * @return array{ok: true, provider: 'jira'|'linear'}|array{ok: false, error: MessageRef}
      */
-    public function resolveActiveProvider(array $globalConfig, array $projectConfig): array
-    {
+    public function resolveActiveProvider(
+        array $globalConfig,
+        array $projectConfig,
+        ?string $issueKey = null,
+    ): array {
         try {
-            $provider = WorkItemProvider::tryFrom($this->factory->resolveType(null, $globalConfig, $projectConfig));
-            if ($provider === null) {
-                return ['ok' => false, 'error' => IssueTrackerException::notConfigured()->messageRef];
-            }
+            $provider = IssueTrackerProvider::fromResolved(
+                $this->factory->resolveType(null, $globalConfig, $projectConfig, $issueKey),
+            );
 
-            return ['ok' => true, 'provider' => $provider->value];
-        } catch (IssueTrackerException $e) {
+            return ['ok' => true, 'provider' => $provider->vendorSlug()];
+        } catch (IssueTrackerException|IssueTrackerResolutionException $e) {
             return ['ok' => false, 'error' => $e->messageRef];
         }
     }

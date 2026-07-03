@@ -2220,7 +2220,7 @@ class GitRepositoryTest extends CommandTestCase
     public function testGetProjectKeyFromIssueKeyThrowsExceptionForInvalidFormat(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid Jira issue key format: INVALID');
+        $this->expectExceptionMessage('Invalid issue key format: INVALID');
 
         $this->gitRepository->getProjectKeyFromIssueKey('INVALID');
     }

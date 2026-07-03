@@ -23,7 +23,7 @@ class ProviderContextResolver
     public function resolve(array $globalConfig): array
     {
         return [
-            'workItem' => $this->providerResolver->resolveWorkItemProviders($globalConfig),
+            'workItem' => $this->providerResolver->resolveIssueTrackerProviders($globalConfig),
             'git' => $this->providerResolver->resolveGitProviders($globalConfig),
         ];
     }

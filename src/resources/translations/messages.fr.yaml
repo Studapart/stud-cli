@@ -48,7 +48,7 @@ config:
       choice_github: "0 GitHub"
       choice_gitlab: "1 GitLab"
       choice_both: "2 Les deux"
-    work_item_provider:
+    issue_tracker_provider:
       title: Sélection de la gestion de projet
       menu: "0 Jira · 1 Linear · 2 Les deux"
       prompt: Configurer la gestion de projet
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Ces clés ne peuvent pas être définies par cette commande : %keys%"
     invalid_git_provider: "gitProvider doit être github ou gitlab."
     invalid_transition_id: "transitionId doit être un entier positif ou nul."
-    invalid_work_item_provider: "workItemProvider doit être jira, linear ou auto."
+    invalid_issue_tracker_provider: "workItemProvider doit être jira, linear ou auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes doit être une map de libellés de type non vides vers des préfixes de branche non vides."
     base_branch_error: "%message%"
     interactive_title: "Configuration stud du projet"
@@ -126,7 +126,7 @@ config:
     prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
     prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
     prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
-    prompt_work_item_provider: "Fournisseur de tickets pour ce dépôt (lorsque la config globale prend en charge Jira et Linear)"
+    prompt_issue_tracker_provider: "Fournisseur de tickets pour ce dépôt (lorsque la config globale prend en charge Jira et Linear)"
     prompt_linear_start_state_id: "ID d'état de workflow Linear pour items:start (optionnel)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear pour le mapping des préfixes de branche (optionnel)"
     picker_skip: "Ignorer (laisser non défini)"
@@ -355,11 +355,16 @@ item:
     error_fetch: 'Échec de la récupération des tickets : %error%'
     no_items: Aucun ticket trouvé correspondant à vos critères.
     error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
-work_item_provider:
+issue_tracker_provider:
   missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
   missing_jira_configuration: 'Jira est sélectionné mais les identifiants Jira ne sont pas configurés. Exécutez "stud config:init".'
   invalid_jira_base_url: "Configuration de l'URL Jira invalide."
   not_configured: 'Aucun fournisseur de work-items configuré. Exécutez "stud config:init" pour configurer Jira ou Linear.'
+  ambiguous_prefix: 'Le préfixe de clé %prefix% correspond aux clés Jira et Linear. Passez --provider ou définissez des projectKey et linearTeamKey distincts dans .git/stud.config.'
+  unknown_prefix: 'Le préfixe de clé %prefix% ne correspond à aucune clé configurée (%configuredKeys%). Passez --provider ou définissez workItemProvider dans .git/stud.config.'
+  auto_requires_issue_key: 'workItemProvider est auto mais aucune clé de ticket na été fournie. Passez une clé ou définissez workItemProvider sur jira ou linear.'
+  invalid_override: 'Override de fournisseur invalide %value%. Valeurs autorisées : jira, linear.'
+  unknown_resolved: 'Fournisseur work-item résolu inconnu %value%. Attendu jira ou linear.'
 project:
   list:
     section: Récupération des projets Jira
