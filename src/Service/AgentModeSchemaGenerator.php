@@ -22,6 +22,24 @@ use Castor\Attribute\AsTask;
 class AgentModeSchemaGenerator
 {
     private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
+
+    /** @var list<string> */
+    private const ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE = [
+        'items:create',
+        'items:list',
+        'items:show',
+        'items:start',
+        'items:transition',
+        'items:update',
+    ];
+
+    private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
+        'type' => 'string|null',
+        'optional' => true,
+        'default' => null,
+        'enum' => ['jira', 'linear'],
+    ];
+
     private const COMPACT_PROPERTY = [
         'type' => 'bool',
         'optional' => true,
@@ -196,6 +214,10 @@ class AgentModeSchemaGenerator
                 'command' => ['type' => 'string|null', 'optional' => true, 'default' => null],
                 'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
             ] + $inputProperties;
+        }
+
+        if (in_array($taskName, self::ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
+            $inputProperties['provider'] = self::PROVIDER_OVERRIDE_INPUT_SCHEMA;
         }
 
         if ($taskName === 'config:init') {

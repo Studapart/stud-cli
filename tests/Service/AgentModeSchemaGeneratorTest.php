@@ -182,6 +182,28 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
     }
 
+    public function testItemsCommandsDocumentProviderOverrideEnum(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        foreach ([
+            'items:create',
+            'items:list',
+            'items:show',
+            'items:start',
+            'items:transition',
+            'items:update',
+        ] as $commandName) {
+            $provider = $schemaByName[$commandName]['input']['properties']['provider'] ?? null;
+            $this->assertIsArray($provider, "{$commandName} must document provider in agent input schema");
+            $this->assertSame(['jira', 'linear'], $provider['enum'] ?? null);
+            $this->assertTrue($provider['optional'] ?? false);
+        }
+    }
+
     public function testEveryAgentTaskHasAgentOption(): void
     {
         foreach ($this->taskDefs as $name => $def) {
