@@ -25,7 +25,7 @@ class LinearApiKeyCollector
      */
     public function collect(GlobalInitPromptContext $context): array
     {
-        $active = $this->providerResolver->collectsLinear($context->workItemProviders);
+        $active = $this->providerResolver->collectsLinear($context->issueTrackerProviders);
         $existing = $context->existingConfig;
 
         if ($active && ! $context->isAgent) {

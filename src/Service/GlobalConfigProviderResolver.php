@@ -119,8 +119,9 @@ class GlobalConfigProviderResolver
      */
     public function resolveIssueTrackerProviders(array $global): array
     {
-        if (isset($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]) && is_array($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS])) {
-            $normalized = $this->normalizeIssueTrackerProviders($this->coerceStringList($global[GlobalStudConfigKeys::WORK_ITEM_PROVIDERS]));
+        $storedList = GlobalStudConfigKeys::readIssueTrackerProvidersList($global);
+        if ($storedList !== null) {
+            $normalized = $this->normalizeIssueTrackerProviders($storedList);
             if ($normalized !== []) {
                 return $normalized;
             }
@@ -199,31 +200,31 @@ class GlobalConfigProviderResolver
     }
 
     /**
-     * @param list<string> $workItemProviders
+     * @param list<string> $issueTrackerProviders
      */
-    public function collectsIssueTracker(IssueTrackerProvider $provider, array $workItemProviders): bool
+    public function collectsIssueTracker(IssueTrackerProvider $provider, array $issueTrackerProviders): bool
     {
         if ($provider === IssueTrackerProvider::Auto) {
             return false;
         }
 
-        return in_array($provider->value, $workItemProviders, true);
+        return in_array($provider->value, $issueTrackerProviders, true);
     }
 
     /**
-     * @param list<string> $workItemProviders
+     * @param list<string> $issueTrackerProviders
      */
-    public function collectsJira(array $workItemProviders): bool
+    public function collectsJira(array $issueTrackerProviders): bool
     {
-        return $this->collectsIssueTracker(IssueTrackerProvider::Jira, $workItemProviders);
+        return $this->collectsIssueTracker(IssueTrackerProvider::Jira, $issueTrackerProviders);
     }
 
     /**
-     * @param list<string> $workItemProviders
+     * @param list<string> $issueTrackerProviders
      */
-    public function collectsLinear(array $workItemProviders): bool
+    public function collectsLinear(array $issueTrackerProviders): bool
     {
-        return $this->collectsIssueTracker(IssueTrackerProvider::Linear, $workItemProviders);
+        return $this->collectsIssueTracker(IssueTrackerProvider::Linear, $issueTrackerProviders);
     }
 
     protected function nonEmptyStoredString(mixed $value): ?string

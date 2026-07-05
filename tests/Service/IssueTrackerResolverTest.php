@@ -23,7 +23,7 @@ class IssueTrackerResolverTest extends TestCase
     public function testResolvesJiraWhenOnlyJiraConfigured(): void
     {
         $result = $this->resolver->resolveActiveProvider(
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
             [],
         );
 
@@ -34,7 +34,7 @@ class IssueTrackerResolverTest extends TestCase
     public function testResolvesLinearWhenOnlyLinearConfigured(): void
     {
         $result = $this->resolver->resolveActiveProvider(
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
             [],
         );
 
@@ -46,13 +46,13 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Linear->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Linear->value],
         );
 
         $this->assertTrue($result['ok']);
@@ -63,13 +63,13 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Jira->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Jira->value],
         );
 
         $this->assertTrue($result['ok']);
@@ -80,14 +80,14 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
             [
-                'workItemProvider' => IssueTrackerProvider::Auto->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'ENG',
             ],
@@ -102,14 +102,14 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
             [
-                'workItemProvider' => IssueTrackerProvider::Auto->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
                 'projectKey' => 'SCI',
                 'linearTeamKey' => 'ENG',
             ],
@@ -124,10 +124,10 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+                'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Auto->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
         );
 
         $this->assertTrue($result['ok']);
@@ -138,13 +138,13 @@ class IssueTrackerResolverTest extends TestCase
     {
         $result = $this->resolver->resolveActiveProvider(
             [
-                'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
                 'JIRA_URL' => 'https://example.atlassian.net',
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
                 'LINEAR_API_KEY' => 'lin',
             ],
-            ['workItemProvider' => IssueTrackerProvider::Auto->value],
+            ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
         );
 
         $this->assertFalse($result['ok']);

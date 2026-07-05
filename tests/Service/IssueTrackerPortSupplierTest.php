@@ -33,7 +33,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
             [],
         );
 
@@ -58,7 +58,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             [],
         );
 
@@ -82,7 +82,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
             [],
         );
 
@@ -101,7 +101,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         );
 
         $result = $supplier->resolve(
-            ['WORK_ITEM_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
             [],
         );
 

@@ -246,6 +246,52 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertSame(['%key%' => 'JIRA_API_TOKEN'], $response->getErrorParameters());
     }
 
+    public function testHandleWithKeyWorkItemProviderReturnsProjectValue(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->with('/path/to/config.yml')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['issueTrackerProvider' => 'linear']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('issueTrackerProvider');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('issueTrackerProvider', $response->singleKey);
+        $this->assertSame('linear', $response->singleKeyValue);
+        $this->assertSame('project', $response->singleKeySection);
+    }
+
+    public function testHandleWithKeyLinearTeamKeyReturnsProjectValue(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->with('/path/to/config.yml')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['linearTeamKey' => 'ENG']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('linearTeamKey');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('linearTeamKey', $response->singleKey);
+        $this->assertSame('ENG', $response->singleKeyValue);
+        $this->assertSame('project', $response->singleKeySection);
+    }
+
     public function testHandleWithKeyInWhitelistMissingFromEffectiveConfigReturnsError(): void
     {
         $this->fileSystem->expects($this->once())

@@ -16,7 +16,7 @@ class ProviderContextResolverTest extends TestCase
         $resolver = new ProviderContextResolver($inner);
 
         $result = $resolver->resolve([
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira'],
             'GIT_PROVIDERS' => ['github'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'GITHUB_TOKEN' => 'token',

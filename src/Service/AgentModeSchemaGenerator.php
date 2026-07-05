@@ -237,7 +237,7 @@ class AgentModeSchemaGenerator
         $properties = [];
         foreach (array_keys(GlobalStudConfigFieldMap::INPUT_TO_YAML) as $key) {
             $properties[$key] = match ($key) {
-                'gitProviders', 'workItemProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
+                'gitProviders', 'issueTrackerProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
                 'jiraTransitionEnabled' => ['type' => 'bool', 'optional' => true, 'default' => null],
                 default => ['type' => 'string|null', 'optional' => true, 'default' => null],
             };

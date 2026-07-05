@@ -18,7 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 class ItemListResponder
 {
-    private readonly WorkItemListJsonSerializer $issueSerializer;
+    private readonly IssueListJsonSerializer $issueSerializer;
 
     /**
      * @param array<string, mixed> $jiraConfig
@@ -27,9 +27,9 @@ class ItemListResponder
         private readonly ResponderHelper $helper,
         private readonly array $jiraConfig,
         private readonly Logger $logger,
-        ?WorkItemListJsonSerializer $issueSerializer = null,
+        ?IssueListJsonSerializer $issueSerializer = null,
     ) {
-        $this->issueSerializer = $issueSerializer ?? new WorkItemListJsonSerializer();
+        $this->issueSerializer = $issueSerializer ?? new IssueListJsonSerializer();
     }
 
     public function respond(SymfonyStyle $io, ItemListResponse $response, OutputFormat $format = OutputFormat::Cli): ?AgentJsonResponse

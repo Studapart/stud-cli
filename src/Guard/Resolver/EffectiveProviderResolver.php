@@ -10,14 +10,14 @@ use App\Service\IssueTrackerResolver;
 /**
  * Resolves git and work-item providers in the context of the current command run.
  *
- * Global GIT_PROVIDERS / WORK_ITEM_PROVIDERS describe what is configured globally;
+ * Global GIT_PROVIDERS / ISSUE_TRACKER_PROVIDERS describe what is configured globally;
  * project config and git remote detection narrow what this command actually needs.
  */
 class EffectiveProviderResolver
 {
     public function __construct(
         private readonly GlobalConfigProviderResolver $globalResolver = new GlobalConfigProviderResolver(),
-        private readonly IssueTrackerResolver $workItemResolver = new IssueTrackerResolver(),
+        private readonly IssueTrackerResolver $issueTrackerResolver = new IssueTrackerResolver(),
     ) {
     }
 
@@ -60,7 +60,7 @@ class EffectiveProviderResolver
             ];
         }
 
-        $active = $this->workItemResolver->resolveActiveProvider($globalConfig, $projectConfig);
+        $active = $this->issueTrackerResolver->resolveActiveProvider($globalConfig, $projectConfig);
         if ($active['ok']) {
             return ['providers' => [$active['provider']], 'ambiguous' => false];
         }

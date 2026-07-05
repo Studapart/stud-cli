@@ -28,7 +28,7 @@ class IssueTrackerFactoryTest extends TestCase
     public function testResolveTypeUsesCliOverride(): void
     {
         $global = $this->dualCredentialsGlobal();
-        $project = ['workItemProvider' => IssueTrackerProvider::Linear->value];
+        $project = ['issueTrackerProvider' => IssueTrackerProvider::Linear->value];
 
         $this->assertSame(IssueTrackerProvider::Jira->value, $this->factory->resolveType('jira', $global, $project));
         $this->assertSame(IssueTrackerProvider::Linear->value, $this->factory->resolveType('linear', $global, $project));
@@ -48,11 +48,11 @@ class IssueTrackerFactoryTest extends TestCase
 
         $this->assertSame(
             IssueTrackerProvider::Linear->value,
-            $this->factory->resolveType(null, $global, ['workItemProvider' => IssueTrackerProvider::Linear->value]),
+            $this->factory->resolveType(null, $global, ['issueTrackerProvider' => IssueTrackerProvider::Linear->value]),
         );
         $this->assertSame(
             IssueTrackerProvider::Jira->value,
-            $this->factory->resolveType(null, $global, ['workItemProvider' => IssueTrackerProvider::Jira->value]),
+            $this->factory->resolveType(null, $global, ['issueTrackerProvider' => IssueTrackerProvider::Jira->value]),
         );
     }
 
@@ -60,7 +60,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -75,7 +75,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -90,7 +90,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -105,22 +105,47 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'SCI',
         ];
 
-        $this->expectException(IssueTrackerResolutionException::class);
-        $this->expectExceptionMessage('issue_tracker_provider.ambiguous_prefix');
+        try {
+            $this->factory->resolveType(null, $global, $project, 'SCI-99');
+        } catch (IssueTrackerResolutionException $e) {
+            $this->assertSame('issue_tracker_provider.ambiguous_prefix', $e->messageRef->key);
+            $this->assertSame('SCI', $e->messageRef->parameters['%prefix%']);
 
-        $this->factory->resolveType(null, $global, $project, 'SCI-99');
+            return;
+        }
+
+        self::fail('Expected IssueTrackerResolutionException');
+    }
+
+    public function testResolutionErrorsExposeActionableMessageRefs(): void
+    {
+        $ambiguous = IssueTrackerResolutionException::ambiguousPrefix('SCI');
+        $this->assertSame('issue_tracker_provider.ambiguous_prefix', $ambiguous->messageRef->key);
+        $this->assertSame('SCI', $ambiguous->messageRef->parameters['%prefix%']);
+
+        $unknown = IssueTrackerResolutionException::unknownPrefix('OPS', 'SCI (jira)');
+        $this->assertSame('issue_tracker_provider.unknown_prefix', $unknown->messageRef->key);
+        $this->assertSame('OPS', $unknown->messageRef->parameters['%prefix%']);
+
+        $invalid = IssueTrackerResolutionException::invalidOverride('auto');
+        $this->assertSame('issue_tracker_provider.invalid_override', $invalid->messageRef->key);
+        $this->assertSame('auto', $invalid->messageRef->parameters['%value%']);
+
+        $this->expectException(IssueTrackerException::class);
+        $this->expectExceptionMessage('issue_tracker_provider.missing_jira_configuration');
+        $this->factory->resolveType('jira', $this->linearOnlyGlobal(), []);
     }
 
     public function testResolveTypeAutoThrowsWhenPrefixMatchesNeitherProvider(): void
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -134,7 +159,7 @@ class IssueTrackerFactoryTest extends TestCase
     public function testResolveTypeAutoRequiresIssueKeyWhenDualConfigured(): void
     {
         $global = $this->dualCredentialsGlobal();
-        $project = ['workItemProvider' => IssueTrackerProvider::Auto->value];
+        $project = ['issueTrackerProvider' => IssueTrackerProvider::Auto->value];
 
         $this->expectException(IssueTrackerResolutionException::class);
         $this->expectExceptionMessage('issue_tracker_provider.auto_requires_issue_key');
@@ -160,7 +185,7 @@ class IssueTrackerFactoryTest extends TestCase
     {
         $global = $this->dualCredentialsGlobal();
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -194,26 +219,26 @@ class IssueTrackerFactoryTest extends TestCase
         $this->expectException(IssueTrackerException::class);
         $this->expectExceptionMessage('issue_tracker_provider.not_configured');
 
-        $this->factory->resolveType(null, $this->dualCredentialsGlobal(), ['workItemProvider' => 'invalid']);
+        $this->factory->resolveType(null, $this->dualCredentialsGlobal(), ['issueTrackerProvider' => 'invalid']);
     }
 
     public function testResolveTypeFallsBackToLinearCredentialsWhenBothListedButOnlyLinearConfigured(): void
     {
         $global = [
-            'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
             'LINEAR_API_KEY' => 'lin',
         ];
 
         $this->assertSame(
             IssueTrackerProvider::Linear->value,
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'invalid']),
+            $this->factory->resolveType(null, $global, ['issueTrackerProvider' => 'invalid']),
         );
     }
 
     public function testResolveTypeFallsBackToJiraCredentialsWhenBothListedButOnlyJiraConfigured(): void
     {
         $global = [
-            'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -221,16 +246,16 @@ class IssueTrackerFactoryTest extends TestCase
 
         $this->assertSame(
             IssueTrackerProvider::Jira->value,
-            $this->factory->resolveType(null, $global, ['workItemProvider' => 'invalid']),
+            $this->factory->resolveType(null, $global, ['issueTrackerProvider' => 'invalid']),
         );
     }
 
     public function testResolveTypeSkipsAutoPrefixWhenGlobalListsOnlyOneProviderDespiteDualCredentials(): void
     {
         $global = $this->dualCredentialsGlobal();
-        $global['WORK_ITEM_PROVIDERS'] = [IssueTrackerProvider::Jira->value];
+        $global['ISSUE_TRACKER_PROVIDERS'] = [IssueTrackerProvider::Jira->value];
         $project = [
-            'workItemProvider' => IssueTrackerProvider::Auto->value,
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
             'projectKey' => 'SCI',
             'linearTeamKey' => 'ENG',
         ];
@@ -336,10 +361,21 @@ class IssueTrackerFactoryTest extends TestCase
         );
     }
 
+    public function testResolveTypeReadsLegacyWorkItemProviderKey(): void
+    {
+        $global = $this->dualCredentialsGlobal();
+        $project = [ProjectStudConfigKeys::LEGACY_ISSUE_TRACKER_PROVIDER => IssueTrackerProvider::Jira->value];
+
+        $this->assertSame(
+            IssueTrackerProvider::Jira->value,
+            $this->factory->resolveType(null, $global, $project),
+        );
+    }
+
     public function testResolveTypeAutoThrowsWhenIssueKeyFormatInvalid(): void
     {
         $global = $this->dualCredentialsGlobal();
-        $project = ['workItemProvider' => IssueTrackerProvider::Auto->value];
+        $project = ['issueTrackerProvider' => IssueTrackerProvider::Auto->value];
 
         $this->expectException(IssueTrackerResolutionException::class);
         $this->expectExceptionMessage('issue_tracker_provider.unknown_prefix');
@@ -350,7 +386,7 @@ class IssueTrackerFactoryTest extends TestCase
     public function testResolveTypeAutoUnknownPrefixListsNoneWhenNoProjectKeysConfigured(): void
     {
         $global = $this->dualCredentialsGlobal();
-        $project = ['workItemProvider' => IssueTrackerProvider::Auto->value];
+        $project = ['issueTrackerProvider' => IssueTrackerProvider::Auto->value];
 
         try {
             $this->factory->resolveType(null, $global, $project, 'SCI-1');
@@ -378,7 +414,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function jiraOnlyGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value]];
+        return ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]];
     }
 
     /**
@@ -386,7 +422,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function linearOnlyGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Linear->value]];
+        return ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]];
     }
 
     /**
@@ -394,7 +430,7 @@ class IssueTrackerFactoryTest extends TestCase
      */
     private function bothProvidersGlobal(): array
     {
-        return ['WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]];
+        return ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]];
     }
 
     /**
@@ -403,7 +439,7 @@ class IssueTrackerFactoryTest extends TestCase
     private function dualCredentialsGlobal(): array
     {
         return [
-            'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -417,7 +453,7 @@ class IssueTrackerFactoryTest extends TestCase
     private function jiraCredentialsGlobal(): array
     {
         return [
-            'WORK_ITEM_PROVIDERS' => [IssueTrackerProvider::Jira->value],
+            'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value],
             'JIRA_URL' => 'https://jira.example.com',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',

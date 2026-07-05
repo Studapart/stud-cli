@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Responder;
 
 use App\DTO\WorkItem;
-use App\Responder\WorkItemListJsonSerializer;
+use App\Responder\IssueListJsonSerializer;
 use PHPUnit\Framework\TestCase;
 
-class WorkItemListJsonSerializerTest extends TestCase
+class IssueListJsonSerializerTest extends TestCase
 {
-    private WorkItemListJsonSerializer $serializer;
+    private IssueListJsonSerializer $serializer;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->serializer = new WorkItemListJsonSerializer();
+        $this->serializer = new IssueListJsonSerializer();
     }
 
     public function testSerializeSummaryReturnsDiscoveryFieldsWithoutPriority(): void

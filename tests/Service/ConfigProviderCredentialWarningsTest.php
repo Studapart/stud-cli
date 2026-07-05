@@ -23,7 +23,7 @@ class ConfigProviderCredentialWarningsTest extends TestCase
         $messages = $this->warnings->collect([
             'GIT_PROVIDERS' => ['github', 'gitlab'],
             'GITHUB_TOKEN' => 'gh-token',
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -41,7 +41,7 @@ class ConfigProviderCredentialWarningsTest extends TestCase
         $messages = $this->warnings->collect([
             'GIT_PROVIDERS' => ['github'],
             'GITHUB_TOKEN' => 'gh-token',
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -58,7 +58,7 @@ class ConfigProviderCredentialWarningsTest extends TestCase
     public function testWarnsForLinearWithoutApiKey(): void
     {
         $messages = $this->warnings->collect([
-            'WORK_ITEM_PROVIDERS' => ['jira', 'linear'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira', 'linear'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -75,7 +75,7 @@ class ConfigProviderCredentialWarningsTest extends TestCase
     {
         $messages = $this->warnings->collect([
             'GIT_PROVIDERS' => ['github'],
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token',
@@ -91,7 +91,7 @@ class ConfigProviderCredentialWarningsTest extends TestCase
     public function testWarnsWhenJiraListedWithoutCompleteCredentials(): void
     {
         $messages = $this->warnings->collect([
-            'WORK_ITEM_PROVIDERS' => ['jira'],
+            'ISSUE_TRACKER_PROVIDERS' => ['jira'],
             'JIRA_URL' => 'https://example.atlassian.net',
             'GIT_PROVIDERS' => ['github'],
             'GITHUB_TOKEN' => 'gh-token',

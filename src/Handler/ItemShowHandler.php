@@ -6,11 +6,11 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemShowResponse;
 use App\Service\IssueTrackerPort;
 
-class ItemShowHandler implements WorkItemJiraAware
+class ItemShowHandler implements JiraAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,

@@ -71,6 +71,24 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertSame('Ada Lovelace', $decoded['data']['issue']['assignee'] ?? null);
     }
 
+    public function testItemsShowAgentInvalidProviderOverrideReturnsSingleJsonError(): void
+    {
+        $repo = $this->createRepository('show-invalid-provider');
+        $result = $this->runAgentProcess(
+            ['items:show', '--agent'],
+            ['key' => 'SCI-123', 'provider' => IssueTrackerProvider::Auto->value],
+            $repo,
+        );
+
+        self::assertSame(1, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        self::assertSame('', $result['stderr'], 'agent mode must not log resolution errors to stderr');
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertFalse($decoded['success'] ?? true);
+        self::assertStringContainsString('Allowed values', (string) ($decoded['error'] ?? ''));
+        self::assertStringContainsString('jira', (string) ($decoded['error'] ?? ''));
+        self::assertStringContainsString('linear', (string) ($decoded['error'] ?? ''));
+    }
+
     public function testItemsListAgentModeReturnsSlimIssues(): void
     {
         $repo = $this->createRepository('list');
@@ -215,7 +233,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $this->runProcess(['git', 'commit', '-m', 'initial'], $repo);
         file_put_contents(
             $repo . '/.git/stud.config',
-            "workItemProvider: linear\nmigration_version: '999999999999999'\n",
+            "issueTrackerProvider: linear\nmigration_version: '999999999999999'\n",
         );
 
         return $repo;
@@ -227,7 +245,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         mkdir($configDir, 0700, true);
         file_put_contents(
             $configDir . '/config.yml',
-            "LANGUAGE: en\nWORK_ITEM_PROVIDERS:\n  - linear\nLINEAR_API_KEY: test-linear-key\nmigration_version: '999999999999999'\n",
+            "LANGUAGE: en\nISSUE_TRACKER_PROVIDERS:\n  - linear\nLINEAR_API_KEY: test-linear-key\nmigration_version: '999999999999999'\n",
         );
     }
 

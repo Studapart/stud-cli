@@ -59,8 +59,8 @@ final class IntegrationHandlerExceptionBoundaryTest extends TestCase
     private function isIntegrationHandler(array $capabilities): bool
     {
         foreach ($capabilities as $capability) {
-            if (str_contains($capability, 'WorkItemJiraAware')
-                || str_contains($capability, 'WorkItemLinearAware')
+            if (str_contains($capability, '\\IssueTracker\\')
+                || str_contains($capability, '\\GitHosting\\')
                 || str_contains($capability, 'ConfluenceAware')) {
                 return true;
             }

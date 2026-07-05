@@ -304,12 +304,12 @@ class IssueTrackerFactory
      */
     private function readProjectProvider(array $projectConfig): ?IssueTrackerProvider
     {
-        if (! isset($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER]) || ! is_string($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER])) {
+        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
+        if ($stored === null) {
             return null;
         }
 
-        $normalized = strtolower(trim($projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER]));
-        $provider = IssueTrackerProvider::tryFromNormalized($normalized);
+        $provider = IssueTrackerProvider::tryFromNormalized($stored);
         if ($provider === null || $provider->isAuto()) {
             return null;
         }
@@ -327,12 +327,12 @@ class IssueTrackerFactory
             return false;
         }
 
-        $projectSetting = $projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER] ?? null;
-        if (! is_string($projectSetting) || trim($projectSetting) === '') {
+        $projectSetting = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
+        if ($projectSetting === null) {
             return true;
         }
 
-        return strtolower(trim($projectSetting)) === IssueTrackerProvider::Auto->value;
+        return $projectSetting === IssueTrackerProvider::Auto->value;
     }
 
     /**

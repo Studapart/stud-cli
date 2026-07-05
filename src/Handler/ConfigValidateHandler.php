@@ -20,7 +20,7 @@ class ConfigValidateHandler
     private const MAX_REASON_LENGTH = 120;
 
     public function __construct(
-        private readonly ?IssueTrackerPort $workItemProvider,
+        private readonly ?IssueTrackerPort $jiraIssueTracker,
         private readonly ?GitHostingPort $gitProvider,
         private readonly bool $skipJira,
         private readonly bool $skipGit,
@@ -28,7 +28,7 @@ class ConfigValidateHandler
         private readonly bool $validateJira,
         private readonly bool $validateGit,
         private readonly bool $validateLinear,
-        private readonly ?IssueTrackerPort $linearWorkItemProvider = null,
+        private readonly ?IssueTrackerPort $linearIssueTracker = null,
     ) {
     }
 
@@ -57,7 +57,7 @@ class ConfigValidateHandler
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
-        if ($this->workItemProvider === null) {
+        if ($this->jiraIssueTracker === null) {
             return [
                 'status' => ConfigValidateResponse::STATUS_FAIL,
                 'message' => MessageRef::key('config.validate.error_jira_not_configured'),
@@ -65,7 +65,7 @@ class ConfigValidateHandler
         }
 
         try {
-            $this->workItemProvider->ping();
+            $this->jiraIssueTracker->ping();
 
             return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
         } catch (ApiException $e) {
@@ -123,7 +123,7 @@ class ConfigValidateHandler
             return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
         }
 
-        if ($this->linearWorkItemProvider === null) {
+        if ($this->linearIssueTracker === null) {
             return [
                 'status' => ConfigValidateResponse::STATUS_FAIL,
                 'message' => MessageRef::key('config.validate.error_linear_not_configured'),
@@ -131,7 +131,7 @@ class ConfigValidateHandler
         }
 
         try {
-            $this->linearWorkItemProvider->ping();
+            $this->linearIssueTracker->ping();
 
             return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
         } catch (ApiException $e) {

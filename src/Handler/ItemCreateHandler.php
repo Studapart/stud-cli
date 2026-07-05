@@ -11,7 +11,7 @@ use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
 use App\Exception\LinearTypeLabelException;
 use App\Exception\StudConfigException;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueFieldBagKeys;
@@ -22,7 +22,7 @@ use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Prompt\PromptInterface;
 
-class ItemCreateHandler implements WorkItemJiraAware
+class ItemCreateHandler implements JiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\AgentInputAliases;
+use App\Config\GlobalStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Enum\GlobalGitProviderMenu;
@@ -61,8 +63,12 @@ class InitPromptCollector
     ): array {
         $languageChoice = $this->promptLanguage($existingConfig, $recorder);
 
+        if ($isAgent) {
+            $rawAgentInput = AgentInputAliases::normalize($rawAgentInput);
+        }
+
         $gitProviders = $this->resolveGitProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
-        $workItemProviders = $this->resolveIssueTrackerProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
+        $issueTrackerProviders = $this->resolveIssueTrackerProviders($existingConfig, $rawAgentInput, $isAgent, $recorder);
 
         $context = new GlobalInitPromptContext(
             $existingConfig,
@@ -70,13 +76,13 @@ class InitPromptCollector
             $isAgent,
             $recorder,
             $gitProviders,
-            $workItemProviders,
+            $issueTrackerProviders,
         );
 
         return [
             'LANGUAGE' => $languageChoice,
             'GIT_PROVIDERS' => $gitProviders,
-            'WORK_ITEM_PROVIDERS' => $workItemProviders,
+            GlobalStudConfigKeys::ISSUE_TRACKER_PROVIDERS => $issueTrackerProviders,
             ...$this->jiraCredentialsCollector->collect($context),
             ...$this->linearApiKeyCollector->collect($context),
             ...$this->gitProviderTokensCollector->collect($context),
@@ -115,13 +121,17 @@ class InitPromptCollector
         bool $isAgent,
         WorkflowEntryRecorder $recorder,
     ): array {
-        if ($isAgent && isset($rawAgentInput['workItemProviders']) && is_array($rawAgentInput['workItemProviders'])) {
-            $providers = array_values(array_filter($rawAgentInput['workItemProviders'], 'is_string'));
+        if ($isAgent) {
+            $rawAgentInput = AgentInputAliases::normalize($rawAgentInput);
+        }
+
+        if ($isAgent && isset($rawAgentInput['issueTrackerProviders']) && is_array($rawAgentInput['issueTrackerProviders'])) {
+            $providers = array_values(array_filter($rawAgentInput['issueTrackerProviders'], 'is_string'));
 
             return $this->providerResolver->normalizeIssueTrackerProviders($providers);
         }
 
-        return $this->promptWorkItemProviders($existingConfig, $recorder);
+        return $this->promptIssueTrackerProviders($existingConfig, $recorder);
     }
 
     /**
@@ -153,7 +163,7 @@ class InitPromptCollector
      * @param array<string, mixed> $existingConfig
      * @return list<string>
      */
-    protected function promptWorkItemProviders(array $existingConfig, WorkflowEntryRecorder $recorder): array
+    protected function promptIssueTrackerProviders(array $existingConfig, WorkflowEntryRecorder $recorder): array
     {
         $recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.issue_tracker_provider.title'));
         $recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.issue_tracker_provider.menu'));

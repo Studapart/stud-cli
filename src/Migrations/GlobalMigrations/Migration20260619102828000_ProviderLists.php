@@ -49,9 +49,9 @@ class Migration20260619102828000_ProviderLists extends AbstractMigration
         }
 
         if (! $this->hasNonEmptyProviderList($config, 'WORK_ITEM_PROVIDERS')) {
-            $workItemProviders = $resolver->inferIssueTrackerProvidersFromCredentials($config);
-            if ($workItemProviders !== []) {
-                $config['WORK_ITEM_PROVIDERS'] = $workItemProviders;
+            $issueTrackerProviders = $resolver->inferIssueTrackerProvidersFromCredentials($config);
+            if ($issueTrackerProviders !== []) {
+                $config['WORK_ITEM_PROVIDERS'] = $issueTrackerProviders;
             }
         }
 

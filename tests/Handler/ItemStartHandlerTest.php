@@ -1876,7 +1876,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'linearTypeLabelGroupId' => 'group-1',
                 'linearTypeBranchPrefixes' => ['Bug' => 'fix', 'Story' => 'feat'],
                 'projectKey' => 'SCI',
@@ -1918,7 +1918,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'linearTypeLabelGroupId' => 'group-1',
                 'linearTypeBranchPrefixes' => ['Bug' => 'fix'],
             ]);
@@ -1963,7 +1963,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'linearTypeLabelGroupId' => 'group-1',
                 'linearTypeBranchPrefixes' => ['Bug' => 'fix', 'Story' => 'feat'],
                 'projectKey' => 'SCI',
@@ -2029,7 +2029,7 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
             ->willReturn([
-                'workItemProvider' => IssueTrackerProvider::Linear->value,
+                'issueTrackerProvider' => IssueTrackerProvider::Linear->value,
                 'linearStartStateId' => 'state-in-progress-uuid',
                 'linearTypeLabelGroupId' => 'group-1',
                 'linearTypeBranchPrefixes' => ['Story' => 'feat'],
@@ -2088,7 +2088,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
-            ->willReturn(['workItemProvider' => IssueTrackerProvider::Linear->value]);
+            ->willReturn(['issueTrackerProvider' => IssueTrackerProvider::Linear->value]);
 
         $this->issueTracker->expects($this->never())->method('applyStateChange');
         $this->issueTracker->expects($this->never())->method('listItemStateChanges');
@@ -2151,7 +2151,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfig')
-            ->willReturn(['workItemProvider' => IssueTrackerProvider::Linear->value]);
+            ->willReturn(['issueTrackerProvider' => IssueTrackerProvider::Linear->value]);
 
         $this->issueTracker->expects($this->once())
             ->method('listItemStateChanges')

@@ -14,8 +14,8 @@ use App\Enum\IssueTrackerProvider;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
-use App\Guard\Capability\WorkItemJiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
@@ -26,7 +26,7 @@ use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
-class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, WorkItemJiraAware
+class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
     private WorkflowEntryRecorder $recorder;
 
@@ -326,7 +326,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Wo
      */
     protected function usesLinearBranchPrefixMapping(array $projectConfig): bool
     {
-        $provider = $projectConfig[ProjectStudConfigKeys::WORK_ITEM_PROVIDER] ?? null;
+        $provider = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
         if (! is_string($provider)) {
             return false;
         }

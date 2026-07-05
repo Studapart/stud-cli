@@ -15,7 +15,9 @@ final class GlobalStudConfigKeys
 {
     public const LANGUAGE = 'LANGUAGE';
     public const GIT_PROVIDERS = 'GIT_PROVIDERS';
-    public const WORK_ITEM_PROVIDERS = 'WORK_ITEM_PROVIDERS';
+    public const ISSUE_TRACKER_PROVIDERS = 'ISSUE_TRACKER_PROVIDERS';
+    /** @deprecated Renamed by migration; read via {@see readIssueTrackerProvidersList()} */
+    public const LEGACY_WORK_ITEM_PROVIDERS = 'WORK_ITEM_PROVIDERS';
     public const JIRA_URL = 'JIRA_URL';
     public const JIRA_EMAIL = 'JIRA_EMAIL';
     public const JIRA_API_TOKEN = 'JIRA_API_TOKEN';
@@ -84,5 +86,25 @@ final class GlobalStudConfigKeys
         }
 
         return trim($config[$key]) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $global
+     * @return list<string>|null Non-empty provider slug list, or null when unset
+     */
+    public static function readIssueTrackerProvidersList(array $global): ?array
+    {
+        foreach ([self::ISSUE_TRACKER_PROVIDERS, self::LEGACY_WORK_ITEM_PROVIDERS] as $key) {
+            if (! isset($global[$key]) || ! is_array($global[$key])) {
+                continue;
+            }
+
+            $list = array_values(array_filter($global[$key], static fn (mixed $value): bool => is_string($value) && trim($value) !== ''));
+            if ($list !== []) {
+                return $list;
+            }
+        }
+
+        return null;
     }
 }

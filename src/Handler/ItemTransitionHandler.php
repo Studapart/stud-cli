@@ -11,13 +11,13 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class ItemTransitionHandler implements GitRepositoryAware, WorkItemJiraAware
+class ItemTransitionHandler implements GitRepositoryAware, JiraAware
 {
     private WorkflowEntryRecorder $recorder;
 

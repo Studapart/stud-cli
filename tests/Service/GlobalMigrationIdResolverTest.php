@@ -22,7 +22,7 @@ class GlobalMigrationIdResolverTest extends TestCase
 
         $resolver = new GlobalMigrationIdResolver($fileSystem);
 
-        $this->assertSame('20260619102828000', $resolver->resolveLatestId());
+        $this->assertSame('20260703120000000', $resolver->resolveLatestId());
     }
 
     public function testResolveLatestIdReturnsNullWhenDirectoryMissing(): void

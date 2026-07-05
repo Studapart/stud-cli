@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use App\Guard\Capability\ConfluenceAware;
-use App\Guard\Capability\GitProviderGithubAware;
-use App\Guard\Capability\GitProviderGitlabAware;
+use App\Guard\Capability\GitHosting\GithubAware;
+use App\Guard\Capability\GitHosting\GitlabAware;
 use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
-use App\Guard\Capability\WorkItemJiraAware;
 use App\Guard\CapabilityDiscovery;
 use App\Guard\CommandHandlerRegistry;
 use App\Service\CommandMap;
@@ -54,9 +54,9 @@ class CommandGuardRegistryTest extends TestCase
     public function testHandlerMarkersMatchConstructorDependencies(): void
     {
         $dependencyToMarker = [
-            JiraApiClient::class => WorkItemJiraAware::class,
+            JiraApiClient::class => JiraAware::class,
             GitRepository::class => GitRepositoryAware::class,
-            GitHostingPort::class => GitProviderGithubAware::class,
+            GitHostingPort::class => GithubAware::class,
             ConfluenceApiClient::class => ConfluenceAware::class,
         ];
 
@@ -101,8 +101,8 @@ class CommandGuardRegistryTest extends TestCase
                 $expected = $dependencyToMarker[$typeName];
                 if ($typeName === GitHostingPort::class) {
                     $this->assertTrue(
-                        $capabilities->has(GitProviderGithubAware::class)
-                        || $capabilities->has(GitProviderGitlabAware::class),
+                        $capabilities->has(GithubAware::class)
+                        || $capabilities->has(GitlabAware::class),
                         "{$handlerClass} injects GitHostingPort but lacks git provider markers",
                     );
 

@@ -46,14 +46,14 @@
 | Enum | Values | Use |
 |------|--------|-----|
 | `GitProvider` | `github`, `gitlab` | `GIT_PROVIDERS` YAML lists |
-| `WorkItemProvider` | `jira`, `linear` | `WORK_ITEM_PROVIDERS` YAML lists |
+| `IssueTrackerProvider` | `jira`, `linear`, `auto` | `WORK_ITEM_PROVIDERS` YAML lists; project `workItemProvider` |
 
 ### Menu enums (interactive numbered choices)
 
 | Enum | Cases | Maps to |
 |------|-------|---------|
 | `GlobalGitProviderMenu` | `GithubOnly`, `GitlabOnly`, `Both` | `list<GitProvider>` |
-| `GlobalWorkItemProviderMenu` | `JiraOnly`, `LinearOnly`, `Both` | `list<WorkItemProvider>` |
+| `GlobalIssueTrackerProviderMenu` | `JiraOnly`, `LinearOnly`, `Both` | `list<IssueTrackerProvider>` |
 
 Each menu case exposes:
 

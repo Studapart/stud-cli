@@ -35,7 +35,7 @@ class CommandContextFactoryTest extends TestCase
 
         $this->assertSame('develop', $context->projectConfig['baseBranch']);
         $this->assertTrue($context->hasGitRepository);
-        $this->assertContains('jira', $context->workItemProviders);
+        $this->assertContains('jira', $context->issueTrackerProviders);
         $this->assertTrue($context->isQuiet);
     }
 
@@ -63,7 +63,7 @@ class CommandContextFactoryTest extends TestCase
     {
         $resolver = new ProviderContextResolver();
         $providers = $resolver->resolve([
-            'WORK_ITEM_PROVIDERS' => ['linear'],
+            'ISSUE_TRACKER_PROVIDERS' => ['linear'],
             'LINEAR_API_KEY' => 'key',
         ]);
 

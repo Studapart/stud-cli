@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Guard;
 
 use App\Guard\Capability\ConfluenceAware;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\CommandHandlerRegistry;
 use App\Handler\ItemListHandler;
 use App\Handler\UpdateHandler;
@@ -39,7 +39,7 @@ class CommandHandlerRegistryTest extends TestCase
     {
         $capabilities = CommandHandlerRegistry::capabilitiesFor('items:list');
 
-        $this->assertTrue($capabilities->has(WorkItemJiraAware::class));
+        $this->assertTrue($capabilities->has(JiraAware::class));
     }
 
     public function testResolveCapabilitiesForInlineTask(): void
@@ -53,7 +53,7 @@ class CommandHandlerRegistryTest extends TestCase
     {
         $capabilities = CommandHandlerRegistry::resolveCapabilities('items:list');
 
-        $this->assertTrue($capabilities->has(WorkItemJiraAware::class));
+        $this->assertTrue($capabilities->has(JiraAware::class));
     }
 
     public function testUpdateHandlerHasNoCapabilities(): void

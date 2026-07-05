@@ -95,8 +95,8 @@ config:
     status_skipped: "Đã bỏ qua"
     warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
     warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
-    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in WORK_ITEM_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
-    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in WORK_ITEM_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
     error_jira_not_configured: "Jira chưa được cấu hình."
     error_git_not_configured: "Nhà cung cấp Git chưa được cấu hình."
     error_jira_ping: "Kết nối Jira thất bại: %error%"
@@ -110,7 +110,7 @@ config:
     reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
     invalid_git_provider: "gitProvider phải là github hoặc gitlab."
     invalid_transition_id: "transitionId phải là số nguyên không âm."
-    invalid_issue_tracker_provider: "workItemProvider phải là jira, linear hoặc auto."
+    invalid_issue_tracker_provider: "issueTrackerProvider phải là jira, linear hoặc auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes phải là map các nhãn loại không rỗng tới tiền tố nhánh không rỗng."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
@@ -361,8 +361,8 @@ issue_tracker_provider:
   invalid_jira_base_url: "Invalid Jira base URL configuration."
   not_configured: 'Chưa cấu hình nhà cung cấp work-item. Chạy "stud config:init" để thiết lập Jira hoặc Linear.'
   ambiguous_prefix: 'Tiền tố khóa %prefix% khớp cả Jira và Linear. Truyền --provider hoặc đặt projectKey và linearTeamKey khác nhau trong .git/stud.config.'
-  unknown_prefix: 'Tiền tố khóa %prefix% không khớp khóa đã cấu hình (%configuredKeys%). Truyền --provider hoặc đặt workItemProvider trong .git/stud.config.'
-  auto_requires_issue_key: 'workItemProvider là auto nhưng chưa có issue key để phân giải provider. Truyền issue key hoặc đặt workItemProvider thành jira hoặc linear.'
+  unknown_prefix: 'Tiền tố khóa %prefix% không khớp khóa đã cấu hình (%configuredKeys%). Truyền --provider hoặc đặt issueTrackerProvider trong .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider là auto nhưng chưa có issue key để phân giải provider. Truyền issue key hoặc đặt issueTrackerProvider thành jira hoặc linear.'
   invalid_override: 'Override provider không hợp lệ %value%. Giá trị cho phép: jira, linear.'
   unknown_resolved: 'Provider work-item đã resolve không hợp lệ %value%. Kỳ vọng jira hoặc linear.'
 project:
@@ -373,7 +373,7 @@ project:
   workflow:
     section: Trạng thái workflow dự án
     no_state_changes: Không tìm thấy thay đổi trạng thái nào cho dự án %project%.
-    error_ambiguous_provider: workItemProvider không rõ ràng. Đặt jira hoặc linear trong .git/stud.config hoặc chạy stud config:project-init.
+    error_ambiguous_provider: issueTrackerProvider không rõ ràng. Đặt jira hoặc linear trong .git/stud.config hoặc chạy stud config:project-init.
     error_no_provider: Chưa cấu hình nhà cung cấp work-item. Chạy stud config:init.
     error_fetch: "Failed to fetch project workflow metadata: %error%"
     column_id: ID

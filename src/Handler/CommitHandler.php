@@ -11,13 +11,13 @@ use App\Exception\ApiException;
 use App\Exception\GitException;
 use App\Exception\GitTimeoutException;
 use App\Guard\Capability\GitRepositoryAware;
-use App\Guard\Capability\WorkItemJiraAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class CommitHandler implements GitRepositoryAware, WorkItemJiraAware
+class CommitHandler implements GitRepositoryAware, JiraAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
