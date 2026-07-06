@@ -144,6 +144,23 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
     }
 
+    public function testConfigValidateAgentModeSkipsJiraWhenOnlyLinearConfigured(): void
+    {
+        $repo = $this->createRepository('validate-linear-only');
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipGit' => true],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('skipped', $decoded['data']['jiraStatus'] ?? null);
+        self::assertSame('skipped', $decoded['data']['gitStatus'] ?? null);
+        self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
+    }
+
     public function testItemsTransitionAgentModeAppliesFirstWorkflowState(): void
     {
         $repo = $this->createRepository('transition');

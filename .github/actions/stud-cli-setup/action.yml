@@ -10,14 +10,29 @@ branding:
 
 inputs:
   jira-url:
-    description: Jira Cloud base URL without trailing slash (e.g. https://your-domain.atlassian.net).
-    required: true
+    description: >-
+      Jira Cloud base URL without trailing slash (e.g. https://your-domain.atlassian.net).
+      Required for Jira-only or dual-provider jobs; omit for Linear-only CI.
+    required: false
+    default: ''
   jira-email:
-    description: Atlassian account email for the Jira REST API.
-    required: true
+    description: Atlassian account email for the Jira REST API. Required when Jira credentials are used.
+    required: false
+    default: ''
   jira-api-token:
     description: Jira API token. Pass from a GitHub secret; do not echo or print.
-    required: true
+    required: false
+    default: ''
+  linear-api-key:
+    description: Linear API key written to LINEAR_API_KEY in global config when non-empty.
+    required: false
+    default: ''
+  work-item-providers:
+    description: >-
+      Optional explicit issue-tracker providers for validate and ISSUE_TRACKER_PROVIDERS:
+      jira, linear, or both. When empty, derived from non-empty Jira / Linear secret inputs.
+    required: false
+    default: ''
   language:
     description: stud global LANGUAGE value (e.g. en).
     required: false
@@ -57,7 +72,7 @@ inputs:
     required: false
     default: 'true'
   validate-skip-git:
-    description: When true, pass skipGit true to config:validate (Jira-only CI jobs).
+    description: When true, pass skipGit true to config:validate (typical for issue-tracker-only CI jobs).
     required: false
     default: 'true'
   project-stud-config:
@@ -114,6 +129,8 @@ runs:
         JIRA_URL: ${{ inputs.jira-url }}
         JIRA_EMAIL: ${{ inputs.jira-email }}
         JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
+        LINEAR_API_KEY: ${{ inputs.linear-api-key }}
+        WORK_ITEM_PROVIDERS: ${{ inputs.work-item-providers }}
         LANGUAGE: ${{ inputs.language }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GITLAB_TOKEN: ${{ inputs.gitlab-token }}
@@ -124,12 +141,72 @@ runs:
         cfg="${HOME}/.config/stud/config.yml"
         mkdir -p "${HOME}/.config/stud"
         umask 077
-        jira_url="${JIRA_URL%/}"
+
+        has_jira=false
+        if [ -n "${JIRA_URL}" ] && [ -n "${JIRA_EMAIL}" ] && [ -n "${JIRA_API_TOKEN}" ]; then
+          has_jira=true
+        fi
+        has_linear=false
+        if [ -n "${LINEAR_API_KEY}" ]; then
+          has_linear=true
+        fi
+
+        use_jira=false
+        use_linear=false
+        case "${WORK_ITEM_PROVIDERS}" in
+          jira)
+            use_jira=true
+            ;;
+          linear)
+            use_linear=true
+            ;;
+          both)
+            use_jira=true
+            use_linear=true
+            ;;
+          '')
+            use_jira=$has_jira
+            use_linear=$has_linear
+            ;;
+          *)
+            echo "Invalid work-item-providers: ${WORK_ITEM_PROVIDERS}. Use jira, linear, or both." >&2
+            exit 1
+            ;;
+        esac
+
         {
           echo "LANGUAGE: ${LANGUAGE}"
-          echo "JIRA_URL: ${jira_url}"
-          echo "JIRA_EMAIL: ${JIRA_EMAIL}"
-          echo "JIRA_API_TOKEN: ${JIRA_API_TOKEN}"
+          if [ "$use_jira" = true ]; then
+            if [ "$has_jira" = false ]; then
+              echo "work-item-providers includes jira but Jira URL, email, and API token are required." >&2
+              exit 1
+            fi
+            jira_url="${JIRA_URL%/}"
+            echo "JIRA_URL: ${jira_url}"
+            echo "JIRA_EMAIL: ${JIRA_EMAIL}"
+            echo "JIRA_API_TOKEN: ${JIRA_API_TOKEN}"
+            if [ "${JIRA_TRANSITION_ENABLED}" = "true" ]; then
+              echo "JIRA_TRANSITION_ENABLED: true"
+            else
+              echo "JIRA_TRANSITION_ENABLED: false"
+            fi
+          fi
+          if [ "$use_linear" = true ]; then
+            if [ "$has_linear" = false ]; then
+              echo "work-item-providers includes linear but linear-api-key is required." >&2
+              exit 1
+            fi
+            echo "LINEAR_API_KEY: ${LINEAR_API_KEY}"
+          fi
+          if [ "$use_jira" = true ] || [ "$use_linear" = true ]; then
+            echo "ISSUE_TRACKER_PROVIDERS:"
+            if [ "$use_jira" = true ]; then
+              echo "  - jira"
+            fi
+            if [ "$use_linear" = true ]; then
+              echo "  - linear"
+            fi
+          fi
           if [ -n "${GITHUB_TOKEN}" ]; then
             echo "GITHUB_TOKEN: ${GITHUB_TOKEN}"
           fi
@@ -138,11 +215,6 @@ runs:
           fi
           if [ -n "${GITLAB_INSTANCE_URL}" ]; then
             echo "GITLAB_INSTANCE_URL: ${GITLAB_INSTANCE_URL}"
-          fi
-          if [ "${JIRA_TRANSITION_ENABLED}" = "true" ]; then
-            echo "JIRA_TRANSITION_ENABLED: true"
-          else
-            echo "JIRA_TRANSITION_ENABLED: false"
           fi
         } > "$cfg"
         chmod 600 "$cfg"
@@ -161,10 +233,63 @@ runs:
     - name: Validate stud configuration
       if: ${{ inputs.run-config-validate == 'true' }}
       shell: bash
+      env:
+        JIRA_URL: ${{ inputs.jira-url }}
+        JIRA_EMAIL: ${{ inputs.jira-email }}
+        JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
+        LINEAR_API_KEY: ${{ inputs.linear-api-key }}
+        WORK_ITEM_PROVIDERS: ${{ inputs.work-item-providers }}
       run: |
         set -euo pipefail
-        if [ "${{ inputs.validate-skip-git }}" = 'true' ]; then
-          echo '{"skipJira":false,"skipGit":true}' | stud config:validate --agent
-        else
-          echo '{"skipJira":false,"skipGit":false}' | stud config:validate --agent
+
+        has_jira=false
+        if [ -n "${JIRA_URL}" ] && [ -n "${JIRA_EMAIL}" ] && [ -n "${JIRA_API_TOKEN}" ]; then
+          has_jira=true
         fi
+        has_linear=false
+        if [ -n "${LINEAR_API_KEY}" ]; then
+          has_linear=true
+        fi
+
+        validate_jira=false
+        validate_linear=false
+        case "${WORK_ITEM_PROVIDERS}" in
+          jira)
+            validate_jira=true
+            ;;
+          linear)
+            validate_linear=true
+            ;;
+          both)
+            validate_jira=true
+            validate_linear=true
+            ;;
+          '')
+            validate_jira=$has_jira
+            validate_linear=$has_linear
+            ;;
+          *)
+            echo "Invalid work-item-providers: ${WORK_ITEM_PROVIDERS}. Use jira, linear, or both." >&2
+            exit 1
+            ;;
+        esac
+
+        if [ "$validate_jira" = false ] && [ "$validate_linear" = false ]; then
+          echo "At least one of Jira credentials or linear-api-key must be provided for config:validate." >&2
+          exit 1
+        fi
+
+        skip_jira=true
+        skip_linear=true
+        skip_git=true
+        if [ "$validate_jira" = true ]; then
+          skip_jira=false
+        fi
+        if [ "$validate_linear" = true ]; then
+          skip_linear=false
+        fi
+        if [ "${{ inputs.validate-skip-git }}" != 'true' ]; then
+          skip_git=false
+        fi
+
+        echo "{\"skipJira\":${skip_jira},\"skipGit\":${skip_git},\"skipLinear\":${skip_linear}}" | stud config:validate --agent
