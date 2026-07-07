@@ -70,8 +70,8 @@ class IssueFieldResolverTest extends CommandTestCase
         $fields = $this->resolver->buildBaseFields('PROJ', '10001', 'Summary', null, null, null);
 
         $this->assertSame(['key' => 'PROJ'], $fields['project']);
-        $this->assertSame(['id' => '10001'], $fields['issuetype']);
-        $this->assertSame('Summary', $fields['summary']);
+        $this->assertSame(['id' => '10001'], $fields['issueType']);
+        $this->assertSame('Summary', $fields['title']);
         $this->assertArrayNotHasKey('description', $fields);
         $this->assertArrayNotHasKey('parent', $fields);
     }
@@ -184,11 +184,11 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testFillStandardFieldByNameSetsParentKey(): void
     {
-        $fields = ['project' => ['key' => 'PROJ'], 'summary' => 'Summary', 'issuetype' => ['id' => '10001']];
+        $fields = ['project' => ['key' => 'PROJ'], 'title' => 'Summary', 'issueType' => ['id' => '10001']];
         $fieldValues = [
             'projectKey' => 'PROJ',
             'issueTypeId' => '10001',
-            'summary' => 'Summary',
+            'title' => 'Summary',
             'descriptionAdf' => null,
             'assigneeOption' => null,
             'parentKey' => 'PROJ-100',
@@ -204,11 +204,11 @@ class IssueFieldResolverTest extends CommandTestCase
 
     public function testFillStandardFieldByNameWithUnknownFieldNameReturnsFalse(): void
     {
-        $fields = ['project' => ['key' => 'PROJ'], 'summary' => 'Summary'];
+        $fields = ['project' => ['key' => 'PROJ'], 'title' => 'Summary'];
         $fieldValues = [
             'projectKey' => 'PROJ',
             'issueTypeId' => '10001',
-            'summary' => 'Summary',
+            'title' => 'Summary',
             'descriptionAdf' => null,
             'assigneeOption' => null,
             'parentKey' => null,
@@ -219,7 +219,7 @@ class IssueFieldResolverTest extends CommandTestCase
         ]);
 
         $this->assertFalse($result);
-        $this->assertSame(['project' => ['key' => 'PROJ'], 'summary' => 'Summary'], $fields);
+        $this->assertSame(['project' => ['key' => 'PROJ'], 'title' => 'Summary'], $fields);
     }
 
     public function testApplyOptionalFieldsWithLabelsAndEstimate(): void
@@ -278,14 +278,14 @@ class IssueFieldResolverTest extends CommandTestCase
         $requiredFieldIds = ['project', 'issuetype', 'summary', 'reporter', 'customfield_10001'];
         $fields = [
             'project' => ['key' => 'PROJ'],
-            'issuetype' => ['id' => '10001'],
-            'summary' => 'Summary',
+            'issueType' => ['id' => '10001'],
+            'title' => 'Summary',
         ];
 
         $fieldValues = [
             'projectKey' => 'PROJ',
             'issueTypeId' => '10001',
-            'summary' => 'Summary',
+            'title' => 'Summary',
             'descriptionAdf' => null,
             'assigneeOption' => null,
             'parentKey' => null,

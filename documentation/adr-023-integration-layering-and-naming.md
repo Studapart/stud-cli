@@ -167,6 +167,18 @@ Handlers inject these directly — no polymorphic port.
 
 JQL fragments are **protocol vocabulary**, not user-facing copy. Use `JiraJqlFragments`, `JiraStatusCategory`, and `JiraAssignedActiveJqlBuilder` for shared list/dashboard JQL.
 
+### 6.4 Issue write vocabulary (handler → port → adapter)
+
+Three layers keep create/update field names explicit:
+
+| Layer | Class | Keys (examples) | Used by |
+|-------|--------|-----------------|--------|
+| **Stud write** | `StudIssueKeys` | `title`, `issueType`, `labels`, `project` | Handlers, `IssueTrackerPort::create` / `update` input |
+| **Jira REST** | `JiraIssueFieldKeys` | `summary`, `issuetype`, `customfield_*` | `JiraApiClient`, createmeta/editmeta from Jira |
+| **Linear GraphQL** | `LinearIssueMutationKeys` | `title`, `teamId`, `labelIds` | `LinearApiClient` mutation input only |
+
+Handlers map CLI/agent **`summary`** to port **`title`**. `JiraStudFieldMapper` maps stud → Jira at the adapter; `LinearIssueFieldTranslator` maps stud → Linear mutation keys. Jira custom fields from `FieldsParser` pass through unchanged on the stud bag until the Jira adapter maps standard keys.
+
 ## 7. What we deliberately do not do
 
 * **No Handler → Repository → Provider → Client chain.** Handlers → Port → Adapter → Client.

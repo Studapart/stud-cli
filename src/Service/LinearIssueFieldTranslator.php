@@ -9,7 +9,7 @@ use App\Exception\StudConfigException;
 use App\Service\Linear\LinearIssueMutationKeys;
 
 /**
- * Translates Jira-shaped handler field bags into Linear GraphQL mutation inputs.
+ * Translates stud-neutral handler field bags into Linear GraphQL mutation inputs.
  */
 class LinearIssueFieldTranslator
 {
@@ -19,8 +19,8 @@ class LinearIssueFieldTranslator
     public function linearFieldMeta(): array
     {
         return [
-            IssueFieldBagKeys::LABELS => ['required' => false, 'name' => 'Labels'],
-            IssueFieldBagKeys::PRIORITY => ['required' => false, 'name' => 'Priority'],
+            StudIssueKeys::LABELS => ['required' => false, 'name' => 'Labels'],
+            StudIssueKeys::PRIORITY => ['required' => false, 'name' => 'Priority'],
         ];
     }
 
@@ -52,11 +52,11 @@ class LinearIssueFieldTranslator
 
         return [
             LinearIssueMutationKeys::TEAM_ID => $teamId,
-            LinearIssueMutationKeys::TITLE => (string) ($fields[IssueFieldBagKeys::SUMMARY] ?? ''),
-            LinearIssueMutationKeys::DESCRIPTION => $this->extractDescription($fields[IssueFieldBagKeys::DESCRIPTION] ?? null),
+            LinearIssueMutationKeys::TITLE => (string) ($fields[StudIssueKeys::TITLE] ?? ''),
+            LinearIssueMutationKeys::DESCRIPTION => $this->extractDescription($fields[StudIssueKeys::DESCRIPTION] ?? null),
             LinearIssueMutationKeys::LABEL_IDS => $labelIds,
-            LinearIssueMutationKeys::PRIORITY => $this->resolvePriorityValue($fields[IssueFieldBagKeys::PRIORITY] ?? null),
-            LinearIssueMutationKeys::PARENT_ID => $this->resolveParentId($fields[IssueFieldBagKeys::PARENT] ?? null, $client),
+            LinearIssueMutationKeys::PRIORITY => $this->resolvePriorityValue($fields[StudIssueKeys::PRIORITY] ?? null),
+            LinearIssueMutationKeys::PARENT_ID => $this->resolveParentId($fields[StudIssueKeys::PARENT] ?? null, $client),
         ];
     }
 
@@ -69,25 +69,25 @@ class LinearIssueFieldTranslator
     {
         $input = [];
 
-        if (isset($fields[IssueFieldBagKeys::SUMMARY]) && is_string($fields[IssueFieldBagKeys::SUMMARY]) && $fields[IssueFieldBagKeys::SUMMARY] !== '') {
-            $input[LinearIssueMutationKeys::TITLE] = $fields[IssueFieldBagKeys::SUMMARY];
+        if (isset($fields[StudIssueKeys::TITLE]) && is_string($fields[StudIssueKeys::TITLE]) && $fields[StudIssueKeys::TITLE] !== '') {
+            $input[LinearIssueMutationKeys::TITLE] = $fields[StudIssueKeys::TITLE];
         }
 
-        if (array_key_exists(IssueFieldBagKeys::DESCRIPTION, $fields)) {
-            $input[LinearIssueMutationKeys::DESCRIPTION] = $this->extractDescription($fields[IssueFieldBagKeys::DESCRIPTION]);
+        if (array_key_exists(StudIssueKeys::DESCRIPTION, $fields)) {
+            $input[LinearIssueMutationKeys::DESCRIPTION] = $this->extractDescription($fields[StudIssueKeys::DESCRIPTION]);
         }
 
-        if (isset($fields[IssueFieldBagKeys::LABELS])) {
+        if (isset($fields[StudIssueKeys::LABELS])) {
             $teamKey = $client->resolveTeamKeyFromIssue($issueKey);
             $input[LinearIssueMutationKeys::LABEL_IDS] = $client->resolveLabelIds(
                 $teamKey,
-                $this->normalizeLabelNames($fields[IssueFieldBagKeys::LABELS]),
+                $this->normalizeLabelNames($fields[StudIssueKeys::LABELS]),
                 $typeGroupId,
             );
         }
 
-        if (array_key_exists(IssueFieldBagKeys::PRIORITY, $fields)) {
-            $input[LinearIssueMutationKeys::PRIORITY] = $this->resolvePriorityValue($fields[IssueFieldBagKeys::PRIORITY]);
+        if (array_key_exists(StudIssueKeys::PRIORITY, $fields)) {
+            $input[LinearIssueMutationKeys::PRIORITY] = $this->resolvePriorityValue($fields[StudIssueKeys::PRIORITY]);
         }
 
         return $input;
@@ -122,9 +122,9 @@ class LinearIssueFieldTranslator
      */
     protected function resolveTeamKey(array $fields): string
     {
-        $project = $fields[IssueFieldBagKeys::PROJECT] ?? null;
-        if (is_array($project) && isset($project[IssueFieldBagKeys::KEY]) && is_string($project[IssueFieldBagKeys::KEY]) && $project[IssueFieldBagKeys::KEY] !== '') {
-            return $project[IssueFieldBagKeys::KEY];
+        $project = $fields[StudIssueKeys::PROJECT] ?? null;
+        if (is_array($project) && isset($project[StudIssueKeys::KEY]) && is_string($project[StudIssueKeys::KEY]) && $project[StudIssueKeys::KEY] !== '') {
+            return $project[StudIssueKeys::KEY];
         }
 
         throw StudConfigException::linearTeamKeyRequired();
@@ -135,12 +135,12 @@ class LinearIssueFieldTranslator
      */
     protected function resolveIssueTypeName(array $fields): ?string
     {
-        $issueType = $fields[IssueFieldBagKeys::ISSUE_TYPE] ?? null;
+        $issueType = $fields[StudIssueKeys::ISSUE_TYPE] ?? null;
         if (! is_array($issueType)) {
             return null;
         }
 
-        $name = $issueType[IssueFieldBagKeys::NAME] ?? null;
+        $name = $issueType[StudIssueKeys::NAME] ?? null;
 
         return is_string($name) && $name !== '' ? $name : null;
     }
@@ -152,11 +152,11 @@ class LinearIssueFieldTranslator
      */
     protected function resolveLabelNames(array $fields): array
     {
-        if (! isset($fields[IssueFieldBagKeys::LABELS])) {
+        if (! isset($fields[StudIssueKeys::LABELS])) {
             return [];
         }
 
-        return $this->normalizeLabelNames($fields[IssueFieldBagKeys::LABELS]);
+        return $this->normalizeLabelNames($fields[StudIssueKeys::LABELS]);
     }
 
     /**
@@ -189,7 +189,7 @@ class LinearIssueFieldTranslator
         }
 
         if (is_array($priority)) {
-            $name = $priority[IssueFieldBagKeys::NAME] ?? null;
+            $name = $priority[StudIssueKeys::NAME] ?? null;
             if (is_string($name) && $name !== '') {
                 return LinearIssueMapper::priorityNameToValue($name);
             }
@@ -217,7 +217,7 @@ class LinearIssueFieldTranslator
             return null;
         }
 
-        $key = $parent[IssueFieldBagKeys::KEY] ?? null;
+        $key = $parent[StudIssueKeys::KEY] ?? null;
         if (! is_string($key) || $key === '') {
             return null;
         }

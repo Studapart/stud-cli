@@ -36,7 +36,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $this->issueTracker->expects($this->once())
             ->method('update')
-            ->with('SCI-71', $this->callback(fn ($f) => $f['summary'] === 'New title'));
+            ->with('SCI-71', $this->callback(fn ($f) => $f['title'] === 'New title'));
 
         $handler = $this->createHandler();
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'New title'));
@@ -224,7 +224,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
             ->willReturn(['summary' => ['required' => true, 'name' => 'Summary']]);
         $this->issueTracker->expects($this->once())
             ->method('update')
-            ->with('SCI-71', $this->callback(fn ($f) => ! isset($f['description']) && $f['summary'] === 'Title'));
+            ->with('SCI-71', $this->callback(fn ($f) => ! isset($f['description']) && $f['title'] === 'Title'));
 
         $handler = $this->createHandler();
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title', descriptionOption: '  '));

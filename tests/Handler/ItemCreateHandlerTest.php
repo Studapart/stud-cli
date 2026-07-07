@@ -75,8 +75,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('create')
             ->with($this->callback(function ($fields) {
                 return $fields['project']['key'] === 'PROJ'
-                    && $fields['issuetype']['id'] === '10001'
-                    && $fields['summary'] === 'My summary';
+                    && $fields['issueType']['id'] === '10001'
+                    && $fields['title'] === 'My summary';
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
@@ -470,8 +470,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->with($this->callback(function ($fields) {
                 return isset($fields['parent']['key'])
                     && $fields['parent']['key'] === 'PROJ-100'
-                    && isset($fields['issuetype']['id'])
-                    && $fields['issuetype']['id'] === '10002';
+                    && isset($fields['issueType']['id'])
+                    && $fields['issueType']['id'] === '10002';
             }))
             ->willReturn(['key' => 'PROJ-101', 'self' => 'https://jira/issue/101']);
 
@@ -551,8 +551,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
-                    && $fields['issuetype']['id'] === '10001'
-                    && $fields['summary'] === 'My summary'
+                    && $fields['issueType']['id'] === '10001'
+                    && $fields['title'] === 'My summary'
                     && isset($fields['customfield_10001'])
                     && $fields['customfield_10001'] === 'Alpha';
             }))
@@ -634,8 +634,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
-                    && $fields['issuetype']['id'] === '10001'
-                    && $fields['summary'] === 'My summary'
+                    && $fields['issueType']['id'] === '10001'
+                    && $fields['title'] === 'My summary'
                     && isset($fields['customfield_15'])
                     && $fields['customfield_15'] === 'Alpha';
             }))
@@ -682,8 +682,8 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->method('create')
             ->with($this->callback(function (array $fields) {
                 return $fields['project']['key'] === 'PROJ'
-                    && $fields['issuetype']['id'] === '10001'
-                    && $fields['summary'] === 'My summary'
+                    && $fields['issueType']['id'] === '10001'
+                    && $fields['title'] === 'My summary'
                     && ! isset($fields['customfield_10001'])
                     && isset($fields['customfield_10002'])
                     && $fields['customfield_10002'] === 'Sprint1';
@@ -955,8 +955,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
-                return isset($fields['issuetype']) && $fields['issuetype'] === ['id' => '10001']
-                    && isset($fields['summary']) && $fields['summary'] === 'My summary';
+                return isset($fields['issueType']) && $fields['issueType'] === ['id' => '10001']
+                    && isset($fields['title']) && $fields['title'] === 'My summary';
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
@@ -998,7 +998,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->issueTracker->expects($this->once())
             ->method('create')
             ->with($this->callback(function (array $fields) {
-                return isset($fields['issuetype']) && $fields['issuetype'] === ['id' => '10002'];
+                return isset($fields['issueType']) && $fields['issueType'] === ['id' => '10002'];
             }))
             ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
 
@@ -1268,8 +1268,8 @@ class ItemCreateHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', true, 'Summary', null, ['issuetype'],
         ]);
         $this->assertIsArray($result);
-        $this->assertArrayHasKey('issuetype', $result);
-        $this->assertSame(['id' => '10001'], $result['issuetype']);
+        $this->assertArrayHasKey('issueType', $result);
+        $this->assertSame(['id' => '10001'], $result['issueType']);
     }
 
     public function testPromptForExtraRequiredFieldsSummaryFillsFromArgument(): void
@@ -1283,7 +1283,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'promptForExtraRequiredFields', [true, 'PROJ', '10001', false, 'My Title', null, ['summary'],
         ]);
         $this->assertIsArray($result);
-        $this->assertSame(['summary' => 'My Title'], $result);
+        $this->assertSame(['title' => 'My Title'], $result);
     }
 
     public function testPromptForExtraRequiredFieldsDescriptionWhenAdfProvided(): void

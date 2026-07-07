@@ -14,13 +14,13 @@ use App\Exception\StudConfigException;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
-use App\Service\IssueFieldBagKeys;
 use App\Service\IssueFieldResolver;
 use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
 use App\Service\Prompt\PromptInterface;
+use App\Service\StudIssueKeys;
 
 class ItemCreateHandler implements JiraAware
 {
@@ -122,20 +122,20 @@ class ItemCreateHandler implements JiraAware
 
         $description = $this->getDescription($input->descriptionOption);
         $fields = [
-            IssueFieldBagKeys::PROJECT => [IssueFieldBagKeys::KEY => $projectKey],
-            IssueFieldBagKeys::ISSUE_TYPE => [IssueFieldBagKeys::NAME => $type],
-            IssueFieldBagKeys::SUMMARY => $summary,
+            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey],
+            StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::NAME => $type],
+            StudIssueKeys::TITLE => $summary,
         ];
 
         if ($description !== null && $description !== '') {
             $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
                 ? trim($input->descriptionFormat)
                 : 'plain';
-            $fields[IssueFieldBagKeys::DESCRIPTION] = $this->provider->formatDescription($description, $format);
+            $fields[StudIssueKeys::DESCRIPTION] = $this->provider->formatDescription($description, $format);
         }
 
         if ($input->parentKey !== null && trim($input->parentKey) !== '') {
-            $fields[IssueFieldBagKeys::PARENT] = [IssueFieldBagKeys::KEY => trim($input->parentKey)];
+            $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => trim($input->parentKey)];
         }
 
         return new IssueCreationState($projectKey, $type, $allFieldsMeta, [], $fields);
@@ -149,12 +149,12 @@ class ItemCreateHandler implements JiraAware
         $typeExplicitlyProvided = ($input->parentKey !== null && trim($input->parentKey) !== '')
             || ($input->type !== null && trim((string) $input->type) !== '');
         $parentKeyTrimmed = ($input->parentKey !== null && trim($input->parentKey) !== '') ? trim($input->parentKey) : null;
-        $descriptionAdf = $state->fields['description'] ?? null;
+        $descriptionAdf = $state->fields[StudIssueKeys::DESCRIPTION] ?? null;
 
         $fieldValues = [
             'projectKey' => $state->projectKey,
             'issueTypeId' => $state->issueTypeId,
-            'summary' => (string) $state->fields['summary'],
+            'title' => (string) $state->fields[StudIssueKeys::TITLE],
             'descriptionAdf' => $descriptionAdf,
             'assigneeOption' => null,
             'parentKey' => $parentKeyTrimmed,
@@ -198,7 +198,7 @@ class ItemCreateHandler implements JiraAware
             $state->projectKey,
             $state->issueTypeId,
             $typeExplicitlyProvided,
-            (string) $state->fields['summary'],
+            (string) $state->fields[StudIssueKeys::TITLE],
             $descriptionAdf,
             $extraRequired
         );
