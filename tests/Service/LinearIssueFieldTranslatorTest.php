@@ -182,7 +182,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->translator);
         $callable = $reflection->getMethod($method);
-        $callable->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($callable);
 
         return $callable->invokeArgs($this->translator, $args);
     }

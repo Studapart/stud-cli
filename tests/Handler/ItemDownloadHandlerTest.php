@@ -182,7 +182,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $fileSystem->method('fileExists')->willReturn(true);
 
         $method = new \ReflectionMethod(ItemDownloadHandler::class, 'allocateFilename');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
         $name = $method->invoke($handler, 'dir', 'f.txt');
 
         $this->assertMatchesRegularExpression('/^f_[a-f0-9]{8}\.txt$/', $name);

@@ -1079,7 +1079,7 @@ class InitHandlerTest extends CommandTestCase
     {
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('getLatestMigrationId');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, []);
 
@@ -1095,7 +1095,7 @@ class InitHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($this->handler);
         $method = $reflection->getMethod('getLatestMigrationId');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->handler, [$older, $newer]);
 

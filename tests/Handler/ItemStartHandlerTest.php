@@ -1526,7 +1526,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())
@@ -2200,7 +2200,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())
@@ -2230,7 +2230,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())
@@ -2258,7 +2258,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())
@@ -2286,7 +2286,7 @@ class ItemStartHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         $this->issueTracker->expects($this->once())

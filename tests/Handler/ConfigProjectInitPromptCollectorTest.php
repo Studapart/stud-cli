@@ -567,7 +567,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'resolveEffectiveIssueTrackerProvider');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame(
             'auto',
@@ -584,7 +584,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
 
         $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'mergeProjectConfig');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame(
             ['projectKey' => 'SCI'],

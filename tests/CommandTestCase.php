@@ -75,7 +75,7 @@ abstract class CommandTestCase extends TestCase
     {
         $reflection = new \ReflectionClass($object);
         $method = $reflection->getMethod($methodName);
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         return $method->invokeArgs($object, $parameters);
     }
@@ -142,7 +142,7 @@ abstract class CommandTestCase extends TestCase
     {
         $reflection = new \ReflectionClass($io);
         $property = $reflection->getProperty('output');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         /** @var BufferedOutput $output */
         $output = $property->getValue($io);
 

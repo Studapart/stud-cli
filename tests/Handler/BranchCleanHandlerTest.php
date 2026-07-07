@@ -330,7 +330,7 @@ class BranchCleanHandlerTest extends CommandTestCase
 
         $reflection = new \ReflectionClass($handler);
         $method = $reflection->getMethod('addManuallyConfirmedPlans');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
         $args = [$manual, &$cleanupPlans, false];
         $method->invokeArgs($handler, $args);
 
@@ -401,7 +401,7 @@ class BranchCleanHandlerTest extends CommandTestCase
     {
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new WorkflowRecorder());
     }
 

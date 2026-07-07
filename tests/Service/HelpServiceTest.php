@@ -89,7 +89,7 @@ MD);
     {
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('shouldBreakHelpSection');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertTrue($method->invoke($this->helpService, '#### Git Workflow Commands'));
     }
@@ -497,7 +497,7 @@ MD);
         // This covers the release command definition (lines 292-301) and version argument handling
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'release');
 
@@ -520,7 +520,7 @@ MD);
         // This covers lines 306-312: first option with argument handling
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:list');
 
@@ -536,7 +536,7 @@ MD);
         // Actually, items:list is better for this. But let's also test submit's second option path
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'submit');
 
@@ -550,7 +550,7 @@ MD);
         // items:create has second option --type <type>; exercises second-option argument branch
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:create');
 
@@ -568,7 +568,7 @@ MD);
         // This covers line 279: key argument type
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:show');
 
@@ -602,7 +602,7 @@ MD);
         // Test formatCommandHelpFromTranslation directly with pr:comment
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'pr:comment');
 
@@ -636,7 +636,7 @@ MD);
         // Test formatCommandHelpFromTranslation directly with filters:show
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'filters:show');
 
@@ -658,7 +658,7 @@ MD);
         // Test items:transition command with optional [<key>] argument
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:transition');
 
@@ -676,7 +676,7 @@ MD);
         // Test branch:rename command with --name option and optional arguments
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'branch:rename');
 
@@ -696,7 +696,7 @@ MD);
     {
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'switch');
 
@@ -714,7 +714,7 @@ MD);
         // Test items:list command with --sort option (third option with <value> argument)
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:list');
 
@@ -734,7 +734,7 @@ MD);
         // This covers the code path marked as untestable but is actually testable
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:list');
 
@@ -751,7 +751,7 @@ MD);
         // Test submit command which has --labels as second option with <labels> argument
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'submit');
 
@@ -767,7 +767,7 @@ MD);
         // Test branch:rename which has --name as first option with <name> argument
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'branch:rename');
 
@@ -786,7 +786,7 @@ MD);
         // Test items:list which has --sort as third option with <value> argument
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:list');
 
@@ -805,7 +805,7 @@ MD);
         // This covers the second option with <key> branch
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'items:list');
 
@@ -823,7 +823,7 @@ MD);
         // This covers the second option with <labels> branch
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'submit');
 
@@ -842,7 +842,7 @@ MD);
         // This covers the second option with <message> branch
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'commit');
 
@@ -861,7 +861,7 @@ MD);
         // This covers the path where !empty($command['options']) is false
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'status');
 
@@ -880,7 +880,7 @@ MD);
         // This covers the path where $command['alias'] is null
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'completion');
 
@@ -899,7 +899,7 @@ MD);
         // The second option block (count > 1) should not execute
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'branch:rename');
 
@@ -916,7 +916,7 @@ MD);
         // This covers paths where empty($command['arguments']) is true
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'please');
 
@@ -933,7 +933,7 @@ MD);
         // This covers the path at line 301 where alias exists but arguments are empty
         $reflection = new \ReflectionClass($this->helpService);
         $method = $reflection->getMethod('formatCommandHelpFromTranslation');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->helpService, 'status');
 

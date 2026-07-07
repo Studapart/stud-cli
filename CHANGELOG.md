@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **ReflectionProperty deprecation (SCI-192):** add `ReflectionAccessor::ensureAccessible()` and route test reflection through it so public members skip deprecated `setAccessible(true)` on PHP 8.1+; production `FileSystem` / `ColorHelper` paths avoid reflection where possible.
 - **Linear upload/download agent mode (SCI-181):** `items:upload` and `items:download` use optional Jira config for responders so Linear-only setups no longer hard-exit before agent JSON output.
 - **ADR-023 exception boundaries:** `ItemDownloadHandler` and `ConfigValidateHandler` wrap integration failures in `MessageRef`; architecture tests ban raw `$e->getMessage()` errors in integration handlers and `MessageRef` in integration clients.
 - **Command guard (SCI-182 prep):** `IssueTrackerResolver` delegates to `IssueTrackerFactory::resolveType`, so `issueTrackerProvider: auto` with both PM providers resolves to Jira when Jira credentials exist — same as runtime `_get_issue_tracker`. Fixes false `missing required configuration key: issueTrackerProvider` on `stud submit`.

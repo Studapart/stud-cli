@@ -3056,7 +3056,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($testHandler, $io);
 
@@ -3133,7 +3133,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // In test environment, exceptions are gracefully handled and return 0
         // This prevents test failures due to filesystem or migration discovery issues
@@ -3419,7 +3419,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Should return 0 when there are no pending migrations (lines 281-283)
         // This tests the actual implementation with in-memory filesystem
@@ -3514,7 +3514,7 @@ CHANGELOG;
 
             $reflection = new \ReflectionClass($handler);
             $method = $reflection->getMethod('getConfigPath');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
             $result = $method->invoke($handler);
 
             // In test environment (STUD_CLI_TEST_MODE is defined), getConfigPath returns test path
@@ -3593,7 +3593,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // In test environment, exceptions are gracefully handled and return 0
         // This prevents test failures due to filesystem or migration discovery issues

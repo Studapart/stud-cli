@@ -275,7 +275,7 @@ class LinearTypeLabelResolverTest extends TestCase
     {
         $resolver = $this->createResolver();
         $method = new \ReflectionMethod(LinearTypeLabelResolver::class, 'mapLabelNameToPrefix');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertNull($method->invoke($resolver, 'Bug', ['Bug' => '   ']));
     }
