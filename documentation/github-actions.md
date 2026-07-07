@@ -94,7 +94,7 @@ For updates, stdin is one JSON object, e.g. **`{"key":"SCI-123","fields":"labels
 ## Public repositories, forks, and `pull_request_target`
 
 - Workflows triggered by **`pull_request`** from **forks** do not receive **repository secrets** by default. Do not assume Jira or Git tokens exist on those runs.
-- The Jira label sync workflow in this repo gates on **`github.event.pull_request.head.repo.fork == false`** so secrets are only used for same-repo PRs.
+- The Jira and Linear label sync workflows in this repo gate on **`github.event.pull_request.head.repo.fork == false`** so secrets are only used for same-repo PRs.
 - **`pull_request_target`** runs in the base repo context and can access secrets; it also increases risk if the workflow checks out or runs untrusted code from the head branch. Prefer **`pull_request`** + fork guards + explicit variables for maintenance workflows unless you fully understand **`pull_request_target`** hardening. Avoid copying untrusted scripts into the job without review.
 
 ## Jira label sync workflow (`jira-label-sync.yml`)
@@ -120,6 +120,30 @@ You can change this variable in the GitHub UI without committing code. The workf
 **Edge case:** An empty PR label list still runs the merge so managed Jira labels are removed when no mapped GitHub labels remain; it does not short-circuit in a way that would skip those removals.
 
 **Install ref:** The workflow uses **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** so `setup-stud.sh` matches the PR branch tip. In another repository, pin **`stud-install-ref`** to a **release tag** instead.
+
+## Linear label sync workflow (`linear-label-sync.yml`)
+
+Workflow **`.github/workflows/linear-label-sync.yml`** mirrors the Jira label sync job for Linear issues. It runs on **`pull_request`** events **`labeled`** / **`unlabeled`** when the PR head is **not** from a fork.
+
+**Secret:** `STUD_LINEAR_API_KEY` (passed to the composite action as `linear-api-key`).
+
+**Repository variable — label map:** Set **`STUD_LINEAR_LABEL_MAP`** to a JSON object whose keys are **GitHub PR label names** and values are **Linear label names**, for example:
+
+```json
+{"bug":"Bug","enhancement":"Feature"}
+```
+
+**Agent calls** use explicit Linear provider selection:
+
+```bash
+jq -n --arg key "${KEY}" '{key: $key, provider: "linear"}' | stud items:show --agent
+jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" \
+  '{key: $key, fields: $fields, provider: "linear"}' | stud items:update --agent
+```
+
+**Merge semantics** are identical to the Jira workflow: unmanaged Linear labels are preserved; managed targets follow the same OR-group rules; **`items:update`** is skipped when the merged set equals the current labels. The workflow never updates Jira issues.
+
+**Install ref:** Same as Jira — **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** on PRs in this repo; pin a release tag in consumer repositories.
 
 ## Example: call composite then `items:update`
 
