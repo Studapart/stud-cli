@@ -21,6 +21,7 @@
             <directory>tests/Responder</directory>
             <directory>tests/Response</directory>
             <directory>tests/View</directory>
+            <directory>tests/Workflow</directory>
             <file>tests/VersionCheckBootstrapTest.php</file>
         </testsuite>
         <testsuite name="Integration Tests">
