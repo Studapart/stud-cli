@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Multi-provider user documentation (SCI-189):** expand `documentation/setup/configuration.md` for `ISSUE_TRACKER_PROVIDERS`, `issueTrackerProvider`, Linear setup, and `--provider`; merge Jira/Linear guidance into `documentation/features/work-items.md`; provider-agnostic workflow playbook; remove `jira-work-items.md`; cross-links to GitHub Actions.
 - **Linear label sync workflow (SCI-188):** `.github/workflows/linear-label-sync.yml` syncs mapped GitHub PR labels to Linear via `items:show` / `items:update` with `provider: linear`, repository variable `STUD_LINEAR_LABEL_MAP`, and the same preserve-unmanaged-labels merge semantics as Jira; documented in `documentation/github-actions.md`; jq merge covered by `LabelSyncMergeAlgorithmTest`.
 - **stud-cli-setup Linear CI (SCI-187):** composite action accepts optional `linear-api-key` and `work-item-providers`; Jira inputs conditional; writes `LINEAR_API_KEY` and `ISSUE_TRACKER_PROVIDERS`; validate step skips Jira when only Linear is configured; Linear-only workflow example in `documentation/github-actions.md`.
 - **Dual-provider errors and config:show (SCI-185):** `linearTeamKey` whitelisted for `config:show -k`; issue-tracker resolution failures in agent mode return a single actionable JSON `error` (no logger stderr); translation-backed `MessageRef` errors for ambiguous prefix, unknown prefix, invalid override, and missing credentials.

@@ -90,7 +90,7 @@ None.
 ```bash
 stud config:init
 stud init
-echo '{"language":"example","gitProviders":["example"],"issueTrackerProviders":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","jiraTransitionEnabled":true,"githubToken":"example","gitlabToken":"example","linearApiKey":"example"}' | stud config:init --agent
+echo '{"language":"example","gitProviders":["example"],"workItemProviders":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","jiraTransitionEnabled":true,"githubToken":"example","gitlabToken":"example","linearApiKey":"example"}' | stud config:init --agent
 ```
 
 #### Agent JSON Input
@@ -100,7 +100,7 @@ echo '{"language":"example","gitProviders":["example"],"issueTrackerProviders":[
 | `compact` | `bool` | yes | `true` |
 | `language` | `string\|null` | yes | `NULL` |
 | `gitProviders` | `array` | yes | `NULL` |
-| `issueTrackerProviders` | `array` | yes | `NULL` |
+| `workItemProviders` | `array` | yes | `NULL` |
 | `jiraUrl` | `string\|null` | yes | `NULL` |
 | `jiraEmail` | `string\|null` | yes | `NULL` |
 | `jiraApiToken` | `string\|null` | yes | `NULL` |
@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","workItemProvider":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -172,7 +172,7 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `gitlabInstanceUrl` | `string\|null` | yes | `NULL` |
 | `jiraDefaultProject` | `string\|null` | yes | `NULL` |
 | `confluenceDefaultSpace` | `string\|null` | yes | `NULL` |
-| `issueTrackerProvider` | `string\|null` | yes | `NULL` |
+| `workItemProvider` | `string\|null` | yes | `NULL` |
 | `linearStartStateId` | `string\|null` | yes | `NULL` |
 | `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
@@ -352,7 +352,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-list"></a>
 ### `stud filters:list`
 
-Lists saved Jira filters or Linear custom views.
+Lists all available Jira filters.
 
 - **Alias:** `stud fl`
 - **Syntax:** `stud filters:list`
@@ -408,7 +408,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-show"></a>
 ### `stud filters:show`
 
-Retrieve issues from a saved Jira filter or Linear custom view.
+Retrieve issues from a saved Jira filter.
 
 - **Alias:** `stud fs`
 - **Syntax:** `stud filters:show <filterName>`
@@ -692,7 +692,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-items-search"></a>
 ### `stud items:search`
 
-Search issues: JQL when Jira is active, plain search term when Linear is active.
+Search for issues using JQL.
 
 - **Alias:** `stud search`
 - **Syntax:** `stud items:search <jql>`
@@ -728,7 +728,7 @@ echo '{"jql":"project = SCI and statusCategory != Done"}' | stud items:search --
 
 #### Agent JSON Output
 
-Search results (Jira: JQL query echoed in jql; Linear: search term echoed in jql). Agent mode returns slim issue summaries; use items:show for full details.
+JQL search results (agent mode returns slim issue summaries; use items:show for full details)
 
 Default compact success shape (`{"compact":true}` or omitted):
 

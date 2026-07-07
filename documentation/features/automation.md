@@ -62,7 +62,7 @@ Agents implementing features in this repository must follow [AI.md](../../AI.md)
 
 ## CI Setup
 
-For GitHub Actions, see [GitHub Actions with stud-cli](../github-actions.md).
+For GitHub Actions, see [GitHub Actions with stud-cli](../github-actions.md) (Jira and Linear composite setup, label-sync workflows).
 
 In any CI system:
 
