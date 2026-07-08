@@ -55,16 +55,16 @@ class IssueFieldResolver
         ?string $parentKey
     ): array {
         $fields = [
-            IssueFieldBagKeys::PROJECT => [IssueFieldBagKeys::KEY => $projectKey],
-            IssueFieldBagKeys::ISSUE_TYPE => [IssueFieldBagKeys::ID => $issueTypeId],
-            IssueFieldBagKeys::SUMMARY => $summary,
+            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey],
+            StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::ID => $issueTypeId],
+            StudIssueKeys::TITLE => $summary,
         ];
         if ($description !== null && $description !== '') {
             $format = ($descriptionFormat !== null && trim($descriptionFormat) !== '') ? trim($descriptionFormat) : 'plain';
-            $fields[IssueFieldBagKeys::DESCRIPTION] = $this->jiraService->descriptionToAdf($description, $format);
+            $fields[StudIssueKeys::DESCRIPTION] = $this->jiraService->descriptionToAdf($description, $format);
         }
         if ($parentKey !== null && trim($parentKey) !== '') {
-            $fields[IssueFieldBagKeys::PARENT] = [IssueFieldBagKeys::KEY => trim($parentKey)];
+            $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => trim($parentKey)];
         }
 
         return $fields;
@@ -77,7 +77,7 @@ class IssueFieldResolver
      * @param list<string> $requiredFieldIds
      * @param array<string, array{required: bool, name: string}> $allFieldsMeta
      * @param array<string, mixed> $fields
-     * @param array{projectKey: string, issueTypeId: string, summary: string, descriptionAdf: array<string, mixed>|null, assigneeOption: string|null, parentKey: string|null} $fieldValues
+     * @param array{projectKey: string, issueTypeId: string, title: string, descriptionAdf: array<string, mixed>|null, assigneeOption: string|null, parentKey: string|null} $fieldValues
      * @return list<string>
      */
     public function resolveStandardFieldsAndExtraRequired(
@@ -116,7 +116,7 @@ class IssueFieldResolver
      * Fill one standard field by name into $fields. Returns true if field was filled.
      *
      * @param array<string, mixed> $fields
-     * @param array{projectKey: string, issueTypeId: string, summary: string, descriptionAdf: array<string, mixed>|null, assigneeOption: string|null, parentKey: string|null} $fieldValues
+     * @param array{projectKey: string, issueTypeId: string, title: string, descriptionAdf: array<string, mixed>|null, assigneeOption: string|null, parentKey: string|null} $fieldValues
      */
     protected function fillStandardFieldByName(string $nameLower, array &$fields, array $fieldValues, bool $fillIssueType): bool
     {
@@ -131,13 +131,13 @@ class IssueFieldResolver
             return false;
         }
         match ($nameLower) {
-            IssueFieldBagKeys::PROJECT => $fields[IssueFieldBagKeys::PROJECT] = [IssueFieldBagKeys::KEY => $fieldValues['projectKey']],
-            IssueFieldBagKeys::REPORTER => $fields[IssueFieldBagKeys::REPORTER] = [IssueFieldBagKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()],
-            IssueFieldBagKeys::ASSIGNEE => $fields[IssueFieldBagKeys::ASSIGNEE] = [IssueFieldBagKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
-            IssueFieldBagKeys::SUMMARY => $fields[IssueFieldBagKeys::SUMMARY] = $fieldValues['summary'],
-            IssueFieldBagKeys::DESCRIPTION => $fields[IssueFieldBagKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
-            'issue type', IssueFieldBagKeys::ISSUE_TYPE => $fields[IssueFieldBagKeys::ISSUE_TYPE] = [IssueFieldBagKeys::ID => $fieldValues['issueTypeId']],
-            IssueFieldBagKeys::PARENT => $fields[IssueFieldBagKeys::PARENT] = [IssueFieldBagKeys::KEY => $fieldValues['parentKey'] ?? ''],
+            StudIssueKeys::PROJECT => $fields[StudIssueKeys::PROJECT] = [StudIssueKeys::KEY => $fieldValues['projectKey']],
+            StudIssueKeys::REPORTER => $fields[StudIssueKeys::REPORTER] = [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()],
+            StudIssueKeys::ASSIGNEE => $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $fieldValues['assigneeOption'] ?? $this->jiraService->getCurrentUserAccountId()],
+            'summary' => $fields[StudIssueKeys::TITLE] = $fieldValues['title'],
+            StudIssueKeys::DESCRIPTION => $fields[StudIssueKeys::DESCRIPTION] = $fieldValues['descriptionAdf'] ?? [],
+            'issue type', 'issuetype' => $fields[StudIssueKeys::ISSUE_TYPE] = [StudIssueKeys::ID => $fieldValues['issueTypeId']],
+            StudIssueKeys::PARENT => $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => $fieldValues['parentKey'] ?? ''],
             // @codeCoverageIgnoreStart
             default => null,
             // @codeCoverageIgnoreEnd
@@ -154,16 +154,16 @@ class IssueFieldResolver
      */
     public function defaultAssigneeWhenFieldPresent(array $allFieldsMeta, array &$fields, ?string $assigneeOption): void
     {
-        if (isset($fields[IssueFieldBagKeys::ASSIGNEE])) {
+        if (isset($fields[StudIssueKeys::ASSIGNEE])) {
             return;
         }
         foreach ($allFieldsMeta as $meta) {
             $name = (string) $meta['name'];
-            if (strtolower($name) === IssueFieldBagKeys::ASSIGNEE) {
+            if (strtolower($name) === StudIssueKeys::ASSIGNEE) {
                 $accountId = $assigneeOption !== null
                     ? $assigneeOption
                     : $this->jiraService->getCurrentUserAccountId();
-                $fields[IssueFieldBagKeys::ASSIGNEE] = [IssueFieldBagKeys::ACCOUNT_ID => $accountId];
+                $fields[StudIssueKeys::ASSIGNEE] = [StudIssueKeys::ACCOUNT_ID => $accountId];
 
                 break;
             }
@@ -202,14 +202,14 @@ class IssueFieldResolver
         mixed $translator = null
     ): array {
         $skipped = [];
-        $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, IssueFieldBagKeys::LABELS, IssueFieldBagKeys::LABELS);
+        $labelsPayloadKey = $this->findOptionalFieldKey($allFieldsMeta, StudIssueKeys::LABELS, StudIssueKeys::LABELS);
         $estimatePayloadKey = $this->findOptionalFieldKey($allFieldsMeta, 'timeoriginalestimate', 'time original estimate');
 
         if ($labelsOption !== null && trim($labelsOption) !== '') {
             if ($labelsPayloadKey !== null) {
                 $labels = array_values(array_filter(array_map('trim', explode(',', $labelsOption))));
                 if ($labels !== []) {
-                    $fields[IssueFieldBagKeys::LABELS] = $labels;
+                    $fields[StudIssueKeys::LABELS] = $labels;
                 }
             } else {
                 $skipped[] = MessageRef::key('item.create.skipped_field_labels');
@@ -251,12 +251,12 @@ class IssueFieldResolver
 
     /** @var array<string, array<string>> */
     private const EXTRA_FIELD_KIND_KEYS = [
-        IssueFieldBagKeys::PROJECT => [IssueFieldBagKeys::PROJECT],
-        IssueFieldBagKeys::REPORTER => [IssueFieldBagKeys::REPORTER],
-        IssueFieldBagKeys::ASSIGNEE => [IssueFieldBagKeys::ASSIGNEE],
-        IssueFieldBagKeys::ISSUE_TYPE => [IssueFieldBagKeys::ISSUE_TYPE, 'issue type'],
-        IssueFieldBagKeys::SUMMARY => [IssueFieldBagKeys::SUMMARY],
-        IssueFieldBagKeys::DESCRIPTION => [IssueFieldBagKeys::DESCRIPTION],
+        StudIssueKeys::PROJECT => [StudIssueKeys::PROJECT],
+        StudIssueKeys::REPORTER => [StudIssueKeys::REPORTER],
+        StudIssueKeys::ASSIGNEE => [StudIssueKeys::ASSIGNEE],
+        StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::ISSUE_TYPE, 'issuetype', 'issue type'],
+        StudIssueKeys::TITLE => [StudIssueKeys::TITLE, 'summary'],
+        StudIssueKeys::DESCRIPTION => [StudIssueKeys::DESCRIPTION],
     ];
 
     public function extraFieldStandardKind(string $fieldIdLower, string $nameLower): ?string

@@ -59,8 +59,8 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
         $result = $this->adapter->create([
             'project' => ['key' => 'SCI'],
-            'issuetype' => ['name' => 'Story'],
-            'summary' => 'New issue',
+            'issueType' => ['name' => 'Story'],
+            'title' => 'New issue',
             'description' => [
                 'type' => 'doc',
                 'version' => 1,
@@ -97,7 +97,7 @@ class LinearIssueTrackerAdapterTest extends TestCase
             }));
 
         $this->adapter->update('SCI-42', [
-            'summary' => 'Updated',
+            'title' => 'Updated',
             'description' => [
                 'type' => 'doc',
                 'version' => 1,
@@ -143,8 +143,8 @@ class LinearIssueTrackerAdapterTest extends TestCase
 
         $result = $adapter->create([
             'project' => ['key' => 'SCI'],
-            'issuetype' => ['name' => 'Task'],
-            'summary' => 'No config repo',
+            'issueType' => ['name' => 'Task'],
+            'title' => 'No config repo',
         ]);
 
         $this->assertSame('SCI-7', $result['key']);

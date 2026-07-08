@@ -36,14 +36,14 @@ interface IssueTrackerPort
     public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array;
 
     /**
-     * @param array<string, mixed> $input
+     * @param array<string, mixed> $input Stud-neutral field bag ({@see StudIssueKeys})
      * @return array{key: string, self: string}
      * @throws ApiException
      */
     public function create(array $input): array;
 
     /**
-     * @param array<string, mixed> $input
+     * @param array<string, mixed> $input Stud-neutral field bag ({@see StudIssueKeys})
      * @throws ApiException
      */
     public function update(string $key, array $input): void;

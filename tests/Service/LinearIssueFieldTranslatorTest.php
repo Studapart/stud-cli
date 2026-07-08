@@ -32,12 +32,12 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
         $input = $this->translator->toCreateInput([
             'project' => ['key' => 'ENG'],
-            'summary' => 'Title',
+            'title' => 'Title',
             'description' => 'Body',
             'labels' => ['bug'],
             'priority' => ['name' => 'Urgent'],
             'parent' => ['key' => 'ENG-9'],
-            'issuetype' => ['name' => 'Story'],
+            'issueType' => ['name' => 'Story'],
         ], $this->client, ['linearTypeLabelGroupId' => 'type-group']);
 
         $this->assertSame('team-1', $input['teamId']);
@@ -76,7 +76,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
         $input = $this->translator->toCreateInput([
             'project' => ['key' => 'ENG'],
-            'summary' => 'Title',
+            'title' => 'Title',
             'description' => $payload,
         ], $this->client);
 
@@ -97,7 +97,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
         $this->client->expects($this->once())->method('resolveLabelIds')->with('SCI', ['bug'], 'group-1')->willReturn(['label-bug']);
 
         $input = $this->translator->toUpdateInput([
-            'summary' => 'Updated title',
+            'title' => 'Updated title',
             'description' => 'Plain body',
             'labels' => 'bug',
             'priority' => 'High',
@@ -113,7 +113,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
     {
         $this->expectException(\App\Exception\StudConfigException::class);
 
-        $this->translator->toCreateInput(['summary' => 'Title'], $this->client);
+        $this->translator->toCreateInput(['title' => 'Title'], $this->client);
     }
 
     public function testToCreateInputExtractsLinearMarkdownFromAdf(): void
@@ -123,7 +123,7 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
         $input = $this->translator->toCreateInput([
             'project' => ['key' => 'SCI'],
-            'summary' => 'Title',
+            'title' => 'Title',
             'description' => [
                 'type' => 'doc',
                 'version' => 1,
@@ -141,14 +141,14 @@ class LinearIssueFieldTranslatorTest extends TestCase
 
         $withString = $this->translator->toCreateInput([
             'project' => ['key' => 'SCI'],
-            'summary' => 'A',
+            'title' => 'A',
             'priority' => 'Low',
         ], $this->client);
         $this->assertSame(4, $withString['priority']);
 
         $withZero = $this->translator->toCreateInput([
             'project' => ['key' => 'SCI'],
-            'summary' => 'B',
+            'title' => 'B',
             'priority' => 0,
         ], $this->client);
         $this->assertNull($withZero['priority']);
@@ -158,8 +158,8 @@ class LinearIssueFieldTranslatorTest extends TestCase
     {
         $this->assertSame([], $this->invoke('normalizeLabelNames', [123]));
         $this->assertSame(['solo'], $this->invoke('normalizeLabelNames', ['solo']));
-        $this->assertNull($this->invoke('resolveIssueTypeName', [['issuetype' => 'not-array']]));
-        $this->assertNull($this->invoke('resolveIssueTypeName', [['issuetype' => ['name' => '']]]));
+        $this->assertNull($this->invoke('resolveIssueTypeName', [['issueType' => 'not-array']]));
+        $this->assertNull($this->invoke('resolveIssueTypeName', [['issueType' => ['name' => '']]]));
         $this->assertNull($this->invoke('resolvePriorityValue', [['name' => '']]));
         $this->assertNull($this->invoke('resolvePriorityValue', [true]));
         $this->assertNull($this->invoke('resolveParentId', [['key' => ''], $this->client]));

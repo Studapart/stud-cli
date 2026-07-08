@@ -8,6 +8,7 @@ use App\DTO\StateChange;
 use App\DTO\WorkItem;
 use App\Exception\ApiException;
 use App\Service\Jira\JiraAssignedActiveJqlBuilder;
+use App\Service\Jira\JiraStudFieldMapper;
 
 /**
  * Jira adapter for {@see IssueTrackerPort}; delegates to existing Jira services.
@@ -17,6 +18,7 @@ final class JiraIssueTrackerAdapter implements IssueTrackerPort
     public function __construct(
         private readonly JiraApiClient $jiraApiClient,
         private readonly JiraAttachmentService $attachmentService,
+        private readonly JiraStudFieldMapper $fieldMapper = new JiraStudFieldMapper(),
     ) {
     }
 
@@ -43,7 +45,7 @@ final class JiraIssueTrackerAdapter implements IssueTrackerPort
      */
     public function create(array $input): array
     {
-        return $this->jiraApiClient->createIssue($input);
+        return $this->jiraApiClient->createIssue($this->fieldMapper->toJiraCreateOrUpdateFields($input));
     }
 
     /**
@@ -51,7 +53,7 @@ final class JiraIssueTrackerAdapter implements IssueTrackerPort
      */
     public function update(string $key, array $input): void
     {
-        $this->jiraApiClient->updateIssue($key, $input);
+        $this->jiraApiClient->updateIssue($key, $this->fieldMapper->toJiraCreateOrUpdateFields($input));
     }
 
     public function getCreateMetaFields(string $projectKey, string $issueTypeId): array

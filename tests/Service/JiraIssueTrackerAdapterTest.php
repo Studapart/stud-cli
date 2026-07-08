@@ -90,24 +90,34 @@ class JiraIssueTrackerAdapterTest extends TestCase
 
     public function testCreateDelegatesToJiraApiClient(): void
     {
-        $fields = ['project' => ['key' => 'SCI']];
+        $studFields = [
+            'project' => ['key' => 'SCI'],
+            'title' => 'New issue',
+            'issueType' => ['id' => '10001'],
+        ];
+        $jiraFields = [
+            'project' => ['key' => 'SCI'],
+            'summary' => 'New issue',
+            'issuetype' => ['id' => '10001'],
+        ];
         $created = ['key' => 'SCI-2', 'self' => 'https://jira.example.com/browse/SCI-2'];
         $this->jiraApiClient->expects($this->once())
             ->method('createIssue')
-            ->with($fields)
+            ->with($jiraFields)
             ->willReturn($created);
 
-        $this->assertSame($created, $this->provider->create($fields));
+        $this->assertSame($created, $this->provider->create($studFields));
     }
 
     public function testUpdateDelegatesToJiraApiClient(): void
     {
-        $fields = ['summary' => 'Updated'];
+        $studFields = ['title' => 'Updated'];
+        $jiraFields = ['summary' => 'Updated'];
         $this->jiraApiClient->expects($this->once())
             ->method('updateIssue')
-            ->with('SCI-1', $fields);
+            ->with('SCI-1', $jiraFields);
 
-        $this->provider->update('SCI-1', $fields);
+        $this->provider->update('SCI-1', $studFields);
         $this->addToAssertionCount(1);
     }
 

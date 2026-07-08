@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Service;
 
 /**
- * Jira-shaped issue create/update field bag keys (handler ↔ {@see IssueTrackerPort} contract).
+ * Stud-neutral write field names for {@see IssueTrackerPort::create} / {@see IssueTrackerPort::update} input.
+ *
+ * Aligned with {@see \App\DTO\WorkItem} read vocabulary where applicable.
  */
-final class IssueFieldBagKeys
+final class StudIssueKeys
 {
     public const PROJECT = 'project';
 
-    public const ISSUE_TYPE = 'issuetype';
+    public const ISSUE_TYPE = 'issueType';
 
-    public const SUMMARY = 'summary';
+    public const TITLE = 'title';
 
     public const DESCRIPTION = 'description';
 

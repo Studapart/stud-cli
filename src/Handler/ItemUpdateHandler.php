@@ -11,6 +11,7 @@ use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueTrackerPort;
+use App\Service\StudIssueKeys;
 
 class ItemUpdateHandler implements JiraAware
 {
@@ -28,7 +29,7 @@ class ItemUpdateHandler implements JiraAware
         $skipped = [];
 
         if ($input->summary !== null && trim($input->summary) !== '') {
-            $fields['summary'] = trim($input->summary);
+            $fields[StudIssueKeys::TITLE] = trim($input->summary);
         }
         $this->applyDescription($input, $fields);
         $parsedFields = $this->resolveParsedFields($input);
@@ -65,7 +66,7 @@ class ItemUpdateHandler implements JiraAware
         $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
             ? trim($input->descriptionFormat)
             : 'plain';
-        $fields['description'] = $this->provider->formatDescription(trim($desc), $format);
+        $fields[StudIssueKeys::DESCRIPTION] = $this->provider->formatDescription(trim($desc), $format);
     }
 
     /**

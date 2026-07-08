@@ -115,13 +115,15 @@ class ItemCreatePromptService
         ?array $descriptionAdf,
         array $allFields,
     ): ?array {
+        unset($fieldId);
+
         return match ($kind) {
-            'project' => [$fieldId => ['key' => $projectKey]],
-            'reporter' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
-            'assignee' => [$fieldId => ['accountId' => $this->jiraService->getCurrentUserAccountId()]],
-            'issuetype' => $this->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
-            'summary' => [$fieldId => $summary],
-            'description' => ($v = $this->promptDescriptionValue($descriptionAdf)) !== null ? [$fieldId => $v] : null,
+            StudIssueKeys::PROJECT => [StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey]],
+            StudIssueKeys::REPORTER => [StudIssueKeys::REPORTER => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
+            StudIssueKeys::ASSIGNEE => [StudIssueKeys::ASSIGNEE => [StudIssueKeys::ACCOUNT_ID => $this->jiraService->getCurrentUserAccountId()]],
+            StudIssueKeys::ISSUE_TYPE => $this->promptIssueTypeValue($projectKey, $issueTypeId, $typeExplicitlyProvided, $allFields),
+            StudIssueKeys::TITLE => [StudIssueKeys::TITLE => $summary],
+            StudIssueKeys::DESCRIPTION => ($v = $this->promptDescriptionValue($descriptionAdf)) !== null ? [StudIssueKeys::DESCRIPTION => $v] : null,
             default => null,
         };
     }
@@ -141,16 +143,8 @@ class ItemCreatePromptService
         if ($chosenId === null) {
             return null;
         }
-        $value = ['id' => $chosenId];
-        $result = [];
-        foreach ($allFields as $fid => $meta) {
-            $n = strtolower((string) ($meta['name'] ?? ''));
-            if ($n === 'issue type' || $n === 'issuetype') {
-                $result[(string) $fid] = $value;
-            }
-        }
 
-        return $result;
+        return [StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::ID => $chosenId]];
     }
 
     public function chooseIssueTypeInteractively(string $projectKey): ?string
