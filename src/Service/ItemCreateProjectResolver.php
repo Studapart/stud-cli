@@ -17,6 +17,7 @@ class ItemCreateProjectResolver
         private readonly PromptInterface $prompt,
         private readonly ?LinearApiClient $linearApiClient = null,
         private readonly ?Logger $logger = null,
+        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
     ) {
     }
 
@@ -38,16 +39,34 @@ class ItemCreateProjectResolver
         return $this->prompt->ask(MessageRef::key('item.create.prompt_project'));
     }
 
+    public function resolveLinearScopeKey(?string $cliProjectKey = null): ?string
+    {
+        /** @var array<string, mixed> $config */
+        $config = $this->gitRepository->readProjectConfig();
+        $fromConfig = $this->scopeKeyResolver->resolveLinearTeamKey($config);
+        if ($fromConfig !== null) {
+            return $fromConfig;
+        }
+        if ($cliProjectKey !== null && trim($cliProjectKey) !== '') {
+            return strtoupper(trim($cliProjectKey));
+        }
+
+        return null;
+    }
+
     public function ensureProjectExists(bool $interactive, string $projectKey): ?Project
     {
         try {
             return $this->jiraService->getProject($projectKey);
         } catch (ApiException) {
+            /** @var array<string, mixed> $config */
+            $config = $this->gitRepository->readProjectConfig();
+            $linearTeamKey = $this->scopeKeyResolver->resolveLinearTeamKey($config) ?? $projectKey;
             $this->logger?->writeln(
                 Logger::VERBOSITY_VERBOSE,
                 sprintf('Jira project "%s" not found; trying Linear team lookup.', $projectKey),
             );
-            $linearTeam = $this->linearApiClient?->getTeamByKey($projectKey);
+            $linearTeam = $this->linearApiClient?->getTeamByKey($linearTeamKey);
             if ($linearTeam !== null) {
                 return $linearTeam;
             }

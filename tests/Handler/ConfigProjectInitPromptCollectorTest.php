@@ -575,6 +575,109 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         );
     }
 
+    public function testCollectRunsDualAutoJiraAndLinearMetadataPrompts(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+
+        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
+
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->exactly(2))
+            ->method('choice')
+            ->willReturnOnConsecutiveCalls('auto', 'github');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '');
+        $prompt->method('askHidden')->willReturn('');
+
+        $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
+        $metadataPrompts->expects($this->once())
+            ->method('chooseJiraTransitionId')
+            ->willReturn(21);
+        $metadataPrompts->expects($this->once())
+            ->method('chooseLinearStartStateId')
+            ->with($this->anything(), 'ENG', $this->callback(static fn (array $config): bool => ($config['linearTeamKey'] ?? null) === 'ENG'))
+            ->willReturn('state-1');
+        $metadataPrompts->method('chooseLinearTypeLabelGroupId')->willReturn(null);
+
+        $collector = $this->createCollector(
+            $gitRepository,
+            $prompt,
+            $gitSetup,
+            [
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'JIRA_URL' => 'https://jira.example.com',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            $metadataPrompts,
+        );
+
+        $this->assertSame(
+            [
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+                'projectKey' => 'SCI',
+                'linearTeamKey' => 'ENG',
+                'transitionId' => 21,
+                'linearStartStateId' => 'state-1',
+                'gitProvider' => 'github',
+            ],
+            $collector->collect(new WorkflowRecorder()),
+        );
+    }
+
+    public function testShouldRunLinearTeamKeyPromptReturnsFalseForSingleProviderGlobal(): void
+    {
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $this->createMock(PromptInterface::class),
+            $this->createMock(GitSetupService::class),
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value]],
+        );
+
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'shouldRunLinearTeamKeyPrompt');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertFalse($method->invoke($collector, IssueTrackerProvider::Auto->value, ['linear']));
+    }
+
+    public function testCollectSkipsLinearTeamKeyWhenSameAsProjectKey(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $gitRepository->method('parseGitUrl')->with('origin')->willReturn([]);
+
+        $gitSetup = $this->createMock(GitSetupService::class);
+        $gitSetup->method('detectDefaultBaseBranchName')->willReturn(null);
+
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->exactly(2))
+            ->method('choice')
+            ->willReturnOnConsecutiveCalls('auto', 'github');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '');
+        $prompt->method('askHidden')->willReturn('');
+
+        $metadataPrompts = $this->createDefaultMetadataPromptsMock();
+
+        $collector = $this->createCollector(
+            $gitRepository,
+            $prompt,
+            $gitSetup,
+            [
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'JIRA_URL' => 'https://jira.example.com',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            $metadataPrompts,
+        );
+
+        $result = $collector->collect(new WorkflowRecorder());
+        $this->assertArrayNotHasKey('linearTeamKey', $result);
+        $this->assertSame('SCI', $result['projectKey']);
+    }
+
     public function testMergeProjectConfigSkipsUnknownInputKeys(): void
     {
         $collector = $this->createCollector(

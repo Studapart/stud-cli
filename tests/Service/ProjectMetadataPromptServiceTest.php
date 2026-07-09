@@ -8,12 +8,14 @@ use App\DTO\MessageRef;
 use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
+use App\Exception\ApiException;
 use App\Service\BranchNameGenerator;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\LinearIssueTrackerAdapter;
 use App\Service\MessageRenderer;
 use App\Service\ProjectMetadataPromptService;
+use App\Service\ProjectScopeKeyResolver;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
@@ -494,6 +496,109 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
         $this->assertTrue($this->recorderHasWarning($recorder));
     }
 
+    public function testChooseJiraTransitionIdReturnsNullWhenChoiceHasNoParsableId(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->method('listProjectStateChanges')->willReturn([new StateChange('42', 'Start Progress', 'In Progress')]);
+
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('choice')->willReturn('Start Progress (no id suffix)');
+
+        $service = $this->createService($prompt, port: $port);
+
+        $this->assertNull($service->chooseJiraTransitionId(new WorkflowRecorder(), 'SCI', []));
+    }
+
+    public function testBuildLinearBranchPrefixMapLogsWarningWhenLabelFetchThrows(): void
+    {
+        $port = $this->createLinearLabelGroupsPortMock();
+        $port->method('listLabelGroups')->willThrowException(new ApiException('fail', 'details', 500));
+
+        $service = $this->createService(
+            $this->createMock(PromptInterface::class),
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            port: $port,
+            provider: IssueTrackerProvider::Linear->value,
+        );
+        $recorder = new WorkflowRecorder();
+
+        $this->assertNull($service->buildLinearBranchPrefixMap($recorder, 'SCI', [], 'group-1'));
+        $this->assertTrue($this->recorderHasWarning($recorder));
+    }
+
+    public function testChooseJiraTransitionIdUsesProjectKeyFromConfig(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
+            ->with('OTHER')
+            ->willReturn([new StateChange('42', 'Start Progress', 'In Progress')]);
+
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('choice')->willReturn('Start Progress (ID: 42)');
+
+        $service = $this->createService($prompt, port: $port);
+        $result = $service->chooseJiraTransitionId(new WorkflowRecorder(), 'SCI', [
+            'JIRA_DEFAULT_PROJECT' => 'OTHER',
+        ]);
+
+        $this->assertSame(42, $result);
+    }
+
+    public function testChooseLinearTypeLabelGroupIdReturnsNullWhenProviderDoesNotSupportLabels(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+
+        $service = $this->createService(
+            $this->createMock(PromptInterface::class),
+            port: $port,
+            provider: IssueTrackerProvider::Jira->value,
+        );
+
+        $this->assertNull($service->chooseLinearTypeLabelGroupId(new WorkflowRecorder(), 'SCI', []));
+    }
+
+    public function testChooseJiraTransitionIdLogsWarningWhenWorkflowFetchThrowsApiException(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->method('listProjectStateChanges')->willThrowException(new ApiException('fail', 'details', 500));
+
+        $service = $this->createService($this->createMock(PromptInterface::class), port: $port);
+        $recorder = new WorkflowRecorder();
+
+        $this->assertNull($service->chooseJiraTransitionId($recorder, 'SCI', []));
+        $this->assertTrue($this->recorderHasWarning($recorder));
+    }
+
+    public function testChooseLinearStartStateIdUsesLinearTeamKeyFromConfig(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())
+            ->method('listProjectStateChanges')
+            ->with('ENG')
+            ->willReturn([new StateChange('state-1', 'In Progress', null, 'started')]);
+
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('choice')
+            ->willReturn('In Progress (ID: state-1)');
+
+        $service = $this->createService(
+            $prompt,
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            port: $port,
+            provider: IssueTrackerProvider::Linear->value,
+        );
+
+        $this->assertSame(
+            'state-1',
+            $service->chooseLinearStartStateId(new WorkflowRecorder(), 'SCI', [
+                'projectKey' => 'SCI',
+                'linearTeamKey' => 'ENG',
+            ]),
+        );
+    }
+
     public function testDefaultPrefixForLabelNameUsesBranchNameGeneratorHeuristics(): void
     {
         $this->assertSame(BranchNameGenerator::PREFIX_FIX, ProjectMetadataPromptService::defaultPrefixForLabelName('Bug'));
@@ -513,11 +618,11 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
     ): ProjectMetadataPromptService {
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);
         if ($resolveError !== null) {
-            $supplier->method('resolve')->willReturn(['ok' => false, 'error' => $resolveError]);
+            $supplier->method('resolveForProvider')->willReturn(['ok' => false, 'error' => $resolveError]);
         } elseif ($port !== null) {
-            $supplier->method('resolve')->willReturn(['ok' => true, 'provider' => $provider, 'port' => $port]);
+            $supplier->method('resolveForProvider')->willReturn(['ok' => true, 'provider' => $provider, 'port' => $port]);
         } else {
-            $supplier->method('resolve')->willReturn([
+            $supplier->method('resolveForProvider')->willReturn([
                 'ok' => false,
                 'error' => MessageRef::key('project.workflow.error_ambiguous_provider'),
             ]);
@@ -528,6 +633,7 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
             new ProjectsWorkflowNormalizer(),
             $globalConfig,
             $prompt,
+            new ProjectScopeKeyResolver(),
             $messageRenderer,
         );
     }

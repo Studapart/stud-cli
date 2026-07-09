@@ -45,6 +45,56 @@ class ItemCreateProjectResolverTest extends TestCase
         );
     }
 
+    public function testEnsureProjectExistsUsesLinearTeamKeyFromConfig(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn([
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'ENG',
+        ]);
+        $this->jiraApiClient->expects($this->once())
+            ->method('getProject')
+            ->with('SCI')
+            ->willThrowException(new ApiException('Not found', 'details', 404));
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamByKey')
+            ->with('ENG')
+            ->willReturn(new Project('ENG', 'Engineering'));
+
+        $project = $this->createResolver($this->linearApiClient)->ensureProjectExists(false, 'SCI');
+
+        $this->assertInstanceOf(Project::class, $project);
+        $this->assertSame('ENG', $project->key);
+    }
+
+    public function testResolveLinearScopeKeyPrefersConfiguredLinearTeamKey(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn([
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'ENG',
+        ]);
+
+        $this->assertSame('ENG', $this->createResolver()->resolveLinearScopeKey('SCI'));
+    }
+
+    public function testResolveProjectKeyReturnsCliValueWhenProvided(): void
+    {
+        $this->assertSame('cli', $this->createResolver()->resolveProjectKey(false, ' cli '));
+    }
+
+    public function testResolveProjectKeyReturnsDefaultFromConfig(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn(['JIRA_DEFAULT_PROJECT' => 'DEF']);
+
+        $this->assertSame('DEF', $this->createResolver()->resolveProjectKey(false, null));
+    }
+
+    public function testResolveLinearScopeKeyFallsBackToCliProjectKey(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn([]);
+
+        $this->assertSame('CLI', $this->createResolver()->resolveLinearScopeKey('cli'));
+    }
+
     public function testEnsureProjectExistsFallsBackToLinearTeamWhenJiraProjectMissing(): void
     {
         $this->jiraApiClient->expects($this->once())

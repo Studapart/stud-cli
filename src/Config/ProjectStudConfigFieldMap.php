@@ -25,6 +25,7 @@ final class ProjectStudConfigFieldMap
         'jiraDefaultProject' => ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT,
         'confluenceDefaultSpace' => ProjectStudConfigKeys::CONFLUENCE_DEFAULT_SPACE,
         'issueTrackerProvider' => ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER,
+        'linearTeamKey' => ProjectStudConfigKeys::LINEAR_TEAM_KEY,
         'linearStartStateId' => ProjectStudConfigKeys::LINEAR_START_STATE_ID,
         'linearTypeLabelGroupId' => ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID,
         'linearTypeBranchPrefixes' => ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,

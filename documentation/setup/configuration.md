@@ -153,10 +153,28 @@ stud cpi
 
 When both issue trackers are configured globally, the wizard prompts for `issueTrackerProvider` (`jira`, `linear`, or `auto`).
 
+With **`auto`**, the wizard runs **both** Jira and Linear metadata pickers in one session: Jira transition (via `projectKey`), optional **`linearTeamKey`** when your Linear team differs from the Jira project, then Linear start state, LabelGroup, and branch-prefix map (via the resolved Linear team key).
+
+Example dual-`auto` config:
+
+```yaml
+issueTrackerProvider: auto
+projectKey: SCI
+JIRA_DEFAULT_PROJECT: SCI
+transitionId: 21
+linearTeamKey: ENG
+linearStartStateId: "<uuid>"
+linearTypeLabelGroupId: "<uuid>"
+linearTypeBranchPrefixes:
+  Story: feat
+```
+
+Discovery commands infer the provider from `--project` when `issueTrackerProvider` is `auto`: pass the Jira project key for Jira workflow, or the Linear team key (or `linearTeamKey` when set) for Linear labels/states.
+
 Agent mode example:
 
 ```bash
-echo '{"projectKey":"SCI","issueTrackerProvider":"linear","linearStartStateId":"state-uuid","baseBranch":"develop"}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","issueTrackerProvider":"auto","linearTeamKey":"ENG","linearStartStateId":"state-uuid","baseBranch":"develop"}' | stud config:project-init --agent
 ```
 
 ## Validate setup

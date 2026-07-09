@@ -127,6 +127,7 @@ config:
     prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
     prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
     prompt_issue_tracker_provider: "Провайдер задач для этого репозитория (когда глобальная конфигурация поддерживает Jira и Linear)"
+    prompt_linear_team_key: "Ключ команды Linear (необязательно; по умолчанию ключ проекта Jira при общем ключе)"
     prompt_linear_start_state_id: "ID состояния workflow Linear для items:start (необязательно)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear для сопоставления префиксов веток (необязательно)"
     picker_skip: "Пропустить (оставить пустым)"

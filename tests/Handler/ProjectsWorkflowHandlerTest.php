@@ -183,7 +183,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         }
 
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);
-        $supplier->method('resolve')->willReturn($resolveResult);
+        $supplier->method('resolveForDiscovery')->willReturn($resolveResult);
 
         return new ProjectsWorkflowHandler(
             $supplier,

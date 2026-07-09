@@ -1593,9 +1593,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             ->willReturn(new Project('SCI', 'Stud'));
         $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
 
-        $gitRepository->expects($this->once())
-            ->method('readProjectConfig')
-            ->willReturn([]);
+        $gitRepository->method('readProjectConfig')->willReturn([]);
         $linearApiClient->expects($this->once())
             ->method('resolveTeamId')
             ->with('SCI')
@@ -1656,7 +1654,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $linearProvider = new LinearIssueTrackerAdapter($linearApiClient, gitRepository: $gitRepository);
 
         $this->jiraApiClient->expects($this->once())->method('getProject')->willReturn(new Project('SCI', 'Stud'));
-        $gitRepository->expects($this->once())->method('readProjectConfig')->willReturn([]);
+        $gitRepository->method('readProjectConfig')->willReturn([]);
         $linearApiClient->expects($this->once())->method('resolveTeamId')->willReturn('team-1');
         $linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
         $linearApiClient->expects($this->once())->method('resolveIssueId')->with('SCI-9')->willReturn('parent-1');
@@ -1684,6 +1682,39 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame('SCI-43', $response->key);
+    }
+
+    public function testResolveLabelGroupsCapableCreateMetadataUsesLinearTeamKeyFromConfig(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn([
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'ENG',
+        ]);
+
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())
+            ->method('getCreateMetaFields')
+            ->with('ENG', 'Story')
+            ->willReturn([]);
+
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $linearProvider,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        /** @var \App\DTO\IssueCreationState $state */
+        $state = $this->callPrivateMethod($handler, 'resolveLabelGroupsCapableCreateMetadata', [
+            'SCI',
+            'Story',
+            'Summary',
+            new ItemCreateInput('SCI', 'Story', 'Summary', null),
+        ]);
+
+        $this->assertSame('ENG', $state->fields['project']['key']);
     }
 
     public function testResolveLabelGroupsCapableCreateMetadataUsesPlainFormatByDefault(): void
