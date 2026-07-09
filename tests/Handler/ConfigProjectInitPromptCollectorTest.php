@@ -678,6 +678,49 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $this->assertSame('SCI', $result['projectKey']);
     }
 
+    public function testPromptLinearTeamKeyUsesExistingValueAsDefaultAndSkipsUnchangedAnswer(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('ask')
+            ->with(
+                $this->anything(),
+                'ENG',
+            )
+            ->willReturn('ENG');
+
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $prompt,
+            $this->createMock(GitSetupService::class),
+        );
+
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertSame([], $method->invoke($collector, [
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'ENG',
+        ]));
+    }
+
+    public function testPromptLinearTeamKeyReturnsEmptyWhenUserSkips(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturn('');
+
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $prompt,
+            $this->createMock(GitSetupService::class),
+        );
+
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptLinearTeamKey');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertSame([], $method->invoke($collector, ['projectKey' => 'SCI']));
+    }
+
     public function testMergeProjectConfigSkipsUnknownInputKeys(): void
     {
         $collector = $this->createCollector(

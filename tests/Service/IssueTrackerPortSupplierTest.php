@@ -353,4 +353,73 @@ class IssueTrackerPortSupplierTest extends TestCase
         $this->assertFalse($result['ok']);
         $this->assertSame('issue_tracker_provider.unknown_prefix', $result['error']->key);
     }
+
+    public function testBuildPortResultReturnsErrorForUnknownProvider(): void
+    {
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $this->createMock(JiraApiClient::class),
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $method = new \ReflectionMethod(IssueTrackerPortSupplier::class, 'buildPortResult');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $result = $method->invoke($supplier, 'unknown-vendor', []);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('issue_tracker_provider.unknown_resolved', $result['error']->key);
+    }
+
+    public function testResolveForProviderReturnsErrorWhenCredentialsMissing(): void
+    {
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $this->createMock(JiraApiClient::class),
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $result = $supplier->resolveForProvider(
+            IssueTrackerProvider::Jira->value,
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+        );
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('issue_tracker_provider.missing_jira_configuration', $result['error']->key);
+    }
+
+    public function testResolveForDiscoveryIgnoresInvalidExplicitProjectProvider(): void
+    {
+        $jira = $this->createMock(JiraApiClient::class);
+        $jira->method('getProjectTransitions')->willReturn([]);
+
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $jira,
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $result = $supplier->resolveForDiscovery(
+            'SCI',
+            [
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value],
+                'JIRA_URL' => 'https://jira.example.com',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+            ],
+            [
+                'issueTrackerProvider' => 'invalid',
+                'projectKey' => 'SCI',
+            ],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
+    }
 }

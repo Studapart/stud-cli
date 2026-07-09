@@ -95,6 +95,13 @@ class ItemCreateProjectResolverTest extends TestCase
         $this->assertSame('CLI', $this->createResolver()->resolveLinearScopeKey('cli'));
     }
 
+    public function testResolveLinearScopeKeyReturnsNullWhenNoKeyAvailable(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn([]);
+
+        $this->assertNull($this->createResolver()->resolveLinearScopeKey(null));
+    }
+
     public function testEnsureProjectExistsFallsBackToLinearTeamWhenJiraProjectMissing(): void
     {
         $this->jiraApiClient->expects($this->once())

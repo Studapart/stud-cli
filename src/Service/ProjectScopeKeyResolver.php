@@ -121,8 +121,6 @@ final class ProjectScopeKeyResolver
         $linearTeamKey = $this->resolveLinearTeamKey($projectConfig);
         if ($linearTeamKey !== null && ! in_array($linearTeamKey, $this->jiraScopeKeys($projectConfig), true)) {
             $parts[] = $linearTeamKey . ' (' . IssueTrackerProvider::Linear->value . ')';
-        } elseif ($linearTeamKey !== null && $this->jiraScopeKeys($projectConfig) === []) {
-            $parts[] = $linearTeamKey . ' (' . IssueTrackerProvider::Linear->value . ')';
         }
 
         if ($parts === []) {

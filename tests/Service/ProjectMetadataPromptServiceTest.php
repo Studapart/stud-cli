@@ -526,6 +526,47 @@ class ProjectMetadataPromptServiceTest extends CommandTestCase
         $this->assertTrue($this->recorderHasWarning($recorder));
     }
 
+    public function testChooseJiraTransitionIdLogsWarningWhenWorkflowFetchThrowsGenericException(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->method('listProjectStateChanges')->willThrowException(new \RuntimeException('boom'));
+
+        $service = $this->createService($this->createMock(PromptInterface::class), port: $port);
+        $recorder = new WorkflowRecorder();
+
+        $this->assertNull($service->chooseJiraTransitionId($recorder, 'SCI', []));
+        $this->assertTrue($this->recorderHasWarning($recorder));
+    }
+
+    public function testChooseJiraTransitionIdLogsWarningWhenWorkflowReturnsNoMappedRows(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->method('listProjectStateChanges')->willReturn([]);
+
+        $service = $this->createService($this->createMock(PromptInterface::class), port: $port);
+        $recorder = new WorkflowRecorder();
+
+        $this->assertNull($service->chooseJiraTransitionId($recorder, 'SCI', []));
+        $this->assertTrue($this->recorderHasWarning($recorder));
+    }
+
+    public function testBuildLinearBranchPrefixMapLogsWarningWhenLabelFetchThrowsGenericException(): void
+    {
+        $port = $this->createLinearLabelGroupsPortMock();
+        $port->method('listLabelGroups')->willThrowException(new \RuntimeException('boom'));
+
+        $service = $this->createService(
+            $this->createMock(PromptInterface::class),
+            globalConfig: ['ISSUE_TRACKER_PROVIDERS' => ['linear'], 'LINEAR_API_KEY' => 'lin'],
+            port: $port,
+            provider: IssueTrackerProvider::Linear->value,
+        );
+        $recorder = new WorkflowRecorder();
+
+        $this->assertNull($service->buildLinearBranchPrefixMap($recorder, 'SCI', [], 'group-1'));
+        $this->assertTrue($this->recorderHasWarning($recorder));
+    }
+
     public function testChooseJiraTransitionIdUsesProjectKeyFromConfig(): void
     {
         $port = $this->createMock(IssueTrackerPort::class);
