@@ -67,6 +67,17 @@ class IssueListJsonSerializerTest extends TestCase
         $this->assertArrayHasKey('priority', $result[0]);
     }
 
+    public function testSerializeSummaryIncludesProviderWhenRequested(): void
+    {
+        $issue = new WorkItem('1', 'SCI-1', 'Test', 'Open', 'user', 'desc', [], 'Story');
+
+        $summary = $this->serializer->serializeSummary($issue, 'https://jira.example.com', false, 'linear');
+        $list = $this->serializer->serializeList([$issue], 'https://jira.example.com', false, ['linear'], true);
+
+        $this->assertSame('linear', $summary['provider']);
+        $this->assertSame('linear', $list[0]['provider']);
+    }
+
     public function testSerializeSummaryUsesWorkItemUrlWhenPresent(): void
     {
         $issue = new WorkItem(

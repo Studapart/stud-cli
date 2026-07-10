@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Guard\Resolver;
 
+use App\Config\GlobalStudConfigKeys;
+use App\Config\ProjectStudConfigKeys;
+use App\Enum\IssueTrackerProvider;
 use App\Service\GlobalConfigProviderResolver;
 use App\Service\IssueTrackerResolver;
 
@@ -51,8 +54,16 @@ class EffectiveProviderResolver
      * @param array<string, mixed>|null $projectConfig
      * @return array{providers: list<string>, ambiguous: bool}
      */
-    public function resolveIssueTrackerProviders(array $globalConfig, ?array $projectConfig): array
-    {
+    public function resolveIssueTrackerProviders(
+        array $globalConfig,
+        ?array $projectConfig,
+        ?string $providerOverride = null,
+        bool $dualAutoAggregate = false,
+    ): array {
+        if ($providerOverride !== null) {
+            return ['providers' => [$providerOverride], 'ambiguous' => false];
+        }
+
         if ($projectConfig === null) {
             return [
                 'providers' => $this->globalResolver->resolveIssueTrackerProviders($globalConfig),
@@ -65,9 +76,44 @@ class EffectiveProviderResolver
             return ['providers' => [$active['provider']], 'ambiguous' => false];
         }
 
+        if ($dualAutoAggregate && $this->isProjectAuto($projectConfig) && $this->isDualPmWithCredentials($globalConfig)) {
+            return [
+                'providers' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'ambiguous' => false,
+            ];
+        }
+
         return [
             'providers' => $this->globalResolver->resolveIssueTrackerProviders($globalConfig),
             'ambiguous' => true,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    private function isProjectAuto(array $projectConfig): bool
+    {
+        $stored = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
+        if ($stored === null) {
+            return true;
+        }
+
+        return $stored === IssueTrackerProvider::Auto->value;
+    }
+
+    /**
+     * @param array<string, mixed> $globalConfig
+     */
+    private function isDualPmWithCredentials(array $globalConfig): bool
+    {
+        $providers = $this->globalResolver->resolveIssueTrackerProviders($globalConfig);
+        if (! $this->globalResolver->collectsJira($providers)
+            || ! $this->globalResolver->collectsLinear($providers)) {
+            return false;
+        }
+
+        return GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Jira, $globalConfig)
+            && GlobalStudConfigKeys::hasCredentialsFor(IssueTrackerProvider::Linear, $globalConfig);
     }
 }

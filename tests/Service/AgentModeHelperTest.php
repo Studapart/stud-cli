@@ -16,7 +16,14 @@ class AgentModeHelperTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        AgentModeHelper::resetCachedAgentInput();
         $this->helper = new AgentModeHelper();
+    }
+
+    protected function tearDown(): void
+    {
+        AgentModeHelper::resetCachedAgentInput();
+        parent::tearDown();
     }
 
     public function testReadAgentInputFromFileReturnsDecodedArray(): void
@@ -211,6 +218,32 @@ class AgentModeHelperTest extends TestCase
         $helper = new AgentModeHelper();
         $this->assertSame(0, $helper->exitCodeForPayload($helper->buildSuccessPayload([])));
         $this->assertSame(1, $helper->exitCodeForPayload($helper->buildErrorPayload('err')));
+    }
+
+    public function testPeekAgentInputCachesDecodedPayload(): void
+    {
+        $helper = new AgentModeHelper(null, static fn (): string => '{"provider":"jira"}');
+        $first = $helper->peekAgentInput(null);
+        $second = $helper->peekAgentInput(null);
+
+        $this->assertSame(['provider' => 'jira'], $first);
+        $this->assertSame($first, $second);
+    }
+
+    public function testReadAgentInputReturnsCachedPayloadWithoutReReadingStdin(): void
+    {
+        $calls = 0;
+        $helper = new AgentModeHelper(null, static function () use (&$calls): string {
+            ++$calls;
+
+            return '{"cached":true}';
+        });
+
+        $helper->peekAgentInput(null);
+        $result = $helper->readAgentInput(null);
+
+        $this->assertSame(['cached' => true], $result);
+        $this->assertSame(1, $calls);
     }
 
     private function createTempJsonFile(string $content): string

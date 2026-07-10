@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Enum\IssueTrackerProvider;
 use App\Service\ConfigRemediationService;
 use App\Service\GitBranchService;
 use App\Service\Logger;
@@ -87,12 +88,39 @@ class ConfigRemediationServiceTest extends TestCase
             ->willReturn([]);
 
         $this->logger->expects($this->once())
+            ->method('addNote');
+        $this->logger->expects($this->once())
             ->method('ask')
             ->willReturn('custom-branch');
 
         $result = $this->service->promptForMissingKeys(['baseBranch'], 'project');
 
         $this->assertSame('custom-branch', $result['baseBranch']);
+    }
+
+    public function testPromptForIssueTrackerProviderUsesChoice(): void
+    {
+        $prompt = $this->createMock(\App\Service\Prompt\PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('choice')
+            ->willReturn(IssueTrackerProvider::Jira->value);
+        $this->logger->expects($this->exactly(2))->method('addNote');
+
+        $service = new ConfigRemediationService($this->logger, $this->translator, null, $prompt);
+        $result = $service->promptForMissingKeys(['issueTrackerProvider'], 'project');
+
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['issueTrackerProvider']);
+    }
+
+    public function testPromptForIssueTrackerProviderWithoutChoiceUsesAsk(): void
+    {
+        $this->logger->expects($this->once())
+            ->method('ask')
+            ->willReturn(IssueTrackerProvider::Linear->value);
+
+        $result = $this->service->promptForMissingKeys(['issueTrackerProvider'], 'project');
+
+        $this->assertSame(IssueTrackerProvider::Linear->value, $result['issueTrackerProvider']);
     }
 
     public function testPromptForMissingKeysWithEmptyValue(): void

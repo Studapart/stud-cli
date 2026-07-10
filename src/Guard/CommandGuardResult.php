@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Guard;
 
+use App\DTO\MessageRef;
+
 /**
  * Result of a command readiness guard check.
  */
@@ -19,6 +21,8 @@ class CommandGuardResult
         public readonly array $missingProjectKeys = [],
         public readonly bool $canProceed = true,
         public readonly array $environmentFailures = [],
+        public readonly ?MessageRef $providerOverrideError = null,
+        public readonly bool $ambiguousIssueTrackerProvider = false,
     ) {
     }
 

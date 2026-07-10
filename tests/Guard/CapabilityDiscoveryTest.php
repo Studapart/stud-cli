@@ -6,6 +6,7 @@ namespace App\Tests\Guard;
 
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Guard\CapabilityDiscovery;
 use App\Handler\CommitHandler;
 use App\Handler\ConfigValidateHandler;
@@ -33,6 +34,7 @@ class CapabilityDiscoveryTest extends TestCase
     {
         $capabilities = CapabilityDiscovery::fromClass(ItemListHandler::class);
 
-        $this->assertSame([JiraAware::class], $capabilities->all());
+        $this->assertTrue($capabilities->has(JiraAware::class));
+        $this->assertTrue($capabilities->has(LinearAware::class));
     }
 }

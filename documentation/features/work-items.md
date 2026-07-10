@@ -10,7 +10,7 @@ Setup: [Configuration](../setup/configuration.md). Scope mapping: [ADR-022](../a
 |--------|----------------|
 | `issueTrackerProvider: jira` | Jira |
 | `issueTrackerProvider: linear` | Linear |
-| `issueTrackerProvider: auto` | Resolved from `ISSUE_TRACKER_PROVIDERS`, credentials, and issue-key prefix |
+| `issueTrackerProvider: auto` | Resolved from `ISSUE_TRACKER_PROVIDERS`, credentials, and issue-key prefix; **`stud ls` queries both** Jira and Linear when both are configured |
 | Global config lists one provider only | That provider |
 
 Run `stud config:show -k issueTrackerProvider` (or inspect `.git/stud.config`) when scripts must know which API dialect to use.
@@ -27,7 +27,23 @@ echo '{"key":"ENG-42","provider":"linear"}' | stud items:show --agent
 
 Allowed values: `jira`, `linear`. Explicit `auto` is rejected — set `issueTrackerProvider: auto` in project config instead.
 
-Essential `items:*` commands that accept `--provider` include `items:show`, `items:create`, `items:update`, `items:transition`, `items:start`, and `items:list`. See `echo '{"command":"items:show"}' | stud help --agent`.
+Essential `items:*` commands that accept `--provider` include `items:show`, `items:create`, `items:update`, `items:transition`, `items:start`, and `items:list`. The readiness guard reads `--provider` / agent `provider` **before** blocking, so a one-off override works even when project `issueTrackerProvider` is `auto`. See `echo '{"command":"items:show"}' | stud help --agent`.
+
+### Command provider matrix
+
+| Command | Alias | `auto` (both) | `--provider` | Notes |
+|---------|-------|---------------|--------------|-------|
+| `items:list` | `ls` | Yes — merges Jira + Linear | Yes | Agent JSON may include per-issue `provider` when both ran |
+| `items:show` | `sh` | No — key resolves provider | Yes | |
+| `items:create` | `ic` | No | Yes | |
+| `items:update` | `iu` | No | Yes | |
+| `items:start` | `start` | No | Yes | |
+| `items:transition` | `tx` | No | Yes | |
+| `items:search` | `search` | No | No | JQL vs plain text per provider |
+| `filters:list` | `fl` | No | No | Active provider only |
+| `filters:show` | `fs` | No | No | |
+| `projects:workflow` | — | Via `--project` scope | No | Discovery infers provider |
+| `projects:labels` | — | Via `--project` scope | No | Discovery infers provider |
 
 ## Search (`items:search` / `stud search`)
 

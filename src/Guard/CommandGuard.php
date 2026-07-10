@@ -31,6 +31,13 @@ class CommandGuard
             return new CommandGuardResult(canProceed: true);
         }
 
+        if ($context->providerOverrideError !== null) {
+            return new CommandGuardResult(
+                canProceed: false,
+                providerOverrideError: $context->providerOverrideError,
+            );
+        }
+
         $missingGlobal = [];
         $missingProject = [];
         $environmentFailures = [];
@@ -39,8 +46,11 @@ class CommandGuard
             $environmentFailures[] = 'git_repository';
         }
 
-        if ($context->issueTrackerProviderAmbiguous
-            && ($capabilities->has(JiraAware::class) || $capabilities->has(LinearAware::class))) {
+        $ambiguousProvider = $context->issueTrackerProviderAmbiguous
+            && $context->issueTrackerProviderOverride === null
+            && ($capabilities->has(JiraAware::class) || $capabilities->has(LinearAware::class));
+
+        if ($ambiguousProvider) {
             $missingProject[] = ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER;
         }
 
@@ -83,7 +93,13 @@ class CommandGuard
         $missingProject = array_values(array_unique($missingProject));
         $canProceed = $environmentFailures === [] && $missingGlobal === [] && $missingProject === [];
 
-        return new CommandGuardResult($missingGlobal, $missingProject, $canProceed, $environmentFailures);
+        return new CommandGuardResult(
+            $missingGlobal,
+            $missingProject,
+            $canProceed,
+            $environmentFailures,
+            ambiguousIssueTrackerProvider: $ambiguousProvider && ! $canProceed,
+        );
     }
 
     /**
