@@ -275,7 +275,56 @@ class CommandGuardTest extends TestCase
 
         $this->assertFalse($result->canProceed);
         $this->assertSame(['issueTrackerProvider'], $result->missingProjectKeys);
+        $this->assertTrue($result->ambiguousIssueTrackerProvider);
         $this->assertSame([], $result->missingGlobalKeys);
+    }
+
+    public function testProviderOverrideSkipsAmbiguousProjectPrompt(): void
+    {
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
+        $context = new CommandContext(
+            globalConfig: [
+                'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+            projectConfig: ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
+            hasGitRepository: true,
+            issueTrackerProviders: [IssueTrackerProvider::Linear->value],
+            gitProviders: ['github'],
+            isInteractive: true,
+            isQuiet: false,
+            isAgent: false,
+            issueTrackerProviderAmbiguous: false,
+            issueTrackerProviderOverride: IssueTrackerProvider::Linear->value,
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+        $this->assertSame([], $result->missingProjectKeys);
+    }
+
+    public function testInvalidProviderOverrideBlocks(): void
+    {
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
+        $context = new CommandContext(
+            globalConfig: [],
+            projectConfig: [],
+            hasGitRepository: true,
+            issueTrackerProviders: [],
+            gitProviders: ['github'],
+            isInteractive: false,
+            isQuiet: false,
+            isAgent: true,
+            providerOverrideError: \App\DTO\MessageRef::key('issue_tracker_provider.invalid_override', ['%value%' => 'auto']),
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
+        $this->assertNotNull($result->providerOverrideError);
     }
 
     public function testConfluenceRequiresJiraCredentials(): void

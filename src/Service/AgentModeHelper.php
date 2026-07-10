@@ -16,12 +16,34 @@ use App\Exception\AgentModeException;
  */
 class AgentModeHelper
 {
+    /** @var array<string, mixed>|null */
+    private static ?array $cachedAgentInput = null;
+
     public function __construct(
         private readonly ?AgentModeIoInterface $io = null,
         private readonly ?\Closure $stdinReader = null,
         private readonly ?\Closure $fileReader = null,
         private readonly ?\Closure $isStdinTty = null
     ) {
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws AgentModeException when JSON is invalid or file cannot be read
+     */
+    public function peekAgentInput(?string $inputFile): array
+    {
+        if (self::$cachedAgentInput !== null) {
+            return self::$cachedAgentInput;
+        }
+
+        return $this->readAgentInput($inputFile);
+    }
+
+    public static function resetCachedAgentInput(): void
+    {
+        self::$cachedAgentInput = null;
     }
 
     /**
@@ -33,6 +55,10 @@ class AgentModeHelper
      */
     public function readAgentInput(?string $inputFile): array
     {
+        if (self::$cachedAgentInput !== null) {
+            return self::$cachedAgentInput;
+        }
+
         $raw = $this->readRawInput($inputFile);
         $decoded = json_decode($raw, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -41,6 +67,8 @@ class AgentModeHelper
         if (! is_array($decoded) || (count($decoded) > 0 && array_is_list($decoded))) {
             throw new AgentModeException('JSON input must be an object');
         }
+
+        self::$cachedAgentInput = $decoded;
 
         return $decoded;
     }

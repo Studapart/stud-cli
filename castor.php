@@ -1589,7 +1589,7 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
         }
 
         $contextFactory = new CommandContextFactory();
-        $context = $contextFactory->create($event, $config, $projectConfig, $hasGitRepository, $resolvedGitProvider);
+        $context = $contextFactory->create($event, $config, $projectConfig, $hasGitRepository, $resolvedGitProvider, $commandName);
         $capabilities = CommandHandlerRegistry::resolveCapabilities($commandName);
         $guard = new CommandGuard();
         $guardResult = $guard->check($capabilities, $context);
@@ -1607,10 +1607,17 @@ function _config_pass_listener(ConsoleCommandEvent $event): void
                 return;
             }
 
+            if (_stdin_is_piped_for_remediation()) {
+                _guard_block_command_execution($event, $guardResult, $isAgent, $logger, $translator, true);
+
+                return;
+            }
+
             $remediation = new ConfigRemediationService(
                 new CommandOutputBuffer($logger, _get_prompt()),
                 $translator,
-                _get_git_branch_service()
+                _get_git_branch_service(),
+                _get_prompt(),
             );
 
             if (! empty($guardResult->missingGlobalKeys)) {
@@ -1780,12 +1787,21 @@ function config_show(
 /**
  * Block command execution when the readiness guard fails in non-interactive modes.
  */
+function _stdin_is_piped_for_remediation(): bool
+{
+    return function_exists('posix_isatty') && ! @posix_isatty(STDIN);
+}
+
+/**
+ * Block command execution when the readiness guard fails in non-interactive modes.
+ */
 function _guard_block_command_execution(
     ConsoleCommandEvent $event,
     CommandGuardResult $guardResult,
     bool $isAgent,
     Logger $logger,
     \App\Service\TranslationService $translator,
+    bool $stdinPiped = false,
 ): void {
     if (in_array('git_repository', $guardResult->environmentFailures, true)) {
         $error = $translator->trans('guard.error.git_repository_required');
@@ -1797,6 +1813,79 @@ function _guard_block_command_execution(
             ));
         }
         $logger->error(Logger::VERBOSITY_NORMAL, $error);
+        $event->disableCommand();
+        $blockedCommand = $event->getCommand();
+        if ($blockedCommand !== null) {
+            $blockedCommand->setCode(static function () {
+                return 1;
+            });
+        }
+
+        return;
+    }
+
+    if ($guardResult->providerOverrideError !== null) {
+        $error = $translator->trans(
+            $guardResult->providerOverrideError->key,
+            $guardResult->providerOverrideError->parameters,
+        );
+        if ($isAgent) {
+            _agent_respond(new AgentJsonResponse(
+                false,
+                error: $translator->transForAgentText(
+                    $guardResult->providerOverrideError->key,
+                    $guardResult->providerOverrideError->parameters,
+                ),
+            ));
+        }
+        $logger->error(Logger::VERBOSITY_NORMAL, $error);
+        $event->disableCommand();
+        $blockedCommand = $event->getCommand();
+        if ($blockedCommand !== null) {
+            $blockedCommand->setCode(static function () {
+                return 1;
+            });
+        }
+
+        return;
+    }
+
+    if ($stdinPiped) {
+        $error = $translator->trans('guard.error.remediation_requires_tty');
+        if ($isAgent) {
+            _agent_respond(new AgentJsonResponse(
+                false,
+                error: $translator->transForAgentText('guard.error.remediation_requires_tty'),
+            ));
+        }
+        $logger->error(Logger::VERBOSITY_NORMAL, [
+            $error,
+            $translator->trans('guard.error.missing_config_keys_hint'),
+        ]);
+        $event->disableCommand();
+        $blockedCommand = $event->getCommand();
+        if ($blockedCommand !== null) {
+            $blockedCommand->setCode(static function () {
+                return 1;
+            });
+        }
+
+        return;
+    }
+
+    if ($guardResult->ambiguousIssueTrackerProvider) {
+        $error = $translator->trans('guard.error.ambiguous_issue_tracker_provider');
+        if ($isAgent) {
+            _agent_respond(new AgentJsonResponse(
+                false,
+                error: $translator->transForAgentText('guard.error.ambiguous_issue_tracker_provider'),
+                diagnostics: ['errors' => [['message' => $translator->transForAgentText('guard.error.ambiguous_issue_tracker_provider')]]],
+            ));
+        }
+        $logger->error(Logger::VERBOSITY_NORMAL, [
+            $error,
+            $translator->trans('guard.error.missing_config_keys_hint'),
+        ]);
         $event->disableCommand();
         $blockedCommand = $event->getCommand();
         if ($blockedCommand !== null) {
@@ -2285,8 +2374,20 @@ function items_list(
         }
     }
 
-    $handler = new ItemListHandler(_require_issue_tracker($providerOverride ?? $provider));
-    $response = $handler->handle($all, $project, $sort);
+    $projectConfig = [];
+
+    try {
+        $projectConfig = _get_git_repository()->readProjectConfig();
+    } catch (\RuntimeException) {
+        $projectConfig = [];
+    }
+
+    $handler = new ItemListHandler(
+        _get_issue_tracker_port_supplier(),
+        _get_config(),
+        $projectConfig,
+    );
+    $response = $handler->handle($all, $project, $sort, $providerOverride ?? $provider);
     $responder = new ItemListResponder(_get_responder_helper(), _get_jira_config_or_empty(), _get_logger());
     $agentResponse = $responder->respond(io(), $response, $format);
     if ($agentResponse !== null) {

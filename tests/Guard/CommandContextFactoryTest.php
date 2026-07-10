@@ -31,6 +31,8 @@ class CommandContextFactoryTest extends TestCase
             ],
             ['baseBranch' => 'develop'],
             true,
+            null,
+            'items:list',
         );
 
         $this->assertSame('develop', $context->projectConfig['baseBranch']);

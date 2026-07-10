@@ -195,6 +195,13 @@ config:
     version_updated: "Версия миграции обновлена до %version%"
   missing_global_key: "Отсутствует обязательный ключ глобальной конфигурации: %key%"
   missing_project_key: "Отсутствует обязательный ключ конфигурации проекта: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Автоматически обнаружено %key%: %value%"
 
 guard:
@@ -202,6 +209,8 @@ guard:
     git_repository_required: "This command requires a git repository."
     missing_config_keys: "Missing required configuration keys: %keys%"
     missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
     missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
@@ -761,6 +770,7 @@ table:
   key: Ключ
   status: Статус
   summary: Резюме
+  provider: "Provider"
   name: Имя
   command: Команда
   alias: Псевдоним

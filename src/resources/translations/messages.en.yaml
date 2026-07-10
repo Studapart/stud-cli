@@ -190,7 +190,14 @@ config:
     version_updated: "Migration version updated to %version%"
   missing_global_key: "Missing required global configuration key: %key%"
   missing_project_key: "Missing required project configuration key: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
   auto_detected: "Auto-detected %key%: %value%"
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
 
 guard:
   error:
@@ -198,6 +205,8 @@ guard:
     missing_config_keys: "Missing required configuration keys: %keys%"
     missing_config_key: "Missing required configuration key: %key%"
     missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
 
 # Item Start Handler
 item:
@@ -792,6 +801,7 @@ table:
   key: "Key"
   status: "Status"
   summary: "Summary"
+  provider: "Provider"
   name: "Name"
   description: "Description"
   command: "Command"

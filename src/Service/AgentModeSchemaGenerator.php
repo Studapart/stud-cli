@@ -33,6 +33,14 @@ class AgentModeSchemaGenerator
         'items:update',
     ];
 
+    /**
+     * @return list<string>
+     */
+    public static function itemsCommandsWithProviderOverride(): array
+    {
+        return self::ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE;
+    }
+
     private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
         'type' => 'string|null',
         'optional' => true,

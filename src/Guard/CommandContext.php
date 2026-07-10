@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Guard;
 
+use App\DTO\MessageRef;
+
 /**
  * Immutable snapshot of runtime context for command readiness checks.
  */
@@ -25,6 +27,8 @@ class CommandContext
         public readonly bool $isQuiet,
         public readonly bool $isAgent,
         public readonly bool $issueTrackerProviderAmbiguous = false,
+        public readonly ?string $issueTrackerProviderOverride = null,
+        public readonly ?MessageRef $providerOverrideError = null,
     ) {
     }
 }
