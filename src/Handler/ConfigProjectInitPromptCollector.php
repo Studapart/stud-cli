@@ -16,6 +16,7 @@ use App\Service\GitSetupService;
 use App\Service\GitTokenPromptResolver;
 use App\Service\GlobalConfigProviderResolver;
 use App\Service\ProjectMetadataPromptService;
+use App\Service\ProjectScopeKeyResolver;
 use App\Service\Prompt\PromptInterface;
 
 /**
@@ -33,6 +34,7 @@ class ConfigProjectInitPromptCollector
         private readonly string $globalConfigPath,
         private readonly GlobalConfigProviderResolver $providerResolver,
         private readonly ProjectMetadataPromptService $metadataPrompts,
+        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
     ) {
         unset($_translator);
     }
@@ -60,12 +62,16 @@ class ConfigProjectInitPromptCollector
 
         $patches = array_merge($patches, $this->promptProjectKey($existing));
         $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
+        if ($this->shouldRunLinearTeamKeyPrompt($effectiveProvider, $globalIssueTrackerProviders)) {
+            $patches = array_merge($patches, $this->promptLinearTeamKey($mergedAfterProjectKey));
+            $mergedAfterProjectKey = $this->mergeProjectConfig($existing, $patches);
+        }
         if ($this->shouldRunJiraPrompts($effectiveProvider)) {
             $patches = array_merge($patches, $this->promptJiraDefaultProject($existing));
             $patches = array_merge($patches, $this->promptConfluenceDefaultSpace($existing));
             $patches = array_merge($patches, $this->promptTransitionFromWorkflow($mergedAfterProjectKey, $recorder));
         }
-        if ($this->shouldRunLinearPrompts($effectiveProvider)) {
+        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
             $patches = array_merge($patches, $this->promptLinearFields($mergedAfterProjectKey, $recorder));
         }
         $patches = array_merge($patches, $this->promptBaseBranch($existing, $recorder));
@@ -102,24 +108,24 @@ class ConfigProjectInitPromptCollector
      */
     protected function promptLinearFields(array $mergedConfig, WorkflowEntryRecorder $recorder): array
     {
-        $projectKey = $this->resolveProjectKey($mergedConfig);
-        if ($projectKey === null) {
+        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($mergedConfig);
+        if ($scopeKey === null) {
             return [];
         }
 
         $patches = [];
-        $startStateId = $this->metadataPrompts->chooseLinearStartStateId($recorder, $projectKey, $mergedConfig);
+        $startStateId = $this->metadataPrompts->chooseLinearStartStateId($recorder, $scopeKey, $mergedConfig);
         if ($startStateId !== null) {
             $patches['linearStartStateId'] = $startStateId;
         }
 
-        $labelGroupId = $this->metadataPrompts->chooseLinearTypeLabelGroupId($recorder, $projectKey, $mergedConfig);
+        $labelGroupId = $this->metadataPrompts->chooseLinearTypeLabelGroupId($recorder, $scopeKey, $mergedConfig);
         if ($labelGroupId !== null) {
             $patches['linearTypeLabelGroupId'] = $labelGroupId;
             /** @var array<string, string>|null $branchPrefixes */
             $branchPrefixes = $this->metadataPrompts->buildLinearBranchPrefixMap(
                 $recorder,
-                $projectKey,
+                $scopeKey,
                 $mergedConfig,
                 $labelGroupId,
             );
@@ -212,9 +218,66 @@ class ConfigProjectInitPromptCollector
         return $effectiveProvider === IssueTrackerProvider::Jira->value || $effectiveProvider === IssueTrackerProvider::Auto->value;
     }
 
-    protected function shouldRunLinearPrompts(string $effectiveProvider): bool
+    /**
+     * @param list<string> $globalIssueTrackerProviders
+     */
+    protected function shouldRunLinearPrompts(string $effectiveProvider, array $globalIssueTrackerProviders): bool
     {
-        return $effectiveProvider === IssueTrackerProvider::Linear->value;
+        if ($effectiveProvider === IssueTrackerProvider::Linear->value) {
+            return true;
+        }
+
+        return $effectiveProvider === IssueTrackerProvider::Auto->value
+            && $this->providerResolver->collectsJira($globalIssueTrackerProviders)
+            && $this->providerResolver->collectsLinear($globalIssueTrackerProviders);
+    }
+
+    /**
+     * @param list<string> $globalIssueTrackerProviders
+     */
+    protected function shouldRunLinearTeamKeyPrompt(string $effectiveProvider, array $globalIssueTrackerProviders): bool
+    {
+        if (! $this->providerResolver->collectsJira($globalIssueTrackerProviders)
+            || ! $this->providerResolver->collectsLinear($globalIssueTrackerProviders)) {
+            return false;
+        }
+
+        return $effectiveProvider === IssueTrackerProvider::Linear->value
+            || $effectiveProvider === IssueTrackerProvider::Auto->value;
+    }
+
+    /**
+     * @param array<string, mixed> $mergedConfig
+     * @return array<string, mixed>
+     */
+    protected function promptLinearTeamKey(array $mergedConfig): array
+    {
+        $jiraKey = $this->resolveProjectKey($mergedConfig);
+        if ($jiraKey === null) {
+            return [];
+        }
+
+        $existingLinear = isset($mergedConfig['linearTeamKey']) && is_string($mergedConfig['linearTeamKey'])
+            ? strtoupper(trim($mergedConfig['linearTeamKey']))
+            : '';
+        $default = $existingLinear !== '' ? $existingLinear : $jiraKey;
+        $answer = $this->prompt->ask(
+            MessageRef::key('config.project_init.prompt_linear_team_key'),
+            $default,
+        );
+        if ($answer === null || trim((string) $answer) === '') {
+            return [];
+        }
+
+        $value = strtoupper(trim((string) $answer));
+        if ($value === $jiraKey && $existingLinear === '') {
+            return [];
+        }
+        if ($value === $existingLinear) {
+            return [];
+        }
+
+        return ['linearTeamKey' => $value];
     }
 
     /**

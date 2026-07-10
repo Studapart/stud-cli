@@ -167,7 +167,7 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
         array $resolveResult = [],
     ): ProjectsLabelsHandler {
         $supplier = $this->createMock(IssueTrackerPortSupplier::class);
-        $supplier->method('resolve')->willReturn($resolveResult);
+        $supplier->method('resolveForDiscovery')->willReturn($resolveResult);
 
         return new ProjectsLabelsHandler(
             $supplier,

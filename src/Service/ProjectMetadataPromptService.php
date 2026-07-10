@@ -6,9 +6,9 @@ namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Enum\IssueTrackerProvider;
-use App\Handler\ProjectsLabelsHandler;
-use App\Handler\ProjectsWorkflowHandler;
+use App\Exception\ApiException;
 use App\Response\ProjectsLabelsResponse;
 use App\Response\ProjectsWorkflowResponse;
 use App\Service\Prompt\PromptInterface;
@@ -24,6 +24,7 @@ class ProjectMetadataPromptService
         /** @var array<string, mixed> */
         private readonly array $globalConfig,
         private readonly PromptInterface $prompt,
+        private readonly ProjectScopeKeyResolver $scopeKeyResolver = new ProjectScopeKeyResolver(),
         private readonly ?MessageRenderer $messageRenderer = null,
     ) {
     }
@@ -36,7 +37,8 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?int {
-        $response = $this->fetchWorkflow($projectKey, $projectConfig);
+        $scopeKey = $this->scopeKeyResolver->resolveJiraProjectKey($projectConfig) ?? $projectKey;
+        $response = $this->fetchWorkflow(IssueTrackerProvider::Jira->value, $scopeKey);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
 
@@ -48,7 +50,7 @@ class ProjectMetadataPromptService
             static fn (array $row): bool => ($row['provider'] ?? '') === IssueTrackerProvider::Jira->value,
         ));
         if ($transitions === []) {
-            $this->logWorkflowEmpty($recorder, $projectKey, $response);
+            $this->logWorkflowEmpty($recorder, $scopeKey, $response);
 
             return null;
         }
@@ -74,7 +76,8 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?string {
-        $response = $this->fetchWorkflow($projectKey, $projectConfig);
+        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $response = $this->fetchWorkflow(IssueTrackerProvider::Linear->value, $scopeKey);
         if (! $response->isSuccess()) {
             $this->logWorkflowFailure($recorder, $response);
 
@@ -86,7 +89,7 @@ class ProjectMetadataPromptService
             static fn (array $row): bool => ($row['provider'] ?? '') === IssueTrackerProvider::Linear->value,
         ));
         if ($states === []) {
-            $this->logWorkflowEmpty($recorder, $projectKey, $response);
+            $this->logWorkflowEmpty($recorder, $scopeKey, $response);
 
             return null;
         }
@@ -110,7 +113,8 @@ class ProjectMetadataPromptService
         string $projectKey,
         array $projectConfig,
     ): ?string {
-        $response = $this->fetchLabelGroups($projectKey, $projectConfig);
+        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
 
@@ -150,7 +154,8 @@ class ProjectMetadataPromptService
         array $projectConfig,
         string $labelGroupId,
     ): ?array {
-        $response = $this->fetchLabelGroups($projectKey, $projectConfig);
+        $scopeKey = $this->scopeKeyResolver->resolveLinearTeamKey($projectConfig) ?? $projectKey;
+        $response = $this->fetchLabelGroups(IssueTrackerProvider::Linear->value, $scopeKey);
         if (! $response->isSuccess()) {
             $this->logLabelsFailure($recorder, $response);
 
@@ -327,33 +332,59 @@ class ProjectMetadataPromptService
         );
     }
 
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function fetchWorkflow(string $projectKey, array $projectConfig): ProjectsWorkflowResponse
+    protected function fetchWorkflow(string $provider, string $scopeKey): ProjectsWorkflowResponse
     {
-        $handler = new ProjectsWorkflowHandler(
-            $this->portSupplier,
-            $this->normalizer,
-            $this->globalConfig,
-            $projectConfig,
-        );
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig);
+        if (! $resolution['ok']) {
+            return ProjectsWorkflowResponse::error($resolution['error']);
+        }
 
-        return $handler->handle($projectKey);
+        try {
+            $stateChanges = $resolution['port']->listProjectStateChanges($scopeKey);
+        } catch (ApiException $e) {
+            return ProjectsWorkflowResponse::error(
+                MessageRef::key('project.workflow.error_fetch', ['error' => $e->getMessage()])
+            );
+        } catch (\Throwable $e) {
+            return ProjectsWorkflowResponse::error(
+                MessageRef::key('project.workflow.error_fetch', ['error' => $e->getMessage()])
+            );
+        }
+
+        $mapped = $this->normalizer->fromStateChanges($stateChanges, $resolution['provider']);
+        if ($mapped === []) {
+            return ProjectsWorkflowResponse::success([], [
+                ResponseMessage::warning(MessageRef::key('project.workflow.no_state_changes', ['project' => $scopeKey])),
+            ]);
+        }
+
+        return ProjectsWorkflowResponse::success($mapped);
     }
 
-    /**
-     * @param array<string, mixed> $projectConfig
-     */
-    protected function fetchLabelGroups(string $projectKey, array $projectConfig): ProjectsLabelsResponse
+    protected function fetchLabelGroups(string $provider, string $scopeKey): ProjectsLabelsResponse
     {
-        $handler = new ProjectsLabelsHandler(
-            $this->portSupplier,
-            $this->globalConfig,
-            $projectConfig,
-        );
+        $resolution = $this->portSupplier->resolveForProvider($provider, $this->globalConfig);
+        if (! $resolution['ok']) {
+            return ProjectsLabelsResponse::error($resolution['error']);
+        }
 
-        return $handler->handle($projectKey, true);
+        if (! $resolution['port'] instanceof IssueTrackerLabelGroupsCapable) {
+            return ProjectsLabelsResponse::success([]);
+        }
+
+        try {
+            $groups = $resolution['port']->listLabelGroups($scopeKey, true);
+        } catch (ApiException $e) {
+            return ProjectsLabelsResponse::error(
+                MessageRef::key('project.labels.error_fetch', ['error' => $e->getMessage()])
+            );
+        } catch (\Throwable $e) {
+            return ProjectsLabelsResponse::error(
+                MessageRef::key('project.labels.error_fetch', ['error' => $e->getMessage()])
+            );
+        }
+
+        return ProjectsLabelsResponse::success($groups);
     }
 
     public static function defaultPrefixForLabelName(string $labelName): string

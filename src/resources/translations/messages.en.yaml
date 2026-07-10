@@ -128,6 +128,7 @@ config:
     prompt_gitlab_token_hint: "GitLab token: leave blank to skip; enter '.' to keep the existing token."
     prompt_gitlab_token: "GitLab token for this repository (hidden)"
     prompt_issue_tracker_provider: "Work-item provider for this repository (when global config supports both Jira and Linear)"
+    prompt_linear_team_key: "Linear team key (optional; defaults to Jira project key when shared)"
     prompt_linear_start_state_id: "Linear workflow state id for items:start (optional)"
     prompt_linear_type_label_group_id: "Linear LabelGroup id for branch prefix mapping (optional)"
     picker_skip: "Skip (leave unset)"

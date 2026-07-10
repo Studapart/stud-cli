@@ -31,7 +31,7 @@ class ProjectsLabelsHandler implements JiraAware, LinearAware
 
     public function handle(string $projectKey, bool $groupsOnly): ProjectsLabelsResponse
     {
-        $resolution = $this->portSupplier->resolve($this->globalConfig, $this->projectConfig);
+        $resolution = $this->portSupplier->resolveForDiscovery($projectKey, $this->globalConfig, $this->projectConfig);
         if (! $resolution['ok']) {
             return ProjectsLabelsResponse::error($resolution['error']);
         }

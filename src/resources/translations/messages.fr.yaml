@@ -127,6 +127,7 @@ config:
     prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
     prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
     prompt_issue_tracker_provider: "Fournisseur de tickets pour ce dépôt (lorsque la config globale prend en charge Jira et Linear)"
+    prompt_linear_team_key: "Clé d'équipe Linear (optionnel ; par défaut la clé projet Jira si partagée)"
     prompt_linear_start_state_id: "ID d'état de workflow Linear pour items:start (optionnel)"
     prompt_linear_type_label_group_id: "ID LabelGroup Linear pour le mapping des préfixes de branche (optionnel)"
     picker_skip: "Ignorer (laisser non défini)"

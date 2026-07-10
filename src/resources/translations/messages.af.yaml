@@ -127,6 +127,7 @@ config:
     prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
     prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
     prompt_issue_tracker_provider: "Work-item-verskaffer vir hierdie repository (wanneer globale config beide Jira en Linear ondersteun)"
+    prompt_linear_team_key: "Linear span sleutel (opsioneel; verstek na Jira projeksleutel wanneer gedeel)"
     prompt_linear_start_state_id: "Linear workflow status-id vir items:start (opsioneel)"
     prompt_linear_type_label_group_id: "Linear LabelGroup-id vir tak-voorvoegselkartering (opsioneel)"
     picker_skip: "Slaan oor (los ongedefinieerd)"

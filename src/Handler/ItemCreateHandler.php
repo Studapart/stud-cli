@@ -114,15 +114,17 @@ class ItemCreateHandler implements JiraAware
         string $summary,
         ItemCreateInput $input,
     ): IssueCreationState|ItemCreateResponse {
+        $linearScopeKey = $this->projectResolver->resolveLinearScopeKey($projectKey) ?? $projectKey;
+
         try {
-            $allFieldsMeta = $this->provider->getCreateMetaFields($projectKey, $type);
+            $allFieldsMeta = $this->provider->getCreateMetaFields($linearScopeKey, $type);
         } catch (\Throwable) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
 
         $description = $this->getDescription($input->descriptionOption);
         $fields = [
-            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $projectKey],
+            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $linearScopeKey],
             StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::NAME => $type],
             StudIssueKeys::TITLE => $summary,
         ];

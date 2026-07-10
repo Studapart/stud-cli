@@ -159,6 +159,7 @@ use App\Service\MigrationRegistry;
 use App\Service\PrCommentInputResolver;
 use App\Service\ProcessFactory;
 use App\Service\ProjectMetadataPromptService;
+use App\Service\ProjectScopeKeyResolver;
 use App\Service\ProjectStudConfigAdequacyChecker;
 use App\Service\ProjectsWorkflowNormalizer;
 use App\Service\Prompt\NonInteractivePromptService;
@@ -711,6 +712,7 @@ function _get_project_metadata_prompt_service(): ProjectMetadataPromptService
         new ProjectsWorkflowNormalizer(),
         _get_config(),
         _get_prompt(),
+        new ProjectScopeKeyResolver(),
         _get_message_renderer(),
     );
 }

@@ -436,6 +436,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('issueTrackerProvider', $props);
         $this->assertArrayHasKey('transitionId', $props);
         $this->assertArrayHasKey('linearStartStateId', $props);
+        $this->assertArrayHasKey('linearTeamKey', $props);
         $this->assertArrayHasKey('linearTypeLabelGroupId', $props);
         $this->assertArrayHasKey('linearTypeBranchPrefixes', $props);
         $this->assertArrayHasKey('skipBaseBranchRemoteCheck', $props);
