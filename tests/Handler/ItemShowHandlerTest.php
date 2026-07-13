@@ -72,7 +72,7 @@ class ItemShowHandlerTest extends CommandTestCase
         $response = $this->handler->handle('TPW-35');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertMessageRef($response->getErrorMessage(), 'item.show.error_not_found', ['key' => 'TPW-35']);
+        $this->assertMessageRef($response->getErrorMessage(), 'item.show.error_work_item_not_found', ['key' => 'TPW-35']);
     }
 
     public function testHandleNormalizesKeyToUppercase(): void

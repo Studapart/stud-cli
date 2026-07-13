@@ -156,6 +156,29 @@ class ProjectsLabelsHandlerTest extends CommandTestCase
         $this->assertSame('project.labels.error_fetch', $error->key);
     }
 
+    public function testHandleUsesProviderOverrideWhenGiven(): void
+    {
+        $port = $this->createLinearPortMock();
+        $port->expects($this->once())->method('listLabelGroups')->willReturn([]);
+
+        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier->expects($this->never())->method('resolveForDiscovery');
+        $supplier->expects($this->once())
+            ->method('resolveForProvider')
+            ->with(IssueTrackerProvider::Linear->value, $this->anything())
+            ->willReturn(['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port]);
+
+        $handler = new ProjectsLabelsHandler(
+            $supplier,
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Linear->value], 'LINEAR_API_KEY' => 'lin'],
+            [],
+        );
+
+        $response = $handler->handle('SCI', false, IssueTrackerProvider::Linear->value);
+
+        $this->assertTrue($response->isSuccess());
+    }
+
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig

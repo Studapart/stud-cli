@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Unified dual-PM provider resolution (SCI-197):** central `IssueTrackerProviderResolver` implements R1–R5 for guard and runtime; guard peeks issue key, branch key, project scope, and attachment URL before blocking; `--provider` / agent `provider` on all in-scope work-item and git-workflow commands; dual-aggregate defaults for `filters:list` and `projects:list`; provider-neutral `items:show` errors; `items:search` blocks under dual PM without override.
 - **Issue-tracker provider UX (SCI-196):** readiness guard respects `--provider` and agent JSON `provider` before blocking; `stud ls` with `issueTrackerProvider: auto` queries Jira and Linear together; config remediation uses choice prompts with persist hints; piped stdin no longer corrupts `.git/stud.config`; agent/quiet ambiguous-provider errors are actionable.
 - **ReflectionProperty deprecation (SCI-192):** add `ReflectionAccessor::ensureAccessible()` and route test reflection through it so public members skip deprecated `setAccessible(true)` on PHP 8.1+; production `FileSystem` / `ColorHelper` paths avoid reflection where possible.
 - **Linear upload/download agent mode (SCI-181):** `items:upload` and `items:download` use optional Jira config for responders so Linear-only setups no longer hard-exit before agent JSON output.

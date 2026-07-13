@@ -281,6 +281,7 @@ item:
     section: Детали задачи %key%
     fetching: 'Получение деталей для задачи: %key%'
     error_not_found: Не удалось найти задачу Jira с ключом "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
     error_fetch: "Не удалось получить сведения о задаче: %error%"
     label_key: Ключ
     label_title: Название
@@ -301,6 +302,7 @@ item:
     error_fetch: "Не удалось загрузить вложения: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
     error_cwd: "Не удалось определить текущий рабочий каталог."
     error_target_dir: "Не удалось создать целевой каталог: %error%"
     error_partial: "%filename%: %message%"
@@ -375,6 +377,7 @@ issue_tracker_provider:
   auto_requires_issue_key: 'issueTrackerProvider равен auto, но ключ задачи не указан. Передайте ключ задачи или задайте issueTrackerProvider как jira или linear.'
   invalid_override: 'Недопустимый override провайдера %value%. Допустимые значения: jira, linear.'
   unknown_resolved: 'Неизвестный разрешённый work-item provider %value%. Ожидается jira или linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
 project:
   list:
     section: Получение проектов Jira
@@ -394,6 +397,7 @@ project:
   labels:
     section: Группы меток проекта
     labels_not_supported_for_jira: Обнаружение групп меток недоступно для Jira. Используйте Linear или задайте linearTypeLabelGroupId вручную.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
     error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Группы меток для проекта %project% не найдены.
     column_group_id: ID группы
@@ -411,6 +415,7 @@ filter:
     section: Получение задач из фильтра '%filterName%'
     jql_query: 'JQL Запрос: %jql%'
     error_fetch: 'Ошибка при получении задач из фильтра: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Не найдено задач в фильтре '%filterName%'.
   list:
     section: Получение фильтров Jira

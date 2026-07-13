@@ -281,6 +281,7 @@ item:
     section: Besonderhede vir item %key%
     fetching: 'Kry besonderhede vir item: %key%'
     error_not_found: Kon nie Jira item met sleutel "%key%" vind nie.
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
     error_fetch: "Kon nie kwessiebesonderhede laai nie: %error%"
     label_key: Sleutel
     label_title: Titel
@@ -301,6 +302,7 @@ item:
     error_fetch: "Kon nie aanhangsels laai nie: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Pad mag ouermappe (..) nie bevat nie."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
     error_cwd: "Kan nie huidige werkmap bepaal nie."
     error_target_dir: "Kon nie teikenmap skep nie: %error%"
     error_partial: "%filename%: %message%"
@@ -375,6 +377,7 @@ issue_tracker_provider:
   auto_requires_issue_key: 'issueTrackerProvider is auto maar geen issue key is verskaf vir verskaffer-ontleding nie. Gee n issue key of stel issueTrackerProvider op jira of linear.'
   invalid_override: 'Ongeldige work-item provider override %value%. Toegestane waardes: jira, linear.'
   unknown_resolved: 'Onbekende opgeloste work-item provider %value%. Verwag jira of linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
 project:
   list:
     section: Kry Jira Projekte
@@ -394,6 +397,7 @@ project:
   labels:
     section: Projek etiketgroepe
     labels_not_supported_for_jira: Etiketgroep-ontdekking is nie beskikbaar vir Jira nie. Gebruik Linear of stel linearTypeLabelGroupId handmatig in.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
     error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Geen etiketgroepe gevind vir projek %project%.
     column_group_id: Groep-ID
@@ -411,6 +415,7 @@ filter:
     section: Kry items uit filter '%filterName%'
     jql_query: 'JQL Navraag: %jql%'
     error_fetch: 'Kon nie items uit filter kry nie: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Geen items gevind in filter '%filterName%'.
   list:
     section: Kry Jira-filters

@@ -281,6 +281,7 @@ item:
     section: Detalles del ticket %key%
     fetching: 'Obteniendo detalles del ticket: %key%'
     error_not_found: No se pudo encontrar el ticket de Jira con la clave "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
     error_fetch: "Error al obtener los detalles del ticket: %error%"
     label_key: Clave
     label_title: Título
@@ -301,6 +302,7 @@ item:
     error_fetch: "Error al cargar los adjuntos: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "La ruta no puede contener segmentos de directorio padre (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
     error_cwd: "No se puede determinar el directorio de trabajo actual."
     error_target_dir: "No se pudo crear el directorio de destino: %error%"
     error_partial: "%filename%: %message%"
@@ -375,6 +377,7 @@ issue_tracker_provider:
   auto_requires_issue_key: 'issueTrackerProvider es auto pero no se proporcionó clave de issue. Pase una clave o configure issueTrackerProvider como jira o linear.'
   invalid_override: 'Override de proveedor inválido %value%. Valores permitidos: jira, linear.'
   unknown_resolved: 'Proveedor de work-item resuelto desconocido %value%. Se esperaba jira o linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
 project:
   list:
     section: Obteniendo proyectos de Jira
@@ -394,6 +397,7 @@ project:
   labels:
     section: Grupos de etiquetas del proyecto
     labels_not_supported_for_jira: El descubrimiento de grupos de etiquetas no está disponible para Jira. Use Linear o configure linearTypeLabelGroupId manualmente.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
     error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: No se encontraron grupos de etiquetas para el proyecto %project%.
     column_group_id: ID de grupo
@@ -411,6 +415,7 @@ filter:
     section: Obteniendo tickets del filtro '%filterName%'
     jql_query: 'Consulta JQL: %jql%'
     error_fetch: 'Error al obtener tickets del filtro: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: No se encontraron tickets en el filtro '%filterName%'.
   list:
     section: Obteniendo filtros de Jira
