@@ -24,21 +24,45 @@ class AgentModeSchemaGenerator
     private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
 
     /** @var list<string> */
-    private const ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE = [
+    private const COMMANDS_WITH_PROVIDER_OVERRIDE = [
         'items:create',
         'items:list',
         'items:show',
         'items:start',
         'items:transition',
         'items:update',
+        'items:takeover',
+        'items:download',
+        'items:upload',
+        'items:search',
+        'filters:list',
+        'filters:show',
+        'projects:list',
+        'projects:workflow',
+        'projects:labels',
+        'commit',
+        'push',
+        'submit',
+        'status',
+        'branch:rename',
     ];
 
     /**
      * @return list<string>
      */
+    public static function commandsWithProviderOverride(): array
+    {
+        return self::COMMANDS_WITH_PROVIDER_OVERRIDE;
+    }
+
+    /**
+     * @return list<string>
+     *
+     * @deprecated Use commandsWithProviderOverride()
+     */
     public static function itemsCommandsWithProviderOverride(): array
     {
-        return self::ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE;
+        return self::commandsWithProviderOverride();
     }
 
     private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
@@ -224,7 +248,7 @@ class AgentModeSchemaGenerator
             ] + $inputProperties;
         }
 
-        if (in_array($taskName, self::ITEMS_COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
+        if (in_array($taskName, self::COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
             $inputProperties['provider'] = self::PROVIDER_OVERRIDE_INPUT_SCHEMA;
         }
 

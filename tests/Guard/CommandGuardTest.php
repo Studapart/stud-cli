@@ -57,7 +57,7 @@ class CommandGuardTest extends TestCase
             'JIRA_URL' => 'https://example.atlassian.net',
             'JIRA_EMAIL' => 'user@example.com',
             'JIRA_API_TOKEN' => 'token123',
-        ], []);
+        ], [], issueTrackerProviders: [IssueTrackerProvider::Jira->value]);
 
         $result = $this->guard->check($capabilities, $context);
 
@@ -251,7 +251,7 @@ class CommandGuardTest extends TestCase
         $this->assertSame(['GITHUB_TOKEN'], $result->missingGlobalKeys);
     }
 
-    public function testAmbiguousWorkItemProviderRequiresProjectSelection(): void
+    public function testProviderResolutionBlockStopsGuard(): void
     {
         $capabilities = CapabilitySet::fromList([JiraAware::class, LinearAware::class]);
         $context = new CommandContext(
@@ -263,20 +263,53 @@ class CommandGuardTest extends TestCase
             ],
             projectConfig: ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
             hasGitRepository: true,
-            issueTrackerProviders: [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            issueTrackerProviders: [],
             gitProviders: ['github'],
             isInteractive: true,
             isQuiet: false,
             isAgent: false,
-            issueTrackerProviderAmbiguous: true,
+            providerResolutionBlock: \App\DTO\MessageRef::key('issue_tracker_provider.auto_requires_issue_key'),
         );
 
         $result = $this->guard->check($capabilities, $context);
 
         $this->assertFalse($result->canProceed);
+        $this->assertSame('issue_tracker_provider.auto_requires_issue_key', $result->providerResolutionBlock?->key);
+    }
+
+    public function testAmbiguousWithoutResolvedProvidersRequiresProjectKey(): void
+    {
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
+        $context = $this->context([], [], issueTrackerProviders: [], issueTrackerProviderAmbiguous: true);
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
         $this->assertSame(['issueTrackerProvider'], $result->missingProjectKeys);
-        $this->assertTrue($result->ambiguousIssueTrackerProvider);
-        $this->assertSame([], $result->missingGlobalKeys);
+    }
+
+    public function testDualResolvedProvidersRequireBothCredentialSets(): void
+    {
+        $capabilities = CapabilitySet::fromList([JiraAware::class, LinearAware::class]);
+        $context = new CommandContext(
+            globalConfig: [
+                'JIRA_URL' => 'https://example.atlassian.net',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+            ],
+            projectConfig: ['issueTrackerProvider' => IssueTrackerProvider::Auto->value],
+            hasGitRepository: true,
+            issueTrackerProviders: [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            gitProviders: ['github'],
+            isInteractive: true,
+            isQuiet: false,
+            isAgent: false,
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertFalse($result->canProceed);
+        $this->assertSame(['LINEAR_API_KEY'], $result->missingGlobalKeys);
     }
 
     public function testProviderOverrideSkipsAmbiguousProjectPrompt(): void
@@ -345,7 +378,7 @@ class CommandGuardTest extends TestCase
             'JIRA_URL' => '',
             'JIRA_EMAIL' => '   ',
             'JIRA_API_TOKEN' => null,
-        ], []);
+        ], [], issueTrackerProviders: [IssueTrackerProvider::Jira->value]);
 
         $result = $this->guard->check($capabilities, $context);
 
@@ -363,8 +396,9 @@ class CommandGuardTest extends TestCase
         array $globalConfig,
         array $projectConfig,
         bool $hasGitRepository = true,
-        array $issueTrackerProviders = ['jira'],
+        array $issueTrackerProviders = [],
         array $gitProviders = ['github'],
+        bool $issueTrackerProviderAmbiguous = false,
     ): CommandContext {
         return new CommandContext(
             globalConfig: $globalConfig,
@@ -375,6 +409,7 @@ class CommandGuardTest extends TestCase
             isInteractive: true,
             isQuiet: false,
             isAgent: false,
+            issueTrackerProviderAmbiguous: $issueTrackerProviderAmbiguous,
         );
     }
 }

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
-use App\Exception\ApiException;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemShowResponse;
 use App\Service\IssueTrackerPort;
 
-class ItemShowHandler implements JiraAware
+class ItemShowHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,
@@ -25,9 +25,9 @@ class ItemShowHandler implements JiraAware
             $issue = $this->provider->getIssue($key, true);
 
             return ItemShowResponse::success($issue);
-        } catch (ApiException) {
+        } catch (\App\Exception\ApiException) {
             return ItemShowResponse::error(
-                MessageRef::key('item.show.error_not_found', ['key' => $key])
+                MessageRef::key('item.show.error_work_item_not_found', ['key' => $key])
             );
         } catch (\Exception $e) {
             return ItemShowResponse::error(

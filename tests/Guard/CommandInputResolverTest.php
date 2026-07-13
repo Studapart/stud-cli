@@ -102,13 +102,25 @@ class CommandInputResolverTest extends TestCase
         $this->assertNull($result['error']);
     }
 
-    public function testResolveSkipsAgentProviderForNonItemsCommand(): void
+    public function testResolveReadsProviderFromAgentJsonForCommitCommand(): void
     {
         $helper = new AgentModeHelper(stdinReader: static fn (): string => '{"provider":"jira"}');
         $resolver = new CommandInputResolver($helper);
         $input = $this->createInput(['--agent' => true], 'commit');
 
         $result = $resolver->resolveIssueTrackerProviderOverride($input, 'commit');
+
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['override']);
+        $this->assertNull($result['error']);
+    }
+
+    public function testResolveSkipsAgentProviderForNonWorkItemCommand(): void
+    {
+        $helper = new AgentModeHelper(stdinReader: static fn (): string => '{"provider":"jira"}');
+        $resolver = new CommandInputResolver($helper);
+        $input = $this->createInput(['--agent' => true], 'config:validate');
+
+        $result = $resolver->resolveIssueTrackerProviderOverride($input, 'config:validate');
 
         $this->assertNull($result['override']);
         $this->assertNull($result['error']);

@@ -8,11 +8,12 @@ use App\DTO\ItemUploadInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
 use App\Service\IssueTrackerPort;
 
-class ItemUploadHandler implements JiraAware
+class ItemUploadHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly FileSystem $fileSystem,

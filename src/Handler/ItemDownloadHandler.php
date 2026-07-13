@@ -7,11 +7,12 @@ namespace App\Handler;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
 use App\Service\IssueTrackerPort;
 
-class ItemDownloadHandler implements JiraAware
+class ItemDownloadHandler implements JiraAware, LinearAware
 {
     private const DEFAULT_RELATIVE_DIR = '.cursor/stud-downloads';
 

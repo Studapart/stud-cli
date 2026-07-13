@@ -11,6 +11,7 @@ use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
@@ -18,7 +19,7 @@ use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware
+class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware, LinearAware
 {
     private WorkflowEntryRecorder $recorder;
 

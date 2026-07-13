@@ -23,6 +23,7 @@ class CommandGuardResult
         public readonly array $environmentFailures = [],
         public readonly ?MessageRef $providerOverrideError = null,
         public readonly bool $ambiguousIssueTrackerProvider = false,
+        public readonly ?MessageRef $providerResolutionBlock = null,
     ) {
     }
 

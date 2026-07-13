@@ -167,6 +167,30 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         $this->assertSame('project.workflow.error_fetch', $error->key);
     }
 
+    public function testHandleUsesProviderOverrideWhenGiven(): void
+    {
+        $port = $this->createMock(IssueTrackerPort::class);
+        $port->expects($this->once())->method('listProjectStateChanges')->with('SCI')->willReturn([]);
+
+        $supplier = $this->createMock(IssueTrackerPortSupplier::class);
+        $supplier->expects($this->never())->method('resolveForDiscovery');
+        $supplier->expects($this->once())
+            ->method('resolveForProvider')
+            ->with(IssueTrackerProvider::Linear->value, $this->anything())
+            ->willReturn(['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port]);
+
+        $handler = new ProjectsWorkflowHandler(
+            $supplier,
+            new ProjectsWorkflowNormalizer(),
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value]],
+            [],
+        );
+
+        $response = $handler->handle('SCI', IssueTrackerProvider::Linear->value);
+
+        $this->assertTrue($response->isSuccess());
+    }
+
     /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig

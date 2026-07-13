@@ -6,6 +6,7 @@ namespace App\Guard;
 
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
+use App\Enum\IssueTrackerProvider;
 use App\Guard\Capability\ConfluenceAware;
 use App\Guard\Capability\GitHosting\GithubAware;
 use App\Guard\Capability\GitHosting\GitlabAware;
@@ -38,6 +39,13 @@ class CommandGuard
             );
         }
 
+        if ($context->providerResolutionBlock !== null) {
+            return new CommandGuardResult(
+                canProceed: false,
+                providerResolutionBlock: $context->providerResolutionBlock,
+            );
+        }
+
         $missingGlobal = [];
         $missingProject = [];
         $environmentFailures = [];
@@ -46,24 +54,27 @@ class CommandGuard
             $environmentFailures[] = 'git_repository';
         }
 
-        $ambiguousProvider = $context->issueTrackerProviderAmbiguous
-            && $context->issueTrackerProviderOverride === null
-            && ($capabilities->has(JiraAware::class) || $capabilities->has(LinearAware::class));
+        $requiresJiraCreds = $this->resolvedProvidersInclude($context, IssueTrackerProvider::Jira->value);
+        $requiresLinearCreds = $this->resolvedProvidersInclude($context, IssueTrackerProvider::Linear->value);
 
-        if ($ambiguousProvider) {
+        if ($requiresJiraCreds) {
+            $missingGlobal = array_merge(
+                $missingGlobal,
+                $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig),
+            );
+        }
+
+        if ($requiresLinearCreds) {
+            $missingGlobal = array_merge(
+                $missingGlobal,
+                $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $context->globalConfig),
+            );
+        }
+
+        if (! $requiresJiraCreds && ! $requiresLinearCreds
+            && ($capabilities->has(JiraAware::class) || $capabilities->has(LinearAware::class))
+            && $context->issueTrackerProviderAmbiguous) {
             $missingProject[] = ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER;
-        }
-
-        if (! $context->issueTrackerProviderAmbiguous
-            && $capabilities->has(JiraAware::class)
-            && $this->providerResolver->collectsJira($context->issueTrackerProviders)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
-        }
-
-        if (! $context->issueTrackerProviderAmbiguous
-            && $capabilities->has(LinearAware::class)
-            && $this->providerResolver->collectsLinear($context->issueTrackerProviders)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $context->globalConfig));
         }
 
         if ($capabilities->has(ConfluenceAware::class)) {
@@ -98,8 +109,17 @@ class CommandGuard
             $missingProject,
             $canProceed,
             $environmentFailures,
-            ambiguousIssueTrackerProvider: $ambiguousProvider && ! $canProceed,
+            ambiguousIssueTrackerProvider: $context->issueTrackerProviderAmbiguous && ! $canProceed,
         );
+    }
+
+    private function resolvedProvidersInclude(CommandContext $context, string $provider): bool
+    {
+        if ($context->issueTrackerProviders !== []) {
+            return in_array($provider, $context->issueTrackerProviders, true);
+        }
+
+        return false;
     }
 
     /**

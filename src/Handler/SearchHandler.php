@@ -6,10 +6,11 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\SearchResponse;
 use App\Service\IssueTrackerPort;
 
-class SearchHandler implements JiraAware
+class SearchHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly IssueTrackerPort $provider,

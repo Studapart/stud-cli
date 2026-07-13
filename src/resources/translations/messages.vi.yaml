@@ -281,6 +281,7 @@ item:
     section: Chi tiết cho issue %key%
     fetching: 'Đang lấy chi tiết cho issue: %key%'
     error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
     error_fetch: "Không thể tải chi tiết work item: %error%"
     label_key: Khóa
     label_title: Tiêu đề
@@ -301,6 +302,7 @@ item:
     error_fetch: "Không thể tải tệp đính kèm: %error%"
     error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
     error_cwd: "Không xác định được thư mục làm việc hiện tại."
     error_target_dir: "Không thể tạo thư mục đích: %error%"
     error_partial: "%filename%: %message%"
@@ -375,6 +377,7 @@ issue_tracker_provider:
   auto_requires_issue_key: 'issueTrackerProvider là auto nhưng chưa có issue key để phân giải provider. Truyền issue key hoặc đặt issueTrackerProvider thành jira hoặc linear.'
   invalid_override: 'Override provider không hợp lệ %value%. Giá trị cho phép: jira, linear.'
   unknown_resolved: 'Provider work-item đã resolve không hợp lệ %value%. Kỳ vọng jira hoặc linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
 project:
   list:
     section: Đang lấy các dự án Jira
@@ -394,6 +397,7 @@ project:
   labels:
     section: Nhóm nhãn dự án
     labels_not_supported_for_jira: Không hỗ trợ khám phá nhóm nhãn cho Jira. Dùng Linear hoặc cấu hình linearTypeLabelGroupId thủ công.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
     error_fetch: "Failed to fetch project label groups: %error%"
     no_label_groups: Không tìm thấy nhóm nhãn cho dự án %project%.
     column_group_id: ID nhóm
@@ -411,6 +415,7 @@ filter:
     section: Lấy các issue từ bộ lọc '%filterName%'
     jql_query: 'Truy vấn JQL: %jql%'
     error_fetch: 'Không thể lấy các issue từ bộ lọc: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Không tìm thấy issue nào trong bộ lọc '%filterName%'.
   list:
     section: Lấy các bộ lọc Jira
