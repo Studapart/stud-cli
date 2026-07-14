@@ -14,6 +14,11 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class LinearAttachmentService
 {
+    /**
+     * Linear fileUpload signs GCS PUT URLs with this content-type; PUT must match exactly.
+     */
+    private const LINEAR_UPLOAD_CONTENT_TYPE = 'application/x-www-form-urlencoded';
+
     /** @var list<string> */
     private const ALLOWED_LINEAR_ASSET_HOSTS = [
         'uploads.linear.app',
@@ -99,7 +104,7 @@ class LinearAttachmentService
 
         $upload = $this->linearApiClient->fileUpload(
             $filename,
-            $this->detectContentType($absolutePath),
+            self::LINEAR_UPLOAD_CONTENT_TYPE,
             strlen($body),
         );
 
@@ -107,6 +112,7 @@ class LinearAttachmentService
         foreach ($upload['headers'] as $header) {
             $putHeaders[$header['key']] = $header['value'];
         }
+        $putHeaders['Content-Type'] = self::LINEAR_UPLOAD_CONTENT_TYPE;
 
         $response = $this->uploadHttpClient()->request('PUT', $upload['uploadUrl'], [
             'headers' => $putHeaders,
@@ -152,20 +158,6 @@ class LinearAttachmentService
     private function issueMapper(): LinearIssueMapper
     {
         return $this->issueMapper ?? new LinearIssueMapper();
-    }
-
-    private function detectContentType(string $absolutePath): string
-    {
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        if ($finfo !== false) {
-            $mime = @finfo_file($finfo, $absolutePath);
-            finfo_close($finfo);
-            if (is_string($mime) && $mime !== '') {
-                return $mime;
-            }
-        }
-
-        return 'application/octet-stream';
     }
 
     private function uploadHttpClient(): HttpClientInterface

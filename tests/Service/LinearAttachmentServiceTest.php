@@ -60,7 +60,7 @@ class LinearAttachmentServiceTest extends TestCase
                 TestCase::assertIsArray($headers);
                 $flat = json_encode($headers, JSON_THROW_ON_ERROR);
                 TestCase::assertStringContainsStringIgnoringCase('content-type', $flat);
-                TestCase::assertStringContainsString('text\/plain', $flat);
+                TestCase::assertStringContainsString('application\/x-www-form-urlencoded', $flat);
                 TestCase::assertStringContainsString('x-amz-acl', $flat);
                 TestCase::assertStringContainsString('private', $flat);
                 TestCase::assertSame('report-body', $options['body'] ?? null);
@@ -147,17 +147,6 @@ class LinearAttachmentServiceTest extends TestCase
         $client = $method->invoke($service);
 
         $this->assertInstanceOf(HttpClientInterface::class, $client);
-    }
-
-    public function testDetectContentTypeFallsBackToOctetStreamWhenMimeUnknown(): void
-    {
-        $linearApi = new LinearApiClient(new LinearGraphqlClient(new MockHttpClient([])));
-        $service = new LinearAttachmentService($linearApi);
-        $method = new \ReflectionMethod(LinearAttachmentService::class, 'detectContentType');
-
-        $mime = $method->invoke($service, '/nonexistent/stud-linear-mime-probe.bin');
-
-        $this->assertSame('application/octet-stream', $mime);
     }
 
     public function testExtractTechnicalDetailsFallsBackToStatusWhenContentUnavailable(): void
