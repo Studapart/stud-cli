@@ -58,7 +58,7 @@ class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware,
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.takeover.error_not_found', ['key' => $key]),
+                $e->getResolutionHint() ?? MessageRef::key('item.takeover.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
 

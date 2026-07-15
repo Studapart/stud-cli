@@ -381,6 +381,8 @@ issue_tracker_provider:
   invalid_override: "Invalid work-item provider override %value%. Allowed values: jira, linear."
   unknown_resolved: "Unknown resolved work-item provider %value%. Expected jira or linear."
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 
 # Project List Handler
 project:
@@ -505,9 +507,11 @@ submit:
   error_push: "Push failed. Your branch may have rewritten history.\nTry running 'stud please' to force-push."
   finding_commit: "Finding first logical commit to use for PR details..."
   fetching_jira: "Fetching Jira issue for PR body: %key%"
+  fetching_issue: "Fetching work item for PR body: %key%"
   error_no_logical: "Could not find a logical commit on this branch. Cannot create PR."
   error_no_jira_key: "Could not parse Jira key from commit message. Cannot create PR."
   warning_jira_fetch: "Could not fetch Jira issue details for PR body: %error%\nFalling back to a simple link."
+  warning_issue_fetch: "Could not fetch work item details for PR body: %error%\nFalling back to a simple link."
   creating: "Creating Pull Request..."
   success_created: "✅ Pull Request created: %url%"
   warning_no_provider: "No Git provider configured for this project."

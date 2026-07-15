@@ -9,7 +9,6 @@ use App\Exception\ApiException;
 use App\Service\GitRepository;
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -412,27 +411,6 @@ class LinearIssueTrackerAdapterTest extends TestCase
         $this->expectExceptionMessage('Could not find Linear custom view "Missing View".');
 
         $this->adapter->runFilterOrView('Missing View');
-    }
-
-    /**
-     * @param list<mixed> $args
-     */
-    #[DataProvider('unimplementedMethodProvider')]
-    public function testUnimplementedMethodsThrowBadMethodCallException(string $method, array $args): void
-    {
-        $this->expectException(\BadMethodCallException::class);
-        $this->expectExceptionMessage('Not implemented until SCI-164');
-
-        $this->adapter->{$method}(...$args);
-    }
-
-    /**
-     * @return iterable<string, array{0: string, 1: list<mixed>}>
-     */
-    public static function unimplementedMethodProvider(): iterable
-    {
-        yield 'listWorkflowMetadata' => ['listWorkflowMetadata', ['SCI']];
-        yield 'listTypeLabels' => ['listTypeLabels', ['SCI']];
     }
 
     public function testListAttachmentsReturnsMappedAttachments(): void

@@ -409,6 +409,58 @@ class IssueTrackerFactoryTest extends TestCase
         $this->factory->resolveType('linear', $this->jiraOnlyGlobal(), []);
     }
 
+    public function testPinnedProviderIgnoresOtherPrefixAtResolveTime(): void
+    {
+        $project = [
+            'issueTrackerProvider' => IssueTrackerProvider::Jira->value,
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'SCIL',
+        ];
+
+        $this->assertSame(
+            IssueTrackerProvider::Jira->value,
+            $this->factory->resolveType(null, $this->dualCredentialsGlobal(), $project, 'SCIL-195'),
+        );
+        $this->assertSame(
+            IssueTrackerProvider::Linear,
+            $this->factory->providerClaimingIssueKey('SCIL-195', $project),
+        );
+    }
+
+    public function testAutoResolvesOtherPrefix(): void
+    {
+        $project = [
+            'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'SCIL',
+        ];
+
+        $this->assertSame(
+            IssueTrackerProvider::Linear->value,
+            $this->factory->resolveType(null, $this->dualCredentialsGlobal(), $project, 'SCIL-195'),
+        );
+    }
+
+    public function testProviderClaimingIssueKeyReturnsNullForEmptyOrInvalidKey(): void
+    {
+        $project = ['projectKey' => 'SCI', 'linearTeamKey' => 'SCIL'];
+
+        $this->assertNull($this->factory->providerClaimingIssueKey('', $project));
+        $this->assertNull($this->factory->providerClaimingIssueKey('   ', $project));
+        $this->assertNull($this->factory->issueKeyPrefixOrNull(''));
+        $this->assertNull($this->factory->issueKeyPrefixOrNull('not-a-key'));
+    }
+
+    public function testProviderClaimingIssueKeyReturnsNullWhenPrefixAmbiguous(): void
+    {
+        $project = [
+            'projectKey' => 'SCI',
+            'linearTeamKey' => 'SCI',
+        ];
+
+        $this->assertNull($this->factory->providerClaimingIssueKey('SCI-1', $project));
+    }
+
     /**
      * @return array<string, mixed>
      */

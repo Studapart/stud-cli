@@ -232,6 +232,8 @@ class LinearIssueMapper
         $size = is_int($sizeRaw) ? $sizeRaw : (is_numeric($sizeRaw) ? (int) $sizeRaw : 0);
 
         $mimeType = null;
+        // Linear Attachment GraphQL has no size/contentType; accept optional fields if present
+        // (e.g. fixtures or future schema) and fall back to mimeType.
         $contentType = $node['contentType'] ?? $node['mimeType'] ?? null;
         if (is_string($contentType) && $contentType !== '') {
             $mimeType = $contentType;

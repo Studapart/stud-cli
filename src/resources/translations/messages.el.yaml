@@ -378,6 +378,8 @@ issue_tracker_provider:
   invalid_override: 'Μη έγκυρη υπέρβαση παρόχου %value%. Επιτρεπόμενες τιμές: jira, linear.'
   unknown_resolved: 'Άγνωστος resolved work-item provider %value%. Αναμενόταν jira ή linear.'
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Λήψη Έργων Jira
@@ -484,11 +486,13 @@ submit:
     Δοκιμάστε να εκτελέσετε ''stud please'' για force-push.'
   finding_commit: Εύρεση πρώτου λογικού commit για χρήση σε λεπτομέρειες PR...
   fetching_jira: 'Λήψη θέματος Jira για το σώμα PR: %key%'
+  fetching_issue: "Ανάκτηση work item για το σώμα PR: %key%"
   error_no_logical: Δεν ήταν δυνατή η εύρεση λογικού commit σε αυτόν τον κλάδο. Δεν μπορεί να δημιουργηθεί PR.
   error_no_jira_key: Δεν ήταν δυνατή η ανάλυση κλειδιού Jira από το μήνυμα commit. Δεν μπορεί να δημιουργηθεί PR.
   warning_jira_fetch: 'Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira για το σώμα PR: %error%
 
     Επιστροφή σε απλό σύνδεσμο.'
+  warning_issue_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών work item για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
   creating: Δημιουργία Pull Request...
   success_created: '✅ Pull Request δημιουργήθηκε: %url%'
   warning_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.

@@ -378,6 +378,8 @@ issue_tracker_provider:
   invalid_override: 'Override provider không hợp lệ %value%. Giá trị cho phép: jira, linear.'
   unknown_resolved: 'Provider work-item đã resolve không hợp lệ %value%. Kỳ vọng jira hoặc linear.'
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Đang lấy các dự án Jira
@@ -484,11 +486,13 @@ submit:
     Thử chạy ''stud please'' để force-push.'
   finding_commit: Đang tìm commit logic đầu tiên để sử dụng cho chi tiết PR...
   fetching_jira: 'Đang lấy issue Jira cho nội dung PR: %key%'
+  fetching_issue: "Đang lấy work item cho nội dung PR: %key%"
   error_no_logical: Không tìm thấy commit logic trên nhánh này. Không thể tạo PR.
   error_no_jira_key: Không thể phân tích khóa Jira từ thông báo commit. Không thể tạo PR.
   warning_jira_fetch: 'Không thể lấy chi tiết issue Jira cho nội dung PR: %error%
 
     Quay lại liên kết đơn giản.'
+  warning_issue_fetch: "Không thể lấy chi tiết work item cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
   creating: Đang tạo Pull Request...
   success_created: '✅ Pull Request đã được tạo: %url%'
   warning_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.

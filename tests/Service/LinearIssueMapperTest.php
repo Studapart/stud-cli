@@ -40,9 +40,9 @@ class LinearIssueMapperTest extends TestCase
         $this->assertInstanceOf(IssueAttachment::class, $workItem->attachments[0]);
         $this->assertSame('att-1', $workItem->attachments[0]->id);
         $this->assertSame('spec.md', $workItem->attachments[0]->filename);
-        $this->assertSame(2048, $workItem->attachments[0]->size);
+        $this->assertSame(0, $workItem->attachments[0]->size);
+        $this->assertNull($workItem->attachments[0]->mimeType);
         $this->assertSame('https://uploads.linear.app/spec.md', $workItem->attachments[0]->contentUrl);
-        $this->assertSame('text/markdown', $workItem->attachments[0]->mimeType);
         $this->assertSame('https://linear.app/studapart/issue/SCI-166', $workItem->url);
     }
 
@@ -210,11 +210,36 @@ class LinearIssueMapperTest extends TestCase
                         'id' => 'att-1',
                         'title' => 'spec.md',
                         'url' => 'https://uploads.linear.app/spec.md',
-                        'size' => 2048,
-                        'contentType' => 'text/markdown',
                     ],
                 ],
             ],
         ];
+    }
+
+    public function testMapAttachmentNodeAcceptsOptionalSizeAndMimeWhenPresent(): void
+    {
+        $workItem = $this->mapper->mapToWorkItem([
+            'id' => 'i1',
+            'identifier' => 'SCI-1',
+            'title' => 'T',
+            'description' => 'D',
+            'state' => ['name' => 'Todo'],
+            'assignee' => ['name' => 'Ada'],
+            'labels' => ['nodes' => []],
+            'attachments' => [
+                'nodes' => [
+                    [
+                        'id' => 'att-2',
+                        'title' => 'a.bin',
+                        'url' => 'https://uploads.linear.app/a.bin',
+                        'size' => 99,
+                        'contentType' => 'application/octet-stream',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(99, $workItem->attachments[0]->size);
+        $this->assertSame('application/octet-stream', $workItem->attachments[0]->mimeType);
     }
 }

@@ -62,7 +62,11 @@ class ItemTransitionHandler implements GitRepositoryAware, JiraAware
 
             return true;
         } catch (ApiException $e) {
-            $this->recorder->addErrorWithDetails(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_not_found', ['key' => $key]), $e->getTechnicalDetails());
+            $this->recorder->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                $e->getResolutionHint() ?? MessageRef::key('item.transition.error_not_found', ['key' => $key]),
+                $e->getTechnicalDetails()
+            );
 
             return false;
         } catch (\Exception $e) {

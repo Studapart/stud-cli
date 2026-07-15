@@ -248,44 +248,6 @@ class JiraIssueTrackerAdapterTest extends TestCase
         $this->assertSame($issues, $this->provider->runFilterOrView('My Filter'));
     }
 
-    public function testListWorkflowMetadataReturnsIssueTypesForProject(): void
-    {
-        $issueTypes = [['id' => '10001', 'name' => 'Story']];
-        $this->jiraApiClient->expects($this->once())
-            ->method('getCreateMetaIssueTypes')
-            ->with('SCI')
-            ->willReturn($issueTypes);
-
-        $this->assertSame(['issueTypes' => $issueTypes], $this->provider->listWorkflowMetadata('SCI'));
-    }
-
-    public function testListWorkflowMetadataReturnsEmptyWhenProjectMissing(): void
-    {
-        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
-
-        $this->assertSame([], $this->provider->listWorkflowMetadata());
-    }
-
-    public function testListTypeLabelsReturnsIssueTypeNames(): void
-    {
-        $this->jiraApiClient->expects($this->once())
-            ->method('getCreateMetaIssueTypes')
-            ->with('SCI')
-            ->willReturn([
-                ['id' => '1', 'name' => 'Story'],
-                ['id' => '2', 'name' => 'Bug'],
-            ]);
-
-        $this->assertSame(['Story', 'Bug'], $this->provider->listTypeLabels('SCI'));
-    }
-
-    public function testListTypeLabelsReturnsEmptyWhenProjectMissing(): void
-    {
-        $this->jiraApiClient->expects($this->never())->method('getCreateMetaIssueTypes');
-
-        $this->assertSame([], $this->provider->listTypeLabels());
-    }
-
     public function testDoesNotImplementLabelGroupsCapability(): void
     {
         $this->assertNotInstanceOf(IssueTrackerLabelGroupsCapable::class, $this->provider);

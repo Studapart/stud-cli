@@ -101,18 +101,6 @@ interface IssueTrackerPort
      */
     public function runFilterOrView(string $name): array;
 
-    /**
-     * @return array<string, mixed>
-     * @throws ApiException
-     */
-    public function listWorkflowMetadata(?string $projectKey = null): array;
-
-    /**
-     * @return list<string>
-     * @throws ApiException
-     */
-    public function listTypeLabels(?string $projectKey = null): array;
-
     /** @throws ApiException */
     public function ping(): void;
 

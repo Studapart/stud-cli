@@ -27,6 +27,19 @@ echo '{"key":"ENG-42","provider":"linear"}' | stud items:show --agent
 
 Allowed values: `jira`, `linear`. Explicit `auto` is rejected — set `issueTrackerProvider: auto` in project config instead.
 
+### Key prefix vs pinned provider
+
+When a command loads a work item by key (branch, argument, or commit context):
+
+| Project `issueTrackerProvider` | Key prefix vs configured scopes | Behavior |
+|--------------------------------|----------------------------------|----------|
+| `auto` | Matches `projectKey` / `linearTeamKey` | Uses that tracker |
+| `jira` or `linear` (pinned) | Any key | Tries the **pinned** tracker first (never silent-switches) |
+| pinned | Fetch fails; prefix matches the **other** configured tracker | Error names the other tracker and suggests `--provider` or `issueTrackerProvider: auto` |
+| pinned | Fetch fails; prefix matches neither | Error suggests `--provider` when both trackers are configured |
+
+`--provider` / agent `provider` always wins and skips this ladder.
+
 Essential `items:*` commands that accept `--provider` include `items:show`, `items:create`, `items:update`, `items:transition`, `items:start`, and `items:list`. The readiness guard reads `--provider` / agent `provider` **before** blocking, so a one-off override works even when project `issueTrackerProvider` is `auto`. See `echo '{"command":"items:show"}' | stud help --agent`.
 
 ### Command provider matrix
@@ -197,6 +210,8 @@ stud projects:labels --project ENG --groups-only
 |---------|------|--------|
 | `projects:workflow` | Lists workflow transitions for `transitionId` | Lists workflow states for `linearStartStateId` |
 | `projects:labels` | Label metadata | Label groups and labels for type/prefix setup |
+
+Issue-type and workflow discovery for operators use these commands (and Jira createmeta during `items:create` prompts)—not shared `IssueTrackerPort` metadata helpers.
 
 ## Command summary
 

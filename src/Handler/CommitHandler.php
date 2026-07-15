@@ -170,7 +170,8 @@ class CommitHandler implements GitRepositoryAware, JiraAware
         try {
             return $this->provider->getIssue($key);
         } catch (ApiException $e) {
-            $error = MessageRef::key('commit.error_not_found', ['key' => $key]);
+            $error = $e->getResolutionHint()
+                ?? MessageRef::key('commit.error_not_found', ['key' => $key]);
 
             return CommandResponse::error(
                 $error,

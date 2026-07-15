@@ -9,6 +9,7 @@ use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
 use App\DTO\SubmitOptions;
 use App\DTO\WorkflowRecorder;
+use App\DTO\WorkItem;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
@@ -19,30 +20,25 @@ use App\Guard\Capability\GitRepositoryAware;
 use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
-use App\Service\CanConvertToMarkdownInterface;
 use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
-use App\Service\MarkdownHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\SubmitLabelResolver;
+use App\Service\SubmitPrBodyBuilder;
 
 class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
     private ?WorkflowEntryRecorder $recorder = null;
 
-    /**
-     * @param array<string, mixed> $jiraConfig
-     */
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort $provider,
         private readonly ?GitHostingPort $githubProvider,
-        private readonly array $jiraConfig,
+        private readonly SubmitPrBodyBuilder $prBodyBuilder,
         private readonly string $baseBranch,
         private readonly mixed $translator,
         private readonly PromptInterface $prompt,
-        private readonly CanConvertToMarkdownInterface $htmlConverter
     ) {
     }
 
@@ -161,72 +157,43 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     }
 
     /**
-     * Build PR body: fetch Jira description, convert to Markdown if needed, prepend Jira link.
+     * Build PR body: fetch work-item description, convert HTML when needed, prepend issue link.
      */
-    protected function buildPrBody(string $jiraKey): string
+    protected function buildPrBody(string $issueKey): string
     {
-        $prBody = $this->fetchJiraDescription($jiraKey);
-        if ($prBody !== null && $prBody !== '') {
-            $prBody = $this->convertDescriptionToMarkdown($prBody);
-        }
-        if ($prBody === null || $prBody === '') {
-            $prBody = "Resolves: {$this->jiraConfig['JIRA_URL']}/browse/{$jiraKey}";
-        }
-
-        return $this->prependJiraLinkToBody($prBody, $jiraKey);
+        return $this->prBodyBuilder->build($issueKey, $this->fetchIssueForPrBody($issueKey), $this->recorder());
     }
 
-    /**
-     * Fetch rendered description from Jira; log warnings on failure.
-     */
-    protected function fetchJiraDescription(string $jiraKey): ?string
+    protected function fetchIssueForPrBody(string $issueKey): ?WorkItem
     {
         try {
-            $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.fetching_jira', ['key' => $jiraKey]), WorkflowChannel::Jira);
-            $issue = $this->provider->getIssue($jiraKey, true);
+            $this->recorder()->addLine(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                MessageRef::key('submit.fetching_issue', ['key' => $issueKey]),
+                WorkflowChannel::Jira,
+            );
 
-            return $issue->renderedDescription;
+            return $this->provider->getIssue($issueKey, true);
         } catch (ApiException $e) {
-            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
+            $hint = $e->getResolutionHint();
+            if ($hint !== null) {
+                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $hint);
+            } else {
+                $this->recorder()->addWarning(
+                    WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                    MessageRef::key('submit.warning_issue_fetch', ['error' => $e->getMessage()]),
+                );
+            }
             $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
 
             return null;
         } catch (\Exception $e) {
-            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_jira_fetch', ['error' => $e->getMessage()]));
+            $this->recorder()->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('submit.warning_issue_fetch', ['error' => $e->getMessage()]),
+            );
 
             return null;
-        }
-    }
-
-    /**
-     * Convert HTML description to Markdown; log and fallback to raw HTML on failure.
-     */
-    protected function convertDescriptionToMarkdown(string $html): string
-    {
-        try {
-            $markdown = $this->htmlConverter->toMarkdown($html);
-            $markdown = MarkdownHelper::unescapeCheckboxMarkdown($markdown);
-            $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description', WorkflowChannel::Jira);
-
-            return $markdown;
-        } catch (\Exception $e) {
-            $errorMessage = $e->getMessage();
-            if (str_contains($errorMessage, 'DOMDocument') || str_contains($errorMessage, "Class 'DOMDocument' not found")) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, [
-                    'HTML to Markdown conversion failed: PHP XML extension is missing.',
-                    'Install it using:',
-                    '  Ubuntu/Debian: sudo apt-get install php-xml',
-                    '  Fedora/RHEL: sudo dnf install php-xml',
-                    '  macOS (Homebrew): brew install php-xml',
-                    'Using raw HTML for PR description.',
-                ]);
-            } else {
-                // @codeCoverageIgnoreStart
-                $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  HTML to Markdown conversion failed, using raw HTML: {$errorMessage}", WorkflowChannel::Jira);
-                // @codeCoverageIgnoreEnd
-            }
-
-            return $html;
         }
     }
 
@@ -359,14 +326,6 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
         return 0;
-    }
-
-    protected function prependJiraLinkToBody(string $body, string $jiraKey): string
-    {
-        $jiraUrl = $this->jiraConfig['JIRA_URL'];
-        $jiraLink = "🔗 **Jira Issue:** [{$jiraKey}]({$jiraUrl}/browse/{$jiraKey})";
-
-        return $jiraLink . "\n\n" . $body;
     }
 
     /**

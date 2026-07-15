@@ -131,6 +131,7 @@ use App\Service\CommandReferenceGenerator;
 use App\Service\ConfigRemediationService;
 use App\Service\ConfluenceApiClient;
 use App\Service\ConfluenceWikiAdapter;
+use App\Service\FetchHintIssueTrackerPort;
 use App\Service\FileSystem;
 use App\Service\GitBranchService;
 use App\Service\GithubGitHostingAdapter;
@@ -142,6 +143,7 @@ use App\Service\GitSetupService;
 use App\Service\GlobalMigrationService;
 use App\Service\InitProjectConfigFollowUpService;
 use App\Service\IssueTrackerFactory;
+use App\Service\IssueTrackerFetchFailureHintBuilder;
 use App\Service\IssueTrackerPort;
 use App\Service\IssueTrackerPortSupplier;
 use App\Service\IssueTrackerResolver;
@@ -897,15 +899,24 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?stri
                 throw IssueTrackerException::missingLinearApiKey();
             }
 
-            return $factory->create($type, linearApiClient: $linearApiClient, gitRepository: _get_git_repository());
+            $port = $factory->create($type, linearApiClient: $linearApiClient, gitRepository: _get_git_repository());
+        } else {
+            $jiraService = _get_jira_api_client_if_configured();
+            if ($jiraService === null) {
+                throw IssueTrackerException::missingJiraConfiguration();
+            }
+
+            $port = $factory->create($type, $jiraService, _get_jira_attachment_service());
         }
 
-        $jiraService = _get_jira_api_client_if_configured();
-        if ($jiraService === null) {
-            throw IssueTrackerException::missingJiraConfiguration();
-        }
-
-        return $factory->create($type, $jiraService, _get_jira_attachment_service());
+        return new FetchHintIssueTrackerPort(
+            $port,
+            new IssueTrackerFetchFailureHintBuilder($factory),
+            $type,
+            $override,
+            $globalConfig,
+            $projectConfig,
+        );
     } catch (IssueTrackerException|IssueTrackerResolutionException $e) {
         if (_is_agent_mode_request()) {
             _agent_fail_issue_tracker($e->messageRef);
@@ -3555,7 +3566,7 @@ function submit(
         }
     }
 
-    $handler = new SubmitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), $gitProvider, _get_jira_config(), _get_base_branch($quiet), _get_translation_service(), _get_prompt(), _get_html_converter());
+    $handler = new SubmitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), $gitProvider, new \App\Service\SubmitPrBodyBuilder(_get_jira_config(), _get_html_converter()), _get_base_branch($quiet), _get_translation_service(), _get_prompt());
     $response = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);

@@ -109,7 +109,7 @@ Current class names (post SCI-162 / SCI-163 follow-up):
 | `IssueTrackerPort` | Issue CRUD, search, transitions, attachments, project/team list, shared discovery (`listProjectStateChanges`, …) |
 | `IssueTrackerLabelGroupsCapable` | Optional capability — Linear LabelGroups + child labels (`listLabelGroups`); not on Jira |
 | `JiraIssueTrackerAdapter` | JQL and Jira REST delegation |
-| `LinearIssueTrackerAdapter` | Linear discovery metadata today; full issue parity in SCI-164+ |
+| `LinearIssueTrackerAdapter` | Linear GraphQL issue CRUD, workflow states, label groups (`IssueTrackerLabelGroupsCapable`) |
 | `IssueTrackerFactory` / `IssueTrackerPortSupplier` | Config → adapter; keeps HTTP clients out of handlers |
 | `JiraApiClient` (+ `JiraAttachmentService`, mappers) | Low-level Jira REST |
 | `LinearApiClient` | Linear GraphQL for workflow states and label groups |

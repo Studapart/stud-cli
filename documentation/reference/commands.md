@@ -90,7 +90,7 @@ None.
 ```bash
 stud config:init
 stud init
-echo '{"language":"example","gitProviders":["example"],"workItemProviders":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","jiraTransitionEnabled":true,"githubToken":"example","gitlabToken":"example","linearApiKey":"example"}' | stud config:init --agent
+echo '{"language":"example","gitProviders":["example"],"issueTrackerProviders":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","jiraTransitionEnabled":true,"githubToken":"example","gitlabToken":"example","linearApiKey":"example"}' | stud config:init --agent
 ```
 
 #### Agent JSON Input
@@ -100,7 +100,7 @@ echo '{"language":"example","gitProviders":["example"],"workItemProviders":["exa
 | `compact` | `bool` | yes | `true` |
 | `language` | `string\|null` | yes | `NULL` |
 | `gitProviders` | `array` | yes | `NULL` |
-| `workItemProviders` | `array` | yes | `NULL` |
+| `issueTrackerProviders` | `array` | yes | `NULL` |
 | `jiraUrl` | `string\|null` | yes | `NULL` |
 | `jiraEmail` | `string\|null` | yes | `NULL` |
 | `jiraApiToken` | `string\|null` | yes | `NULL` |
@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","workItemProvider":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -172,7 +172,8 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `gitlabInstanceUrl` | `string\|null` | yes | `NULL` |
 | `jiraDefaultProject` | `string\|null` | yes | `NULL` |
 | `confluenceDefaultSpace` | `string\|null` | yes | `NULL` |
-| `workItemProvider` | `string\|null` | yes | `NULL` |
+| `issueTrackerProvider` | `string\|null` | yes | `NULL` |
+| `linearTeamKey` | `string\|null` | yes | `NULL` |
 | `linearStartStateId` | `string\|null` | yes | `NULL` |
 | `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
@@ -352,7 +353,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-list"></a>
 ### `stud filters:list`
 
-Lists all available Jira filters.
+Lists saved Jira filters or Linear custom views.
 
 - **Alias:** `stud fl`
 - **Syntax:** `stud filters:list`
@@ -366,7 +367,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `provider` | See command schema. |
 
 
 #### Examples
@@ -374,7 +377,7 @@ None.
 ```bash
 stud filters:list
 stud fl
-echo '{}' | stud filters:list --agent
+echo '{"provider":"example"}' | stud filters:list --agent
 ```
 
 #### Agent JSON Input
@@ -382,16 +385,19 @@ echo '{}' | stud filters:list --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
-List of Jira filters
+List of Jira filters or Linear custom views
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
 filters: array
+filterProviders: array
+multiProvider: bool
 ```
 
 Full success shape (`{"compact":false}`):
@@ -399,6 +405,8 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 filters: array
+filterProviders: array
+multiProvider: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -408,7 +416,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-filters-show"></a>
 ### `stud filters:show`
 
-Retrieve issues from a saved Jira filter.
+Retrieve issues from a saved Jira filter or Linear custom view.
 
 - **Alias:** `stud fs`
 - **Syntax:** `stud filters:show <filterName>`
@@ -424,7 +432,9 @@ Retrieve issues from a saved Jira filter.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `provider` | See command schema. |
 
 
 #### Examples
@@ -432,7 +442,7 @@ None.
 ```bash
 stud filters:show "My Filter"
 stud fs "My Filter"
-echo '{"filterName":"My Filter"}' | stud filters:show --agent
+echo '{"filterName":"My Filter","provider":"example"}' | stud filters:show --agent
 ```
 
 #### Agent JSON Input
@@ -441,6 +451,7 @@ echo '{"filterName":"My Filter"}' | stud filters:show --agent
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
 | `filterName` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -581,7 +592,7 @@ stud items:download
 stud idl
 stud items:download --url "https://example.atlassian.net/wiki/spaces/DEV/pages/12345/Page"
 stud items:download --path .cursor/tmp/SCI-123
-echo '{"issueKey":"SCI-123","key":"SCI-123","url":"https://example.atlassian.net/wiki/spaces/DEV/pages/12345/Page","path":"example"}' | stud items:download --agent
+echo '{"issueKey":"SCI-123","key":"SCI-123","url":"https://example.atlassian.net/wiki/spaces/DEV/pages/12345/Page","path":"example","provider":"example"}' | stud items:download --agent
 ```
 
 #### Agent JSON Input
@@ -593,6 +604,7 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","url":"https://example.atlassian.net
 | `key` | `string\|null` | yes | `NULL` |
 | `url` | `string\|null` | yes | `NULL` |
 | `path` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -692,7 +704,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-items-search"></a>
 ### `stud items:search`
 
-Search for issues using JQL.
+Search issues: JQL when Jira is active, plain search term when Linear is active.
 
 - **Alias:** `stud search`
 - **Syntax:** `stud items:search <jql>`
@@ -708,7 +720,9 @@ Search for issues using JQL.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `provider` | See command schema. |
 
 
 #### Examples
@@ -716,7 +730,7 @@ None.
 ```bash
 stud items:search "project = SCI and statusCategory != Done"
 stud search "project = SCI and statusCategory != Done"
-echo '{"jql":"project = SCI and statusCategory != Done"}' | stud items:search --agent
+echo '{"jql":"project = SCI and statusCategory != Done","provider":"example"}' | stud items:search --agent
 ```
 
 #### Agent JSON Input
@@ -725,10 +739,11 @@ echo '{"jql":"project = SCI and statusCategory != Done"}' | stud items:search --
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
 | `jql` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
-JQL search results (agent mode returns slim issue summaries; use items:show for full details)
+Search results (Jira: JQL query echoed in jql; Linear: search term echoed in jql). Agent mode returns slim issue summaries; use items:show for full details.
 
 Default compact success shape (`{"compact":true}` or omitted):
 
@@ -903,7 +918,7 @@ Takes over an issue from another user. Assigns the issue to you and switches to 
 stud items:takeover SCI-123
 stud to SCI-123
 stud items:takeover SCI-123 --quiet
-echo '{"key":"SCI-123","quiet":true}' | stud items:takeover --agent
+echo '{"key":"SCI-123","provider":"example","quiet":true}' | stud items:takeover --agent
 ```
 
 #### Agent JSON Input
@@ -912,6 +927,7 @@ echo '{"key":"SCI-123","quiet":true}' | stud items:takeover --agent
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
 | `key` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1101,7 +1117,7 @@ Uploads one or more local files as Jira issue attachments via REST multipart. Pa
 stud items:upload SCI-123
 stud iup SCI-123
 stud items:upload SCI-123 --file doc.md
-echo '{"issueKey":"SCI-123","key":"SCI-123","files":["example"]}' | stud items:upload --agent
+echo '{"issueKey":"SCI-123","key":"SCI-123","files":["example"],"provider":"example"}' | stud items:upload --agent
 ```
 
 #### Agent JSON Input
@@ -1112,6 +1128,7 @@ echo '{"issueKey":"SCI-123","key":"SCI-123","files":["example"]}' | stud items:u
 | `issueKey` | `string\|null` | yes | `NULL` |
 | `key` | `string\|null` | yes | `NULL` |
 | `files` | `array` | yes | `[]` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -1166,7 +1183,7 @@ None.
 stud projects:labels
 stud projects:labels --project key
 stud projects:labels --groups-only
-echo '{"project":"example","groupsOnly":true}' | stud projects:labels --agent
+echo '{"project":"example","groupsOnly":true,"provider":"example"}' | stud projects:labels --agent
 ```
 
 #### Agent JSON Input
@@ -1176,6 +1193,7 @@ echo '{"project":"example","groupsOnly":true}' | stud projects:labels --agent
 | `compact` | `bool` | yes | `true` |
 | `project` | `string\|null` | yes | `NULL` |
 | `groupsOnly` | `bool` | yes | `false` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -1216,7 +1234,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `provider` | See command schema. |
 
 
 #### Examples
@@ -1224,7 +1244,7 @@ None.
 ```bash
 stud projects:list
 stud pj
-echo '{}' | stud projects:list --agent
+echo '{"provider":"example"}' | stud projects:list --agent
 ```
 
 #### Agent JSON Input
@@ -1232,16 +1252,19 @@ echo '{}' | stud projects:list --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
-List of Jira projects
+List of Jira projects or Linear teams
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
 projects: array
+projectProviders: array
+multiProvider: bool
 ```
 
 Full success shape (`{"compact":false}`):
@@ -1249,6 +1272,8 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 projects: array
+projectProviders: array
+multiProvider: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1282,7 +1307,7 @@ None.
 ```bash
 stud projects:workflow
 stud projects:workflow --project key
-echo '{"project":"example"}' | stud projects:workflow --agent
+echo '{"project":"example","provider":"example"}' | stud projects:workflow --agent
 ```
 
 #### Agent JSON Input
@@ -1291,6 +1316,7 @@ echo '{"project":"example"}' | stud projects:workflow --agent
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
 | `project` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -1349,7 +1375,7 @@ stud branch:rename
 stud rn
 stud branch:rename --name custom-branch-name
 stud branch:rename --quiet
-echo '{"branch":"example","key":"SCI-123","explicitName":"example","quiet":true}' | stud branch:rename --agent
+echo '{"branch":"example","key":"SCI-123","explicitName":"example","provider":"example","quiet":true}' | stud branch:rename --agent
 ```
 
 #### Agent JSON Input
@@ -1360,6 +1386,7 @@ echo '{"branch":"example","key":"SCI-123","explicitName":"example","quiet":true}
 | `branch` | `string\|null` | yes | `NULL` |
 | `key` | `string\|null` | yes | `NULL` |
 | `explicitName` | `string\|null` | yes | `NULL` |
+| `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1532,7 +1559,7 @@ stud commit --new
 stud commit --message "Ready for review"
 stud commit --all
 stud commit --quiet
-echo '{"isNew":true,"message":"Ready for review","stageAll":true,"quiet":true,"help":true}' | stud commit --agent
+echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
 ```
 
 #### Agent JSON Input
@@ -1543,6 +1570,7 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"quiet":true,"h
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
+| `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
 
@@ -1772,7 +1800,7 @@ stud push --message "Ready for review"
 stud push --all
 stud push --quiet
 stud push --no-please
-echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"quiet":true,"help":true}' | stud push --agent
+echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
 ```
 
 #### Agent JSON Input
@@ -1784,6 +1812,7 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
+| `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
 
@@ -1825,7 +1854,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `provider` | See command schema. |
 
 
 #### Examples
@@ -1833,7 +1864,7 @@ None.
 ```bash
 stud status
 stud ss
-echo '{}' | stud status --agent
+echo '{"provider":"example"}' | stud status --agent
 ```
 
 #### Agent JSON Input
@@ -1841,6 +1872,7 @@ echo '{}' | stud status --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `provider` | `string\|null` | yes | `NULL` |
 
 #### Agent JSON Output
 
@@ -2168,7 +2200,7 @@ stud submit --draft
 stud submit --labels "AI-Generated,RFR"
 stud submit --assign-to-author
 stud submit --quiet
-echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"quiet":true}' | stud submit --agent
+echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
 ```
 
 #### Agent JSON Input
@@ -2183,6 +2215,7 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 | `draft` | `bool` | yes | `false` |
 | `labels` | `string\|null` | yes | `NULL` |
 | `assignToAuthor` | `bool` | yes | `false` |
+| `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 
 #### Agent JSON Output

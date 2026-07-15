@@ -39,11 +39,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             $this->githubProvider,
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             'origin/develop',
             $this->translationService,
-            $this->prompt,
-            $this->htmlConverter
+            $this->prompt
         );
     }
 
@@ -86,7 +85,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->head === 'studapart:feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
                     && $prData->draft === false
                     && $prData->assignToAuthor === false;
             }))
@@ -94,6 +93,48 @@ class SubmitHandlerTest extends CommandTestCase
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
+
+        $response = $this->handler->handle();
+
+        $this->assertSame(0, $response->exitCode);
+    }
+
+    public function testHandleUsesWorkItemUrlForLinearPrBody(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('chore(cli): work [SCIL-195]');
+
+        $workItem = new WorkItem(
+            id: 'uuid',
+            key: 'SCIL-195',
+            title: 'Dead code',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: "## Spec\n\nMarkdown body",
+            labels: [],
+            issueType: 'Task',
+            renderedDescription: "## Spec\n\nMarkdown body",
+            url: 'https://linear.app/studapart/issue/SCIL-195/dead-code',
+        );
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
+        $this->htmlConverter->expects($this->never())->method('toMarkdown');
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->with($this->callback(function ($prData) {
+                return $prData instanceof PullRequestData
+                    && $prData->body === "🔗 **Issue:** [SCIL-195](https://linear.app/studapart/issue/SCIL-195/dead-code)\n\n## Spec\n\nMarkdown body";
+            }))
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/2']);
 
         $response = $this->handler->handle();
 
@@ -346,7 +387,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->head === 'studapart:feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
                     && $prData->draft === true;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
@@ -490,7 +531,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->title === 'feat(my-scope): My feature'
                     && $prData->head === 'studapart:feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
                     && $prData->draft === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
@@ -646,7 +687,7 @@ class SubmitHandlerTest extends CommandTestCase
                 return $prData instanceof PullRequestData
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
                     && $prData->draft === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
@@ -657,6 +698,38 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $outputText = $output->fetch();
+        $this->assertSame(0, $response->exitCode);
+    }
+
+    public function testHandleWithResolutionHintOnPrBodyFetchFailure(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('chore(cli): work [SCIL-195]');
+
+        $hint = \App\DTO\MessageRef::key('issue_tracker_provider.fetch_failed_prefix_matches_other', [
+            '%key%' => 'SCIL-195',
+            '%attempted%' => 'jira',
+            '%prefix%' => 'SCIL',
+            '%alternate%' => 'linear',
+        ]);
+        $this->issueTracker->method('getIssue')->willThrowException(
+            new \App\Exception\ApiException('not found', 'HTTP 404', 404, null, $hint),
+        );
+
+        $this->githubProvider
+            ->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+
+        $response = $this->handler->handle();
+
         $this->assertSame(0, $response->exitCode);
     }
 
@@ -695,7 +768,7 @@ class SubmitHandlerTest extends CommandTestCase
                 return $prData instanceof PullRequestData
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nResolves: https://my-jira.com/browse/TPW-35"
                     && $prData->draft === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
@@ -803,11 +876,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             null, // No GithubGitHostingAdapter
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
             $this->translationService,
-            $logger,
-            $htmlConverter
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -1006,7 +1078,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->head === 'feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
                     && $prData->draft === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
@@ -1078,11 +1150,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             null,
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             'origin/develop',
             $this->translationService,
-            $this->prompt,
-            $this->htmlConverter
+            $this->prompt
         );
 
         $reflection = new \ReflectionClass($handler);
@@ -1167,7 +1238,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->title === 'feat(my-scope): My feature [TPW-35]'
                     && $prData->head === 'studapart:feat/TPW-35-my-feature'
                     && $prData->base === 'develop'
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\nMy rendered description"
                     && $prData->draft === false;
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
@@ -1539,11 +1610,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             null, // No GithubGitHostingAdapter
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
             $this->translationService,
-            $logger,
-            $htmlConverter
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2098,11 +2168,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             null, // No GithubGitHostingAdapter
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $htmlConverter),
             'origin/develop',
             $this->translationService,
-            $logger,
-            $htmlConverter
+            $logger
         );
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
@@ -2187,7 +2256,7 @@ class SubmitHandlerTest extends CommandTestCase
             ->with($this->callback(function ($prData) {
                 // Should use original HTML when DOMDocument exception occurs
                 return $prData instanceof PullRequestData
-                    && $prData->body === "🔗 **Jira Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\n<p>Test HTML</p>";
+                    && $prData->body === "🔗 **Issue:** [TPW-35](https://my-jira.com/browse/TPW-35)\n\n<p>Test HTML</p>";
             }))
             ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
 
@@ -2205,11 +2274,10 @@ class SubmitHandlerTest extends CommandTestCase
             $this->gitRepository,
             $this->issueTracker,
             null,
-            $this->jiraConfig,
+            new \App\Service\SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             'origin/develop',
             $this->translationService,
-            $this->prompt,
-            $this->htmlConverter
+            $this->prompt
         );
 
 

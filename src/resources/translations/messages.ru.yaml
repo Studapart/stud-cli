@@ -378,6 +378,8 @@ issue_tracker_provider:
   invalid_override: 'Недопустимый override провайдера %value%. Допустимые значения: jira, linear.'
   unknown_resolved: 'Неизвестный разрешённый work-item provider %value%. Ожидается jira или linear.'
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Получение проектов Jira
@@ -484,11 +486,13 @@ submit:
     Попробуйте выполнить ''stud please'' для принудительной отправки.'
   finding_commit: Поиск первого логического коммита для использования в деталях PR...
   fetching_jira: 'Получение задачи Jira для тела PR: %key%'
+  fetching_issue: "Получение work item для тела PR: %key%"
   error_no_logical: Не удалось найти логический коммит на этой ветке. Невозможно создать PR.
   error_no_jira_key: Не удалось распарсить ключ Jira из сообщения коммита. Невозможно создать PR.
   warning_jira_fetch: 'Не удалось получить детали задачи Jira для тела PR: %error%
 
     Возврат к простой ссылке.'
+  warning_issue_fetch: "Не удалось получить детали work item для тела PR: %error%\nИспользуется простая ссылка."
   creating: Создание Pull Request...
   success_created: '✅ Pull Request создан: %url%'
   warning_no_provider: Провайдер Git не настроен для этого проекта.

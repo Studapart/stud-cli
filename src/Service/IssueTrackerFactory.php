@@ -136,6 +136,49 @@ class IssueTrackerFactory
     }
 
     /**
+     * Pinned project provider (`jira` / `linear`), or null when unset / `auto`.
+     *
+     * @param array<string, mixed> $projectConfig
+     */
+    public function readPinnedProvider(array $projectConfig): ?IssueTrackerProvider
+    {
+        return $this->readProjectProvider($projectConfig);
+    }
+
+    /**
+     * Provider whose configured scope claims this issue-key prefix, or null when none / invalid key.
+     *
+     * @param array<string, mixed> $projectConfig
+     */
+    public function providerClaimingIssueKey(string $issueKey, array $projectConfig): ?IssueTrackerProvider
+    {
+        $prefix = $this->issueKeyPrefixOrNull($issueKey);
+        if ($prefix === null) {
+            return null;
+        }
+
+        try {
+            return $this->resolveProviderForPrefix($prefix, $projectConfig);
+        } catch (IssueTrackerResolutionException) {
+            return null;
+        }
+    }
+
+    public function issueKeyPrefixOrNull(string $issueKey): ?string
+    {
+        $trimmedKey = trim($issueKey);
+        if ($trimmedKey === '') {
+            return null;
+        }
+
+        try {
+            return GitProjectConfigService::extractIssueKeyPrefix($trimmedKey);
+        } catch (\RuntimeException) {
+            return null;
+        }
+    }
+
+    /**
      * @param array<string, mixed> $globalConfig
      * @param array<string, mixed> $projectConfig
      */

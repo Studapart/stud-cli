@@ -58,7 +58,12 @@ class StatusHandler implements GitRepositoryAware, JiraAware
                 WorkflowChannel::Jira,
             );
         } catch (ApiException $e) {
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+            $hint = $e->getResolutionHint();
+            if ($hint !== null) {
+                $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, $hint);
+            } else {
+                $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+            }
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));

@@ -84,6 +84,28 @@ class StatusHandlerTest extends CommandTestCase
         $this->assertNotEmpty($response->entries);
     }
 
+    public function testHandleUsesResolutionHintOnApiException(): void
+    {
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+
+        $hint = \App\DTO\MessageRef::key('issue_tracker_provider.fetch_failed_prefix_matches_other', [
+            '%key%' => 'SCIL-195',
+            '%attempted%' => 'jira',
+            '%prefix%' => 'SCIL',
+            '%alternate%' => 'linear',
+        ]);
+        $this->issueTracker->method('getIssue')->willThrowException(
+            new \App\Exception\ApiException('not found', 'HTTP 404', 404, null, $hint),
+        );
+
+        $response = $this->handler->handle();
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertNotEmpty($response->entries);
+    }
+
     public function testHandleWithCleanWorkingDirectory(): void
     {
         $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
