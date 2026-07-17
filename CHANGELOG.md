@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.0] - 2026-07-17
+
 ### Changed
 
 - **Provider-neutral PR body (submit):** PR description uses work-item URL when available (Linear `url`, else Jira browse link); link label is **Issue** not **Jira Issue**; markdown descriptions from Linear are not HTML-converted.
