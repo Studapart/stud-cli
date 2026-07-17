@@ -102,7 +102,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
     {
         $this->tryAssignIssueToCurrentUser($key);
 
-        if ($this->usesLinearBranchPrefixMapping($projectConfig)) {
+        if ($this->usesLinearStartWorkflow($key, $projectConfig)) {
             $stateId = $this->resolveLinearStartStateId($key, $projectConfig);
             if ($stateId !== null) {
                 $this->executeStateChangeWithLogging($key, $stateId);
@@ -296,7 +296,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
      */
     protected function resolveBranchPrefix(WorkItem $issue, array $projectConfig): string
     {
-        if (! $this->usesLinearBranchPrefixMapping($projectConfig)) {
+        if (! $this->usesLinearStartWorkflow($issue->key, $projectConfig)) {
             return $this->getBranchPrefixFromIssueType($issue->issueType);
         }
 
@@ -322,16 +322,43 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
     }
 
     /**
+     * Linear start-state + type-label branch prefixes apply when provider is pinned
+     * to Linear, or when dual-PM auto resolves this issue key to the Linear team.
+     *
      * @param array<string, mixed> $projectConfig
      */
-    protected function usesLinearBranchPrefixMapping(array $projectConfig): bool
+    protected function usesLinearStartWorkflow(string $issueKey, array $projectConfig): bool
     {
         $provider = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
         if (! is_string($provider)) {
             return false;
         }
 
-        return IssueTrackerProvider::tryFromNormalized($provider) === IssueTrackerProvider::Linear;
+        $normalized = IssueTrackerProvider::tryFromNormalized($provider);
+        if ($normalized === IssueTrackerProvider::Linear) {
+            return true;
+        }
+
+        if ($normalized !== IssueTrackerProvider::Auto) {
+            return false;
+        }
+
+        return $this->issueKeyMatchesLinearTeam($issueKey, $projectConfig);
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function issueKeyMatchesLinearTeam(string $issueKey, array $projectConfig): bool
+    {
+        $linearTeamKey = $projectConfig[ProjectStudConfigKeys::LINEAR_TEAM_KEY] ?? null;
+        if (! is_string($linearTeamKey) || trim($linearTeamKey) === '') {
+            return false;
+        }
+
+        $issueProjectKey = $this->gitRepository->getProjectKeyFromIssueKey($issueKey);
+
+        return strtoupper($issueProjectKey) === strtoupper(trim($linearTeamKey));
     }
 
     /**

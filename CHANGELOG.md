@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dual-PM PR label sync CI (SCIL-196):** Jira and Linear label-sync workflows share `.github/scripts/sync-pr-labels.sh`; both always pass explicit `provider` to `items:show` / `items:update`; soft-skip (exit 0) when tracker secrets are missing or show fails for that provider; hard-fail only for invalid/missing label map, missing branch issue key, or update failure after a successful show. Documented soft-skip vs hard-fail and `stud-install-ref` (script ref vs latest-release PHAR) in `documentation/github-actions.md`.
+- **Linear start under `issueTrackerProvider: auto` (SCIL-196):** `items:start` applies `linearStartStateId` when the issue key matches `linearTeamKey` (instead of always taking the Jira `transitionId` path under dual-PM auto).
+- **`items:transition` under dual-PM `auto` (SCIL-196):** omitting the key now peeks the issue key from the current branch before provider resolution (same branch peek as `commit` / `push` / `submit` / `status` / `branch:rename`). Key-required commands (`items:show` / `update` / `start` / `takeover` / `upload`) unchanged.
+
 ## [3.20.0] - 2026-07-17
 
 ### Changed

@@ -2053,6 +2053,166 @@ class ItemStartHandlerTest extends CommandTestCase
         $this->assertWorkflowExitCode($response, 0);
     }
 
+    public function testHandleAutoUsesLinearStartStateWhenIssueMatchesLinearTeamKey(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCIL-196',
+            title: 'Harden label sync',
+            status: 'Todo',
+            assignee: 'Unassigned',
+            description: '',
+            labels: ['Task'],
+            issueType: 'Task',
+            components: [],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCIL-196')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
+            ->with('SCIL-196');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+                'projectKey' => 'SCI',
+                'transitionId' => 31,
+                'linearTeamKey' => 'SCIL',
+                'linearStartStateId' => 'state-in-progress-uuid',
+            ]);
+
+        $this->gitRepository->expects($this->atLeastOnce())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('SCIL-196')
+            ->willReturn('SCIL');
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCIL-196', 'state-in-progress-uuid');
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCIL-196')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCIL-196-harden-label-sync', 'origin/develop');
+
+        $response = $handler->handle('SCIL-196');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleAutoKeepsJiraTransitionWhenIssueMatchesJiraProjectKey(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-1',
+            key: 'SCI-42',
+            title: 'Jira under auto',
+            status: 'Todo',
+            assignee: 'Unassigned',
+            description: '',
+            labels: [],
+            issueType: 'Story',
+            components: [],
+        );
+
+        $jiraConfig = ['JIRA_TRANSITION_ENABLED' => true];
+        $handler = new ItemStartHandler(
+            $this->gitRepository,
+            $this->gitBranchService,
+            $this->issueTracker,
+            'origin/develop',
+            $this->translationService,
+            $jiraConfig,
+            $this->prompt,
+        );
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-42')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('assign')
+            ->with('SCI-42');
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+                'projectKey' => 'SCI',
+                'transitionId' => 31,
+                'linearTeamKey' => 'SCIL',
+                'linearStartStateId' => 'state-in-progress-uuid',
+            ]);
+
+        $this->gitRepository->expects($this->atLeastOnce())
+            ->method('getProjectKeyFromIssueKey')
+            ->with('SCI-42')
+            ->willReturn('SCI');
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-42', '31');
+
+        $this->gitRepository->expects($this->once())->method('fetch');
+        $this->gitBranchService->expects($this->once())
+            ->method('findBranchesByIssueKey')
+            ->with('SCI-42')
+            ->willReturn(['local' => [], 'remote' => []]);
+        $this->gitRepository->expects($this->once())
+            ->method('createBranch')
+            ->with('feat/SCI-42-jira-under-auto', 'origin/develop');
+
+        $response = $handler->handle('SCI-42');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testUsesLinearStartWorkflowForPinnedJiraAndEmptyLinearTeam(): void
+    {
+        $this->gitRepository->expects($this->never())->method('getProjectKeyFromIssueKey');
+
+        $this->assertFalse($this->callPrivateMethod(
+            $this->handler,
+            'usesLinearStartWorkflow',
+            ['SCI-1', ['issueTrackerProvider' => IssueTrackerProvider::Jira->value]],
+        ));
+
+        $this->assertFalse($this->callPrivateMethod(
+            $this->handler,
+            'usesLinearStartWorkflow',
+            ['SCIL-1', [
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+                'linearTeamKey' => '   ',
+            ]],
+        ));
+
+        $this->assertFalse($this->callPrivateMethod(
+            $this->handler,
+            'issueKeyMatchesLinearTeam',
+            ['SCIL-1', ['linearTeamKey' => '']],
+        ));
+    }
+
     public function testHandleLinearAgentModeSkipsTransitionWithoutCachedState(): void
     {
         $workItem = new WorkItem(

@@ -18,7 +18,8 @@ Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.
 
 ### Pinning the install script
 
-- **Supply chain:** Pin `stud-install-ref` to a **release tag** or **commit SHA** rather than a moving branch in production workflows.
+- **Supply chain:** Prefer pinning `stud-install-ref` to a **release tag** (semver) in production workflows.
+- **Script ref vs PHAR version:** `stud-install-ref` selects which **`setup-stud.sh`** text is downloaded from GitHub. Only a **semver tag** (for example `v3.20.0`) also pins the installed stud binary. A **commit SHA** or branch name still runs that ref’s installer script, but the installer falls through to the **latest GitHub release** PHAR. Dogfooding unreleased CLI features needs a release or a future install-from-checkout path — a SHA alone does not run tip code.
 - **`--skip-init`:** The bundled install command expects a `setup-stud.sh` that supports **`--skip-init`**. If you point `stud-install-ref` at an older ref, install may still succeed but the post-install prompt can block the job; use a recent ref or tag.
 
 ### Versioning when consuming this repo
@@ -97,35 +98,56 @@ For updates, stdin is one JSON object, e.g. **`{"key":"SCI-123","fields":"labels
 - The Jira and Linear label sync workflows in this repo gate on **`github.event.pull_request.head.repo.fork == false`** so secrets are only used for same-repo PRs.
 - **`pull_request_target`** runs in the base repo context and can access secrets; it also increases risk if the workflow checks out or runs untrusted code from the head branch. Prefer **`pull_request`** + fork guards + explicit variables for maintenance workflows unless you fully understand **`pull_request_target`** hardening. Avoid copying untrusted scripts into the job without review.
 
-## Jira label sync workflow (`jira-label-sync.yml`)
+## Dual-PM label sync (Jira + Linear)
 
-Workflow **`.github/workflows/jira-label-sync.yml`** runs on **`pull_request`** events **`labeled`** / **`unlabeled`** when the PR head is **not** from a fork (so repository secrets are available).
+**Decision:** Keep **two thin workflows** — **`.github/workflows/jira-label-sync.yml`** and **`.github/workflows/linear-label-sync.yml`** — that both call the shared script **`.github/scripts/sync-pr-labels.sh`**. Do not merge them into one matrix job: secrets and setup differ per tracker, and independent job status makes soft-skip vs real sync clearer for required checks.
 
-**Secrets:** `STUD_JIRA_URL`, `STUD_JIRA_EMAIL`, `STUD_JIRA_API_TOKEN` (same as the composite action).
+Both run on **`pull_request`** events **`labeled`** / **`unlabeled`** when the PR head is **not** from a fork.
 
-**Repository variable — label map:** Set **`STUD_JIRA_LABEL_MAP`** to a JSON object whose keys are **GitHub PR label names** and values are **Jira label names** (as accepted by your project’s Jira `labels` field), for example:
+Shared script env: `PROVIDER` (`jira`|`linear`), `LABEL_MAP_JSON`, `LABELS_JSON`, `HEAD_REF`, `MAP_VAR_NAME`. Merge logic lives in **`tests/Fixtures/label-sync/merge-managed-labels.jq`** (covered by `LabelSyncMergeAlgorithmTest`).
+
+### Soft-skip vs hard-fail
+
+| Outcome | Conditions |
+|---------|------------|
+| **Soft-skip (exit 0)** | Required secrets for that tracker are missing; or `items:show --agent` exits non-zero / returns `success=false` for the pinned provider (wrong tracker for the branch key, or issue not found). Soft-skip logs a clear reason and dumps agent JSON when present. **Soft-skip is not a sync.** |
+| **Hard-fail (exit 1)** | Label-map repository variable missing or not valid JSON; no issue key (`PROJ-123`) in the branch name; or `items:update` fails after a successful show. |
+
+`items:show` is invoked with `set +e` so a non-zero stud exit still allows logging before soft-skip. Both show and update agent payloads always include explicit **`provider`**.
+
+### Jira label sync (`jira-label-sync.yml`)
+
+**Secrets (required for real sync):** `STUD_JIRA_URL`, `STUD_JIRA_EMAIL`, `STUD_JIRA_API_TOKEN`. If any are unset, the job soft-skips before `stud-cli-setup`.
+
+**Repository variable — label map:** Set **`STUD_JIRA_LABEL_MAP`** to a JSON object whose keys are **GitHub PR label names** and values are **Jira label names**, for example:
 
 ```json
 {"bug":"Bug","enhancement":"Story"}
 ```
 
-You can change this variable in the GitHub UI without committing code. The workflow validates that the value is JSON before running `jq`. Variables are not secret; do not put credentials in this JSON.
+You can change this variable in the GitHub UI without committing code. Variables are not secret; do not put credentials in this JSON. Missing or invalid map **hard-fails**.
 
-**Merge semantics (does not wipe unrelated Jira labels):** Jira’s `labels` field is replaced in full on each **`items:update`**. The workflow therefore calls **`stud items:show --agent`** first (JSON input `{"key":"PROJ-123"}`) and reads **`data.issue.labels`**. The same payload may include **`data.issue.attachments`** (filename, size, content URL, MIME type) for any automation that needs attachment discovery without downloading files. It builds the next label set as:
+**Agent calls** (via the shared script):
 
-- Keep every label already on the issue whose name is **not** a **value** in `STUD_JIRA_LABEL_MAP` (unmanaged labels are never removed by this workflow).
+```bash
+jq -n --arg key "${KEY}" '{key: $key, provider: "jira"}' | stud items:show --agent
+jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" \
+  '{key: $key, fields: $fields, provider: "jira"}' | stud items:update --agent
+```
+
+**Merge semantics (does not wipe unrelated Jira labels):** Jira’s `labels` field is replaced in full on each **`items:update`**. The script calls **`items:show`** first and reads **`data.issue.labels`**, then:
+
+- Keep every label already on the issue whose name is **not** a **value** in `STUD_JIRA_LABEL_MAP` (unmanaged labels are never removed).
 - For each **distinct Jira name** that appears as a map value (a “managed” target): add that label if **any** GitHub label that maps to it is on the PR; remove **only** that Jira name if **none** of those GitHub labels are on the PR. Multiple GitHub labels mapping to the same Jira label behave as an OR for “present on the PR”.
-- If the merged list equals the current list (order-insensitive), the workflow skips **`items:update`** to avoid noise.
+- If the merged list equals the current list (order-insensitive), the script skips **`items:update`**.
 
-**Edge case:** An empty PR label list still runs the merge so managed Jira labels are removed when no mapped GitHub labels remain; it does not short-circuit in a way that would skip those removals.
+**Edge case:** An empty PR label list still runs the merge so managed labels are removed when no mapped GitHub labels remain.
 
-**Install ref:** The workflow uses **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** so `setup-stud.sh` matches the PR branch tip. In another repository, pin **`stud-install-ref`** to a **release tag** instead.
+**Dual-PM:** On a Linear-only branch key (for example `SCIL-*`), the Jira job soft-skips when show fails for `provider: jira` instead of failing the required check.
 
-## Linear label sync workflow (`linear-label-sync.yml`)
+### Linear label sync (`linear-label-sync.yml`)
 
-Workflow **`.github/workflows/linear-label-sync.yml`** mirrors the Jira label sync job for Linear issues. It runs on **`pull_request`** events **`labeled`** / **`unlabeled`** when the PR head is **not** from a fork.
-
-**Secret:** `STUD_LINEAR_API_KEY` (passed to the composite action as `linear-api-key`).
+**Secret (required for real sync):** `STUD_LINEAR_API_KEY`. If unset, the job soft-skips before `stud-cli-setup` (so `config:validate` does not hard-fail). Soft-skip ≠ sync — you need **`STUD_LINEAR_API_KEY`** and **`STUD_LINEAR_LABEL_MAP`** for actual Linear sync.
 
 **Repository variable — label map:** Set **`STUD_LINEAR_LABEL_MAP`** to a JSON object whose keys are **GitHub PR label names** and values are **Linear label names**, for example:
 
@@ -133,17 +155,15 @@ Workflow **`.github/workflows/linear-label-sync.yml`** mirrors the Jira label sy
 {"bug":"Bug","enhancement":"Feature"}
 ```
 
-**Agent calls** use explicit Linear provider selection:
+**Agent calls** use explicit Linear provider selection (same shared script with `PROVIDER=linear`).
 
-```bash
-jq -n --arg key "${KEY}" '{key: $key, provider: "linear"}' | stud items:show --agent
-jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" \
-  '{key: $key, fields: $fields, provider: "linear"}' | stud items:update --agent
-```
+**Merge semantics** are identical to the Jira workflow. The workflow never updates Jira issues.
 
-**Merge semantics** are identical to the Jira workflow: unmanaged Linear labels are preserved; managed targets follow the same OR-group rules; **`items:update`** is skipped when the merged set equals the current labels. The workflow never updates Jira issues.
+**Dual-PM:** On a Jira-only branch key (for example `SCI-*`), the Linear job soft-skips when the secret is unset or show fails for `provider: linear`.
 
-**Install ref:** Same as Jira — **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** on PRs in this repo; pin a release tag in consumer repositories.
+### Install ref on label-sync workflows
+
+Both workflows pass **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** so the **installer script text** matches the PR tip. That does **not** install a tip PHAR (see [Pinning the install script](#pinning-the-install-script)). In consumer repositories, prefer a **release tag** for both script and binary.
 
 ## Example: call composite then `items:update`
 
