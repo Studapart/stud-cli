@@ -2,6 +2,7 @@
 
 namespace App\Tests\Handler;
 
+use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
 use App\Handler\ItemTransitionHandler;
@@ -26,7 +27,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
         $this->prompt = $this->createMock(PromptInterface::class);
         $this->handler = new ItemTransitionHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->issueTracker,
             $this->translationService,
             $this->prompt
         );
@@ -47,7 +48,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
         return new ItemTransitionHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->issueTracker,
             $this->translationService,
             $prompt
         );
@@ -57,7 +58,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     {
         $reflection = new \ReflectionClass($handler);
         $property = $reflection->getProperty('recorder');
-        $property->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($property);
         $property->setValue($handler, new WorkflowRecorder());
     }
 
@@ -76,40 +77,26 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
-            [
-                'id' => 21,
-                'name' => 'Done',
-                'to' => [
-                    'name' => 'Done',
-                    'statusCategory' => ['key' => 'done', 'name' => 'Done'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
+            new StateChange('21', 'Done', 'Done'),
         ];
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -141,36 +128,29 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -203,36 +183,29 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-36')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-36')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-36', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-36', '11');
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -266,36 +239,29 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-37')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-37')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-37', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-37', '11');
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -316,7 +282,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testHandleWithInvalidKeyFormat(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -337,7 +303,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testHandleWithEmptyKeyPrompt(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -357,13 +323,13 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFound(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $response = $this->handler->handle('TPW-35');
 
@@ -372,7 +338,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
     public function testHandleWithIssueNotFoundApiException(): void
     {
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
@@ -398,12 +364,12 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            ['id' => 11, 'name' => 'Start Progress', 'to' => ['name' => 'In Progress', 'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress']]],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
-        $this->jiraService->expects($this->once())->method('getTransitions')->with('TPW-35')->willReturn($transitions);
-        $this->jiraService->expects($this->never())->method('transitionIssue');
+        $this->issueTracker->expects($this->once())->method('getIssue')->with('TPW-35')->willReturn($workItem);
+        $this->issueTracker->expects($this->once())->method('listItemStateChanges')->with('TPW-35')->willReturn($transitions);
+        $this->issueTracker->expects($this->never())->method('applyStateChange');
 
         $this->prompt->expects($this->once())
             ->method('choice')
@@ -428,21 +394,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn([]);
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
-        $this->jiraService->expects($this->never())
-            ->method('transitionIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('applyStateChange');
 
         $response = $this->handler->handle('TPW-35');
 
@@ -463,21 +429,21 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Failed to fetch transitions'));
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
-        $this->jiraService->expects($this->never())
-            ->method('transitionIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('applyStateChange');
 
         $response = $this->handler->handle('TPW-35');
 
@@ -498,13 +464,13 @@ class ItemTransitionHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not fetch transitions for issue "TPW-35".', 'HTTP 500: Internal Server Error', 500));
 
@@ -529,33 +495,26 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11)
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11')
             ->willThrowException(new \Exception('Failed to execute transition'));
 
-        $this->jiraService->expects($this->never())
-            ->method('assignIssue');
+        $this->issueTracker->expects($this->never())
+            ->method('assign');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -587,29 +546,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11)
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11')
             ->willThrowException(new \App\Exception\ApiException('Could not execute transition 11 for issue "TPW-35".', 'HTTP 400: Bad Request', 400));
 
         $this->prompt->expects($this->once())
@@ -637,29 +589,22 @@ class ItemTransitionHandlerTest extends CommandTestCase
         );
 
         $transitions = [
-            [
-                'id' => 11,
-                'name' => 'Start Progress',
-                'to' => [
-                    'name' => 'In Progress',
-                    'statusCategory' => ['key' => 'in_progress', 'name' => 'In Progress'],
-                ],
-            ],
+            new StateChange('11', 'Start Progress', 'In Progress'),
         ];
 
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->jiraService->expects($this->once())
-            ->method('getTransitions')
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
             ->with('TPW-35')
             ->willReturn($transitions);
 
-        $this->jiraService->expects($this->once())
-            ->method('transitionIssue')
-            ->with('TPW-35', 11);
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('TPW-35', '11');
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -673,6 +618,48 @@ class ItemTransitionHandlerTest extends CommandTestCase
 
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('TPW-35');
+
+        $this->assertWorkflowExitCode($response, 0);
+    }
+
+    public function testHandleAppliesLinearWorkflowStateWithUuidId(): void
+    {
+        $workItem = new WorkItem(
+            id: 'issue-uuid-1',
+            key: 'SCI-123',
+            title: 'Linear transition',
+            status: 'Todo',
+            assignee: 'Ada',
+            description: '',
+            labels: [],
+            issueType: 'story',
+            components: [],
+        );
+
+        $transitions = [
+            new StateChange('state-started-uuid', 'In Progress', null, 'started'),
+            new StateChange('state-done-uuid', 'Done', null, 'completed'),
+        ];
+
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-123')
+            ->willReturn($workItem);
+
+        $this->issueTracker->expects($this->once())
+            ->method('listItemStateChanges')
+            ->with('SCI-123')
+            ->willReturn($transitions);
+
+        $this->issueTracker->expects($this->once())
+            ->method('applyStateChange')
+            ->with('SCI-123', 'state-started-uuid');
+
+        $this->prompt->expects($this->once())
+            ->method('choice')
+            ->willReturn('In Progress (ID: state-started-uuid)');
+
+        $response = $this->handler->handle('SCI-123');
 
         $this->assertWorkflowExitCode($response, 0);
     }
@@ -694,7 +681,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testResolveKeyWithNullPromptedKey(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -716,7 +703,7 @@ class ItemTransitionHandlerTest extends CommandTestCase
     public function testResolveKeyWithInvalidFormat(): void
     {
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();

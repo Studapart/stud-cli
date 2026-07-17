@@ -318,7 +318,7 @@ CHANGELOG;
     {
         $reflection = new \ReflectionClass($object);
         $method = $reflection->getMethod($methodName);
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         return $method->invokeArgs($object, $parameters);
     }

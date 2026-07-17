@@ -1,0 +1,11 @@
+{
+  "data": {
+    "issue": {
+      "id": "issue-uuid-1",
+      "identifier": "SCI-123",
+      "team": {
+        "key": "SCI"
+      }
+    }
+  }
+}

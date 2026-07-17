@@ -76,6 +76,24 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $this->assertSame('feat/SCI-123-title', $response->branch);
     }
 
+    public function testHandleSwitchesToLinearIdentifierBranchProviderAgnostic(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitBranchService->expects($this->once())
+            ->method('findLocalBranchesContainingIssueKey')
+            ->with('SCI-123')
+            ->willReturn(['feat/SCI-123-foo']);
+        $this->gitBranchService->expects($this->once())
+            ->method('switchBranch')
+            ->with('feat/SCI-123-foo');
+
+        $response = $this->handler->handle('SCI-123');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-123', $response->key);
+        $this->assertSame('feat/SCI-123-foo', $response->branch);
+    }
+
     public function testHandleFailsWithBranchesInQuietModeWhenMultipleBranchesMatch(): void
     {
         $matches = ['feat/SCI-123-a', 'fix/SCI-123-b'];

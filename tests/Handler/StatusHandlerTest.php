@@ -16,14 +16,14 @@ class StatusHandlerTest extends CommandTestCase
         parent::setUp();
 
         TestKernel::$gitRepository = $this->gitRepository;
-        TestKernel::$jiraService = $this->jiraService;
+        TestKernel::$issueTracker = $this->issueTracker;
         TestKernel::$translationService = $this->translationService;
-        $this->handler = new StatusHandler($this->gitRepository, $this->jiraService, $this->translationService);
+        $this->handler = new StatusHandler($this->gitRepository, $this->issueTracker, $this->translationService);
     }
 
     public function testHandle(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php\n D file2.php");
 
@@ -38,7 +38,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -48,7 +48,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithNoJiraKey(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn(null);
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn(null);
         $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -57,26 +57,48 @@ class StatusHandlerTest extends CommandTestCase
         $this->assertSame(0, $response->exitCode);
     }
 
-    public function testHandleWithJiraServiceException(): void
+    public function testHandleWithJiraApiClientException(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->jiraService->method('getIssue')->willThrowException(new \Exception('Jira API error'));
+        $this->issueTracker->method('getIssue')->willThrowException(new \Exception('Jira API error'));
 
         $response = $this->handler->handle();
 
         $this->assertSame(0, $response->exitCode);
     }
 
-    public function testHandleWithJiraServiceApiException(): void
+    public function testHandleWithJiraApiClientApiException(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
-        $this->jiraService->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+        $this->issueTracker->method('getIssue')->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
+
+        $response = $this->handler->handle();
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertNotEmpty($response->entries);
+    }
+
+    public function testHandleUsesResolutionHintOnApiException(): void
+    {
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCIL-195');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('chore/SCIL-195-x');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+
+        $hint = \App\DTO\MessageRef::key('issue_tracker_provider.fetch_failed_prefix_matches_other', [
+            '%key%' => 'SCIL-195',
+            '%attempted%' => 'jira',
+            '%prefix%' => 'SCIL',
+            '%alternate%' => 'linear',
+        ]);
+        $this->issueTracker->method('getIssue')->willThrowException(
+            new \App\Exception\ApiException('not found', 'HTTP 404', 404, null, $hint),
+        );
 
         $response = $this->handler->handle();
 
@@ -86,7 +108,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithCleanWorkingDirectory(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');
 
@@ -101,7 +123,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 
@@ -110,7 +132,7 @@ class StatusHandlerTest extends CommandTestCase
 
     public function testHandleWithVerboseOutput(): void
     {
-        $this->gitRepository->method('getJiraKeyFromBranchName')->willReturn('TPW-35');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('TPW-35');
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
         $this->gitRepository->method('getPorcelainStatus')->willReturn(" M file1.php");
 
@@ -125,7 +147,7 @@ class StatusHandlerTest extends CommandTestCase
             issueType: 'story',
             components: ['my-scope']
         );
-        $this->jiraService->method('getIssue')->willReturn($workItem);
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
 
         $response = $this->handler->handle();
 

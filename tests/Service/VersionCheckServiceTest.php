@@ -3,7 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Service\FileSystem;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use App\Service\VersionCheckService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
@@ -289,7 +289,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('isNewerVersion');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertTrue($method->invoke($this->service, '1.2.0'));
         $this->assertTrue($method->invoke($this->service, 'v1.2.0'));
@@ -302,7 +302,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('isCacheFresh');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Fresh cache (1 hour ago)
         $freshCache = ['timestamp' => time() - 3600];
@@ -317,7 +317,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('getCachePath');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $originalHome = $_SERVER['HOME'] ?? null;
         unset($_SERVER['HOME']);
@@ -337,7 +337,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('getCachePath');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $tempDir = '/test/cache-dir';
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -363,7 +363,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('getCachePath');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $tempDir = '/test/cache-exists';
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -435,7 +435,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('readCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->service, '/nonexistent/path/file.json');
         $this->assertNull($result);
@@ -445,7 +445,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('readCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Create a mock FileSystem that throws RuntimeException when reading
         $mockFileSystem = $this->createMock(FileSystem::class);
@@ -468,7 +468,7 @@ class VersionCheckServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($service);
         $method = $reflection->getMethod('readCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($service, '/test/file.json');
         $this->assertNull($result);
@@ -478,7 +478,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('readCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $invalidJsonFile = '/test/invalid.json';
         $this->flysystem->write($invalidJsonFile, 'invalid json content');
@@ -491,7 +491,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('readCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $cacheFile = '/test/no-timestamp.json';
         $this->flysystem->write($cacheFile, json_encode(['latest_version' => '1.2.0']));
@@ -500,7 +500,7 @@ class VersionCheckServiceTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testCreateGithubProviderWithoutToken(): void
+    public function testCreateGithubGitHostingAdapterWithoutToken(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -512,24 +512,24 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
-        $method->setAccessible(true);
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithToken(): void
+    public function testCreateGithubGitHostingAdapterWithToken(): void
     {
         $reflection = new \ReflectionClass($this->service);
-        $method = $reflection->getMethod('createGithubProvider');
-        $method->setAccessible(true);
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $provider = $method->invoke($this->service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -541,14 +541,14 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
-        $method->setAccessible(true);
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithoutTokenAndWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutTokenAndWithoutHttpClient(): void
     {
         $service = new VersionCheckService(
             self::REPO_OWNER,
@@ -560,18 +560,18 @@ class VersionCheckServiceTest extends TestCase
         );
 
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('createGithubProvider');
-        $method->setAccessible(true);
+        $method = $reflection->getMethod('createGithubGitHostingAdapter');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $provider = $method->invoke($service);
-        $this->assertInstanceOf(GithubProvider::class, $provider);
+        $this->assertInstanceOf(GithubGitHostingAdapter::class, $provider);
     }
 
     public function testFetchLatestVersionFromGitHubWithNoTagName(): void
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('fetchLatestVersionFromGitHub');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Override HOME
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -671,7 +671,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('writeCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $testCacheFile = '/test/write.json';
         $this->flysystem->createDirectory(dirname($testCacheFile));
@@ -688,7 +688,7 @@ class VersionCheckServiceTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('writeCache');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $testCacheFile = '/test/write-null.json';
         $this->flysystem->createDirectory(dirname($testCacheFile));
@@ -706,7 +706,7 @@ class VersionCheckServiceTest extends TestCase
         // Test lines 69-70: RuntimeException when mkdir() fails
         $reflection = new \ReflectionClass($this->service);
         $method = $reflection->getMethod('getCachePath');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $tempDir = '/test/mkdir-fails';
         $originalHome = $_SERVER['HOME'] ?? null;
@@ -730,7 +730,7 @@ class VersionCheckServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($service);
         $method = $reflection->getMethod('getCachePath');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         try {
             $this->expectException(\RuntimeException::class);

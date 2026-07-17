@@ -1,0 +1,14 @@
+{
+  "data": {
+    "fileUpload": {
+      "success": true,
+      "uploadFile": {
+        "uploadUrl": "MOCK_UPLOAD_URL",
+        "assetUrl": "https://public.linear.app/assets/report.md",
+        "headers": [
+          { "key": "Content-Type", "value": "text/plain" }
+        ]
+      }
+    }
+  }
+}

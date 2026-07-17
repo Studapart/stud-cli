@@ -3,7 +3,7 @@
 `stud-cli` groups daily work into a few focused command areas.
 
 - [Workflow playbook](workflow-playbook.md): visual idea-to-PR workflow and command recipes.
-- [Jira work items](jira-work-items.md): list, show, create, update, download attachments, and transition work items.
+- [Work items](work-items.md): Jira and Linear — search, saved views, list/show/create/update, attachments, transitions, and project discovery.
 - [Git workflow](git-workflow.md): start branches, commit, push, sync, rename, and clean branches.
 - [Pull requests](pull-requests.md): submit work, comment, and inspect PR/MR feedback.
 - [Confluence](confluence.md): push markdown pages and show Confluence content.

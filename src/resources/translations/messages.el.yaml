@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -40,6 +41,24 @@ config:
       multiple_tokens_note: 'Σημείωση: Μπορείτε να ρυθμίσετε και τα δύο tokens, ή μόνο αυτά που χρειάζεστε. Ο παροχέας θα ρυθμιστεί ανά αποθετήριο.'
       github_token_prompt: Εισάγετε το PAT GitHub σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
       gitlab_token_prompt: Εισάγετε το PAT GitLab σας (αφήστε κενό για να διατηρήσετε το υπάρχον ή παραλείψτε)
+    git_provider:
+      title: Επιλογή παρόχου Git
+      menu: "0 GitHub · 1 GitLab · 2 Και τα δύο"
+      prompt: Ρύθμιση παρόχου Git
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Και τα δύο"
+    issue_tracker_provider:
+      title: Επιλογή διαχείρισης έργου
+      menu: "0 Jira · 1 Linear · 2 Και τα δύο"
+      prompt: Ρύθμιση διαχείρισης έργου
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Και τα δύο"
+    linear:
+      title: Ρύθμιση Linear
+      description: "Ρυθμίστε την πρόσβαση στο API του Linear. Απαιτείται μόνο αν επιλέξατε Linear."
+      api_key_prompt: "Εισαγάγετε το κλειδί API του Linear (αφήστε κενό για να διατηρήσετε το υπάρχον)"
     jira_transition:
       title: Ρύθμιση Μετάβασης Jira
       description: Ενεργοποίηση αυτόματης μετάβασης σε 'Σε Εξέλιξη' κατά την έναρξη εργασίας σε ένα θέμα.
@@ -70,9 +89,20 @@ config:
     section_title: "Επικύρωση ρυθμίσεων"
     label_jira: "Jira"
     label_git_provider: "Πάροχος Git"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Αποτυχία"
     status_skipped: "Παραλείφθηκε"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Το Jira δεν έχει ρυθμιστεί."
+    error_git_not_configured: "Ο πάροχος Git δεν έχει ρυθμιστεί."
+    error_jira_ping: "Αποτυχία σύνδεσης Jira: %error%"
+    error_git_ping: "Αποτυχία σύνδεσης παρόχου Git: %error%"
+    error_linear_not_configured: "Το Linear δεν έχει ρυθμιστεί."
+    error_linear_ping: "Αποτυχία σύνδεσης Linear: %error%"
   project_init:
     section_title: "Ρύθμιση έργου"
     not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."
@@ -80,6 +110,8 @@ config:
     reserved_keys: "Αυτά τα κλειδιά δεν μπορούν να οριστούν με αυτή την εντολή: %keys%"
     invalid_git_provider: "Το gitProvider πρέπει να είναι github ή gitlab."
     invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
+    invalid_issue_tracker_provider: "Το issueTrackerProvider πρέπει να είναι jira, linear ή auto."
+    invalid_linear_type_branch_prefixes: "Το linearTypeBranchPrefixes πρέπει να είναι χάρτης μη κενών ετικετών τύπου σε μη κενά προθέματα κλάδων."
     base_branch_error: "%message%"
     interactive_title: "Ρύθμιση stud έργου"
     interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
@@ -94,6 +126,20 @@ config:
     prompt_github_token: "Διακριτικό GitHub για αυτό το αποθετήριο (κρυφό)"
     prompt_gitlab_token_hint: "Διακριτικό GitLab: αφήστε κενό για παράλειψη· πληκτρολογήστε '.' για να κρατήσετε το υπάρχον διακριτικό."
     prompt_gitlab_token: "Διακριτικό GitLab για αυτό το αποθετήριο (κρυφό)"
+    prompt_issue_tracker_provider: "Πάροχος work-item για αυτό το αποθετήριο (όταν η καθολική ρύθμιση υποστηρίζει Jira και Linear)"
+    prompt_linear_team_key: "Κλειδί ομάδας Linear (προαιρετικό· προεπιλογή κλειδί έργου Jira όταν κοινό)"
+    prompt_linear_start_state_id: "ID κατάστασης workflow Linear για items:start (προαιρετικό)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear για αντιστοίχιση προθεμάτων κλάδων (προαιρετικό)"
+    picker_skip: "Παράλειψη (αφήστε κενό)"
+    prompt_select_transition: "Επιλέξτε cached Jira transition για items:start"
+    prompt_select_linear_start_state: "Επιλέξτε Linear start state για items:start"
+    prompt_select_linear_label_group: "Επιλέξτε Linear LabelGroup για αντιστοίχιση προθεμάτων κλάδων"
+    prompt_linear_branch_prefix: "Πρόθεμα κλάδου για ετικέτα \"%label%\" (προαιρετικό)"
+    confirm_linear_branch_prefix_map: "Αποθήκευση αυτού του χάρτη προθεμάτων κλάδων;"
+    linear_branch_prefix_summary: "  %label% → %prefix%"
+    workflow_fetch_failed: "Αποτυχία φόρτωσης metadata workflow: %error%"
+    labels_fetch_failed: "Αποτυχία φόρτωσης ομάδων ετικετών: %error%"
+    no_labels_in_group: "Δεν βρέθηκαν θυγατρικές ετικέτες στο επιλεγμένο LabelGroup."
     status_updated: "Η ρύθμιση έργου ενημερώθηκε (.git/stud.config)."
     status_unchanged: "Δεν εγγράφηκαν αλλαγές (η ρύθμιση παρέμεινε ίδια)."
     failed: "Η ενημέρωση ρύθμισης έργου απέτυχε."
@@ -116,12 +162,16 @@ config:
   base_branch_saved: "Βασικός κλάδος ρυθμισμένος: %branch%"
   base_branch_invalid: Ο βασικός κλάδος '%branch%' δεν υπάρχει στο απομακρυσμένο. Παρακαλώ ελέγξτε το όνομα του κλάδου.
   base_branch_required: Ο βασικός κλάδος είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο βασικό κλάδο.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Ο παροχέας Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
   git_provider_prompt: Επιλέξτε τον παροχέα Git για αυτό το αποθετήριο
   git_provider_detected: "Ανιχνεύτηκε παροχέας Git: %provider%"
   git_provider_saving: Αποθήκευση ρύθμισης παροχέα Git...
   git_provider_saved: "Παροχέας Git ρυθμισμένος: %provider%"
   git_provider_required: Ο παροχέας Git είναι απαραίτητος. Η εντολή δεν μπορεί να συνεχίσει χωρίς έγκυρο παροχέα Git.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Το token Git δεν έχει ρυθμιστεί για αυτό το αποθετήριο.
   git_token_prompt: Εισάγετε το PAT %provider% σας (αφήστε κενό για παράλειψη)
   git_token_saving: Αποθήκευση ρύθμισης token Git...
@@ -145,7 +195,23 @@ config:
     version_updated: "Η έκδοση μετανάστευσης ενημερώθηκε σε %version%"
   missing_global_key: "Λείπει το απαιτούμενο κλειδί καθολικής διαμόρφωσης: %key%"
   missing_project_key: "Λείπει το απαιτούμενο κλειδί διαμόρφωσης έργου: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Αυτόματη ανίχνευση %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Έναρξη εργασίας στο %key%
@@ -166,6 +232,15 @@ item:
     transition_success: ✅ Το θέμα %key% μεταφέρθηκε σε 'Σε Εξέλιξη'
     transition_error: 'Αποτυχία λήψης μεταβάσεων: %error%'
     transition_exec_error: 'Αποτυχία εκτέλεσης μετάβασης: %error%. Συνέχιση με δημιουργία κλάδου.'
+    linear_no_type_label: 'Δεν βρέθηκε ετικέτα τύπου Linear στο θέμα· χρησιμοποιείται προεπιλεγμένο πρόθεμα feat/.'
+    linear_unknown_type_label: 'Η ετικέτα τύπου Linear «%label%» δεν έχει αντιστοίχιση προθέματος· χρησιμοποιείται feat/.'
+    linear_type_label_matched: 'Χρήση προθέματος %prefix% από ετικέτα τύπου Linear %label%.'
+    using_cached_linear_state: 'Χρήση αποθηκευμένου ID αρχικής κατάστασης Linear: %id%'
+    no_cached_linear_state_agent: 'Δεν υπάρχει αποθηκευμένη αρχική κατάσταση Linear για το issue %key%· παράλειψη μετάβασης κατάστασης σε λειτουργία agent.'
+    no_linear_states: 'Δεν υπάρχουν διαθέσιμες καταστάσεις workflow για το issue %key%· παράλειψη μετάβασης κατάστασης.'
+    select_linear_state: 'Επιλέξτε την κατάσταση workflow Linear που θα εφαρμοστεί κατά την έναρξη:'
+    save_linear_state: 'Θέλετε να αποθηκεύσετε αυτή την κατάσταση ως προεπιλεγμένη αρχική για το project;'
+    linear_state_saved: 'Η αρχική κατάσταση Linear αποθηκεύτηκε στη ρύθμιση project.'
     using_advanced_base: 'Η ρυθμισμένη βάση ''%configured%'' υστερεί σε σχέση με ''%resolved%''; χρήση ''%resolved%'' ως βάση.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -206,6 +281,8 @@ item:
     section: Λεπτομέρειες για το θέμα %key%
     fetching: 'Λήψη λεπτομερειών για το θέμα: %key%'
     error_not_found: Δεν ήταν δυνατή η εύρεση θέματος Jira με κλειδί "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
+    error_fetch: "Αποτυχία λήψης λεπτομερειών θέματος: %error%"
     label_key: Κλειδί
     label_title: Τίτλος
     label_status: Κατάσταση
@@ -222,7 +299,12 @@ item:
     col_filename: "Όνομα αρχείου"
     col_path: "Διαδρομή"
     error_key_or_url: "Δώστε κλειδί θέματος Jira ή --url με URL περιεχομένου συνημμένου Jira."
+    error_fetch: "Αποτυχία φόρτωσης συνημμένων: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Η διαδρομή δεν μπορεί να περιέχει τμήματα γονικού καταλόγου (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
+    error_cwd: "Δεν ήταν δυνατός ο προσδιορισμός του τρέχοντος καταλόγου εργασίας."
+    error_target_dir: "Αποτυχία δημιουργίας καταλόγου προορισμού: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Ανεβασμένα συνημμένα"
@@ -235,6 +317,7 @@ item:
     error_not_found: "Το αρχείο δεν βρέθηκε."
     error_not_file: "Η διαδρομή δεν είναι αναγνώσιμο αρχείο."
     error_cwd: "Δεν ήταν δυνατός ο προσδιορισμός του τρέχοντος καταλόγου εργασίας."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
@@ -247,11 +330,15 @@ item:
     prompt_custom_field: Value for "%name%" (required)
     prompt_issue_type_choice: Issue type
     error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: Summary is required. Set --summary/-m or run interactively.
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -280,11 +367,46 @@ item:
     error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
     no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
     error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
+issue_tracker_provider:
+  missing_linear_api_key: 'Επιλέχθηκε Linear αλλά το LINEAR_API_KEY δεν έχει ρυθμιστεί. Εκτελέστε "stud config:init" ή ορίστε LINEAR_API_KEY στο ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Επιλέχθηκε Jira αλλά τα διαπιστευτήρια Jira δεν έχουν ρυθμιστεί. Εκτελέστε "stud config:init".'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
+  not_configured: 'Δεν έχει ρυθμιστεί πάροχος work-item. Εκτελέστε "stud config:init" για ρύθμιση Jira ή Linear.'
+  ambiguous_prefix: 'Το πρόθεμα κλειδιού %prefix% ταιριάζει και με Jira και με Linear. Χρησιμοποιήστε --provider ή ορίστε διαφορετικά projectKey και linearTeamKey στο .git/stud.config.'
+  unknown_prefix: 'Το πρόθεμα κλειδιού %prefix% δεν ταιριάζει με τα ρυθμισμένα κλειδιά (%configuredKeys%). Χρησιμοποιήστε --provider ή ορίστε issueTrackerProvider στο .git/stud.config.'
+  auto_requires_issue_key: 'Το issueTrackerProvider είναι auto αλλά δεν δόθηκε issue key για ανάλυση παρόχου. Δώστε issue key ή ορίστε issueTrackerProvider σε jira ή linear.'
+  invalid_override: 'Μη έγκυρη υπέρβαση παρόχου %value%. Επιτρεπόμενες τιμές: jira, linear.'
+  unknown_resolved: 'Άγνωστος resolved work-item provider %value%. Αναμενόταν jira ή linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Λήψη Έργων Jira
     error_fetch: 'Αποτυχία λήψης έργων: %error%'
     no_projects: Δεν βρέθηκαν έργα.
+  workflow:
+    section: Καταστάσεις workflow έργου
+    no_state_changes: Δεν βρέθηκαν αλλαγές κατάστασης για το έργο %project%.
+    error_ambiguous_provider: Το issueTrackerProvider είναι ασαφές. Ορίστε jira ή linear στο .git/stud.config ή εκτελέστε stud config:project-init.
+    error_no_provider: Δεν έχει ρυθμιστεί πάροχος work-item. Εκτελέστε stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
+    column_id: ID
+    column_name: Όνομα
+    column_target_status: Κατάσταση προορισμού
+    column_type: Τύπος
+    column_provider: Πάροχος
+  labels:
+    section: Ομάδες ετικετών έργου
+    labels_not_supported_for_jira: Η ανακάλυψη ομάδων ετικετών δεν είναι διαθέσιμη για Jira. Χρησιμοποιήστε Linear ή ρυθμίστε χειροκίνητα το linearTypeLabelGroupId.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
+    error_fetch: "Failed to fetch project label groups: %error%"
+    no_label_groups: Δεν βρέθηκαν ομάδες ετικετών για το έργο %project%.
+    column_group_id: ID ομάδας
+    column_group_name: Όνομα ομάδας
+    column_label_id: ID ετικέτας
+    column_label_name: Όνομα ετικέτας
+    column_color: Χρώμα
 search:
   section: Αναζήτηση θεμάτων Jira με JQL
   jql_query: 'JQL Query: %jql%'
@@ -295,6 +417,7 @@ filter:
     section: Λήψη θεμάτων από το φίλτρο '%filterName%'
     jql_query: 'JQL Query: %jql%'
     error_fetch: 'Αποτυχία λήψης θεμάτων από το φίλτρο: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Δεν βρέθηκαν θέματα στο φίλτρο '%filterName%'.
   list:
     section: Λήψη φίλτρων Jira
@@ -363,11 +486,13 @@ submit:
     Δοκιμάστε να εκτελέσετε ''stud please'' για force-push.'
   finding_commit: Εύρεση πρώτου λογικού commit για χρήση σε λεπτομέρειες PR...
   fetching_jira: 'Λήψη θέματος Jira για το σώμα PR: %key%'
+  fetching_issue: "Ανάκτηση work item για το σώμα PR: %key%"
   error_no_logical: Δεν ήταν δυνατή η εύρεση λογικού commit σε αυτόν τον κλάδο. Δεν μπορεί να δημιουργηθεί PR.
   error_no_jira_key: Δεν ήταν δυνατή η ανάλυση κλειδιού Jira από το μήνυμα commit. Δεν μπορεί να δημιουργηθεί PR.
   warning_jira_fetch: 'Δεν ήταν δυνατή η λήψη λεπτομερειών θέματος Jira για το σώμα PR: %error%
 
     Επιστροφή σε απλό σύνδεσμο.'
+  warning_issue_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών work item για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
   creating: Δημιουργία Pull Request...
   success_created: '✅ Pull Request δημιουργήθηκε: %url%'
   warning_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.
@@ -654,6 +779,7 @@ table:
   key: Κλειδί
   status: Κατάσταση
   summary: Περίληψη
+  provider: "Provider"
   name: Όνομα
   command: Εντολή
   alias: Ψευδώνυμο
@@ -676,18 +802,20 @@ help:
   category_git_workflow: Ροή Εργασίας Git
   category_release_commands: Εντολές Release
   example_prefix: 'Παράδειγμα: %example%'
-  command_config_init: Διαδραστικός οδηγός για τη ρύθμιση των λεπτομερειών σύνδεσης Jira & Git.
+  command_config_init: Διαδραστικός οδηγός για παρόχους Git, work-item (Jira/Linear) και διαπιστευτήρια.
   command_config_show: "Εμφάνιση τρέχουσας ρύθμισης (καθολική και έργου) με αποκρυμμένα μυστικά· ασφαλές για κοινοποίηση."
-  command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira και ο πάροχος Git είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira ή --skip-git για μερικούς ελέγχους."
-  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Χρησιμοποιήστε σημαίες CLI, stud config:project-init --agent με JSON, ή διαδραστικά χωρίς σημαίες. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
-  option_config_project_init_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης με transition-id)"
-  option_config_project_init_base_branch: "Βασικός κλάδος· ελέγχεται η ύπαρξη στο origin εκτός αν έχει οριστεί --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Να μην ελέγχεται αν ο βασικός κλάδος υπάρχει στο origin"
+  command_config_validate: "Επικύρωση ότι η ρύθμιση υπάρχει και ότι το Jira, ο πάροχος Git και το Linear είναι προσβάσιμα. Χρησιμοποιήστε --skip-jira, --skip-git ή --skip-linear για μερικούς ελέγχους."
+  command_config_project_init: "Δημιουργεί ή συγχωνεύει το .git/stud.config (κλειδί έργου, βασικός κλάδος, πάροχος, διακριτικά, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Εκτελέστε διαδραστικά ή χρησιμοποιήστε stud config:project-init --agent με JSON. Τα άγνωστα κλειδιά agent απορρίπτονται· το migration_version είναι δεσμευμένο."
   command_completion: Δημιουργεί scripts αυτόματης συμπλήρωσης για bash ή zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Λίστα όλων των ορατών έργων Jira.
+  command_projects_workflow: Λίστα μεταβάσεων workflow (Jira) ή καταστάσεων (Linear) για ένα έργο.
+  option_projects_workflow_project: Κλειδί έργου ή ομάδας (π.χ. SCI)
+  command_projects_labels: Λίστα Linear LabelGroups και θυγατρικών ετικετών για ομάδα έργου.
+  option_projects_labels_project: Κλειδί έργου ή ομάδας (π.χ. SCI)
+  option_projects_labels_groups_only: Επιστροφή μόνο LabelGroups· αποκλεισμός ορφανών ετικετών εκτός ομάδας
   command_items_list: Λίστα ενεργών στοιχείων εργασίας (ο πίνακας ελέγχου σας).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
@@ -757,6 +885,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Παράλειψη ελέγχου συνδεσιμότητας Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

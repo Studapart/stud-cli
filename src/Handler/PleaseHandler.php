@@ -6,10 +6,11 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 
-class PleaseHandler
+class PleaseHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

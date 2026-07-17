@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.0] - 2026-07-17
+
+### Changed
+
+- **Provider-neutral PR body (submit):** PR description uses work-item URL when available (Linear `url`, else Jira browse link); link label is **Issue** not **Jira Issue**; markdown descriptions from Linear are not HTML-converted.
+- **Pinned provider vs issue-key prefix:** when `issueTrackerProvider` is pinned (`jira`/`linear`), stud still tries that tracker first for any key (no silent switch). If the fetch fails and the key prefix matches the other configured tracker, errors suggest `--provider` or `issueTrackerProvider: auto`. Dual-PM fetch failures that match neither scope also suggest `--provider`. Documented in `documentation/features/work-items.md`.
+- **Dead code cleanup (SCIL-195):** remove unused `IssueTrackerPort::listWorkflowMetadata` / `listTypeLabels` (Linear stubs and Jira-only adapter methods with no production callers); remove deprecated `AgentModeSchemaGenerator::itemsCommandsWithProviderOverride()`. Operator discovery unchanged via `projects:workflow` and `projects:labels`.
+
+### Fixed
+
+- **Linear issue show (attachments):** stop querying non-existent GraphQL `Attachment.size` / `Attachment.contentType` fields so `items:show` / `items:start` / commit-from-issue work on Linear again.
+- **Unified dual-PM provider resolution (SCI-197):** central `IssueTrackerProviderResolver` implements R1–R5 for guard and runtime; guard peeks issue key, branch key, project scope, and attachment URL before blocking; `--provider` / agent `provider` on all in-scope work-item and git-workflow commands; dual-aggregate defaults for `filters:list` and `projects:list`; provider-neutral `items:show` errors; `items:search` blocks under dual PM without override.
+- **Issue-tracker provider UX (SCI-196):** readiness guard respects `--provider` and agent JSON `provider` before blocking; `stud ls` with `issueTrackerProvider: auto` queries Jira and Linear together; config remediation uses choice prompts with persist hints; piped stdin no longer corrupts `.git/stud.config`; agent/quiet ambiguous-provider errors are actionable.
+- **ReflectionProperty deprecation (SCI-192):** add `ReflectionAccessor::ensureAccessible()` and route test reflection through it so public members skip deprecated `setAccessible(true)` on PHP 8.1+; production `FileSystem` / `ColorHelper` paths avoid reflection where possible.
+- **Linear upload/download agent mode (SCI-181):** `items:upload` and `items:download` use optional Jira config for responders so Linear-only setups no longer hard-exit before agent JSON output.
+- **ADR-023 exception boundaries:** `ItemDownloadHandler` and `ConfigValidateHandler` wrap integration failures in `MessageRef`; architecture tests ban raw `$e->getMessage()` errors in integration handlers and `MessageRef` in integration clients.
+- **Command guard (SCI-182 prep):** `IssueTrackerResolver` delegates to `IssueTrackerFactory::resolveType`, so `issueTrackerProvider: auto` with both PM providers resolves to Jira when Jira credentials exist — same as runtime `_get_issue_tracker`. Fixes false `missing required configuration key: issueTrackerProvider` on `stud submit`.
+
+### Added
+
+- **Dual-PM project config (SCI-194):** `linearTeamKey` in `config:project-init` (interactive + agent JSON); dual-`auto` wizard runs Jira and Linear metadata pickers; `projects:workflow` / `projects:labels` infer provider from `--project` against configured scope keys; Linear create uses `resolveLinearTeamKey`. `StudIssueKeys` for handler → port create/update bags aligned with `WorkItem` reads; `JiraIssueFieldKeys` replaces `IssueFieldBagKeys` as Jira REST protocol keys; `JiraStudFieldMapper` maps stud → Jira in `JiraIssueTrackerAdapter`; `LinearIssueFieldTranslator` reads stud keys; CLI/agent JSON unchanged (`summary` flag stays).
+ `AI.md` documents `issueTrackerProvider`, `--provider` / agent JSON `provider`, and discovery via `projects:workflow` / `projects:labels`; work-item writer prompt and stud agent recipes use provider-neutral `stud sh` / `stud ic` examples.
+- **Multi-provider user documentation (SCI-189):** expand `documentation/setup/configuration.md` for `ISSUE_TRACKER_PROVIDERS`, `issueTrackerProvider`, Linear setup, and `--provider`; merge Jira/Linear guidance into `documentation/features/work-items.md`; provider-agnostic workflow playbook; remove `jira-work-items.md`; cross-links to GitHub Actions.
+- **Linear label sync workflow (SCI-188):** `.github/workflows/linear-label-sync.yml` syncs mapped GitHub PR labels to Linear via `items:show` / `items:update` with `provider: linear`, repository variable `STUD_LINEAR_LABEL_MAP`, and the same preserve-unmanaged-labels merge semantics as Jira; documented in `documentation/github-actions.md`; jq merge covered by `LabelSyncMergeAlgorithmTest`.
+- **stud-cli-setup Linear CI (SCI-187):** composite action accepts optional `linear-api-key` and `work-item-providers`; Jira inputs conditional; writes `LINEAR_API_KEY` and `ISSUE_TRACKER_PROVIDERS`; validate step skips Jira when only Linear is configured; Linear-only workflow example in `documentation/github-actions.md`.
+- **Dual-provider errors and config:show (SCI-185):** `linearTeamKey` whitelisted for `config:show -k`; issue-tracker resolution failures in agent mode return a single actionable JSON `error` (no logger stderr); translation-backed `MessageRef` errors for ambiguous prefix, unknown prefix, invalid override, and missing credentials.
+- **Issue-tracker naming cleanup (SCI-185):** rename remaining provider-layer symbols from `WorkItem*` to issue-tracker vocabulary; guard capability markers live under `Capability\IssueTracker\{Jira,Linear}Aware` and `Capability\GitHosting\{Github,Gitlab}Aware`; `IssueListJsonSerializer` and guard context `issueTrackerProviders` fields; rename YAML keys to `issueTrackerProvider` / `ISSUE_TRACKER_PROVIDERS` with migrations and legacy read paths; agent JSON canonical keys `issueTrackerProvider` / `issueTrackerProviders` with read aliases for deprecated names; `WorkItem` DTO unchanged per ADR-023.
+- **Provider override on essential items commands (SCI-184):** `--provider jira|linear` and agent JSON `provider` on `items:show`, `items:create`, `items:update`, `items:transition`, `items:start`, and `items:list`; explicit `auto` override rejected with allowed-values error; agent help schema documents `provider` as `jira` or `linear`.
+- **Issue-tracker provider naming (SCI-183):** merge `WorkItemProvider` and `WorkItemProviderId` into `IssueTrackerProvider` (`Jira`, `Linear`, `Auto`); rename `WorkItemProviderResolutionException` to `IssueTrackerResolutionException`; translation domain `issue_tracker_provider.*`; `GlobalIssueTrackerProviderMenu`. YAML keys `workItemProvider` / `WORK_ITEM_PROVIDERS` and agent JSON `workItemProviders` unchanged for compatibility.
+- **Dual PM provider resolution (SCI-183):** `IssueTrackerFactory` resolves issue-tracker provider via override, project `workItemProvider`, single configured provider, or `auto` issue-key prefix match against `projectKey` / `linearTeamKey`; `items:*` commands pass issue keys into `_get_issue_tracker()` for auto resolution.
+- **Linear attachment download (SCI-180):** `LinearAttachmentService` lists issue attachments via GraphQL and downloads from allowlisted Linear asset hosts with API key auth; `LinearIssueTrackerAdapter::listAttachments` / `downloadAttachment` delegate so `stud items:download` works for Linear.
+- **Linear attachment upload (SCI-179):** `LinearAttachmentService` runs `fileUpload` → signed PUT (all response headers) → `attachmentCreate`; `LinearIssueTrackerAdapter::uploadAttachment` delegates so `stud items:upload` works for Linear; write inputs use `LinearAttachmentMutationKeys` (title reuses `LinearIssueMutationKeys::TITLE`).
+- **Linear GraphQL client (SCI-165):** `LinearGraphqlClient` posts to `https://api.linear.app/graphql` with raw `LINEAR_API_KEY` auth, GraphQL error mapping, and `TestKernel` override; `LinearApiClient` delegates HTTP to the shared client.
+- **Linear issue mapper (SCI-166):** `LinearIssueMapper` maps Linear GraphQL issue nodes to `WorkItem` (Markdown description, attachments, priority labels, type-group `issueType`).
+- **Linear issue create/update (SCI-167):** `LinearIssueTrackerAdapter` implements `create` and `update` via `issueCreate` / `issueUpdate`; `LinearIssueFieldTranslator` maps Jira-shaped handler fields to Linear mutation input; `items:create` skips Jira createmeta when provider implements `IssueTrackerLabelGroupsCapable`; `ItemCreateProjectResolver` falls back to Linear team lookup when Jira project is missing.
+
+### Changed
+
+- **Issue-tracker provider slugs:** `IssueTrackerProvider` enum is the single source for `jira` / `linear` / `auto` tokens; factory, resolver, project-init, workflow normalizer, and metadata prompts use it instead of scattered literals.
+- **Issue-tracker credential checks (SCI-183):** `GlobalStudConfigKeys::hasCredentialsFor()` and `GlobalConfigProviderResolver::collectsIssueTracker()` replace per-vendor `if` chains in `IssueTrackerFactory::assertCredentials`, single-provider resolution, and `ConfigProviderCredentialWarnings`.
+- **Issue field bag keys (SCI-167):** `IssueFieldBagKeys` centralizes Jira-shaped handler field bag keys; `LinearIssueMutationKeys` centralizes Linear GraphQL mutation input keys; Linear team lookup fallbacks log at verbose when Jira project or primary GraphQL team query fails.
+- **Linear list/show integration (SCI-168):** `LinearApiClient` implements issue show, assigned-active list, teams list, and viewer ping; agent-mode integration tests use mocked GraphQL fixtures without network.
+- **Config YAML keys:** `GlobalStudConfigKeys` and `ProjectStudConfigKeys` centralize global/project config key names; field maps and credential checks use them as single source of truth.
+- **Linear workflow transition (SCI-170):** `LinearIssueTrackerAdapter` lists team workflow states and applies `issueUpdate(stateId)`; `ItemTransitionHandler` accepts string state ids (Linear UUIDs and Jira numeric ids).
+- **Linear type branch prefixes (SCI-171):** `LinearTypeLabelResolver` maps LabelGroup type labels to `fix|feat|chore` prefixes on start and resolves create `--type` to label ids under `linearTypeLabelGroupId`; config validation errors use `MessageRef` via `LinearTypeLabelException` and `StudConfigException`.
+- **Linear start and takeover (SCI-172):** `LinearIssueTrackerAdapter::assign` and `ItemStartHandler` apply cached or prompted `linearStartStateId` before branch creation; agent mode skips state transition when uncached; takeover assign works via provider.
+- **Linear branch switch (SCI-173):** Confirmed provider-agnostic `stud switch` for Linear identifiers (`feat/SCI-123-*`); added explicit test coverage for regex and branch lookup; no Linear API calls in switch path.
+- **Git branch issue key:** Renamed `GitRepository::getJiraKeyFromBranchName()` to `getIssueKeyFromBranchName()` (provider-agnostic; Jira and Linear identifiers).
+- **Linear issue search (SCI-175):** `LinearIssueTrackerAdapter::search` calls GraphQL `searchIssues(term:)`; agent JSON echoes term in `jql`; `IssueListJsonSerializer` uses Linear issue URLs when present on `WorkItem`.
+- **Linear custom views (SCI-176):** `LinearIssueTrackerAdapter::listFiltersOrViews` and `runFilterOrView` map Linear `customViews` to `filters:list` / `filters:show`; show executes view `filterData` via GraphQL issue filter query; `filters:show` uses optional Jira config when Linear-only.
+- **Work-item search docs (SCI-177):** Added `documentation/features/work-items.md` documenting JQL (Jira-only) vs Linear plain-term search, custom views vs saved filters, and agent `jql` key semantics; updated index, README, configuration, and automation cross-links.
+
+- **ADR-023 follow-up (SCI-163):** Architecture test bans integration client imports in handlers; `ConfluenceService` → `ConfluenceApiClient`, `LinearMetadataClient` → `LinearApiClient`; discovery handlers use `IssueTrackerPort` via `IssueTrackerPortSupplier`; Linear-only `listLabelGroups` moved to optional `IssueTrackerLabelGroupsCapable` (removed from Jira adapter stub); remaining handler errors use `MessageRef`; ADR-023 §5/§8/§9 updated.
+
+- **ADR-023 integration layering (SCI-162):** Full Phases A–F — `JiraAssignedActiveJqlBuilder` + `JiraStatusCategory` for shared JQL; work-item handler errors use `MessageRef`; renamed ports/adapters/clients (`IssueTrackerPort`, `JiraIssueTrackerAdapter`, `JiraApiClient`, `GitHostingPort`, `GithubGitHostingAdapter`, `GitLabGitHostingAdapter`, `WikiPort`, `ConfluenceWikiAdapter`); castor locators `_get_issue_tracker`, `_get_jira_api_client`, `_get_git_hosting`, `_get_wiki_port`; ADR-021 cross-links ADR-023. Config enum `App\Enum\WorkItemProvider` unchanged.
+- **Work-item provider (SCI-162):** Work-item handlers depend on `IssueTrackerPort`; optional `--provider` / agent `provider` on essential `items:*`; `config:validate` uses `ping()`.
+- **Work-item provider (SCI-161):** `JiraIssueTrackerAdapter` delegates all `IssueTrackerPort` methods to `JiraApiClient` and `JiraAttachmentService`; `listAssignedActive` encapsulates dashboard JQL.
+
 ## [3.19.1] - 2026-06-17
 
 ### Fixed
@@ -233,7 +291,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **README:** User installation restructured: Quick Install (one-liner script) > Manual Install > Global Install > Updating. PHP 8.2+ installation instructions added for Ubuntu/Debian, macOS, Fedora/RHEL, and WSL2. [SCI-73]
 - **Code quality:** Reduce complexity violations to meet CONVENTIONS (CC ≤ 10, CRAP ≤ 10) [SCI-68]
-  - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabProvider, PageViewConfig. No change to public API or user-visible behaviour.
+  - Refactored 23 methods across HelpService, SubmitHandler, ItemCreateHandler, CommitHandler, GitRepository, UpdateHandler, DescriptionFormatter, ItemStartHandler, PrCommentsResponder, InitHandler, MarkdownToAdfConverter, ItemTransitionHandler, ChangelogParser, GitLabGitHostingAdapter, PageViewConfig. No change to public API or user-visible behaviour.
 
 ### Added
 - **items:update:** New `stud items:update` (alias `stud iu`) command to update Jira issue fields (summary, description, and arbitrary fields via `--fields`) [SCI-72]
@@ -394,21 +452,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - GitLab support for Merge Requests and Git operations [SCI-43]
-  - Added `GitProviderInterface` to abstract GitHub and GitLab provider implementations
-  - Created `GitLabProvider` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
+  - Added `GitHostingPort` to abstract GitHub and GitLab provider implementations
+  - Created `GitLabGitHostingAdapter` class implementing all Git provider operations (create MR, find MR, add labels, create comments, etc.)
   - Refactored `GitRepository` to support both GitHub and GitLab URL parsing (SSH and HTTPS formats)
-  - Updated all handlers to use `GitProviderInterface` instead of concrete `GithubProvider`
-  - Added provider factory function `_get_git_provider()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
+  - Updated all handlers to use `GitHostingPort` instead of concrete `GithubGitHostingAdapter`
+  - Added provider factory function `_get_git_hosting()` in `castor.php` that creates appropriate provider based on `GIT_PROVIDER` config
   - Support for self-hosted GitLab instances via optional `GITLAB_INSTANCE_URL` config
   - All existing GitHub functionality remains intact (no regression)
-  - Comprehensive test coverage for GitLabProvider and updated GitRepository tests
+  - Comprehensive test coverage for GitLabGitHostingAdapter and updated GitRepository tests
   - Updated documentation with GitLab token setup and configuration instructions
 
 ### Optimized
 - Optimize PR lookups for branch management commands to reduce GitHub API calls [SCi-45]
   - `branches:list` and `branches:clean` now fetch all PRs once (1-2 API calls) instead of per-branch calls (20-40 calls)
-  - Added `GithubProvider::getAllPullRequests()` method with pagination support (handles 100+ PRs)
-  - Added `GithubProvider::hasNextPage()` helper to parse GitHub API Link headers for pagination
+  - Added `GithubGitHostingAdapter::getAllPullRequests()` method with pagination support (handles 100+ PRs)
+  - Added `GithubGitHostingAdapter::hasNextPage()` helper to parse GitHub API Link headers for pagination
   - `BranchListHandler` and `BranchCleanHandler` now use cached PR map for efficient lookups
   - Graceful fallback to per-branch API calls if bulk fetch fails
   - Maintains backward compatibility and handles edge cases (fork PRs, missing repo info)
@@ -418,8 +476,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Display technical error details from Git and API errors alongside user-friendly messages [SCI-41]
   - Created `GitException` and `ApiException` classes with `getTechnicalDetails()` method
   - `GitRepository::run()` now captures Git error output and throws `GitException` with technical details
-  - `JiraService` methods now throw `ApiException` with API response body and status code
-  - `GithubProvider` methods now throw `ApiException` with API response details
+  - `JiraApiClient` methods now throw `ApiException` with API response body and status code
+  - `GithubGitHostingAdapter` methods now throw `ApiException` with API response details
   - Added `Logger::errorWithDetails()` method to display both user-friendly and technical error messages
   - All handlers now catch `GitException` and `ApiException` and display both messages using `errorWithDetails()`
   - Technical details are truncated to 500 characters to avoid overwhelming output
@@ -440,8 +498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `stud branches:clean` (alias `bc`) interactively cleans up merged/stale branches with `--quiet` option for non-interactive mode
   - Add `--clean` option to `stud deploy` to clean up merged branches after deployment
   - GitRepository methods: `getAllLocalBranches()`, `isBranchMergedInto()`, `getAllRemoteBranches()`
-  - GithubProvider: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
-  - GithubProvider: `findPullRequestByBranchName()` helper method for finding PRs by branch name
+  - GithubGitHostingAdapter: `findPullRequestByBranch()` now accepts `state` parameter ('open', 'closed', 'all')
+  - GithubGitHostingAdapter: `findPullRequestByBranchName()` helper method for finding PRs by branch name
   - BranchListHandler and BranchCleanHandler following ADR pattern
   - Protected branches (develop, main, master) are never deleted by `branches:clean`
   - All user-facing text uses TranslationService
@@ -526,7 +584,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command prompts to rebase if local is behind remote (default yes, bypass if `--quiet`)
   - Command handles rebase failures gracefully with helpful suggestions
   - Command renames both local and remote branches when both exist
-  - Command detects associated Pull Request (if GithubProvider available)
+  - Command detects associated Pull Request (if GithubGitHostingAdapter available)
   - Command attempts to update PR head branch via GitHub API (may not be supported by GitHub)
   - Command adds comment to PR explaining the rename
   - Command handles PR update failures gracefully (warns but continues)
@@ -534,7 +592,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command asks for confirmation (default yes, bypass if `--quiet`)
   - Command suggests creating PR if none exists after rename
   - Added new GitRepository methods: `renameLocalBranch()`, `renameRemoteBranch()`, `getBranchCommitsAhead()`, `getBranchCommitsBehind()`, `canRebaseBranch()`
-  - Added new GithubProvider method: `updatePullRequestHead()`
+  - Added new GithubGitHostingAdapter method: `updatePullRequestHead()`
   - Added translation keys for branch rename handler in all supported languages
   - Full test coverage with unit tests following project conventions
   - Updated README.md with command documentation and usage examples
@@ -605,7 +663,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Priority column shows priority name (e.g., "High", "Medium", "Low") when available, empty string when not available (when column is visible)
   - Jira URL column displays full URL in format: {JIRA_URL}/browse/{key}
   - Added priority field to WorkItem DTO
-  - Updated JiraService to fetch and map priority field from Jira API
+  - Updated JiraApiClient to fetch and map priority field from Jira API
   - Added translation keys for priority, description, and jira_url in all supported languages
   - Full test coverage with unit tests following project conventions
 - Add filters:list command to display Jira filters [SCI-26]
@@ -655,7 +713,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.6.2] - 2025-12-01
 
 ### Fixed
-- Fix `JiraService::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
+- Fix `JiraApiClient::assignIssue` unassigning tickets by implementing required `/myself` lookup [SCI-19]
   - Added `getCurrentUserAccountId()` method that calls `/rest/api/3/myself` endpoint to retrieve the authenticated user's accountId
   - Updated `assignIssue()` to use the retrieved accountId instead of passing `null` when assigning to current user
   - Implemented caching to ensure the `/myself` API call is executed only once per application lifecycle
@@ -809,7 +867,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `stud update` command (alias: `stud up`) to check for and install new versions of the tool automatically.
-- Add `getLatestRelease()` method to `GithubProvider` service for fetching the latest GitHub release.
+- Add `getLatestRelease()` method to `GithubGitHostingAdapter` service for fetching the latest GitHub release.
 - Add "Updating" section to README.md with instructions for using `stud update`.
 
 ### Changed

@@ -28,7 +28,7 @@ class GitProjectConfigService
     }
 
     /**
-     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string}
+     * @return array{projectKey?: string, transitionId?: int, baseBranch?: string, gitProvider?: string, githubToken?: string, gitlabToken?: string, gitlabInstanceUrl?: string, JIRA_DEFAULT_PROJECT?: string, CONFLUENCE_DEFAULT_SPACE?: string, migration_version?: string, issueTrackerProvider?: string, linearTeamKey?: string, linearStartStateId?: string, linearTypeLabelGroupId?: string, linearTypeBranchPrefixes?: array<string, string>}
      */
     public function readProjectConfig(): array
     {
@@ -75,11 +75,16 @@ class GitProjectConfigService
 
     public function getProjectKeyFromIssueKey(string $issueKey): string
     {
+        return self::extractIssueKeyPrefix($issueKey);
+    }
+
+    public static function extractIssueKeyPrefix(string $issueKey): string
+    {
         if (preg_match('/^([A-Z]+)-\d+$/', strtoupper($issueKey), $matches)) {
             return $matches[1];
         }
 
-        throw new \RuntimeException("Invalid Jira issue key format: {$issueKey}");
+        throw new \RuntimeException("Invalid issue key format: {$issueKey}");
     }
 
     /**

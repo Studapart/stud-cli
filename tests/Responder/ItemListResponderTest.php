@@ -188,4 +188,69 @@ class ItemListResponderTest extends CommandTestCase
         $this->assertFalse($result->success);
         $this->assertSame('API error', $result->error);
     }
+
+    public function testRespondMultiProviderRendersProviderColumn(): void
+    {
+        $issues = [
+            new WorkItem('1', 'SCI-1', 'Jira issue', 'Open', 'user', 'desc', [], 'Story'),
+            new WorkItem('2', 'ENG-1', 'Linear issue', 'Open', 'user', 'desc', [], 'Story'),
+        ];
+        $response = ItemListResponse::success($issues, false, null, ['jira', 'linear'], true);
+
+        $this->io->expects($this->once())->method('section');
+        $this->io->expects($this->once())
+            ->method('table')
+            ->with(
+                $this->callback(static fn (array $headers): bool => in_array('table.provider', $headers, true)),
+                $this->anything(),
+            );
+
+        $this->responder->respond($this->io, $response);
+    }
+
+    public function testRespondSuppressesJqlCommentForMultiProvider(): void
+    {
+        $issue = new WorkItem('1', 'SCI-1', 'Title', 'Open', 'user', 'desc', [], 'Story');
+        $response = ItemListResponse::success([$issue], false, null, ['jira', 'linear'], true);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+
+        $responder->respond($io, $response);
+
+        $this->assertStringNotContainsString('JQL Query', $this->getOutput($io));
+    }
+
+    public function testRespondSuppressesJqlCommentForLinearOnly(): void
+    {
+        $issue = new WorkItem('1', 'ENG-1', 'Title', 'Open', 'user', 'desc', [], 'Story');
+        $response = ItemListResponse::success([$issue], false, null, ['linear'], false);
+        $io = $this->createSymfonyStyle(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERBOSE);
+        $responder = new ItemListResponder(new ResponderHelper($this->translationService, null), $this->jiraConfig, new \App\Service\Logger($io, []));
+
+        $responder->respond($io, $response);
+
+        $this->assertStringNotContainsString('JQL Query', $this->getOutput($io));
+    }
+
+    public function testRespondJsonIncludesProviderWhenMultiProvider(): void
+    {
+        $issue = new WorkItem('1', 'SCI-1', 'Test', 'Open', 'user', 'desc', [], 'Story');
+        $response = ItemListResponse::success([$issue], false, null, ['jira'], true);
+
+        $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
+
+        $this->assertNotNull($result);
+        $this->assertSame('jira', $result->data['issues'][0]['provider']);
+    }
+
+    public function testProviderLabelForIssueReturnsEmptyWhenKeyMissing(): void
+    {
+        $method = new \ReflectionMethod(ItemListResponder::class, 'providerLabelForIssue');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+        $response = ItemListResponse::success([], false, null, [], false);
+
+        $label = $method->invoke($this->responder, $response, 'missing-key');
+
+        $this->assertSame('', $label);
+    }
 }

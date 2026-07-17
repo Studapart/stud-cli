@@ -248,8 +248,7 @@ class MigrationRegistry
     {
         // @codeCoverageIgnoreStart
         // This method is tested indirectly through getPendingMigrations() and sortMigrations()
-        // Migration IDs are in format YYYYMMDDHHIISS001 (numeric strings)
-        // Simple string comparison works because they're zero-padded
+        // Migration IDs are 17-digit strings: YYYYMMDDHHIISSSSS (see ADR-007)
         return strcmp($id1, $id2);
         // @codeCoverageIgnoreEnd
     }

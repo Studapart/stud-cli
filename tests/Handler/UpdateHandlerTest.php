@@ -2896,7 +2896,7 @@ CHANGELOG;
         @unlink($tempFile);
     }
 
-    public function testCreateGithubProviderWithoutHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithoutHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2915,12 +2915,12 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithGitToken(): void
+    public function testCreateGithubGitHostingAdapterWithGitToken(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2939,20 +2939,20 @@ CHANGELOG;
             null // No httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithHttpClientProvided(): void
+    public function testCreateGithubGitHostingAdapterWithHttpClientProvided(): void
     {
         // Test the path where httpClient is provided (not null)
-        $provider = $this->callPrivateMethod($this->handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($this->handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
-    public function testCreateGithubProviderWithGitTokenAndHttpClient(): void
+    public function testCreateGithubGitHostingAdapterWithGitTokenAndHttpClient(): void
     {
         $changelogParser = $this->createMock(ChangelogParser::class);
         $logger = $this->createMock(\App\Service\Logger::class);
@@ -2971,9 +2971,9 @@ CHANGELOG;
             $this->httpClient // httpClient provided
         );
 
-        $provider = $this->callPrivateMethod($handler, 'createGithubProvider', ['studapart', 'stud-cli']);
+        $provider = $this->callPrivateMethod($handler, 'createGithubGitHostingAdapter', ['studapart', 'stud-cli']);
 
-        $this->assertInstanceOf(\App\Service\GithubProvider::class, $provider);
+        $this->assertInstanceOf(\App\Service\GithubGitHostingAdapter::class, $provider);
     }
 
     public function testFindPharAssetWithAssetMissingNameKey(): void
@@ -3056,7 +3056,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($testHandler, $io);
 
@@ -3133,7 +3133,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // In test environment, exceptions are gracefully handled and return 0
         // This prevents test failures due to filesystem or migration discovery issues
@@ -3419,7 +3419,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Should return 0 when there are no pending migrations (lines 281-283)
         // This tests the actual implementation with in-memory filesystem
@@ -3514,7 +3514,7 @@ CHANGELOG;
 
             $reflection = new \ReflectionClass($handler);
             $method = $reflection->getMethod('getConfigPath');
-            $method->setAccessible(true);
+            \App\Util\ReflectionAccessor::ensureAccessible($method);
             $result = $method->invoke($handler);
 
             // In test environment (STUD_CLI_TEST_MODE is defined), getConfigPath returns test path
@@ -3593,7 +3593,7 @@ CHANGELOG;
 
         $reflection = new \ReflectionClass($testHandler);
         $method = $reflection->getMethod('runPrerequisiteMigrations');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // In test environment, exceptions are gracefully handled and return 0
         // This prevents test failures due to filesystem or migration discovery issues

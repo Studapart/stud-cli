@@ -4,20 +4,29 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
+use App\DTO\WorkItem;
+use App\Enum\IssueTrackerProvider;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
+use App\Service\LinearTypeLabelResolver;
+use App\Service\Prompt\NonInteractivePromptService;
 use App\Service\Prompt\PromptInterface;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 
-class ItemStartHandler
+class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
     private WorkflowEntryRecorder $recorder;
 
@@ -27,11 +36,12 @@ class ItemStartHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly array $jiraConfig,
         private readonly PromptInterface $prompt,
+        private readonly LinearTypeLabelResolver $linearTypeLabelResolver = new LinearTypeLabelResolver(),
     ) {
         unset($_translator);
     }
@@ -45,29 +55,27 @@ class ItemStartHandler
         $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.fetching', ['key' => $key]), WorkflowChannel::Jira);
 
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->provider->getIssue($key);
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.error_not_found', ['key' => $key]),
+                $e->getResolutionHint() ?? MessageRef::key('item.start.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
 
             return $this->recorder->toResponse(1);
-        } catch (\Exception $e) {
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.error_not_found', ['key' => $key]));
-
-            return $this->recorder->toResponse(1);
         }
+
+        $projectConfig = $this->gitRepository->readProjectConfig();
 
         // Handle Jira transition if enabled
         if (! empty($this->jiraConfig['JIRA_TRANSITION_ENABLED'])) {
-            $this->handleTransition($key, $issue);
+            $this->handleTransition($key, $issue, $projectConfig);
             // All error handling is done inside handleTransition with warnings/errors
             // Branch creation continues regardless of transition success/failure
         }
 
-        $prefix = $this->getBranchPrefixFromIssueType($issue->issueType);
+        $prefix = $this->resolveBranchPrefix($issue, $projectConfig);
         // Use Symfony's AsciiSlugger to create a clean, lowercase slug for the branch name
         $slugger = new AsciiSlugger();
         $slugValue = $slugger->slug($issue->title)->lower()->toString();
@@ -87,13 +95,26 @@ class ItemStartHandler
         return $this->recorder->toResponse(0);
     }
 
-    protected function handleTransition(string $key, \App\DTO\WorkItem $issue): void
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function handleTransition(string $key, WorkItem $issue, array $projectConfig): void
     {
         $this->tryAssignIssueToCurrentUser($key);
+
+        if ($this->usesLinearBranchPrefixMapping($projectConfig)) {
+            $stateId = $this->resolveLinearStartStateId($key, $projectConfig);
+            if ($stateId !== null) {
+                $this->executeStateChangeWithLogging($key, $stateId);
+            }
+
+            return;
+        }
+
         $projectKey = $this->gitRepository->getProjectKeyFromIssueKey($key);
-        $transitionId = $this->resolveTransitionId($key, $projectKey);
+        $transitionId = $this->resolveTransitionId($key, $projectKey, $projectConfig);
         if ($transitionId !== null) {
-            $this->executeTransitionWithLogging($key, $transitionId);
+            $this->executeStateChangeWithLogging($key, (string) $transitionId);
         }
     }
 
@@ -101,7 +122,7 @@ class ItemStartHandler
     {
         try {
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.assigning', ['key' => $key]), WorkflowChannel::Jira);
-            $this->jiraService->assignIssue($key);
+            $this->provider->assign($key);
         } catch (ApiException $e) {
             $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.assign_error', ['error' => $e->getMessage()]));
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
@@ -110,9 +131,11 @@ class ItemStartHandler
         }
     }
 
-    protected function resolveTransitionId(string $key, string $projectKey): ?int
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function resolveTransitionId(string $key, string $projectKey, array $projectConfig): ?int
     {
-        $projectConfig = $this->gitRepository->readProjectConfig();
         if (isset($projectConfig['projectKey']) && $projectConfig['projectKey'] === $projectKey && isset($projectConfig['transitionId'])) {
             $id = (int) $projectConfig['transitionId'];
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.start.using_cached_transition', ['id' => $id]), WorkflowChannel::Jira);
@@ -126,13 +149,13 @@ class ItemStartHandler
     protected function promptForTransitionId(string $key, string $projectKey): ?int
     {
         try {
-            $transitions = $this->jiraService->getTransitions($key);
+            $transitions = $this->provider->listItemStateChanges($key);
             if ($transitions === []) {
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.no_transitions', ['key' => $key]));
 
                 return null;
             }
-            $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+            $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
             $selected = $this->prompt->choice(MessageRef::key('item.start.select_transition'), $options);
             preg_match('/ID: (\d+)\)$/', $selected, $matches);
             if (! isset($matches[1])) {
@@ -157,22 +180,158 @@ class ItemStartHandler
         }
     }
 
-    protected function executeTransitionWithLogging(string $key, int $transitionId): void
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function resolveLinearStartStateId(string $key, array $projectConfig): ?string
+    {
+        $cached = $projectConfig[ProjectStudConfigKeys::LINEAR_START_STATE_ID] ?? null;
+        if (is_string($cached) && trim($cached) !== '') {
+            $stateId = trim($cached);
+            $this->recorder->addLine(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                MessageRef::key('item.start.using_cached_linear_state', ['id' => $stateId]),
+                WorkflowChannel::Jira,
+            );
+
+            return $stateId;
+        }
+
+        if ($this->prompt instanceof NonInteractivePromptService) {
+            $this->recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.no_cached_linear_state_agent', ['key' => $key]),
+            );
+
+            return null;
+        }
+
+        return $this->promptForLinearStartStateId($key);
+    }
+
+    protected function promptForLinearStartStateId(string $key): ?string
     {
         try {
-            $this->jiraService->transitionIssue($key, $transitionId);
-            $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_success', ['key' => $key]));
+            $states = $this->provider->listItemStateChanges($key);
+            if ($states === []) {
+                $this->recorder->addWarning(
+                    WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                    MessageRef::key('item.start.no_linear_states', ['key' => $key]),
+                );
+
+                return null;
+            }
+            $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $states);
+            $selected = $this->prompt->choice(MessageRef::key('item.start.select_linear_state'), $options);
+            preg_match('/ID: ([^)]+)\)$/', (string) $selected, $matches);
+            if (! isset($matches[1]) || trim($matches[1]) === '') {
+                throw new \RuntimeException('Unable to extract Linear state ID from selection');
+            }
+            $stateId = trim($matches[1]);
+            if ($this->prompt->confirm(MessageRef::key('item.start.save_linear_state'), true)) {
+                $this->gitRepository->writeProjectConfig([
+                    ProjectStudConfigKeys::LINEAR_START_STATE_ID => $stateId,
+                ]);
+                $this->recorder->addLine(
+                    WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                    MessageRef::key('item.start.linear_state_saved'),
+                    WorkflowChannel::Jira,
+                );
+            }
+
+            return $stateId;
         } catch (ApiException $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]));
-            $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
+            $this->recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]),
+            );
+            $this->recorder->addText(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                ['', ' Technical details: ' . $e->getTechnicalDetails()],
+            );
+
+            return null;
         } catch (\Exception $e) {
-            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]));
+            $this->recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.transition_error', ['error' => $e->getMessage()]),
+            );
+
+            return null;
+        }
+    }
+
+    protected function executeStateChangeWithLogging(string $key, string $stateChangeId): void
+    {
+        try {
+            $this->provider->applyStateChange($key, $stateChangeId);
+            $this->recorder->addSuccess(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.transition_success', ['key' => $key]),
+            );
+        } catch (ApiException $e) {
+            $this->recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]),
+            );
+            $this->recorder->addText(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                ['', ' Technical details: ' . $e->getTechnicalDetails()],
+            );
+        } catch (\Exception $e) {
+            $this->recorder->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('item.start.transition_exec_error', ['error' => $e->getMessage()]),
+            );
         }
     }
 
     protected function getBranchPrefixFromIssueType(string $issueType): string
     {
         return BranchNameGenerator::prefixForIssueType($issueType);
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function resolveBranchPrefix(WorkItem $issue, array $projectConfig): string
+    {
+        if (! $this->usesLinearBranchPrefixMapping($projectConfig)) {
+            return $this->getBranchPrefixFromIssueType($issue->issueType);
+        }
+
+        $teamKey = isset($projectConfig[ProjectStudConfigKeys::PROJECT_KEY]) && is_string($projectConfig[ProjectStudConfigKeys::PROJECT_KEY])
+            ? $projectConfig[ProjectStudConfigKeys::PROJECT_KEY]
+            : $this->gitRepository->getProjectKeyFromIssueKey($issue->key);
+
+        $result = $this->linearTypeLabelResolver->resolveBranchPrefix(array_values($issue->labels), $projectConfig, $teamKey);
+        if ($result['warning'] !== null) {
+            $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $result['warning']);
+        }
+        if ($result['matchedLabel'] !== null) {
+            $this->recorder->addLine(
+                WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+                MessageRef::key('item.start.linear_type_label_matched', [
+                    'label' => $result['matchedLabel'],
+                    'prefix' => $result['prefix'],
+                ]),
+            );
+        }
+
+        return $result['prefix'];
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     */
+    protected function usesLinearBranchPrefixMapping(array $projectConfig): bool
+    {
+        $provider = ProjectStudConfigKeys::readIssueTrackerProvider($projectConfig);
+        if (! is_string($provider)) {
+            return false;
+        }
+
+        return IssueTrackerProvider::tryFromNormalized($provider) === IssueTrackerProvider::Linear;
     }
 
     /**

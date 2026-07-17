@@ -8,20 +8,26 @@ use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Exception\IssueTrackerException;
+use App\Exception\LinearTypeLabelException;
+use App\Exception\StudConfigException;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemCreateResponse;
 use App\Service\FieldsParser;
 use App\Service\IssueFieldResolver;
+use App\Service\IssueTrackerLabelGroupsCapable;
+use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
-use App\Service\JiraService;
 use App\Service\Prompt\PromptInterface;
+use App\Service\StudIssueKeys;
 
-class ItemCreateHandler
+class ItemCreateHandler implements JiraAware
 {
     public function __construct(
         private readonly ItemCreateProjectResolver $projectResolver,
         private readonly ItemCreatePromptService $promptService,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly IssueFieldResolver $fieldResolver,
         private readonly FieldsParser $fieldsParser,
         private readonly PromptInterface $prompt,
@@ -80,13 +86,17 @@ class ItemCreateHandler
         string $summary,
         ItemCreateInput $input
     ): IssueCreationState|ItemCreateResponse {
+        if ($this->provider instanceof IssueTrackerLabelGroupsCapable) {
+            return $this->resolveLabelGroupsCapableCreateMetadata($projectKey, $type, $summary, $input);
+        }
+
         $issueTypeId = $this->fieldResolver->resolveIssueTypeId($projectKey, $type);
         if ($issueTypeId === null) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => "Issue type \"{$type}\" not found for project \"{$projectKey}\""]));
         }
 
         try {
-            $allFieldsMeta = $this->jiraService->getCreateMetaFields($projectKey, $issueTypeId);
+            $allFieldsMeta = $this->provider->getCreateMetaFields($projectKey, $issueTypeId);
         } catch (\Throwable) {
             return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
         }
@@ -98,6 +108,41 @@ class ItemCreateHandler
         return new IssueCreationState($projectKey, $issueTypeId, $allFieldsMeta, $requiredFieldIds, $fields);
     }
 
+    protected function resolveLabelGroupsCapableCreateMetadata(
+        string $projectKey,
+        string $type,
+        string $summary,
+        ItemCreateInput $input,
+    ): IssueCreationState|ItemCreateResponse {
+        $linearScopeKey = $this->projectResolver->resolveLinearScopeKey($projectKey) ?? $projectKey;
+
+        try {
+            $allFieldsMeta = $this->provider->getCreateMetaFields($linearScopeKey, $type);
+        } catch (\Throwable) {
+            return ItemCreateResponse::error(MessageRef::key('item.create.error_createmeta', ['error' => 'Could not fetch field metadata']));
+        }
+
+        $description = $this->getDescription($input->descriptionOption);
+        $fields = [
+            StudIssueKeys::PROJECT => [StudIssueKeys::KEY => $linearScopeKey],
+            StudIssueKeys::ISSUE_TYPE => [StudIssueKeys::NAME => $type],
+            StudIssueKeys::TITLE => $summary,
+        ];
+
+        if ($description !== null && $description !== '') {
+            $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
+                ? trim($input->descriptionFormat)
+                : 'plain';
+            $fields[StudIssueKeys::DESCRIPTION] = $this->provider->formatDescription($description, $format);
+        }
+
+        if ($input->parentKey !== null && trim($input->parentKey) !== '') {
+            $fields[StudIssueKeys::PARENT] = [StudIssueKeys::KEY => trim($input->parentKey)];
+        }
+
+        return new IssueCreationState($projectKey, $type, $allFieldsMeta, [], $fields);
+    }
+
     protected function resolveExtrasAndMergeIntoFields(
         bool $interactive,
         IssueCreationState $state,
@@ -106,12 +151,12 @@ class ItemCreateHandler
         $typeExplicitlyProvided = ($input->parentKey !== null && trim($input->parentKey) !== '')
             || ($input->type !== null && trim((string) $input->type) !== '');
         $parentKeyTrimmed = ($input->parentKey !== null && trim($input->parentKey) !== '') ? trim($input->parentKey) : null;
-        $descriptionAdf = $state->fields['description'] ?? null;
+        $descriptionAdf = $state->fields[StudIssueKeys::DESCRIPTION] ?? null;
 
         $fieldValues = [
             'projectKey' => $state->projectKey,
             'issueTypeId' => $state->issueTypeId,
-            'summary' => (string) $state->fields['summary'],
+            'title' => (string) $state->fields[StudIssueKeys::TITLE],
             'descriptionAdf' => $descriptionAdf,
             'assigneeOption' => null,
             'parentKey' => $parentKeyTrimmed,
@@ -155,7 +200,7 @@ class ItemCreateHandler
             $state->projectKey,
             $state->issueTypeId,
             $typeExplicitlyProvided,
-            (string) $state->fields['summary'],
+            (string) $state->fields[StudIssueKeys::TITLE],
             $descriptionAdf,
             $extraRequired
         );
@@ -182,9 +227,15 @@ class ItemCreateHandler
     protected function createIssueAndReturnResponse(array $fields, array $skippedOptionalFields): ItemCreateResponse
     {
         try {
-            $result = $this->jiraService->createIssue($fields);
+            $result = $this->provider->create($fields);
 
             return ItemCreateResponse::success($result['key'], $result['self'], $skippedOptionalFields);
+        } catch (LinearTypeLabelException $e) {
+            return ItemCreateResponse::error($e->messageRef);
+        } catch (StudConfigException $e) {
+            return ItemCreateResponse::error($e->messageRef);
+        } catch (IssueTrackerException $e) {
+            return ItemCreateResponse::error($e->messageRef);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();

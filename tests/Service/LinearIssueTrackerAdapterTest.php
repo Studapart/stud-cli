@@ -1,0 +1,507 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Service;
+
+use App\DTO\StateChange;
+use App\Exception\ApiException;
+use App\Service\GitRepository;
+use App\Service\LinearApiClient;
+use App\Service\LinearIssueTrackerAdapter;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+
+class LinearIssueTrackerAdapterTest extends TestCase
+{
+    private LinearApiClient&MockObject $linearApiClient;
+
+    private GitRepository&MockObject $gitRepository;
+
+    private LinearIssueTrackerAdapter $adapter;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->linearApiClient = $this->createMock(LinearApiClient::class);
+        $this->gitRepository = $this->createMock(GitRepository::class);
+        $this->adapter = new LinearIssueTrackerAdapter($this->linearApiClient, gitRepository: $this->gitRepository);
+    }
+
+    public function testCreateDelegatesToLinearApiClient(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['linearTypeLabelGroupId' => 'group-1']);
+
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveTeamId')
+            ->with('SCI')
+            ->willReturn('team-uuid');
+        $this->linearApiClient->expects($this->exactly(2))
+            ->method('resolveLabelIds')
+            ->willReturnOnConsecutiveCalls(['label-dx'], ['label-story']);
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveIssueId')
+            ->with('SCI-1')
+            ->willReturn('parent-uuid');
+        $this->linearApiClient->expects($this->once())
+            ->method('issueCreate')
+            ->with($this->callback(function (array $input): bool {
+                return $input['teamId'] === 'team-uuid'
+                    && $input['title'] === 'New issue'
+                    && $input['description'] === '## Body'
+                    && $input['priority'] === 2
+                    && $input['parentId'] === 'parent-uuid';
+            }))
+            ->willReturn(['identifier' => 'SCI-42', 'url' => 'https://linear.app/SCI-42']);
+
+        $result = $this->adapter->create([
+            'project' => ['key' => 'SCI'],
+            'issueType' => ['name' => 'Story'],
+            'title' => 'New issue',
+            'description' => [
+                'type' => 'doc',
+                'version' => 1,
+                'content' => [['type' => 'linearMarkdown', 'markdown' => '## Body']],
+            ],
+            'labels' => ['DX'],
+            'priority' => ['name' => 'High'],
+            'parent' => ['key' => 'SCI-1'],
+        ]);
+
+        $this->assertSame(['key' => 'SCI-42', 'self' => 'https://linear.app/SCI-42'], $result);
+    }
+
+    public function testUpdateDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveIssueId')
+            ->with('SCI-42')
+            ->willReturn('issue-uuid');
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveTeamKeyFromIssue')
+            ->with('SCI-42')
+            ->willReturn('SCI');
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveLabelIds')
+            ->with('SCI', ['bug'], null)
+            ->willReturn(['label-bug']);
+        $this->linearApiClient->expects($this->once())
+            ->method('issueUpdate')
+            ->with('issue-uuid', $this->callback(function (array $input): bool {
+                return $input['title'] === 'Updated'
+                    && $input['description'] === 'New body'
+                    && $input['labelIds'] === ['label-bug'];
+            }));
+
+        $this->adapter->update('SCI-42', [
+            'title' => 'Updated',
+            'description' => [
+                'type' => 'doc',
+                'version' => 1,
+                'content' => [['type' => 'linearMarkdown', 'markdown' => 'New body']],
+            ],
+            'labels' => ['bug'],
+        ]);
+    }
+
+    public function testGetCreateMetaFieldsReturnsLinearFieldMeta(): void
+    {
+        $meta = $this->adapter->getCreateMetaFields('SCI', 'Story');
+
+        $this->assertArrayHasKey('labels', $meta);
+        $this->assertArrayHasKey('priority', $meta);
+    }
+
+    public function testFormatDescriptionReturnsMarkdownPayload(): void
+    {
+        $payload = $this->adapter->formatDescription('## Spec', 'markdown');
+
+        $this->assertSame('linearMarkdown', $payload['content'][0]['type']);
+        $this->assertSame('## Spec', $payload['content'][0]['markdown']);
+    }
+
+    public function testGetEditMetaFieldsReturnsLinearFieldMeta(): void
+    {
+        $meta = $this->adapter->getEditMetaFields('SCI-1');
+
+        $this->assertArrayHasKey('labels', $meta);
+        $this->assertArrayHasKey('priority', $meta);
+    }
+
+    public function testCreateWithoutGitRepositoryUsesNullTypeGroup(): void
+    {
+        $adapter = new LinearIssueTrackerAdapter($this->linearApiClient);
+        $this->linearApiClient->expects($this->once())->method('resolveTeamId')->willReturn('team-uuid');
+        $this->linearApiClient->expects($this->exactly(2))->method('resolveLabelIds')->willReturnOnConsecutiveCalls([], []);
+        $this->linearApiClient->expects($this->once())->method('issueCreate')->willReturn([
+            'identifier' => 'SCI-7',
+            'url' => 'https://linear.app/SCI-7',
+        ]);
+
+        $result = $adapter->create([
+            'project' => ['key' => 'SCI'],
+            'issueType' => ['name' => 'Task'],
+            'title' => 'No config repo',
+        ]);
+
+        $this->assertSame('SCI-7', $result['key']);
+    }
+
+    public function testUpdatePassesTypeGroupFromProjectConfig(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn(['linearTypeLabelGroupId' => 'type-group']);
+
+        $this->linearApiClient->expects($this->once())->method('resolveIssueId')->willReturn('issue-uuid');
+        $this->linearApiClient->expects($this->once())->method('resolveTeamKeyFromIssue')->willReturn('SCI');
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveLabelIds')
+            ->with('SCI', ['Story'], 'type-group')
+            ->willReturn(['label-story']);
+        $this->linearApiClient->expects($this->once())->method('issueUpdate');
+
+        $this->adapter->update('SCI-42', [
+            'labels' => ['Story'],
+        ]);
+    }
+
+    public function testListProjectStateChangesDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamWorkflowStates')
+            ->with('SCI')
+            ->willReturn([
+                ['id' => 's1', 'name' => 'Todo', 'type' => 'unstarted'],
+            ]);
+
+        $this->assertEquals(
+            [new StateChange('s1', 'Todo', null, 'unstarted')],
+            $this->adapter->listProjectStateChanges('SCI'),
+        );
+    }
+
+    public function testListItemStateChangesResolvesTeamAndMapsWorkflowStates(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveTeamKeyFromIssue')
+            ->with('SCI-123')
+            ->willReturn('SCI');
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamWorkflowStates')
+            ->with('SCI')
+            ->willReturn([
+                ['id' => 'state-started-uuid', 'name' => 'In Progress', 'type' => 'started'],
+            ]);
+
+        $this->assertEquals(
+            [new StateChange('state-started-uuid', 'In Progress', null, 'started')],
+            $this->adapter->listItemStateChanges('SCI-123'),
+        );
+    }
+
+    public function testApplyStateChangeDelegatesIssueUpdateWithStateId(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveIssueId')
+            ->with('SCI-123')
+            ->willReturn('issue-uuid-1');
+        $this->linearApiClient->expects($this->once())
+            ->method('issueUpdate')
+            ->with('issue-uuid-1', ['stateId' => 'state-started-uuid']);
+
+        $this->adapter->applyStateChange('SCI-123', 'state-started-uuid');
+    }
+
+    public function testListLabelGroupsDelegatesToLinearApiClient(): void
+    {
+        $groups = [['id' => 'g1', 'name' => 'Type', 'labels' => []]];
+        $this->linearApiClient->expects($this->once())
+            ->method('getTeamLabelGroups')
+            ->with('SCI', true)
+            ->willReturn($groups);
+
+        $this->assertSame($groups, $this->adapter->listLabelGroups('SCI', true));
+    }
+
+    public function testGetIssueMapsWorkItemFromLinearApiClient(): void
+    {
+        $this->gitRepository->method('readProjectConfig')->willReturn(['linearTypeLabelGroupId' => 'type-group']);
+        $this->linearApiClient->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1')
+            ->willReturn([
+                'id' => 'issue-1',
+                'identifier' => 'SCI-1',
+                'title' => 'Issue',
+                'state' => ['name' => 'Todo'],
+                'assignee' => ['name' => 'Ada'],
+                'description' => 'Body',
+                'labels' => ['nodes' => []],
+                'attachments' => ['nodes' => []],
+            ]);
+
+        $issue = $this->adapter->getIssue('SCI-1');
+
+        $this->assertSame('SCI-1', $issue->key);
+        $this->assertSame('Issue', $issue->title);
+    }
+
+    public function testListAssignedActiveMapsIssues(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listAssignedActiveIssues')
+            ->with('ENG', true)
+            ->willReturn([
+                [
+                    'id' => 'i1',
+                    'identifier' => 'ENG-1',
+                    'title' => 'One',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+
+        $issues = $this->adapter->listAssignedActive('ENG', true);
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('ENG-1', $issues[0]->key);
+    }
+
+    public function testListTeamsMapsProjects(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listTeams')
+            ->willReturn([['key' => 'ENG', 'name' => 'Engineering']]);
+
+        $teams = $this->adapter->listTeams();
+
+        $this->assertCount(1, $teams);
+        $this->assertSame('ENG', $teams[0]->key);
+    }
+
+    public function testPingDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())->method('ping');
+        $this->adapter->ping();
+    }
+
+    public function testAssignDelegatesToLinearApiClient(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('assignIssue')
+            ->with('SCI-1', null);
+
+        $this->adapter->assign('SCI-1');
+    }
+
+    public function testAssignPassesExplicitUserId(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('assignIssue')
+            ->with('SCI-1', 'user-uuid-2');
+
+        $this->adapter->assign('SCI-1', 'user-uuid-2');
+    }
+
+    public function testSearchMapsGraphqlNodesToWorkItems(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('searchIssues')
+            ->with('login bug')
+            ->willReturn([
+                [
+                    'id' => 'issue-1',
+                    'identifier' => 'SCI-42',
+                    'title' => 'Login bug',
+                    'url' => 'https://linear.app/studapart/issue/SCI-42',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+
+        $issues = $this->adapter->search('login bug');
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-42', $issues[0]->key);
+        $this->assertSame('Login bug', $issues[0]->title);
+        $this->assertSame('https://linear.app/studapart/issue/SCI-42', $issues[0]->url);
+    }
+
+    public function testListFiltersOrViewsMapsCustomViewsToFilterDtos(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('listCustomViews')
+            ->willReturn([
+                [
+                    'id' => 'view-1',
+                    'name' => 'Active Bugs',
+                    'description' => 'Open bugs',
+                    'filterData' => ['state' => ['type' => ['in' => ['started']]]],
+                ],
+                [
+                    'id' => 'view-2',
+                    'name' => 'Empty View',
+                    'description' => null,
+                    'filterData' => [],
+                ],
+            ]);
+
+        $filters = $this->adapter->listFiltersOrViews();
+
+        $this->assertCount(2, $filters);
+        $this->assertSame('Active Bugs', $filters[0]->name);
+        $this->assertSame('Open bugs', $filters[0]->description);
+        $this->assertSame('Empty View', $filters[1]->name);
+        $this->assertNull($filters[1]->description);
+    }
+
+    public function testRunFilterOrViewMapsFilterDataResultsToWorkItems(): void
+    {
+        $filterData = [
+            'labels' => ['some' => ['name' => ['eq' => 'Bug']]],
+        ];
+
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveCustomViewByName')
+            ->with('Active Bugs')
+            ->willReturn([
+                'id' => 'view-1',
+                'name' => 'Active Bugs',
+                'description' => 'Open bugs',
+                'filterData' => $filterData,
+            ]);
+        $this->linearApiClient->expects($this->once())
+            ->method('listIssuesByFilter')
+            ->with($filterData)
+            ->willReturn([
+                [
+                    'id' => 'issue-1',
+                    'identifier' => 'SCI-42',
+                    'title' => 'Login bug',
+                    'url' => 'https://linear.app/studapart/issue/SCI-42',
+                    'state' => ['name' => 'Todo'],
+                    'assignee' => ['name' => 'Ada'],
+                    'labels' => ['nodes' => []],
+                ],
+            ]);
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfig')
+            ->willReturn([]);
+
+        $issues = $this->adapter->runFilterOrView('Active Bugs');
+
+        $this->assertCount(1, $issues);
+        $this->assertSame('SCI-42', $issues[0]->key);
+        $this->assertSame('Login bug', $issues[0]->title);
+    }
+
+    public function testRunFilterOrViewThrowsWhenViewNotFound(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('resolveCustomViewByName')
+            ->with('Missing View')
+            ->willReturn(null);
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Could not find Linear custom view "Missing View".');
+
+        $this->adapter->runFilterOrView('Missing View');
+    }
+
+    public function testListAttachmentsReturnsMappedAttachments(): void
+    {
+        $this->linearApiClient->expects($this->once())
+            ->method('getIssue')
+            ->with('SCI-1')
+            ->willReturn([
+                'id' => 'issue-1',
+                'identifier' => 'SCI-1',
+                'title' => 'Issue',
+                'state' => ['name' => 'Todo'],
+                'assignee' => ['name' => 'Ada'],
+                'labels' => ['nodes' => []],
+                'attachments' => [
+                    'nodes' => [
+                        [
+                            'id' => 'att-1',
+                            'title' => 'report.md',
+                            'url' => 'https://public.linear.app/assets/report.md',
+                            'size' => 8,
+                        ],
+                    ],
+                ],
+            ]);
+
+        $attachments = $this->adapter->listAttachments('SCI-1');
+
+        $this->assertCount(1, $attachments);
+        $this->assertSame('report.md', $attachments[0]->filename);
+        $this->assertSame('https://public.linear.app/assets/report.md', $attachments[0]->contentUrl);
+    }
+
+    public function testDownloadAttachmentDelegatesToLinearAttachmentService(): void
+    {
+        $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+        $attachmentService->expects($this->once())
+            ->method('downloadAttachmentContent')
+            ->with('https://public.linear.app/assets/report.md')
+            ->willReturn('payload');
+
+        $adapter = new LinearIssueTrackerAdapter(
+            $this->linearApiClient,
+            linearAttachmentService: $attachmentService,
+        );
+
+        $dest = tempnam(sys_get_temp_dir(), 'studlindl');
+        $this->assertNotFalse($dest);
+
+        try {
+            $adapter->downloadAttachment('https://public.linear.app/assets/report.md', $dest);
+            $this->assertSame('payload', file_get_contents($dest));
+        } finally {
+            unlink($dest);
+        }
+    }
+
+    public function testDownloadAttachmentThrowsWhenWriteFails(): void
+    {
+        $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+        $attachmentService->method('downloadAttachmentContent')->willReturn('payload');
+
+        $adapter = new LinearIssueTrackerAdapter(
+            $this->linearApiClient,
+            linearAttachmentService: $attachmentService,
+        );
+
+        $this->expectException(ApiException::class);
+        $this->expectExceptionMessage('Could not write attachment to destination path.');
+        $adapter->downloadAttachment('https://public.linear.app/assets/report.md', '/nonexistent/dir/file.bin');
+    }
+
+    public function testUploadAttachmentDelegatesToLinearAttachmentService(): void
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'studlinad');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, 'data');
+
+        try {
+            $attachmentService = $this->createMock(\App\Service\LinearAttachmentService::class);
+            $attachmentService->expects($this->once())
+                ->method('uploadFileToIssue')
+                ->with('SCI-1', $tmp);
+
+            $adapter = new LinearIssueTrackerAdapter(
+                $this->linearApiClient,
+                linearAttachmentService: $attachmentService,
+            );
+            $adapter->uploadAttachment('SCI-1', $tmp);
+        } finally {
+            unlink($tmp);
+        }
+    }
+}

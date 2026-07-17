@@ -8,7 +8,7 @@ use App\Service\BranchNameGenerator;
 use App\Service\BranchNameValidator;
 use App\Service\BranchRenamePrCoordinator;
 use App\Service\CanConvertToMarkdownInterface;
-use App\Service\GithubProvider;
+use App\Service\GithubGitHostingAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -19,34 +19,34 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class BranchRenameHandlerTest extends CommandTestCase
 {
     private BranchRenameHandler $handler;
-    private GithubProvider&MockObject $githubProvider;
+    private GithubGitHostingAdapter&MockObject $githubProvider;
     private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->githubProvider = $this->createMock(GithubProvider::class);
+        $this->githubProvider = $this->createMock(GithubGitHostingAdapter::class);
         $this->prompt = $this->createMock(PromptInterface::class);
         $this->handler = $this->createBranchRenameHandler();
     }
 
     private function createBranchRenameHandler(
         ?PromptInterface $prompt = null,
-        bool $withGithubProvider = true,
+        bool $withGithubGitHostingAdapter = true,
     ): BranchRenameHandler {
         $prompt ??= $this->prompt;
-        $githubProvider = $withGithubProvider ? $this->githubProvider : null;
+        $githubProvider = $withGithubGitHostingAdapter ? $this->githubProvider : null;
         $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
 
         return new BranchRenameHandler(
             $this->gitRepository,
             $this->gitBranchService,
-            new BranchNameGenerator($this->jiraService),
+            new BranchNameGenerator($this->issueTracker),
             new BranchNameValidator(),
             new BranchRenamePrCoordinator(
                 $this->gitRepository,
-                $this->jiraService,
+                $this->issueTracker,
                 $githubProvider,
                 ['JIRA_URL' => 'https://jira.example.com'],
                 'origin/develop',
@@ -81,9 +81,9 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn(new WorkItem(
@@ -173,7 +173,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -221,7 +221,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->exactly(2))
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34')
             ->willReturn($workItem);
@@ -271,9 +271,9 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
@@ -500,7 +500,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -542,7 +542,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
@@ -564,7 +564,7 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
         $output = new BufferedOutput();
@@ -832,7 +832,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -940,7 +940,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->once())
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
@@ -1027,7 +1027,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $handler = new \ReflectionClass($this->handler);
         $method = $handler->getMethod('validateBranchName');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // Test with consecutive dots (str_contains check)
         $this->assertFalse($method->invoke($this->handler, 'branch..name'));
@@ -1055,7 +1055,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     {
         $handler = new \ReflectionClass($this->handler);
         $method = $handler->getMethod('getBranchPrefixFromIssueType');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame('fix', $method->invoke($this->handler, 'bug'));
         $this->assertSame('feat', $method->invoke($this->handler, 'story'));
@@ -1074,9 +1074,9 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
         $this->gitRepository->expects($this->once())
-            ->method('getJiraKeyFromBranchName')
+            ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->jiraService->expects($this->once())
+        $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
@@ -1089,7 +1089,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->assertSame(1, $result);
     }
 
-    public function testHandleWithNoGithubProvider(): void
+    public function testHandleWithNoGithubGitHostingAdapter(): void
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('confirm')->willReturn(true);
@@ -1120,7 +1120,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->assertSame(0, $result);
     }
 
-    public function testHandleWithPrUpdateNoGithubProvider(): void
+    public function testHandleWithPrUpdateNoGithubGitHostingAdapter(): void
     {
         $pr = ['number' => 123];
 
@@ -1130,9 +1130,9 @@ class BranchRenameHandlerTest extends CommandTestCase
 
         $handlerReflection = new \ReflectionClass($handler);
         $method = $handlerReflection->getMethod('updatePullRequestAfterRename');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
         $recorderProperty = $handlerReflection->getProperty('recorder');
-        $recorderProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($recorderProperty);
         $recorderProperty->setValue($handler, new \App\DTO\WorkflowRecorder());
 
         // Should return early without error
@@ -1152,7 +1152,7 @@ class BranchRenameHandlerTest extends CommandTestCase
         $recorder = new \App\DTO\WorkflowRecorder();
         $reflection = new \ReflectionClass($this->handler);
         $recorderProperty = $reflection->getProperty('recorder');
-        $recorderProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($recorderProperty);
         $recorderProperty->setValue($this->handler, $recorder);
 
         $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/test');

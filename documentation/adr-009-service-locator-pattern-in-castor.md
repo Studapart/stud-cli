@@ -63,7 +63,7 @@ We chose the service locator pattern because:
 6. **Configuration Access:** Services can access configuration through helper functions
 
 The pattern uses:
-- **Helper Functions:** `_get_jira_service()`, `_get_git_repository()`, etc.
+- **Helper Functions:** `_get_jira_api_client()`, `_get_git_repository()`, etc.
 - **TestKernel:** Allows test replacement of services
 - **Static Caching:** Services are cached where appropriate (singletons)
 - **Dependency Chain:** Services can call other service helpers
@@ -82,7 +82,7 @@ The pattern uses:
 
 ## 6. Implementation Plan
 
-* [x] Create helper functions for each service (`_get_jira_service()`, `_get_git_repository()`, etc.)
+* [x] Create helper functions for each service (`_get_jira_api_client()`, `_get_git_repository()`, etc.)
 * [x] Implement static caching for singleton services
 * [x] Create `TestKernel` class for test service replacement
 * [x] Document service creation pattern
@@ -96,7 +96,7 @@ The pattern uses:
 **Service Helper Functions:**
 
 ```php
-function _get_jira_service(): JiraService
+function _get_jira_api_client(): JiraApiClient
 {
     // Check for test replacement
     if (class_exists("\App\Tests\TestKernel::class") && \App\Tests\TestKernel::$jiraService) {
@@ -106,7 +106,7 @@ function _get_jira_service(): JiraService
     // Create real service with dependencies
     $config = _get_jira_config();
     $client = HttpClient::createForBaseUri($config['JIRA_URL'], [...]);
-    return new JiraService($client, _get_html_converter());
+    return new JiraApiClient($client, _get_html_converter());
 }
 
 function _get_git_repository(): GitRepository
@@ -140,13 +140,13 @@ function _get_file_system(): FileSystem
 // In tests
 class TestKernel
 {
-    public static ?JiraService $jiraService = null;
+    public static ?JiraApiClient $jiraService = null;
     public static ?GitRepository $gitRepository = null;
     // ...
 }
 
 // In test setup
-TestKernel::$jiraService = $this->createMock(JiraService::class);
+TestKernel::$jiraService = $this->createMock(JiraApiClient::class);
 ```
 
 **Usage in Tasks:**
@@ -156,7 +156,7 @@ TestKernel::$jiraService = $this->createMock(JiraService::class);
 function items_list(...): void
 {
     _load_constants();
-    $handler = new ItemListHandler(_get_jira_service());
+    $handler = new ItemListHandler(_get_jira_api_client());
     // ...
 }
 ```
@@ -164,7 +164,7 @@ function items_list(...): void
 **Dependency Chain:**
 
 ```php
-function _get_git_provider(): ?GitProviderInterface
+function _get_git_hosting(): ?GitHostingPort
 {
     $gitRepository = _get_git_repository(); // Depends on GitRepository
     $logger = _get_logger(); // Depends on Logger

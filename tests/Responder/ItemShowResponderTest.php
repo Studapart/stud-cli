@@ -323,10 +323,10 @@ class ItemShowResponderTest extends CommandTestCase
         $response = new \ReflectionClass(ItemShowResponse::class);
         $responseInstance = $response->newInstanceWithoutConstructor();
         $successProperty = $response->getProperty('success');
-        $successProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($successProperty);
         $successProperty->setValue($responseInstance, true);
         $issueProperty = $response->getProperty('issue');
-        $issueProperty->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($issueProperty);
         $issueProperty->setValue($responseInstance, null);
 
         $this->io->expects($this->once())

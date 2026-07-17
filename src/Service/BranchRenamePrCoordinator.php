@@ -18,8 +18,8 @@ class BranchRenamePrCoordinator
      */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
-        private readonly ?GitProviderInterface $githubProvider,
+        private readonly IssueTrackerPort $issueTracker,
+        private readonly ?GitHostingPort $githubProvider,
         private readonly array $jiraConfig,
         private readonly string $baseBranch,
         private readonly mixed $translator,
@@ -86,13 +86,12 @@ class BranchRenamePrCoordinator
     {
         return new SubmitHandler(
             $this->gitRepository,
-            $this->jiraService,
+            $this->issueTracker,
             $this->githubProvider,
-            $this->jiraConfig,
+            new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             $this->baseBranch,
             $this->translator,
             $this->prompt,
-            $this->htmlConverter,
         );
     }
 

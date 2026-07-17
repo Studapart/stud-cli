@@ -66,3 +66,6 @@ tmp/stud-*
 
 # Cursor IDE agent config (rules, skills, local specs — not part of the repo)
 .cursor/
+
+#IntelliJ config files
+.idea

@@ -21,7 +21,7 @@ class UpdateChangelogPresenter
      */
     public function display(
         WorkflowEntryRecorder $recorder,
-        GithubProvider $githubProvider,
+        GithubGitHostingAdapter $githubProvider,
         array $release,
         callable $logVerbose,
     ): void {

@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\AgentInputAliases;
 use App\Config\ProjectStudConfigFieldMap;
+use App\Config\ProjectStudConfigKeys;
 use App\Config\SecretKeyPolicy;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\WorkflowRecorder;
+use App\Enum\IssueTrackerProvider;
 use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 
 /**
- * Creates or merges project-level stud config (.git/stud.config) for non-interactive and interactive use.
+ * Creates or merges project-level stud config (.git/stud.config) via agent JSON or interactive prompts.
  */
 class ConfigProjectInitHandler
 {
@@ -26,13 +29,10 @@ class ConfigProjectInitHandler
 
     /**
      * @param array<string, mixed> $rawAgentInput Decoded agent JSON (empty when not agent)
-     * @param array<string, mixed> $cliPatches Non-agent patches using input keys (projectKey, …); only keys to apply
      */
     public function handle(
         array $rawAgentInput,
-        array $cliPatches,
         bool $skipBaseBranchRemoteCheck,
-        bool $interactive,
         bool $isAgent,
         ?WorkflowEntryRecorder $recorder = null,
     ): ConfigProjectInitResponse {
@@ -43,6 +43,7 @@ class ConfigProjectInitHandler
         }
 
         if ($isAgent) {
+            $rawAgentInput = AgentInputAliases::normalize($rawAgentInput);
             $reserved = $this->findReservedAgentKeys($rawAgentInput);
             if ($reserved !== []) {
                 return ConfigProjectInitResponse::error('config.project_init.reserved_keys', [
@@ -61,9 +62,9 @@ class ConfigProjectInitHandler
             }
         }
 
-        $patches = $interactive
-            ? $this->gatherInteractivePatches($recorder ?? new WorkflowRecorder())
-            : $this->mergePatchSources($isAgent, $rawAgentInput, $cliPatches);
+        $patches = $isAgent
+            ? $this->extractAgentValuePatches($rawAgentInput)
+            : $this->gatherInteractivePatches($recorder ?? new WorkflowRecorder());
         $this->normalizeInputKeyPatches($patches);
 
         $yamlPatches = $this->normalizeToYamlPatches($patches);
@@ -241,6 +242,41 @@ class ConfigProjectInitHandler
             }
         }
 
+        if (isset($yamlPatches[ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER])) {
+            $provider = (string) $yamlPatches[ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER];
+            if (! IssueTrackerProvider::isProjectConfigValue($provider)) {
+                return ConfigProjectInitResponse::error('config.project_init.invalid_issue_tracker_provider');
+            }
+        }
+
+        if (isset($yamlPatches['linearTypeBranchPrefixes'])) {
+            $invalid = $this->validateLinearTypeBranchPrefixes($yamlPatches['linearTypeBranchPrefixes']);
+            if ($invalid !== null) {
+                return $invalid;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $prefixes
+     */
+    protected function validateLinearTypeBranchPrefixes(mixed $prefixes): ?ConfigProjectInitResponse
+    {
+        if (! is_array($prefixes)) {
+            return ConfigProjectInitResponse::error('config.project_init.invalid_linear_type_branch_prefixes');
+        }
+
+        foreach ($prefixes as $typeLabel => $prefix) {
+            if (! is_string($typeLabel) || trim($typeLabel) === '') {
+                return ConfigProjectInitResponse::error('config.project_init.invalid_linear_type_branch_prefixes');
+            }
+            if (! is_string($prefix) || trim($prefix) === '') {
+                return ConfigProjectInitResponse::error('config.project_init.invalid_linear_type_branch_prefixes');
+            }
+        }
+
         return null;
     }
 
@@ -250,20 +286,6 @@ class ConfigProjectInitHandler
     protected function gatherInteractivePatches(WorkflowEntryRecorder $recorder): array
     {
         return $this->promptCollector->collect($recorder);
-    }
-
-    /**
-     * @param array<string, mixed> $rawAgentInput
-     * @param array<string, mixed> $cliPatches
-     * @return array<string, mixed>
-     */
-    protected function mergePatchSources(bool $isAgent, array $rawAgentInput, array $cliPatches): array
-    {
-        if ($isAgent) {
-            return $this->extractAgentValuePatches($rawAgentInput);
-        }
-
-        return $cliPatches;
     }
 
     /**
@@ -285,6 +307,9 @@ class ConfigProjectInitHandler
             if (is_string($coerced) && trim($coerced) === '') {
                 continue;
             }
+            if (is_array($coerced) && $coerced === []) {
+                continue;
+            }
             $out[$key] = $coerced;
         }
 
@@ -301,10 +326,40 @@ class ConfigProjectInitHandler
             return strtolower(trim($value));
         }
 
+        if ($key === 'issueTrackerProvider' && is_string($value)) {
+            return strtolower(trim($value));
+        }
+
+        if ($key === 'linearTypeBranchPrefixes' && is_array($value)) {
+            return $this->normalizeLinearTypeBranchPrefixes($value);
+        }
+
         if (is_string($value)) {
             return trim($value);
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<mixed, mixed> $prefixes
+     * @return array<string, string>
+     */
+    protected function normalizeLinearTypeBranchPrefixes(array $prefixes): array
+    {
+        $out = [];
+        foreach ($prefixes as $typeLabel => $prefix) {
+            if (! is_string($typeLabel) || ! is_string($prefix)) {
+                continue;
+            }
+            $label = trim($typeLabel);
+            $normalizedPrefix = trim($prefix);
+            if ($label === '' || $normalizedPrefix === '') {
+                continue;
+            }
+            $out[$label] = $normalizedPrefix;
+        }
+
+        return $out;
     }
 }

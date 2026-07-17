@@ -7,14 +7,15 @@ namespace App\Handler;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\ConfluenceAware;
 use App\Response\ConfluenceShowResponse;
 use App\Service\AdfToMarkdownConverter;
-use App\Service\ConfluenceService;
+use App\Service\WikiPort;
 
-class ConfluenceShowHandler
+class ConfluenceShowHandler implements ConfluenceAware
 {
     public function __construct(
-        private readonly ConfluenceService $confluenceService,
+        private readonly WikiPort $wiki,
         private readonly AdfToMarkdownConverter $adfConverter,
         mixed $_translator
     ) {
@@ -26,7 +27,9 @@ class ConfluenceShowHandler
         try {
             $pageId = $this->resolvePageId($input);
         } catch (ApiException $e) {
-            return ConfluenceShowResponse::error($e->getMessage());
+            return ConfluenceShowResponse::error(
+                MessageRef::key('confluence.show.error_resolve', ['error' => $e->getMessage()])
+            );
         }
         if ($pageId === null) {
             return ConfluenceShowResponse::error(
@@ -35,7 +38,7 @@ class ConfluenceShowHandler
         }
 
         try {
-            $page = $this->confluenceService->getPageWithBody($pageId);
+            $page = $this->wiki->getPageWithBody($pageId);
         } catch (ApiException $e) {
             return ConfluenceShowResponse::error(
                 MessageRef::key('confluence.show.error_page_not_found', ['id' => $pageId])
@@ -70,7 +73,7 @@ class ConfluenceShowHandler
             return null;
         }
 
-        return $this->confluenceService->extractPageIdFromUrl($url);
+        return $this->wiki->extractPageIdFromUrl($url);
     }
 
     protected function buildPageUrl(string $baseUrl, string $webuiPath): string

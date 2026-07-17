@@ -1,0 +1,11 @@
+{
+  "data": {
+    "issueUpdate": {
+      "success": true,
+      "issue": {
+        "id": "issue-uuid-1",
+        "identifier": "SCI-123"
+      }
+    }
+  }
+}

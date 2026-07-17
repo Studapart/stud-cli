@@ -7,15 +7,17 @@ namespace App\Handler;
 use App\DTO\ItemUploadInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemUploadResponse;
 use App\Service\FileSystem;
-use App\Service\JiraAttachmentService;
+use App\Service\IssueTrackerPort;
 
-class ItemUploadHandler
+class ItemUploadHandler implements JiraAware, LinearAware
 {
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly JiraAttachmentService $jiraAttachmentService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator
     ) {
         unset($_translator);
@@ -97,14 +99,18 @@ class ItemUploadHandler
         $uploadName = basename(str_replace('\\', '/', $trimmed));
 
         try {
-            $this->jiraAttachmentService->uploadFileToIssue($issueKey, $absolute);
+            $this->provider->uploadAttachment($issueKey, $absolute);
             $files[] = ['filename' => $uploadName, 'path' => $trimmed];
         } catch (ApiException $e) {
-            $detail = $e->getTechnicalDetails();
-            $message = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
-            $errors[] = ['filename' => $trimmed, 'message' => $message];
+            $errors[] = [
+                'filename' => $trimmed,
+                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
+            ];
         } catch (\Throwable $e) {
-            $errors[] = ['filename' => $trimmed, 'message' => $e->getMessage()];
+            $errors[] = [
+                'filename' => $trimmed,
+                'message' => MessageRef::key('item.upload.error_file', ['error' => $e->getMessage()]),
+            ];
         }
     }
 

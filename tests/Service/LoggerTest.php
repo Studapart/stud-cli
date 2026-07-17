@@ -406,7 +406,7 @@ class LoggerTest extends CommandTestCase
         $logger = new Logger($io, []);
         $reflection = new \ReflectionClass($logger);
         $method = $reflection->getMethod('getCurrentVerbosity');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $this->assertSame(Logger::VERBOSITY_VERY_VERBOSE, $method->invoke($logger));
     }

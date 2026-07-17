@@ -12,7 +12,7 @@ Path in this repository: **`.github/actions/stud-cli-setup`**.
 2. Downloads `setup-stud.sh` from **`Studapart/stud-cli`** at the Git ref you choose (`stud-install-ref`, default `develop`) and runs it with **`--force --skip-init`** so CI never blocks on interactive `stud init`.
 3. Writes **`~/.config/stud/config.yml`** (mode `600`) from action inputs. Optional Git tokens are only written when non-empty.
 4. Optionally writes **`.git/stud.config`** from the `project-stud-config` input (you must **`actions/checkout`** before this action when using project config).
-5. Runs **`echo '{"skipJira":false,"skipGit":…}' | stud config:validate --agent`** when `run-config-validate` is `true` (default).
+5. Runs **`stud config:validate --agent`** when `run-config-validate` is `true` (default). Validate flags are derived from configured Jira / Linear inputs (see **Provider-conditional validate** below).
 
 Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.git/stud.config`** (see [Configuration](setup/configuration.md)).
 
@@ -35,9 +35,11 @@ Adjust the version to the tag you trust. Path-style actions are versioned with t
 
 | Input | Required | Purpose |
 |-------|----------|---------|
-| `jira-url` | yes | Jira base URL (no trailing slash). |
-| `jira-email` | yes | Atlassian email. |
-| `jira-api-token` | yes | Jira API token (from a secret). |
+| `jira-url` | conditional | Jira base URL (no trailing slash). Required when validating Jira. |
+| `jira-email` | conditional | Atlassian email. Required with `jira-url` and `jira-api-token` for Jira. |
+| `jira-api-token` | conditional | Jira API token (from a secret). Required when validating Jira. |
+| `linear-api-key` | no | Linear API key → `LINEAR_API_KEY` in global config when non-empty. |
+| `work-item-providers` | no | Explicit intent: `jira`, `linear`, or `both`. When empty, derived from non-empty secret inputs. |
 | `language` | no | Default `en`. |
 | `github-token` | no | Adds `GITHUB_TOKEN` to global config when set. |
 | `gitlab-token` | no | Adds `GITLAB_TOKEN` when set. |
@@ -45,16 +47,29 @@ Adjust the version to the tag you trust. Path-style actions are versioned with t
 | `jira-transition-enabled` | no | `true` / `false` (string), default `false`. |
 | `stud-install-ref` | no | Git ref for `setup-stud.sh`, default `develop`. |
 | `run-config-validate` | no | Default `true`. |
-| `validate-skip-git` | no | Default **`true`** → Jira-only validation (no GitHub/GitLab token required). Set `false` when you need Git connectivity checks. |
+| `validate-skip-git` | no | Default **`true`** → skips Git provider connectivity check. Set `false` when you need GitHub/GitLab token validation. |
 | `project-stud-config` | no | Multiline content for `.git/stud.config`. |
 | `php-version` | no | Default `8.2`. |
 
-### `skipGit`: when to use `true` vs `false`
+### Provider-conditional validate
 
-- **`validate-skip-git: true`** — Passes `skipGit: true` to **`stud config:validate --agent`**. Use when the job only needs Jira (e.g. label sync). GitHub **GITHUB_TOKEN** / GitLab tokens are **not** required for validation.
-- **`validate-skip-git: false`** — Validates both Jira and the configured Git provider. Provide **`github-token`** and/or **`gitlab-token`** (+ instance URL if needed) in config so validation can succeed.
+The validate step sets `skipJira`, `skipLinear`, and `skipGit` from your inputs:
 
-Example (Jira-only):
+| Setup | `config:validate` agent JSON |
+|-------|------------------------------|
+| Jira only (three Jira inputs set) | `skipJira: false`, `skipLinear: true`, `skipGit` per `validate-skip-git` |
+| Linear only (`linear-api-key` set, no Jira trio) | `skipJira: true`, `skipLinear: false`, `skipGit` per `validate-skip-git` |
+| Both providers | `skipJira: false`, `skipLinear: false`, `skipGit` per `validate-skip-git` |
+
+Use **`work-item-providers`** when CI intent should differ from what secrets happen to be present (for example `both` while only one secret set should fail at config write time).
+
+**Linear-only validate payload (equivalent manual call):**
+
+```bash
+echo '{"skipJira":true,"skipGit":true}' | stud config:validate --agent
+```
+
+**Jira-only (unchanged):**
 
 ```bash
 echo '{"skipJira":false,"skipGit":true}' | stud config:validate --agent
@@ -79,7 +94,7 @@ For updates, stdin is one JSON object, e.g. **`{"key":"SCI-123","fields":"labels
 ## Public repositories, forks, and `pull_request_target`
 
 - Workflows triggered by **`pull_request`** from **forks** do not receive **repository secrets** by default. Do not assume Jira or Git tokens exist on those runs.
-- The Jira label sync workflow in this repo gates on **`github.event.pull_request.head.repo.fork == false`** so secrets are only used for same-repo PRs.
+- The Jira and Linear label sync workflows in this repo gate on **`github.event.pull_request.head.repo.fork == false`** so secrets are only used for same-repo PRs.
 - **`pull_request_target`** runs in the base repo context and can access secrets; it also increases risk if the workflow checks out or runs untrusted code from the head branch. Prefer **`pull_request`** + fork guards + explicit variables for maintenance workflows unless you fully understand **`pull_request_target`** hardening. Avoid copying untrusted scripts into the job without review.
 
 ## Jira label sync workflow (`jira-label-sync.yml`)
@@ -106,6 +121,30 @@ You can change this variable in the GitHub UI without committing code. The workf
 
 **Install ref:** The workflow uses **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** so `setup-stud.sh` matches the PR branch tip. In another repository, pin **`stud-install-ref`** to a **release tag** instead.
 
+## Linear label sync workflow (`linear-label-sync.yml`)
+
+Workflow **`.github/workflows/linear-label-sync.yml`** mirrors the Jira label sync job for Linear issues. It runs on **`pull_request`** events **`labeled`** / **`unlabeled`** when the PR head is **not** from a fork.
+
+**Secret:** `STUD_LINEAR_API_KEY` (passed to the composite action as `linear-api-key`).
+
+**Repository variable — label map:** Set **`STUD_LINEAR_LABEL_MAP`** to a JSON object whose keys are **GitHub PR label names** and values are **Linear label names**, for example:
+
+```json
+{"bug":"Bug","enhancement":"Feature"}
+```
+
+**Agent calls** use explicit Linear provider selection:
+
+```bash
+jq -n --arg key "${KEY}" '{key: $key, provider: "linear"}' | stud items:show --agent
+jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" \
+  '{key: $key, fields: $fields, provider: "linear"}' | stud items:update --agent
+```
+
+**Merge semantics** are identical to the Jira workflow: unmanaged Linear labels are preserved; managed targets follow the same OR-group rules; **`items:update`** is skipped when the merged set equals the current labels. The workflow never updates Jira issues.
+
+**Install ref:** Same as Jira — **`stud-install-ref: ${{ github.event.pull_request.head.sha }}`** on PRs in this repo; pin a release tag in consumer repositories.
+
 ## Example: call composite then `items:update`
 
 ```yaml
@@ -126,6 +165,33 @@ jobs:
       - run: |
           printf '%s' '{"key":"SCI-123","fields":"labels=DX"}' | stud items:update --agent
 ```
+
+## Example: Linear-only CI job
+
+Use when the repository uses Linear as the only issue tracker and no Jira secrets are configured:
+
+```yaml
+jobs:
+  linear:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/stud-cli-setup
+        with:
+          linear-api-key: ${{ secrets.STUD_LINEAR_API_KEY }}
+          stud-install-ref: develop
+          validate-skip-git: true
+          project-stud-config: |
+            issueTrackerProvider: linear
+            projectKey: ENG
+            migration_version: '999999999999999'
+      - run: |
+          printf '%s' '{"key":"ENG-42","provider":"linear"}' | stud items:show --agent
+```
+
+Store **`STUD_LINEAR_API_KEY`** as a repository secret. The composite action writes **`LINEAR_API_KEY`** and **`ISSUE_TRACKER_PROVIDERS: [linear]`** to global config, then runs **`config:validate`** with **`skipJira: true`**.
 
 ## Optional: action metadata checks
 

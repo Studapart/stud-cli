@@ -252,6 +252,29 @@ class AgentModeParityIntegrationTest extends TestCase
         self::assertArrayHasKey('diagnostics?', $decoded['data']['output']['compactSuccess'] ?? []);
     }
 
+    public function testHelpDocumentsProjectsWorkflowAgentContract(): void
+    {
+        $decoded = $this->runHelpAgent(['command' => 'projects:workflow']);
+
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('projects:workflow', $decoded['data']['name'] ?? null);
+        self::assertFalse($decoded['data']['essential'] ?? true);
+        self::assertArrayHasKey('project', $decoded['data']['input']['properties'] ?? []);
+        self::assertArrayHasKey('stateChanges', $decoded['data']['output']['success']['data'] ?? []);
+    }
+
+    public function testHelpDocumentsProjectsLabelsAgentContract(): void
+    {
+        $decoded = $this->runHelpAgent(['command' => 'projects:labels']);
+
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('projects:labels', $decoded['data']['name'] ?? null);
+        self::assertFalse($decoded['data']['essential'] ?? true);
+        self::assertArrayHasKey('project', $decoded['data']['input']['properties'] ?? []);
+        self::assertArrayHasKey('groupsOnly', $decoded['data']['input']['properties'] ?? []);
+        self::assertArrayHasKey('groups', $decoded['data']['output']['success']['data'] ?? []);
+    }
+
     public function testAgentCompactFlagDefaultsToTrue(): void
     {
         self::assertTrue(\_agent_compact_enabled([]));

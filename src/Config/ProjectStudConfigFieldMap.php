@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Config;
 
 /**
- * Maps config:project-init inputs (CLI flags / agent JSON) to YAML keys in .git/stud.config.
+ * Maps config:project-init agent JSON inputs to YAML keys in .git/stud.config.
  */
 final class ProjectStudConfigFieldMap
 {
@@ -15,15 +15,20 @@ final class ProjectStudConfigFieldMap
      * @var array<string, string>
      */
     public const INPUT_TO_YAML = [
-        'projectKey' => 'projectKey',
-        'transitionId' => 'transitionId',
-        'baseBranch' => 'baseBranch',
-        'gitProvider' => 'gitProvider',
-        'githubToken' => 'githubToken',
-        'gitlabToken' => 'gitlabToken',
-        'gitlabInstanceUrl' => 'gitlabInstanceUrl',
-        'jiraDefaultProject' => 'JIRA_DEFAULT_PROJECT',
-        'confluenceDefaultSpace' => 'CONFLUENCE_DEFAULT_SPACE',
+        'projectKey' => ProjectStudConfigKeys::PROJECT_KEY,
+        'transitionId' => ProjectStudConfigKeys::TRANSITION_ID,
+        'baseBranch' => ProjectStudConfigKeys::BASE_BRANCH,
+        'gitProvider' => ProjectStudConfigKeys::GIT_PROVIDER,
+        'githubToken' => ProjectStudConfigKeys::GITHUB_TOKEN,
+        'gitlabToken' => ProjectStudConfigKeys::GITLAB_TOKEN,
+        'gitlabInstanceUrl' => ProjectStudConfigKeys::GITLAB_INSTANCE_URL,
+        'jiraDefaultProject' => ProjectStudConfigKeys::JIRA_DEFAULT_PROJECT,
+        'confluenceDefaultSpace' => ProjectStudConfigKeys::CONFLUENCE_DEFAULT_SPACE,
+        'issueTrackerProvider' => ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER,
+        'linearTeamKey' => ProjectStudConfigKeys::LINEAR_TEAM_KEY,
+        'linearStartStateId' => ProjectStudConfigKeys::LINEAR_START_STATE_ID,
+        'linearTypeLabelGroupId' => ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID,
+        'linearTypeBranchPrefixes' => ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,
     ];
 
     /**
@@ -41,7 +46,7 @@ final class ProjectStudConfigFieldMap
      * @var list<string>
      */
     public const RESERVED_YAML_KEYS = [
-        'migration_version',
+        ProjectStudConfigKeys::MIGRATION_VERSION,
     ];
 
     /**

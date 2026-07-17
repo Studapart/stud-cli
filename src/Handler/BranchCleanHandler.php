@@ -12,6 +12,7 @@ use App\DTO\WorkflowRecorder;
 use App\Enum\BranchCleanupLocalAction;
 use App\Enum\BranchCleanupRemoteAction;
 use App\Enum\WorkflowChannel;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchCleanupExecutor;
 use App\Service\BranchCleanupPlanner;
@@ -19,7 +20,7 @@ use App\Service\BranchDeletionEligibilityResolver;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
-class BranchCleanHandler
+class BranchCleanHandler implements GitRepositoryAware
 {
     private WorkflowEntryRecorder $recorder;
 

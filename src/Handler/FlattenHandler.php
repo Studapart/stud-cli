@@ -7,10 +7,12 @@ namespace App\Handler;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Exception\GitException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
 
-class FlattenHandler
+class FlattenHandler implements GitRepositoryAware, ProjectBaseBranchAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,

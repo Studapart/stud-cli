@@ -1,0 +1,37 @@
+{
+  "data": {
+    "customViews": {
+      "nodes": [
+        {
+          "id": "view-active-bugs",
+          "name": "Active Bugs",
+          "description": "Open bugs in the team",
+          "filterData": {
+            "state": {
+              "type": {
+                "in": ["started", "unstarted"]
+              }
+            },
+            "labels": {
+              "some": {
+                "name": {
+                  "eq": "Bug"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "view-empty",
+          "name": "Empty View",
+          "description": null,
+          "filterData": {
+            "number": {
+              "eq": -1
+            }
+          }
+        }
+      ]
+    }
+  }
+}

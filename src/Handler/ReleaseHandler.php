@@ -8,12 +8,14 @@ use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
-class ReleaseHandler
+class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
 {
     private WorkflowEntryRecorder $recorder;
 

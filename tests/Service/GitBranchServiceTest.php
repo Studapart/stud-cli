@@ -435,6 +435,18 @@ class GitBranchServiceTest extends TestCase
         $this->assertSame(['feat/SCI-123-title', 'fix/sci-123-bug'], $result);
     }
 
+    public function testFindLocalBranchesContainingIssueKeyFindsLinearIdentifierBranches(): void
+    {
+        $this->gitRepository->expects($this->once())
+            ->method('runQuietly')
+            ->with("git branch --format='%(refname:short)'")
+            ->willReturn($this->createSuccessProcess("develop\nfeat/SCI-123-foo\nchore/SCI-999-other"));
+
+        $result = $this->gitBranchService->findLocalBranchesContainingIssueKey('SCI-123');
+
+        $this->assertSame(['feat/SCI-123-foo'], $result);
+    }
+
     public function testFindLocalBranchesContainingIssueKeyReturnsEmptyForBlankKey(): void
     {
         $this->gitRepository->expects($this->never())

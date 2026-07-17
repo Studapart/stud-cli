@@ -7,6 +7,7 @@ Central map for `stud-cli` documentation.
 - [Setup overview](setup/index.md)
 - [Configuration](setup/configuration.md)
 - [Feature overview](features/index.md)
+- [Work items](features/work-items.md): Jira and Linear issue-tracker commands, search, and provider resolution
 - [Workflow playbook](features/workflow-playbook.md)
 - [Automation and agent mode](features/automation.md)
 - [Command reference](reference/commands.md) (generated — run `stud docs:generate` after command changes)
@@ -45,5 +46,10 @@ Central map for `stud-cli` documentation.
 | [016](adr-016-item-create-handler-decomposition.md) | ItemCreateHandler decomposition |
 | [017](adr-017-response-owned-output-and-diagnostics.md) | Response-owned output and diagnostics |
 | [018](adr-018-presentation-owned-translation.md) | Presentation-owned translation |
+| [019](adr-019-closed-prompt-choices-use-backed-enums.md) | Closed prompt choices use backed enums |
+| [020](adr-020-global-init-wizard-director-and-strategy.md) | Global init wizard: Director + Strategy decomposition |
+| [021](adr-021-command-readiness-guard.md) | Command readiness guard |
+| [022](adr-022-jira-linear-work-item-scope-mapping.md) | Jira and Linear work-item scope mapping |
+| [023](adr-023-integration-layering-and-naming.md) | Integration layering and naming (ports, adapters, config providers) |
 
 New ADRs: use [adr-template.md](adr-template.md).

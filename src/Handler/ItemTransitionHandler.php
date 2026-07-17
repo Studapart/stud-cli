@@ -6,21 +6,24 @@ namespace App\Handler;
 
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
+use App\DTO\StateChange;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class ItemTransitionHandler
+class ItemTransitionHandler implements GitRepositoryAware, JiraAware
 {
     private WorkflowEntryRecorder $recorder;
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
         private readonly PromptInterface $prompt,
     ) {
@@ -43,7 +46,7 @@ class ItemTransitionHandler
         if ($transitions === null) {
             return $this->recorder->toResponse(1);
         }
-        $transitionId = $this->selectTransitionIdFromUser($transitions);
+        $transitionId = $this->selectStateChangeIdFromUser($transitions);
         if ($transitionId === null) {
             return $this->recorder->toResponse(1);
         }
@@ -55,11 +58,15 @@ class ItemTransitionHandler
     {
         try {
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.transition.fetching', ['key' => $key]), WorkflowChannel::Jira);
-            $this->jiraService->getIssue($key);
+            $this->provider->getIssue($key);
 
             return true;
         } catch (ApiException $e) {
-            $this->recorder->addErrorWithDetails(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_not_found', ['key' => $key]), $e->getTechnicalDetails());
+            $this->recorder->addErrorWithDetails(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                $e->getResolutionHint() ?? MessageRef::key('item.transition.error_not_found', ['key' => $key]),
+                $e->getTechnicalDetails()
+            );
 
             return false;
         } catch (\Exception $e) {
@@ -70,12 +77,12 @@ class ItemTransitionHandler
     }
 
     /**
-     * @return array<int, array<string, mixed>>|null
+     * @return list<StateChange>|null
      */
     protected function fetchTransitionsOrFail(string $key): ?array
     {
         try {
-            $transitions = $this->jiraService->getTransitions($key);
+            $transitions = $this->provider->listItemStateChanges($key);
             if ($transitions === []) {
                 $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.no_transitions', ['key' => $key]));
 
@@ -95,26 +102,26 @@ class ItemTransitionHandler
     }
 
     /**
-     * @param array<int, array<string, mixed>> $transitions
+     * @param list<StateChange> $transitions
      */
-    protected function selectTransitionIdFromUser(array $transitions): ?int
+    protected function selectStateChangeIdFromUser(array $transitions): ?string
     {
-        $options = array_map(fn (array $t) => "{$t['name']} (ID: {$t['id']})", $transitions);
+        $options = array_map(fn (StateChange $t) => "{$t->name} (ID: {$t->id})", $transitions);
         $selected = $this->prompt->choice(MessageRef::key('item.transition.select_transition'), $options);
-        preg_match('/ID: (\d+)\)$/', $selected, $matches);
-        if (! isset($matches[1])) {
+        preg_match('/ID: ([^)]+)\)$/', (string) $selected, $matches);
+        if (! isset($matches[1]) || trim($matches[1]) === '') {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.error_fetch', ['error' => 'Unable to extract transition ID from selection']));
 
             return null;
         }
 
-        return (int) $matches[1];
+        return trim($matches[1]);
     }
 
-    protected function executeTransitionAndReturn(string $key, int $transitionId): int
+    protected function executeTransitionAndReturn(string $key, string $transitionId): int
     {
         try {
-            $this->jiraService->transitionIssue($key, $transitionId);
+            $this->provider->applyStateChange($key, (string) $transitionId);
             $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.transition.success', ['key' => $key]));
 
             return 0;
@@ -135,7 +142,7 @@ class ItemTransitionHandler
             return strtoupper($key);
         }
 
-        $detectedKey = $this->gitRepository->getJiraKeyFromBranchName();
+        $detectedKey = $this->gitRepository->getIssueKeyFromBranchName();
         if ($detectedKey !== null) {
             $confirmed = $this->prompt->confirm(
                 MessageRef::key('item.transition.detected_key', ['key' => $detectedKey]),

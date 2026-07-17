@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -40,6 +41,24 @@ config:
       multiple_tokens_note: 'Lưu ý: Bạn có thể cấu hình cả hai token, hoặc chỉ những token bạn cần. Nhà cung cấp sẽ được cấu hình theo từng kho lưu trữ.'
       github_token_prompt: Nhập PAT GitHub của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
       gitlab_token_prompt: Nhập PAT GitLab của bạn (để trống để giữ nguyên giá trị hiện có hoặc bỏ qua)
+    git_provider:
+      title: Chọn nhà cung cấp Git
+      menu: "0 GitHub · 1 GitLab · 2 Cả hai"
+      prompt: Cấu hình nhà cung cấp Git
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Cả hai"
+    issue_tracker_provider:
+      title: Chọn quản lý dự án
+      menu: "0 Jira · 1 Linear · 2 Cả hai"
+      prompt: Cấu hình quản lý dự án
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Cả hai"
+    linear:
+      title: Cấu hình Linear
+      description: "Cấu hình truy cập API Linear. Chỉ cần thiết nếu bạn đã chọn Linear."
+      api_key_prompt: "Nhập khóa API Linear (để trống để giữ giá trị hiện có)"
     jira_transition:
       title: Cấu hình chuyển đổi Jira
       description: Bật chuyển đổi tự động sang 'Đang thực hiện' khi bắt đầu làm việc trên một issue.
@@ -70,9 +89,20 @@ config:
     section_title: "Xác thực cấu hình"
     label_jira: "Jira"
     label_git_provider: "Nhà cung cấp Git"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Lỗi"
     status_skipped: "Đã bỏ qua"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira chưa được cấu hình."
+    error_git_not_configured: "Nhà cung cấp Git chưa được cấu hình."
+    error_jira_ping: "Kết nối Jira thất bại: %error%"
+    error_git_ping: "Kết nối nhà cung cấp Git thất bại: %error%"
+    error_linear_not_configured: "Linear chưa được cấu hình."
+    error_linear_ping: "Kết nối Linear thất bại: %error%"
   project_init:
     section_title: "Cấu hình dự án"
     not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."
@@ -80,6 +110,8 @@ config:
     reserved_keys: "Các khóa này không thể đặt bằng lệnh này: %keys%"
     invalid_git_provider: "gitProvider phải là github hoặc gitlab."
     invalid_transition_id: "transitionId phải là số nguyên không âm."
+    invalid_issue_tracker_provider: "issueTrackerProvider phải là jira, linear hoặc auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes phải là map các nhãn loại không rỗng tới tiền tố nhánh không rỗng."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
     interactive_hint: "Nhấn Enter để giữ giá trị hiện tại. Để trống các trường tùy chọn nếu muốn bỏ qua."
@@ -94,6 +126,20 @@ config:
     prompt_github_token: "Token GitHub cho kho này (ẩn)"
     prompt_gitlab_token_hint: "Token GitLab: để trống để bỏ qua; nhập '.' để giữ token hiện có."
     prompt_gitlab_token: "Token GitLab cho kho này (ẩn)"
+    prompt_issue_tracker_provider: "Nhà cung cấp work-item cho kho lưu trữ này (khi cấu hình toàn cục hỗ trợ cả Jira và Linear)"
+    prompt_linear_team_key: "Khóa team Linear (tùy chọn; mặc định khóa dự án Jira khi dùng chung)"
+    prompt_linear_start_state_id: "ID trạng thái workflow Linear cho items:start (tùy chọn)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear cho ánh xạ tiền tố nhánh (tùy chọn)"
+    picker_skip: "Bỏ qua (để trống)"
+    prompt_select_transition: "Chọn transition Jira đã lưu cho items:start"
+    prompt_select_linear_start_state: "Chọn trạng thái Linear bắt đầu cho items:start"
+    prompt_select_linear_label_group: "Chọn LabelGroup Linear cho ánh xạ tiền tố nhánh"
+    prompt_linear_branch_prefix: "Tiền tố nhánh cho nhãn \"%label%\" (tùy chọn)"
+    confirm_linear_branch_prefix_map: "Lưu bản đồ tiền tố nhánh này?"
+    linear_branch_prefix_summary: "  %label% → %prefix%"
+    workflow_fetch_failed: "Không thể tải metadata workflow: %error%"
+    labels_fetch_failed: "Không thể tải nhóm nhãn: %error%"
+    no_labels_in_group: "Không tìm thấy nhãn con trong LabelGroup đã chọn."
     status_updated: "Đã cập nhật cấu hình dự án (.git/stud.config)."
     status_unchanged: "Không ghi thay đổi (cấu hình không đổi)."
     failed: "Cập nhật cấu hình dự án thất bại."
@@ -116,12 +162,16 @@ config:
   base_branch_saved: "Nhánh cơ sở đã được cấu hình: %branch%"
   base_branch_invalid: "Nhánh cơ sở '%branch%' không tồn tại trên remote. Vui lòng kiểm tra tên nhánh."
   base_branch_required: Nhánh cơ sở là bắt buộc. Lệnh không thể tiếp tục mà không có nhánh cơ sở hợp lệ.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Nhà cung cấp Git chưa được cấu hình cho kho lưu trữ này.
   git_provider_prompt: Chọn nhà cung cấp Git cho kho lưu trữ này
   git_provider_detected: "Đã phát hiện nhà cung cấp Git: %provider%"
   git_provider_saving: Đang lưu cấu hình nhà cung cấp Git...
   git_provider_saved: "Nhà cung cấp Git đã được cấu hình: %provider%"
   git_provider_required: Nhà cung cấp Git là bắt buộc. Lệnh không thể tiếp tục mà không có nhà cung cấp Git hợp lệ.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Token Git chưa được cấu hình cho kho lưu trữ này.
   git_token_prompt: Nhập PAT %provider% của bạn (để trống để bỏ qua)
   git_token_saving: Đang lưu cấu hình token Git...
@@ -145,7 +195,23 @@ config:
     version_updated: "Phiên bản di chuyển đã được cập nhật lên %version%"
   missing_global_key: "Thiếu khóa cấu hình toàn cục bắt buộc: %key%"
   missing_project_key: "Thiếu khóa cấu hình dự án bắt buộc: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Tự động phát hiện %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Bắt đầu làm việc trên %key%
@@ -166,6 +232,15 @@ item:
     transition_success: ✅ Issue %key% đã chuyển sang 'Đang thực hiện'
     transition_error: 'Lỗi lấy chuyển đổi: %error%'
     transition_exec_error: 'Lỗi thực thi chuyển đổi: %error%. Tiếp tục tạo nhánh.'
+    linear_no_type_label: 'Không tìm thấy nhãn loại Linear trên issue; dùng tiền tố nhánh mặc định feat/.'
+    linear_unknown_type_label: 'Nhãn loại Linear "%label%" không có ánh xạ tiền tố nhánh; dùng feat/.'
+    linear_type_label_matched: 'Dùng tiền tố nhánh %prefix% từ nhãn loại Linear %label%.'
+    using_cached_linear_state: 'Đang dùng ID trạng thái bắt đầu Linear đã lưu: %id%'
+    no_cached_linear_state_agent: 'Không có trạng thái bắt đầu Linear đã lưu cho issue %key%; bỏ qua chuyển trạng thái ở chế độ agent.'
+    no_linear_states: 'Không có trạng thái workflow cho issue %key%. Bỏ qua chuyển trạng thái.'
+    select_linear_state: 'Chọn trạng thái workflow Linear áp dụng khi bắt đầu:'
+    save_linear_state: 'Bạn có muốn lưu trạng thái này làm trạng thái bắt đầu mặc định cho dự án không?'
+    linear_state_saved: 'Đã lưu trạng thái bắt đầu Linear vào cấu hình dự án.'
     using_advanced_base: 'Nhánh cơ sở đã cấu hình ''%configured%'' đang đứng sau ''%resolved%''; sử dụng ''%resolved%'' làm cơ sở.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -206,6 +281,8 @@ item:
     section: Chi tiết cho issue %key%
     fetching: 'Đang lấy chi tiết cho issue: %key%'
     error_not_found: Không tìm thấy issue Jira với khóa "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
+    error_fetch: "Không thể tải chi tiết work item: %error%"
     label_key: Khóa
     label_title: Tiêu đề
     label_status: Trạng thái
@@ -222,7 +299,12 @@ item:
     col_filename: "Tên tệp"
     col_path: "Đường dẫn"
     error_key_or_url: "Cung cấp mã issue Jira hoặc --url với URL nội dung tệp đính kèm Jira."
+    error_fetch: "Không thể tải tệp đính kèm: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Đường dẫn không được chứa phân đoạn thư mục cha (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
+    error_cwd: "Không xác định được thư mục làm việc hiện tại."
+    error_target_dir: "Không thể tạo thư mục đích: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Đã tải lên tệp đính kèm"
@@ -235,6 +317,7 @@ item:
     error_not_found: "Không tìm thấy tệp."
     error_not_file: "Đường dẫn không phải tệp có thể đọc."
     error_cwd: "Không xác định được thư mục làm việc hiện tại."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -247,11 +330,15 @@ item:
     prompt_custom_field: "Value for \"%name%\" (required)"
     prompt_issue_type_choice: "Issue type"
     error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: "Summary is required. Set --summary/-m or run interactively."
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -280,11 +367,46 @@ item:
     error_fetch: 'Không thể lấy các mục: %error%'
     no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
     error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
+issue_tracker_provider:
+  missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira được chọn nhưng thông tin xác thực Jira chưa được cấu hình. Chạy "stud config:init".'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
+  not_configured: 'Chưa cấu hình nhà cung cấp work-item. Chạy "stud config:init" để thiết lập Jira hoặc Linear.'
+  ambiguous_prefix: 'Tiền tố khóa %prefix% khớp cả Jira và Linear. Truyền --provider hoặc đặt projectKey và linearTeamKey khác nhau trong .git/stud.config.'
+  unknown_prefix: 'Tiền tố khóa %prefix% không khớp khóa đã cấu hình (%configuredKeys%). Truyền --provider hoặc đặt issueTrackerProvider trong .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider là auto nhưng chưa có issue key để phân giải provider. Truyền issue key hoặc đặt issueTrackerProvider thành jira hoặc linear.'
+  invalid_override: 'Override provider không hợp lệ %value%. Giá trị cho phép: jira, linear.'
+  unknown_resolved: 'Provider work-item đã resolve không hợp lệ %value%. Kỳ vọng jira hoặc linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Đang lấy các dự án Jira
     error_fetch: 'Không thể lấy các dự án: %error%'
     no_projects: Không tìm thấy dự án nào.
+  workflow:
+    section: Trạng thái workflow dự án
+    no_state_changes: Không tìm thấy thay đổi trạng thái nào cho dự án %project%.
+    error_ambiguous_provider: issueTrackerProvider không rõ ràng. Đặt jira hoặc linear trong .git/stud.config hoặc chạy stud config:project-init.
+    error_no_provider: Chưa cấu hình nhà cung cấp work-item. Chạy stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
+    column_id: ID
+    column_name: Tên
+    column_target_status: Trạng thái đích
+    column_type: Loại
+    column_provider: Nhà cung cấp
+  labels:
+    section: Nhóm nhãn dự án
+    labels_not_supported_for_jira: Không hỗ trợ khám phá nhóm nhãn cho Jira. Dùng Linear hoặc cấu hình linearTypeLabelGroupId thủ công.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
+    error_fetch: "Failed to fetch project label groups: %error%"
+    no_label_groups: Không tìm thấy nhóm nhãn cho dự án %project%.
+    column_group_id: ID nhóm
+    column_group_name: Tên nhóm
+    column_label_id: ID nhãn
+    column_label_name: Tên nhãn
+    column_color: Màu
 search:
   section: Tìm kiếm các issue Jira với JQL
   jql_query: 'Truy vấn JQL: %jql%'
@@ -295,6 +417,7 @@ filter:
     section: Lấy các issue từ bộ lọc '%filterName%'
     jql_query: 'Truy vấn JQL: %jql%'
     error_fetch: 'Không thể lấy các issue từ bộ lọc: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Không tìm thấy issue nào trong bộ lọc '%filterName%'.
   list:
     section: Lấy các bộ lọc Jira
@@ -363,11 +486,13 @@ submit:
     Thử chạy ''stud please'' để force-push.'
   finding_commit: Đang tìm commit logic đầu tiên để sử dụng cho chi tiết PR...
   fetching_jira: 'Đang lấy issue Jira cho nội dung PR: %key%'
+  fetching_issue: "Đang lấy work item cho nội dung PR: %key%"
   error_no_logical: Không tìm thấy commit logic trên nhánh này. Không thể tạo PR.
   error_no_jira_key: Không thể phân tích khóa Jira từ thông báo commit. Không thể tạo PR.
   warning_jira_fetch: 'Không thể lấy chi tiết issue Jira cho nội dung PR: %error%
 
     Quay lại liên kết đơn giản.'
+  warning_issue_fetch: "Không thể lấy chi tiết work item cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
   creating: Đang tạo Pull Request...
   success_created: '✅ Pull Request đã được tạo: %url%'
   warning_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.
@@ -654,6 +779,7 @@ table:
   key: Khóa
   status: Trạng thái
   summary: Tóm tắt
+  provider: "Provider"
   name: Tên
   command: Lệnh
   alias: Bí danh
@@ -676,18 +802,20 @@ help:
   category_git_workflow: Quy trình Git
   category_release_commands: Lệnh Phát hành
   example_prefix: 'Ví dụ: %example%'
-  command_config_init: Trình hướng dẫn tương tác để thiết lập chi tiết kết nối Jira & Git.
+  command_config_init: Trình hướng dẫn tương tác cho nhà cung cấp Git, work-item (Jira/Linear) và thông tin xác thực.
   command_config_show: "Hiển thị cấu hình hiện tại (toàn cục và dự án) với bí mật được ẩn; an toàn để chia sẻ."
-  command_config_validate: "Xác thực rằng cấu hình có mặt và Jira cùng nhà cung cấp Git có thể truy cập. Dùng --skip-jira hoặc --skip-git để kiểm tra từng phần."
-  command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Dùng cờ CLI, stud config:project-init --agent với JSON, hoặc chạy tương tác không cờ. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
-  option_config_project_init_project_key: "Mã dự án Jira (bộ nhớ chuyển trạng thái với transition-id)"
-  option_config_project_init_base_branch: "Nhánh cơ sở; kiểm tra tồn tại trên origin trừ khi bật --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Không kiểm tra nhánh cơ sở có tồn tại trên origin"
+  command_config_validate: "Xác thực rằng cấu hình có mặt và Jira, nhà cung cấp Git và Linear có thể truy cập. Dùng --skip-jira, --skip-git hoặc --skip-linear để kiểm tra từng phần."
+  command_config_project_init: "Tạo hoặc gộp .git/stud.config (mã dự án, nhánh cơ sở, nhà cung cấp, token, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Chạy tương tác hoặc dùng stud config:project-init --agent với JSON. Các khóa agent không xác định bị từ chối; migration_version được giữ riêng."
   command_completion: Tạo script tự động hoàn thành shell cho bash hoặc zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Liệt kê tất cả các dự án Jira có thể nhìn thấy.
+  command_projects_workflow: Liệt kê transition workflow (Jira) hoặc trạng thái (Linear) cho một dự án.
+  option_projects_workflow_project: Khóa dự án hoặc team (vd. SCI)
+  command_projects_labels: Liệt kê Linear LabelGroups và nhãn con cho team dự án.
+  option_projects_labels_project: Khóa dự án hoặc team (vd. SCI)
+  option_projects_labels_groups_only: Chỉ trả về LabelGroups; bỏ nhãn lẻ không thuộc nhóm
   command_items_list: Liệt kê các mục công việc đang hoạt động (bảng điều khiển của bạn).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
@@ -757,6 +885,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Bỏ qua kiểm tra kết nối Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

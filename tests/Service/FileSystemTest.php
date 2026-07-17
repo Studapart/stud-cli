@@ -673,7 +673,7 @@ class FileSystemTest extends TestCase
         // Test line 212: return true when path doesn't start with '/'
         $reflection = new \ReflectionClass($this->fileSystem);
         $method = $reflection->getMethod('isPathWithinRoot');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         $result = $method->invoke($this->fileSystem, 'relative/path.txt');
         $this->assertTrue($result);
@@ -684,7 +684,7 @@ class FileSystemTest extends TestCase
         // Test line 217: return true when not using local filesystem
         $reflection = new \ReflectionClass($this->fileSystem);
         $method = $reflection->getMethod('isPathWithinRoot');
-        $method->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
 
         // With in-memory filesystem, should return true
         $result = $method->invoke($this->fileSystem, '/absolute/path.txt');

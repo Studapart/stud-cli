@@ -14,6 +14,7 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertTrue(SecretKeyPolicy::isSecretKey('JIRA_API_TOKEN'));
         $this->assertTrue(SecretKeyPolicy::isSecretKey('GITHUB_TOKEN'));
         $this->assertTrue(SecretKeyPolicy::isSecretKey('GITLAB_TOKEN'));
+        $this->assertTrue(SecretKeyPolicy::isSecretKey('LINEAR_API_KEY'));
     }
 
     public function testIsSecretKeyReturnsTrueForFallbackPatterns(): void
@@ -89,5 +90,9 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertContains('CONFLUENCE_DEFAULT_SPACE', $allowed);
         $this->assertContains('baseBranch', $allowed);
         $this->assertContains('gitProvider', $allowed);
+        $this->assertContains('issueTrackerProvider', $allowed);
+        $this->assertContains('linearTeamKey', $allowed);
+        $this->assertContains('linearStartStateId', $allowed);
+        $this->assertContains('linearTypeBranchPrefixes', $allowed);
     }
 }

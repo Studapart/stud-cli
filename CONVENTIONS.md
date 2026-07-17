@@ -9,6 +9,9 @@ The conventions in this document are informed by architectural decisions documen
 ### Architecture & Patterns
 - **[ADR-005: Responder Pattern Architecture](documentation/adr-005-responder-pattern-architecture.md)** - Explains the Action-Domain-Responder pattern used throughout the codebase
 - **[ADR-018: Presentation-Owned Translation](documentation/adr-018-presentation-owned-translation.md)** - Documents that localization happens at presentation boundaries
+- **[ADR-019: Closed Prompt Choices Use Backed Enums](documentation/adr-019-closed-prompt-choices-use-backed-enums.md)** - Provider tokens and numbered menus as enums; field maps stay class constants
+- **[ADR-020: Global Init Wizard Director and Strategy](documentation/adr-020-global-init-wizard-director-and-strategy.md)** - Provider credential collectors under `GlobalInit\`; `InitPromptInputHelper::resolveWhenActive()`
+- **[ADR-023: Integration Layering and Naming](documentation/adr-023-integration-layering-and-naming.md)** - Ports, adapters, config providers; issue tracker vs git hosting vs wiki domains
 - **[ADR-006: Command Naming Convention](documentation/adr-006-command-naming-convention.md)** - Documents the `object:verb` command naming pattern
 - **[ADR-007: Migration System Architecture](documentation/adr-007-migration-system-architecture.md)** - Details the configuration migration system
 - **[ADR-009: Service Locator Pattern in castor.php](documentation/adr-009-service-locator-pattern-in-castor.md)** - Explains how services are provided via helper functions
@@ -47,7 +50,7 @@ The `final` keyword must **not** be used on injectable services (Handlers, Provi
 
 **Do NOT use `final` for:**
 - Handler classes (e.g., `UpdateHandler`, `CommitHandler`)
-- Service classes (e.g., `GitRepository`, `JiraService`, `GithubProvider`)
+- Service classes (e.g., `GitRepository`, `JiraApiClient`, `GithubGitHostingAdapter`)
 - Any class that is injected via dependency injection
 
 ### Visibility Guidelines
@@ -70,7 +73,7 @@ Visibility modifiers are a critical aspect of testability and encapsulation:
 
 ### Constants, Enums, and Literals
 
-Domain, protocol, provider, configuration, and workflow values must not be hidden as repeated inline literals. Use class constants or enums for values that represent stable concepts, external API keywords, provider states, action names, connection names, output modes, or any value that is used in more than one place.
+Domain, protocol, provider, configuration, and workflow values must not be hidden as repeated inline literals. Use class constants or enums for values that represent stable concepts, external API keywords, provider states, action names, connection names, output modes, or any value that is used in more than one place. For outbound integration code, follow the port/adapter/client glossary in [ADR-023](documentation/adr-023-integration-layering-and-naming.md) (config *provider* vs implementation *adapter*).
 
 Inline literals are acceptable when they are local, self-explanatory, and not part of a stable contract. Examples include one-off array keys in a small local transformation, short punctuation separators, or test data that is meaningful only inside a single test. Do not extract literals into constants if the constant name only repeats the value without adding domain meaning.
 
@@ -446,7 +449,7 @@ try {
 // ❌ BAD: Using real service instances
 public function testHandler() {
     $gitRepository = new GitRepository(); // Real instance
-    $jiraService = new JiraService(); // Real instance
+    $jiraService = new JiraApiClient(); // Real instance
     $handler = new UpdateHandler($gitRepository, $jiraService);
     // This test may make real API calls or modify the file system!
 }
@@ -454,7 +457,7 @@ public function testHandler() {
 // ✅ GOOD: Using mocks
 public function testHandler() {
     $gitRepository = $this->createMock(GitRepository::class);
-    $jiraService = $this->createMock(JiraService::class);
+    $jiraService = $this->createMock(JiraApiClient::class);
     $handler = new UpdateHandler($gitRepository, $jiraService);
     // This test is isolated and predictable
 }
@@ -462,7 +465,7 @@ public function testHandler() {
 
 **What to mock:**
 - Handler classes (e.g., `UpdateHandler`, `CommitHandler`)
-- Service classes (e.g., `GitRepository`, `JiraService`, `GithubProvider`)
+- Service classes (e.g., `GitRepository`, `JiraApiClient`, `GithubGitHostingAdapter`)
 - Any class that is injected via dependency injection
 
 **What NOT to mock (acceptable to use real instances):**

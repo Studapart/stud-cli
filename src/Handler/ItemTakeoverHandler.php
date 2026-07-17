@@ -9,13 +9,17 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
+use App\Guard\Capability\ProjectBaseBranchAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class ItemTakeoverHandler
+class ItemTakeoverHandler implements GitRepositoryAware, ProjectBaseBranchAware, JiraAware, LinearAware
 {
     private WorkflowEntryRecorder $recorder;
 
@@ -25,7 +29,7 @@ class ItemTakeoverHandler
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly ItemStartHandler $itemStartHandler,
         private readonly string $baseBranch,
         mixed $_translator,
@@ -50,17 +54,13 @@ class ItemTakeoverHandler
 
         // Step 2: Fetch issue from Jira
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->provider->getIssue($key);
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.takeover.error_not_found', ['key' => $key]),
+                $e->getResolutionHint() ?? MessageRef::key('item.takeover.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
-
-            return $this->recorder->toResponse(1);
-        } catch (\Exception $e) {
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.error_not_found', ['key' => $key]));
 
             return $this->recorder->toResponse(1);
         }
@@ -100,7 +100,7 @@ class ItemTakeoverHandler
     {
         try {
             $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('item.takeover.assigning', ['key' => $key]), WorkflowChannel::Jira);
-            $this->jiraService->assignIssue($key);
+            $this->provider->assign($key);
         } catch (ApiException $e) {
             $this->recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('item.takeover.assign_warning', ['error' => $e->getMessage()]));
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);

@@ -68,17 +68,14 @@ class CommandMap
                 'options' => [
                     ['name' => '--skip-jira', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_jira', 'argument' => null],
                     ['name' => '--skip-git', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_git', 'argument' => null],
+                    ['name' => '--skip-linear', 'shortcut' => null, 'description_key' => 'help.option_config_validate_skip_linear', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
             'config:project-init' => [
                 'alias' => 'cpi',
                 'description_key' => 'help.command_config_project_init',
-                'options' => [
-                    ['name' => '--project-key', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_project_key', 'argument' => '<key>'],
-                    ['name' => '--base-branch', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_base_branch', 'argument' => '<branch>'],
-                    ['name' => '--skip-base-branch-remote-check', 'shortcut' => null, 'description_key' => 'help.option_config_project_init_skip_base', 'argument' => null],
-                ],
+                'options' => [],
                 'arguments' => [],
             ],
         ];
@@ -370,6 +367,23 @@ class CommandMap
                     'alias' => 'pj',
                     'description_key' => 'help.command_projects_list',
                     'options' => [],
+                    'arguments' => [],
+                ],
+                'projects:workflow' => [
+                    'alias' => null,
+                    'description_key' => 'help.command_projects_workflow',
+                    'options' => [
+                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_workflow_project', 'argument' => 'KEY'],
+                    ],
+                    'arguments' => [],
+                ],
+                'projects:labels' => [
+                    'alias' => null,
+                    'description_key' => 'help.command_projects_labels',
+                    'options' => [
+                        ['name' => '--project', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_project', 'argument' => 'KEY'],
+                        ['name' => '--groups-only', 'shortcut' => null, 'description_key' => 'help.option_projects_labels_groups_only', 'argument' => null],
+                    ],
                     'arguments' => [],
                 ],
                 'update' => [

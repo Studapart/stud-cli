@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Handler\InitHandler;
+use App\Handler\InitPromptCollector;
 use App\Service\FileSystem;
+use App\Service\GitTokenPromptResolver;
+use App\Service\GlobalConfigProviderResolver;
 use App\Service\Logger;
+use App\Service\MessageRenderer;
 use App\Service\TranslationService;
 use League\Flysystem\Filesystem as FlysystemFilesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -80,6 +84,8 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         // Create input stream with responses
         $inputStream = fopen('php://memory', 'r+');
         fwrite($inputStream, "English (en)\n"); // Language choice
+        fwrite($inputStream, "0\n"); // Git provider: GitHub
+        fwrite($inputStream, "0\n"); // PM: Jira
         fwrite($inputStream, "/\n"); // Invalid: empty after normalization — re-prompt
         fwrite($inputStream, "https://jira.example.com/\n"); // Valid URL (trailing slash stripped on save)
         fwrite($inputStream, "email@example.com\n");
@@ -96,7 +102,17 @@ class InitHandlerEmptyStringFilterIntegrationTest extends TestCase
         $io = new SymfonyStyle($input, $output);
 
         $logger = new Logger($io, []);
-        $handler = new InitHandler($this->fileSystem, $this->configPath, $this->translationService, $logger, new \App\Service\GitTokenPromptResolver());
+        $handler = new InitHandler(
+            $this->fileSystem,
+            $this->configPath,
+            $logger,
+            new InitPromptCollector(
+                $logger,
+                new GitTokenPromptResolver(),
+                new MessageRenderer($this->translationService),
+                new GlobalConfigProviderResolver(),
+            ),
+        );
 
         // Execute handler
         $response = $handler->handle();

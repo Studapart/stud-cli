@@ -6,6 +6,8 @@ namespace App\Service;
 
 use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
+use App\Config\GlobalStudConfigFieldMap;
+use App\Config\ProjectStudConfigFieldMap;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -20,6 +22,46 @@ use Castor\Attribute\AsTask;
 class AgentModeSchemaGenerator
 {
     private const AGENT_ONLY_PARAMS = ['agent', 'inputFile'];
+
+    /** @var list<string> */
+    private const COMMANDS_WITH_PROVIDER_OVERRIDE = [
+        'items:create',
+        'items:list',
+        'items:show',
+        'items:start',
+        'items:transition',
+        'items:update',
+        'items:takeover',
+        'items:download',
+        'items:upload',
+        'items:search',
+        'filters:list',
+        'filters:show',
+        'projects:list',
+        'projects:workflow',
+        'projects:labels',
+        'commit',
+        'push',
+        'submit',
+        'status',
+        'branch:rename',
+    ];
+
+    /**
+     * @return list<string>
+     */
+    public static function commandsWithProviderOverride(): array
+    {
+        return self::COMMANDS_WITH_PROVIDER_OVERRIDE;
+    }
+
+    private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
+        'type' => 'string|null',
+        'optional' => true,
+        'default' => null,
+        'enum' => ['jira', 'linear'],
+    ];
+
     private const COMPACT_PROPERTY = [
         'type' => 'bool',
         'optional' => true,
@@ -195,6 +237,53 @@ class AgentModeSchemaGenerator
                 'essential' => ['type' => 'bool', 'optional' => true, 'default' => true],
             ] + $inputProperties;
         }
+
+        if (in_array($taskName, self::COMMANDS_WITH_PROVIDER_OVERRIDE, true)) {
+            $inputProperties['provider'] = self::PROVIDER_OVERRIDE_INPUT_SCHEMA;
+        }
+
+        if ($taskName === 'config:init') {
+            $inputProperties = $this->buildConfigInitInputProperties();
+        }
+
+        if ($taskName === 'config:project-init') {
+            $inputProperties = $this->buildConfigProjectInitInputProperties();
+        }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildConfigInitInputProperties(): array
+    {
+        $properties = [];
+        foreach (array_keys(GlobalStudConfigFieldMap::INPUT_TO_YAML) as $key) {
+            $properties[$key] = match ($key) {
+                'gitProviders', 'issueTrackerProviders' => ['type' => 'array', 'optional' => true, 'default' => null],
+                'jiraTransitionEnabled' => ['type' => 'bool', 'optional' => true, 'default' => null],
+                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            };
+        }
+
+        return $properties;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildConfigProjectInitInputProperties(): array
+    {
+        $properties = [];
+        foreach (array_keys(ProjectStudConfigFieldMap::INPUT_TO_YAML) as $key) {
+            $properties[$key] = match ($key) {
+                'transitionId' => ['type' => 'int|null', 'optional' => true, 'default' => null],
+                'linearTypeBranchPrefixes' => ['type' => 'object', 'optional' => true, 'default' => null],
+                default => ['type' => 'string|null', 'optional' => true, 'default' => null],
+            };
+        }
+        $properties['skipBaseBranchRemoteCheck'] = ['type' => 'bool', 'optional' => true, 'default' => false];
+
+        return $properties;
     }
 
     /**

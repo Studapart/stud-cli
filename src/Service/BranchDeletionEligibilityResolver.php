@@ -17,7 +17,7 @@ class BranchDeletionEligibilityResolver
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly GitBranchService $gitBranchService,
-        private readonly ?GitProviderInterface $gitProvider,
+        private readonly ?GitHostingPort $gitProvider,
     ) {
     }
 

@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -40,6 +41,24 @@ config:
       multiple_tokens_note: 'Note : Vous pouvez configurer les deux jetons, ou seulement ceux dont vous avez besoin. Le fournisseur sera configuré par dépôt.'
       github_token_prompt: Entrez votre PAT GitHub (laissez vide pour conserver l'existant ou ignorer)
       gitlab_token_prompt: Entrez votre PAT GitLab (laissez vide pour conserver l'existant ou ignorer)
+    git_provider:
+      title: Sélection du fournisseur Git
+      menu: "0 GitHub · 1 GitLab · 2 Les deux"
+      prompt: Configurer le fournisseur Git
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Les deux"
+    issue_tracker_provider:
+      title: Sélection de la gestion de projet
+      menu: "0 Jira · 1 Linear · 2 Les deux"
+      prompt: Configurer la gestion de projet
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Les deux"
+    linear:
+      title: Configuration Linear
+      description: "Configurez l'accès à l'API Linear. Requis uniquement si vous avez sélectionné Linear."
+      api_key_prompt: "Entrez votre clé API Linear (laissez vide pour conserver l'existant)"
     jira_transition:
       title: Configuration de transition Jira
       description: Activer la transition automatique vers 'En cours' lors du démarrage d'un ticket.
@@ -70,9 +89,20 @@ config:
     section_title: "Validation de la configuration"
     label_jira: "Jira"
     label_git_provider: "Fournisseur Git"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Échec"
     status_skipped: "Ignoré"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira n'est pas configuré."
+    error_git_not_configured: "Le fournisseur Git n'est pas configuré."
+    error_jira_ping: "Échec de la connexion Jira : %error%"
+    error_git_ping: "Échec de la connexion au fournisseur Git : %error%"
+    error_linear_not_configured: "Linear n'est pas configuré."
+    error_linear_ping: "Échec de la connexion Linear : %error%"
   project_init:
     section_title: "Configuration du projet"
     not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
@@ -80,6 +110,8 @@ config:
     reserved_keys: "Ces clés ne peuvent pas être définies par cette commande : %keys%"
     invalid_git_provider: "gitProvider doit être github ou gitlab."
     invalid_transition_id: "transitionId doit être un entier positif ou nul."
+    invalid_issue_tracker_provider: "issueTrackerProvider doit être jira, linear ou auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes doit être une map de libellés de type non vides vers des préfixes de branche non vides."
     base_branch_error: "%message%"
     interactive_title: "Configuration stud du projet"
     interactive_hint: "Appuyez sur Entrée pour conserver la valeur actuelle. Laissez les champs optionnels vides pour les ignorer."
@@ -94,6 +126,20 @@ config:
     prompt_github_token: "Jeton GitHub pour ce dépôt (masqué)"
     prompt_gitlab_token_hint: "Jeton GitLab : laissez vide pour ignorer ; saisissez « . » pour conserver le jeton actuel."
     prompt_gitlab_token: "Jeton GitLab pour ce dépôt (masqué)"
+    prompt_issue_tracker_provider: "Fournisseur de tickets pour ce dépôt (lorsque la config globale prend en charge Jira et Linear)"
+    prompt_linear_team_key: "Clé d'équipe Linear (optionnel ; par défaut la clé projet Jira si partagée)"
+    prompt_linear_start_state_id: "ID d'état de workflow Linear pour items:start (optionnel)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear pour le mapping des préfixes de branche (optionnel)"
+    picker_skip: "Ignorer (laisser non défini)"
+    prompt_select_transition: "Sélectionner la transition Jira mise en cache pour items:start"
+    prompt_select_linear_start_state: "Sélectionner l'état Linear de départ pour items:start"
+    prompt_select_linear_label_group: "Sélectionner le LabelGroup Linear pour le mapping des préfixes de branche"
+    prompt_linear_branch_prefix: "Préfixe de branche pour le libellé « %label% » (optionnel)"
+    confirm_linear_branch_prefix_map: "Enregistrer cette map de préfixes de branche ?"
+    linear_branch_prefix_summary: "  %label% → %prefix%"
+    workflow_fetch_failed: "Impossible de charger les métadonnées de workflow : %error%"
+    labels_fetch_failed: "Impossible de charger les groupes de libellés : %error%"
+    no_labels_in_group: "Aucun libellé enfant trouvé dans le LabelGroup sélectionné."
     status_updated: "Configuration du projet mise à jour (.git/stud.config)."
     status_unchanged: "Aucune modification écrite (configuration inchangée)."
     failed: "Échec de la mise à jour de la configuration du projet."
@@ -116,12 +162,16 @@ config:
   base_branch_saved: "Branche de base configurée: %branch%"
   base_branch_invalid: "La branche de base '%branch%' n'existe pas sur le dépôt distant. Veuillez vérifier le nom de la branche."
   base_branch_required: La branche de base est requise. La commande ne peut pas continuer sans une branche de base valide.
+  base_branch_name_empty: "Le nom de la branche de base ne peut pas être vide."
+  base_branch_auto_detect_failed: "Branche de base non configurée et détection automatique impossible."
+  base_branch_default_missing: "Branche de base non configurée et la branche par défaut « %branch% » n'existe pas sur le remote. Relancez sans --quiet ou exécutez « stud config:init »."
   git_provider_not_configured: Fournisseur Git non configuré pour ce dépôt.
   git_provider_prompt: Sélectionnez le fournisseur Git pour ce dépôt
   git_provider_detected: "Fournisseur Git détecté: %provider%"
   git_provider_saving: Enregistrement de la configuration du fournisseur Git...
   git_provider_saved: "Fournisseur Git configuré: %provider%"
   git_provider_required: Le fournisseur Git est requis. La commande ne peut pas continuer sans un fournisseur Git valide.
+  git_provider_quiet_unavailable: "Fournisseur Git non configuré et non détecté depuis le remote. Relancez sans --quiet ou exécutez « stud config:init »."
   git_token_not_configured: Jeton Git non configuré pour ce dépôt.
   git_token_prompt: Entrez votre PAT %provider% (laissez vide pour ignorer)
   git_token_saving: Enregistrement de la configuration du jeton Git...
@@ -145,7 +195,23 @@ config:
     version_updated: "Version de migration mise à jour vers %version%"
   missing_global_key: "Clé de configuration globale requise manquante: %key%"
   missing_project_key: "Clé de configuration de projet requise manquante: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Détection automatique de %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Démarrage du travail sur %key%
@@ -166,6 +232,15 @@ item:
     transition_success: ✅ Ticket %key% transitionné vers 'En cours'
     transition_error: 'Échec de la récupération des transitions : %error%'
     transition_exec_error: 'Échec de l''exécution de la transition : %error%. Poursuite de la création de branche.'
+    linear_no_type_label: 'Aucun libellé de type Linear sur le ticket ; préfixe feat/ par défaut.'
+    linear_unknown_type_label: 'Le libellé de type Linear « %label% » n''a pas de préfixe mappé ; feat/ utilisé.'
+    linear_type_label_matched: 'Préfixe %prefix% issu du libellé de type Linear %label%.'
+    using_cached_linear_state: 'Utilisation de l''ID d''état de démarrage Linear en cache : %id%'
+    no_cached_linear_state_agent: 'Aucun état de démarrage Linear en cache pour le ticket %key% ; transition d''état ignorée en mode agent.'
+    no_linear_states: 'Aucun état de workflow disponible pour le ticket %key%. Transition d''état ignorée.'
+    select_linear_state: 'Sélectionnez l''état de workflow Linear à appliquer au démarrage :'
+    save_linear_state: 'Voulez-vous enregistrer cet état comme état de démarrage par défaut pour ce projet ?'
+    linear_state_saved: 'État de démarrage Linear enregistré dans la configuration du projet.'
     using_advanced_base: 'La base configurée ''%configured%'' est en retard sur ''%resolved%'' ; utilisation de ''%resolved%'' comme base.'
     switching_branch: 'Basculement vers la branche existante : %branch%'
     switching_remote_branch: 'Basculement vers la branche distante : %branch%'
@@ -206,6 +281,8 @@ item:
     section: Détails du ticket %key%
     fetching: 'Récupération des détails pour le ticket : %key%'
     error_not_found: Impossible de trouver le ticket Jira avec la clé "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
+    error_fetch: "Échec de la récupération des détails du ticket : %error%"
     label_key: Clé
     label_title: Titre
     label_status: Statut
@@ -222,7 +299,12 @@ item:
     col_filename: "Fichier"
     col_path: "Chemin"
     error_key_or_url: "Indiquez une clé de ticket Jira ou --url avec une URL de contenu de pièce jointe Jira."
+    error_fetch: "Échec du chargement des pièces jointes : %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Le chemin ne peut pas contenir de segments parent (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
+    error_cwd: "Impossible de déterminer le répertoire de travail actuel."
+    error_target_dir: "Échec de la création du répertoire cible : %error%"
     error_partial: "%filename% : %message%"
   upload:
     section: "Pièces jointes envoyées"
@@ -235,6 +317,7 @@ item:
     error_not_found: "Fichier introuvable."
     error_not_file: "Le chemin n'est pas un fichier lisible."
     error_cwd: "Impossible de déterminer le répertoire de travail actuel."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename% : %message%"
   create:
     section: "Création d'un ticket Jira"
@@ -247,11 +330,15 @@ item:
     prompt_custom_field: "Valeur pour \"%name%\" (requis)"
     prompt_issue_type_choice: "Type de ticket"
     error_no_project: "Le projet est requis. Définissez --project/-p, ou JIRA_DEFAULT_PROJECT dans .git/stud.config, ou exécutez en mode interactif."
+    error_no_linear_team: "La clé d'équipe est requise pour créer un ticket Linear. Indiquez --project/-p ou la clé projet dans la charge utile de création."
     error_project_not_found: "Projet \"%key%\" introuvable."
     error_no_summary: "Le résumé est requis. Définissez --summary/-m ou exécutez en mode interactif."
     error_createmeta: "Impossible de récupérer les métadonnées de création : %error%"
     error_extra_required: "Ce projet/type de ticket a des champs personnalisés obligatoires : %fields%. Exécutez la commande en mode interactif (stud items:create ou stud ic)."
     error_create: "Impossible de créer le ticket : %error%"
+    linear_type_group_not_configured: "Le LabelGroup de type Linear n'est pas configuré. Définissez linearTypeLabelGroupId dans .git/stud.config."
+    linear_type_label_not_found: "Impossible de résoudre le libellé de type Linear « %type% » dans le LabelGroup configuré."
+    linear_type_resolver_unavailable: "Impossible de résoudre le libellé de type Linear ; le client API Linear n'est pas disponible."
     success: "Ticket %key% créé – %url%"
     note_skipped_optional_fields: "Les champs suivants ont été ignorés car non pris en charge pour ce projet/type de ticket : %fields%."
     skipped_field_labels: "labels"
@@ -280,11 +367,46 @@ item:
     error_fetch: 'Échec de la récupération des tickets : %error%'
     no_items: Aucun ticket trouvé correspondant à vos critères.
     error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
+issue_tracker_provider:
+  missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira est sélectionné mais les identifiants Jira ne sont pas configurés. Exécutez "stud config:init".'
+  invalid_jira_base_url: "Configuration de l'URL Jira invalide."
+  not_configured: 'Aucun fournisseur de work-items configuré. Exécutez "stud config:init" pour configurer Jira ou Linear.'
+  ambiguous_prefix: 'Le préfixe de clé %prefix% correspond aux clés Jira et Linear. Passez --provider ou définissez des projectKey et linearTeamKey distincts dans .git/stud.config.'
+  unknown_prefix: 'Le préfixe de clé %prefix% ne correspond à aucune clé configurée (%configuredKeys%). Passez --provider ou définissez issueTrackerProvider dans .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider est auto mais aucune clé de ticket na été fournie. Passez une clé ou définissez issueTrackerProvider sur jira ou linear.'
+  invalid_override: 'Override de fournisseur invalide %value%. Valeurs autorisées : jira, linear.'
+  unknown_resolved: 'Fournisseur work-item résolu inconnu %value%. Attendu jira ou linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Récupération des projets Jira
     error_fetch: 'Échec de la récupération des projets : %error%'
     no_projects: Aucun projet trouvé.
+  workflow:
+    section: États de workflow du projet
+    no_state_changes: Aucun changement d'état trouvé pour le projet %project%.
+    error_ambiguous_provider: issueTrackerProvider est ambigu. Définissez jira ou linear dans .git/stud.config ou exécutez stud config:project-init.
+    error_no_provider: Aucun fournisseur de tickets configuré. Exécutez stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
+    column_id: ID
+    column_name: Nom
+    column_target_status: Statut cible
+    column_type: Type
+    column_provider: Fournisseur
+  labels:
+    section: Groupes d'étiquettes du projet
+    labels_not_supported_for_jira: La découverte des groupes d'étiquettes n'est pas disponible pour Jira. Utilisez Linear ou configurez linearTypeLabelGroupId manuellement.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
+    error_fetch: "Failed to fetch project label groups: %error%"
+    no_label_groups: Aucun groupe d'étiquettes trouvé pour le projet %project%.
+    column_group_id: ID du groupe
+    column_group_name: Nom du groupe
+    column_label_id: ID de l'étiquette
+    column_label_name: Nom de l'étiquette
+    column_color: Couleur
 search:
   section: Recherche de tickets Jira avec JQL
   jql_query: 'Requête JQL : %jql%'
@@ -295,6 +417,7 @@ filter:
     section: Récupération des tickets depuis le filtre '%filterName%'
     jql_query: 'Requête JQL : %jql%'
     error_fetch: 'Échec de la récupération des tickets depuis le filtre : %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Aucun ticket trouvé dans le filtre '%filterName%'.
   list:
     section: Récupération des filtres Jira
@@ -363,11 +486,13 @@ submit:
     Essayez d''exécuter ''stud please'' pour forcer le push.'
   finding_commit: Recherche du premier commit logique à utiliser pour les détails de la PR...
   fetching_jira: 'Récupération du ticket Jira pour le corps de la PR : %key%'
+  fetching_issue: "Récupération du work item pour le corps de la PR : %key%"
   error_no_logical: Impossible de trouver un commit logique sur cette branche. Impossible de créer la PR.
   error_no_jira_key: Impossible de parser la clé Jira depuis le message de commit. Impossible de créer la PR.
   warning_jira_fetch: 'Impossible de récupérer les détails du ticket Jira pour le corps de la PR : %error%
 
     Retour à un simple lien.'
+  warning_issue_fetch: "Impossible de récupérer les détails du work item pour le corps de la PR : %error%\nRetour à un simple lien."
   creating: Création de la Pull Request...
   success_created: '✅ Pull Request créée : %url%'
   warning_no_provider: Aucun fournisseur Git configuré pour ce projet.
@@ -654,6 +779,7 @@ table:
   key: Clé
   status: Statut
   summary: Résumé
+  provider: "Provider"
   name: Nom
   command: Commande
   alias: Alias
@@ -676,18 +802,20 @@ help:
   category_git_workflow: Flux de travail Git
   category_release_commands: Commandes de Release
   example_prefix: 'Exemple : %example%'
-  command_config_init: Assistant interactif pour configurer les détails de connexion Jira & Git.
+  command_config_init: Assistant interactif pour les fournisseurs Git, les fournisseurs de tickets (Jira/Linear) et les identifiants.
   command_config_show: "Afficher la configuration actuelle (globale et projet) avec les secrets masqués ; sûr à partager."
-  command_config_validate: "Valider que la configuration est présente et que Jira et le fournisseur Git sont accessibles. Utilisez --skip-jira ou --skip-git pour des vérifications partielles."
-  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Utilisez les options CLI, stud config:project-init --agent avec du JSON, ou le mode interactif sans option. Les clés agent inconnues sont rejetées ; migration_version est réservée."
-  option_config_project_init_project_key: "Clé de projet Jira (cache de transition avec transition-id)"
-  option_config_project_init_base_branch: "Branche de base ; la présence sur origin est vérifiée sauf si --skip-base-branch-remote-check est défini"
-  option_config_project_init_skip_base: "Ne pas vérifier que la branche de base existe sur origin"
+  command_config_validate: "Valider que la configuration est présente et que Jira, le fournisseur Git et Linear sont accessibles. Utilisez --skip-jira, --skip-git ou --skip-linear pour des vérifications partielles."
+  command_config_project_init: "Crée ou fusionne .git/stud.config (clé de projet, branche de base, fournisseur, jetons, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Exécutez en mode interactif ou utilisez stud config:project-init --agent avec du JSON. Les clés agent inconnues sont rejetées ; migration_version est réservée."
   command_completion: Génère des scripts d'auto-complétion pour bash ou zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Liste tous les projets Jira visibles.
+  command_projects_workflow: Liste les transitions de workflow (Jira) ou les états (Linear) pour un projet.
+  option_projects_workflow_project: Clé de projet ou d'équipe (ex. SCI)
+  command_projects_labels: Liste les LabelGroups Linear et les étiquettes enfants pour une équipe projet.
+  option_projects_labels_project: Clé de projet ou d'équipe (ex. SCI)
+  option_projects_labels_groups_only: Retourner uniquement les LabelGroups ; exclure les étiquettes orphelines hors groupe
   command_items_list: Liste les éléments de travail actifs (votre tableau de bord).
   command_items_show: Affiche des informations détaillées pour un élément de travail.
   command_items_download: "Télécharge les pièces jointes Jira pour un ticket ou un fichier depuis une URL de pièce jointe. Avec une clé, toutes les pièces sont enregistrées (--url ignoré). Sans clé, --url est obligatoire. Même authentification Jira que les autres commandes. Dossier par défaut : .cursor/stud-downloads. Agent JSON : issueKey ou key, url et path optionnels."
@@ -758,6 +886,7 @@ help:
   option_config_show_quiet: "Avec --key : n'afficher que la valeur brute ; ignoré sans --key"
   option_config_validate_skip_jira: "Ignorer la vérification de connexion Jira"
   option_config_validate_skip_git: "Ignorer la vérification du fournisseur Git"
+  option_config_validate_skip_linear: "Ignorer la vérification de connexion Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

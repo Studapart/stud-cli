@@ -24,7 +24,7 @@ class BranchActionTest extends TestCase
 
         // Call the private constructor via reflection to achieve coverage
         // We need to create a temporary instance to invoke the constructor
-        $constructor->setAccessible(true);
+        \App\Util\ReflectionAccessor::ensureAccessible($constructor);
         $instance = $reflection->newInstanceWithoutConstructor();
         $constructor->invoke($instance);
 

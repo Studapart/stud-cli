@@ -144,7 +144,7 @@ class Migration202501150000001_GitTokenFormat extends AbstractMigration
 
 **Migration Discovery:**
 - Migrations are discovered by scanning `src/Migrations/GlobalMigrations/` and `src/Migrations/ProjectMigrations/`
-- Sorted by ID (timestamp-based: `YYYYMMDDHHIISS001`)
+- Sorted by ID (timestamp-based: `YYYYMMDDHHIISSSSS`)
 - Filtered based on current `migration_version` in config
 
 **Migration Execution:**
@@ -154,9 +154,17 @@ class Migration202501150000001_GitTokenFormat extends AbstractMigration
 - Each migration updates `migration_version` after successful execution
 
 **Migration ID Format:**
-- Format: `YYYYMMDDHHIISS001` (timestamp + sequence number)
-- Ensures proper ordering
-- Example: `202501150000001` (January 15, 2025, 00:00:00, sequence 001)
+- Format: `YYYYMMDDHHIISSSSS` (17 digits: creation timestamp + daily sequence)
+- `YYYY` — 4-digit year (e.g. `2026`)
+- `MM` — 2-digit month (e.g. `06`)
+- `DD` — 2-digit day (e.g. `19`)
+- `HH` — 2-digit hour, 24-hour clock (e.g. `10`)
+- `II` — 2-digit minute (e.g. `28`)
+- `SS` — 2-digit second (e.g. `28`)
+- `SSS` — 3-digit daily sequence, `000`–`999`, reset at each calendar day; first migration of the day is `000`, second is `001`, and so on
+- Class and file names mirror the ID: `Migration{ID}_{Description}.php`
+- Example: `20260619102828000` (2026-06-19 10:28:28, first migration that day)
+- Legacy note: `Migration202501150000001_GitTokenFormat` predates this format and remains valid for ordering
 
 **Prerequisite Migrations:**
 - Marked with `isPrerequisite(): bool` returning `true`

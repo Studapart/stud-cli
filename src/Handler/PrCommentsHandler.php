@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
+use App\Guard\Capability\GitHosting\GithubAware;
+use App\Guard\Capability\GitHosting\GitlabAware;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\PrCommentsResponse;
-use App\Service\GitProviderInterface;
+use App\Service\GitHostingPort;
 use App\Service\GitRepository;
 
 /**
  * Fetches and aggregates PR/MR comments (issue and review) for the current branch's open PR.
  * Returns a Response DTO; no I/O. Same PR resolution logic as PrCommentHandler.
  */
-class PrCommentsHandler
+class PrCommentsHandler implements GithubAware, GitlabAware, GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly ?GitProviderInterface $gitProvider,
+        private readonly ?GitHostingPort $gitProvider,
         mixed $_translator
     ) {
         unset($_translator);

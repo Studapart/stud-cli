@@ -10,16 +10,18 @@ use App\DTO\WorkItem;
 use App\Exception\ApiException;
 use App\Exception\GitException;
 use App\Exception\GitTimeoutException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 use App\Service\Prompt\PromptInterface;
 
-class CommitHandler
+class CommitHandler implements GitRepositoryAware, JiraAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly PromptInterface $prompt
@@ -116,7 +118,7 @@ class CommitHandler
     {
         $messages = [ResponseMessage::notice(MessageRef::key('commit.note_no_logical'))];
 
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
         if (! $key) {
             return CommandResponse::error(MessageRef::key('commit.error_no_key'), $messages);
         }
@@ -166,16 +168,15 @@ class CommitHandler
     protected function fetchIssueForCommit(string $key): WorkItem|CommandResponse
     {
         try {
-            return $this->jiraService->getIssue($key);
+            return $this->provider->getIssue($key);
         } catch (ApiException $e) {
-            $error = MessageRef::key('commit.error_not_found', ['key' => $key]);
+            $error = $e->getResolutionHint()
+                ?? MessageRef::key('commit.error_not_found', ['key' => $key]);
 
             return CommandResponse::error(
                 $error,
                 [ResponseMessage::error($error, $e->getTechnicalDetails())],
             );
-        } catch (\Exception $e) {
-            return CommandResponse::error(MessageRef::key('commit.error_not_found', ['key' => $key]));
         }
     }
 

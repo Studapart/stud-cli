@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\DTO\ItemUploadInput;
+use App\Exception\ApiException;
 use App\Handler\ItemUploadHandler;
 use App\Service\FileSystem;
-use App\Service\JiraAttachmentService;
+use App\Service\IssueTrackerPort;
 use App\Service\TranslationService;
 use App\Tests\CommandTestCase;
+use App\Tests\Handler\Support\AttachmentAgentJsonAssertions;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class ItemUploadHandlerTest extends CommandTestCase
 {
+    use AttachmentAgentJsonAssertions;
     private FileSystem $fileSystem;
 
-    private JiraAttachmentService $attachmentService;
+    private IssueTrackerPort&MockObject $provider;
 
     private TranslationService $translator;
 
@@ -26,7 +31,7 @@ class ItemUploadHandlerTest extends CommandTestCase
         parent::setUp();
 
         $this->fileSystem = $this->createMock(FileSystem::class);
-        $this->attachmentService = $this->createMock(JiraAttachmentService::class);
+        $this->provider = $this->createMock(IssueTrackerPort::class);
         $this->translator = $this->createMock(TranslationService::class);
         $this->translator->method('trans')->willReturnCallback(static function (string $id, array $parameters = []): string {
             if ($parameters !== []) {
@@ -36,7 +41,7 @@ class ItemUploadHandlerTest extends CommandTestCase
             return $id;
         });
 
-        $this->handler = new ItemUploadHandler($this->fileSystem, $this->attachmentService, $this->translator);
+        $this->handler = new ItemUploadHandler($this->fileSystem, $this->provider, $this->translator);
     }
 
     public function testHandleReturnsFatalWhenKeyMissing(): void
@@ -57,7 +62,7 @@ class ItemUploadHandlerTest extends CommandTestCase
 
     public function testHandleRejectsPathTraversal(): void
     {
-        $this->attachmentService->expects($this->never())->method('uploadFileToIssue');
+        $this->provider->expects($this->never())->method('uploadAttachment');
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', ['../evil']));
 
         $this->assertTrue($response->isSuccess());
@@ -69,7 +74,7 @@ class ItemUploadHandlerTest extends CommandTestCase
     public function testHandleRecordsErrorWhenFileMissing(): void
     {
         $this->fileSystem->method('fileExists')->willReturn(false);
-        $this->attachmentService->expects($this->never())->method('uploadFileToIssue');
+        $this->provider->expects($this->never())->method('uploadAttachment');
 
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', ['missing.txt']));
 
@@ -83,7 +88,7 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(true);
-        $this->attachmentService->expects($this->never())->method('uploadFileToIssue');
+        $this->provider->expects($this->never())->method('uploadAttachment');
 
         $response = $this->handler->handle(new ItemUploadInput('KEY-1', ['adir']));
 
@@ -95,8 +100,8 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
-        $this->attachmentService->expects($this->once())
-            ->method('uploadFileToIssue')
+        $this->provider->expects($this->once())
+            ->method('uploadAttachment')
             ->with('ABC-1', $this->isType('string'));
 
         $response = $this->handler->handle(new ItemUploadInput('abc-1', ['notes.txt']));
@@ -112,8 +117,8 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
-        $this->attachmentService->expects($this->once())
-            ->method('uploadFileToIssue')
+        $this->provider->expects($this->once())
+            ->method('uploadAttachment')
             ->with('XY-2', $this->anything());
 
         $response = $this->handler->handle(new ItemUploadInput('  xy-2 ', ['f.txt']));
@@ -125,8 +130,8 @@ class ItemUploadHandlerTest extends CommandTestCase
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
-        $this->attachmentService->expects($this->once())
-            ->method('uploadFileToIssue')
+        $this->provider->expects($this->once())
+            ->method('uploadAttachment')
             ->willThrowException(new \RuntimeException('disk full'));
 
         $response = $this->handler->handle(new ItemUploadInput('K-1', ['y.txt']));
@@ -134,15 +139,15 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertSame('disk full', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => 'disk full']);
     }
 
     public function testHandleRecordsPartialErrorOnApiException(): void
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
-        $this->attachmentService->expects($this->once())
-            ->method('uploadFileToIssue')
+        $this->provider->expects($this->once())
+            ->method('uploadAttachment')
             ->willThrowException(new \App\Exception\ApiException('Jira said no', 'detail', 403));
 
         $response = $this->handler->handle(new ItemUploadInput('K-1', ['x.bin']));
@@ -150,18 +155,58 @@ class ItemUploadHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->files);
         $this->assertCount(1, $response->errors);
-        $this->assertStringContainsString('Jira said no', $response->errors[0]['message']);
-        $this->assertStringContainsString('detail', $response->errors[0]['message']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => 'Jira said no']);
     }
 
     public function testHandleSkipsEmptyPathSegments(): void
     {
         $this->fileSystem->method('fileExists')->willReturn(true);
         $this->fileSystem->method('isDir')->willReturn(false);
-        $this->attachmentService->expects($this->once())->method('uploadFileToIssue');
+        $this->provider->expects($this->once())->method('uploadAttachment');
 
         $response = $this->handler->handle(new ItemUploadInput('K-1', ['   ', 'ok.txt']));
 
         $this->assertCount(1, $response->files);
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    #[DataProvider('attachmentProviderLabelProvider')]
+    public function testUploadBatchAgentJsonParityWithProvider(string $providerLabel): void
+    {
+        $this->fileSystem->method('fileExists')->willReturn(true);
+        $this->fileSystem->method('isDir')->willReturn(false);
+        $this->provider->expects($this->exactly(2))
+            ->method('uploadAttachment')
+            ->willReturnCallback(function (string $key, string $path) use ($providerLabel): void {
+                $this->assertSame('SCI-123', $key);
+                if (str_ends_with($path, 'missing.txt')) {
+                    throw new ApiException($providerLabel . ' upload failed', '', 403);
+                }
+            });
+
+        $response = $this->handler->handle(new ItemUploadInput('SCI-123', ['report.md', 'missing.txt']));
+
+        $this->assertUploadHandlerBatchShape($response);
+        $this->assertCount(1, $response->files);
+        $this->assertCount(1, $response->errors);
+        $this->assertSame('report.md', $response->files[0]['filename']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.upload.error_file', ['error' => $providerLabel . ' upload failed']);
+
+        $payload = $this->uploadAgentPayload($response, $this->translator);
+        $this->assertAgentBatchPayloadParity($payload);
+        $this->assertSame($response->files, $payload['data']['files']);
+        $this->assertCount(1, $payload['data']['errors']);
+        $this->assertSame('missing.txt', $payload['data']['errors'][0]['filename']);
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function attachmentProviderLabelProvider(): iterable
+    {
+        yield 'jira provider' => ['jira'];
+        yield 'linear provider' => ['linear'];
     }
 }

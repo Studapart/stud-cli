@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Response;
 
+use App\DTO\MessageRef;
+
 /**
  * Response DTO for config:validate command.
- * Carries per-component status: Jira and Git provider (ok, fail, or skipped).
+ * Carries per-component status: Jira, Git provider, and Linear (ok, fail, or skipped).
  */
 final class ConfigValidateResponse extends AbstractResponse
 {
@@ -18,23 +20,33 @@ final class ConfigValidateResponse extends AbstractResponse
         bool $success,
         ?string $error,
         public readonly string $jiraStatus,
-        public readonly ?string $jiraMessage,
+        public readonly MessageRef|string|null $jiraMessage,
         public readonly string $gitStatus,
-        public readonly ?string $gitMessage
+        public readonly MessageRef|string|null $gitMessage,
+        public readonly string $linearStatus,
+        public readonly MessageRef|string|null $linearMessage,
+        array $messages = [],
     ) {
-        parent::__construct($success, $error);
+        parent::__construct($success, $error, $messages);
     }
 
     /**
      * Build a successful response with per-component statuses.
+     *
+     * @param list<\App\DTO\ResponseMessage> $messages
      */
     public static function create(
         string $jiraStatus,
-        ?string $jiraMessage,
+        MessageRef|string|null $jiraMessage,
         string $gitStatus,
-        ?string $gitMessage
+        MessageRef|string|null $gitMessage,
+        string $linearStatus = self::STATUS_SKIPPED,
+        MessageRef|string|null $linearMessage = null,
+        array $messages = [],
     ): self {
-        $success = ($jiraStatus !== self::STATUS_FAIL) && ($gitStatus !== self::STATUS_FAIL);
+        $success = ($jiraStatus !== self::STATUS_FAIL)
+            && ($gitStatus !== self::STATUS_FAIL)
+            && ($linearStatus !== self::STATUS_FAIL);
 
         return new self(
             $success,
@@ -42,7 +54,28 @@ final class ConfigValidateResponse extends AbstractResponse
             $jiraStatus,
             $jiraMessage,
             $gitStatus,
-            $gitMessage
+            $gitMessage,
+            $linearStatus,
+            $linearMessage,
+            $messages,
+        );
+    }
+
+    /**
+     * @param list<\App\DTO\ResponseMessage> $messages
+     */
+    public function withAdditionalMessages(array $messages): self
+    {
+        return new self(
+            $this->success,
+            $this->getError(),
+            $this->jiraStatus,
+            $this->jiraMessage,
+            $this->gitStatus,
+            $this->gitMessage,
+            $this->linearStatus,
+            $this->linearMessage,
+            array_merge($this->messages, $messages),
         );
     }
 
@@ -54,7 +87,9 @@ final class ConfigValidateResponse extends AbstractResponse
             self::STATUS_FAIL,
             null,
             self::STATUS_FAIL,
-            null
+            null,
+            self::STATUS_FAIL,
+            null,
         );
     }
 }

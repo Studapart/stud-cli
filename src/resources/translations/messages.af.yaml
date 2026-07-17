@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -40,6 +41,24 @@ config:
       multiple_tokens_note: 'Nota: Jy kan albei tokens opstel, of net die wat jy nodig het. Die verskaffer sal per repository opgestel word.'
       github_token_prompt: Voer jou GitHub PAT in (laat leeg om bestaande te behou of slaan oor)
       gitlab_token_prompt: Voer jou GitLab PAT in (laat leeg om bestaande te behou of slaan oor)
+    git_provider:
+      title: Git-verskaffer keuse
+      menu: "0 GitHub · 1 GitLab · 2 Albei"
+      prompt: Stel Git-verskaffer op
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Albei"
+    issue_tracker_provider:
+      title: Projekbestuur keuse
+      menu: "0 Jira · 1 Linear · 2 Albei"
+      prompt: Stel projekbestuur op
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Albei"
+    linear:
+      title: Linear-opstelling
+      description: "Stel Linear API-toegang op. Slegs nodig as jy Linear gekies het."
+      api_key_prompt: "Voer jou Linear API-sleutel in (los leeg om bestaande te behou)"
     jira_transition:
       title: Jira Oorgang Konfigurasie
       description: Aktiveer outomatiese oorgang na 'In Proses' wanneer werk aan 'n item begin word.
@@ -70,9 +89,20 @@ config:
     section_title: "Konfigurasie-validering"
     label_jira: "Jira"
     label_git_provider: "Git-verskaffer"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Misluk"
     status_skipped: "Oorgeslaan"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira is not configured."
+    error_git_not_configured: "Git provider is not configured."
+    error_jira_ping: "Jira connection failed: %error%"
+    error_git_ping: "Git provider connection failed: %error%"
+    error_linear_not_configured: "Linear is not configured."
+    error_linear_ping: "Linear connection failed: %error%"
   project_init:
     section_title: "Projekkonfigurasie"
     not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."
@@ -80,6 +110,8 @@ config:
     reserved_keys: "Hierdie sleutels kan nie met hierdie opdrag gestel word nie: %keys%"
     invalid_git_provider: "gitProvider moet github of gitlab wees."
     invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
+    invalid_issue_tracker_provider: "issueTrackerProvider moet jira, linear of auto wees."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes moet 'n kaart van nie-leë tipe-etikette na nie-leë tak-voorvoegsels wees."
     base_branch_error: "%message%"
     interactive_title: "Stud-projekkonfigurasie"
     interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
@@ -94,6 +126,20 @@ config:
     prompt_github_token: "GitHub-token vir hierdie repository (versteek)"
     prompt_gitlab_token_hint: "GitLab-token: laat leeg om oor te slaan; tik '.' om die bestaande token te hou."
     prompt_gitlab_token: "GitLab-token vir hierdie repository (versteek)"
+    prompt_issue_tracker_provider: "Work-item-verskaffer vir hierdie repository (wanneer globale config beide Jira en Linear ondersteun)"
+    prompt_linear_team_key: "Linear span sleutel (opsioneel; verstek na Jira projeksleutel wanneer gedeel)"
+    prompt_linear_start_state_id: "Linear workflow status-id vir items:start (opsioneel)"
+    prompt_linear_type_label_group_id: "Linear LabelGroup-id vir tak-voorvoegselkartering (opsioneel)"
+    picker_skip: "Slaan oor (los ongedefinieerd)"
+    prompt_select_transition: "Kies gecacheerde Jira-oorgang vir items:start"
+    prompt_select_linear_start_state: "Kies Linear beginstatus vir items:start"
+    prompt_select_linear_label_group: "Kies Linear LabelGroup vir tak-voorvoegselkartering"
+    prompt_linear_branch_prefix: "Tak-voorvoegsel vir etiket \"%label%\" (opsioneel)"
+    confirm_linear_branch_prefix_map: "Stoor hierdie tak-voorvoegselkaart?"
+    linear_branch_prefix_summary: "  %label% → %prefix%"
+    workflow_fetch_failed: "Kon nie workflow-metadata laai nie: %error%"
+    labels_fetch_failed: "Kon nie etiketgroepe laai nie: %error%"
+    no_labels_in_group: "Geen kind-etikette in die geselekteerde LabelGroup gevind nie."
     status_updated: "Projekkonfigurasie bygewerk (.git/stud.config)."
     status_unchanged: "Geen veranderinge geskryf nie (konfigurasie onveranderd)."
     failed: "Bywerking van projekkonfigurasie het misluk."
@@ -116,12 +162,16 @@ config:
   base_branch_saved: "Basis tak gekonfigureer: %branch%"
   base_branch_invalid: Basis tak '%branch%' bestaan nie op remote nie. Gaan asseblief die tak naam na.
   base_branch_required: Basis tak is vereis. Opdrag kan nie voortgaan sonder 'n geldige basis tak nie.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Git verskaffer nie gekonfigureer vir hierdie repository nie.
   git_provider_prompt: Kies Git verskaffer vir hierdie repository
   git_provider_detected: "Git verskaffer gedetecteer: %provider%"
   git_provider_saving: Stoor Git verskaffer konfigurasie...
   git_provider_saved: "Git verskaffer gekonfigureer: %provider%"
   git_provider_required: Git verskaffer is vereis. Opdrag kan nie voortgaan sonder 'n geldige Git verskaffer nie.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Git token nie gekonfigureer vir hierdie repository nie.
   git_token_prompt: Voer jou %provider% PAT in (laat leeg om oor te slaan)
   git_token_saving: Stoor Git token konfigurasie...
@@ -145,7 +195,23 @@ config:
     version_updated: "Migrasie weergawe opgedateer na %version%"
   missing_global_key: "Ontbrekende vereiste globale konfigurasie sleutel: %key%"
   missing_project_key: "Ontbrekende vereiste projek konfigurasie sleutel: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Outomaties gedetecteer %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Begin werk aan %key%
@@ -166,6 +232,15 @@ item:
     transition_success: ✅ Item %key% oorgegaan na 'In Proses'
     transition_error: 'Kry oorgange misluk: %error%'
     transition_exec_error: 'Uitvoer oorgang misluk: %error%. Gaan voort met tak skepping.'
+    linear_no_type_label: 'Geen Linear tipe-etiket op issue; gebruik standaard tak-voorvoegsel feat/.'
+    linear_unknown_type_label: 'Linear tipe-etiket "%label%" het geen tak-voorvoegselkartering nie; gebruik feat/.'
+    linear_type_label_matched: 'Gebruik tak-voorvoegsel %prefix% van Linear tipe-etiket %label%.'
+    using_cached_linear_state: 'Gebruik gekasde Linear beginstatus-ID: %id%'
+    no_cached_linear_state_agent: 'Geen gekasde Linear beginstatus vir issue %key% nie; statusoorgang oorgeslaan in agentmodus.'
+    no_linear_states: 'Geen workflowstatusse beskikbaar vir issue %key% nie. Statusoorgang oorgeslaan.'
+    select_linear_state: 'Kies die Linear workflowstatus om by begin toe te pas:'
+    save_linear_state: 'Wil jy hierdie status as verstek beginstatus vir hierdie projek stoor?'
+    linear_state_saved: 'Linear beginstatus in projekkonfigurasie gestoor.'
     using_advanced_base: 'Gekonfigureerde basis ''%configured%'' is agter ''%resolved%''; gebruik ''%resolved%'' as basis.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -206,6 +281,8 @@ item:
     section: Besonderhede vir item %key%
     fetching: 'Kry besonderhede vir item: %key%'
     error_not_found: Kon nie Jira item met sleutel "%key%" vind nie.
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
+    error_fetch: "Kon nie kwessiebesonderhede laai nie: %error%"
     label_key: Sleutel
     label_title: Titel
     label_status: Status
@@ -222,7 +299,12 @@ item:
     col_filename: "Lêernaam"
     col_path: "Pad"
     error_key_or_url: "Gee 'n Jira-itemsleutel of --url met 'n Jira-aanhegsel-inhoud-URL."
+    error_fetch: "Kon nie aanhangsels laai nie: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Pad mag ouermappe (..) nie bevat nie."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
+    error_cwd: "Kan nie huidige werkmap bepaal nie."
+    error_target_dir: "Kon nie teikenmap skep nie: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Opgelaaide aanhegsels"
@@ -235,6 +317,7 @@ item:
     error_not_found: "Lêer nie gevind nie."
     error_not_file: "Pad is nie 'n leesbare lêer nie."
     error_cwd: "Kan nie huidige werkmap bepaal nie."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: Creating Jira issue
@@ -247,11 +330,15 @@ item:
     prompt_custom_field: Value for "%name%" (required)
     prompt_issue_type_choice: Issue type
     error_no_project: Project is required. Set --project/-p or JIRA_DEFAULT_PROJECT in .git/stud.config or run interactively.
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: Summary is required. Set --summary/-m or run interactively.
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: Created issue %key% - %url%
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -280,11 +367,46 @@ item:
     error_fetch: 'Kon nie items kry nie: %error%'
     no_items: Geen items gevind wat by jou kriteria pas nie.
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waardes: Key, Status'
+issue_tracker_provider:
+  missing_linear_api_key: 'Linear is gekies maar LINEAR_API_KEY is nie gekonfigureer nie. Voer "stud config:init" uit of stel LINEAR_API_KEY in ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Jira is gekies maar Jira-geloofsbriewe is nie gekonfigureer nie. Voer "stud config:init" uit.'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
+  not_configured: 'Geen work-item-verskaffer gekonfigureer nie. Voer "stud config:init" uit om Jira of Linear op te stel.'
+  ambiguous_prefix: 'Issue key prefix %prefix% pas by beide Jira- en Linear-projek sleutels. Gee --provider of stel onderskeie projectKey en linearTeamKey in .git/stud.config.'
+  unknown_prefix: 'Issue key prefix %prefix% pas nie by gekonfigureerde sleutels (%configuredKeys%) nie. Gee --provider of stel issueTrackerProvider in .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider is auto maar geen issue key is verskaf vir verskaffer-ontleding nie. Gee n issue key of stel issueTrackerProvider op jira of linear.'
+  invalid_override: 'Ongeldige work-item provider override %value%. Toegestane waardes: jira, linear.'
+  unknown_resolved: 'Onbekende opgeloste work-item provider %value%. Verwag jira of linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Kry Jira Projekte
     error_fetch: 'Kon nie projekte kry nie: %error%'
     no_projects: Geen projekte gevind nie.
+  workflow:
+    section: Projek workflow statusse
+    no_state_changes: Geen statusveranderinge gevind vir projek %project%.
+    error_ambiguous_provider: issueTrackerProvider is dubbelsinnig. Stel jira of linear in .git/stud.config of voer stud config:project-init uit.
+    error_no_provider: Geen work-item-verskaffer gekonfigureer nie. Voer stud config:init uit.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
+    column_id: ID
+    column_name: Naam
+    column_target_status: Teikensatus
+    column_type: Tipe
+    column_provider: Verskaffer
+  labels:
+    section: Projek etiketgroepe
+    labels_not_supported_for_jira: Etiketgroep-ontdekking is nie beskikbaar vir Jira nie. Gebruik Linear of stel linearTypeLabelGroupId handmatig in.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
+    error_fetch: "Failed to fetch project label groups: %error%"
+    no_label_groups: Geen etiketgroepe gevind vir projek %project%.
+    column_group_id: Groep-ID
+    column_group_name: Groepnaam
+    column_label_id: Etiket-ID
+    column_label_name: Etiketnaam
+    column_color: Kleur
 search:
   section: Soek Jira items met JQL
   jql_query: 'JQL Navraag: %jql%'
@@ -295,6 +417,7 @@ filter:
     section: Kry items uit filter '%filterName%'
     jql_query: 'JQL Navraag: %jql%'
     error_fetch: 'Kon nie items uit filter kry nie: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Geen items gevind in filter '%filterName%'.
   list:
     section: Kry Jira-filters
@@ -363,11 +486,13 @@ submit:
     Probeer ''stud please'' uitvoer om te force-push.'
   finding_commit: Soek eerste logiese commit om te gebruik vir PR besonderhede...
   fetching_jira: 'Kry Jira item vir PR liggaam: %key%'
+  fetching_issue: "Haal work item vir PR liggaam: %key%"
   error_no_logical: Kon nie 'n logiese commit op hierdie tak vind nie. Kan nie PR skep nie.
   error_no_jira_key: Kon nie Jira sleutel parseer vanaf commit boodskap nie. Kan nie PR skep nie.
   warning_jira_fetch: 'Kon nie Jira item besonderhede kry vir PR liggaam nie: %error%
 
     Terugval na ''n eenvoudige skakel.'
+  warning_issue_fetch: "Kon nie work item besonderhede kry vir PR liggaam nie: %error%\nVal terug op 'n eenvoudige skakel."
   creating: Skep Pull Request...
   success_created: '✅ Pull Request geskep: %url%'
   warning_no_provider: Geen Git verskaffer gekonfigureer vir hierdie projek nie.
@@ -654,6 +779,7 @@ table:
   key: Sleutel
   status: Status
   summary: Opsomming
+  provider: "Provider"
   name: Naam
   command: Opdrag
   alias: Alias
@@ -676,18 +802,20 @@ help:
   category_git_workflow: Git Werkvloei
   category_release_commands: Vrystelling Opdragte
   example_prefix: 'Voorbeeld: %example%'
-  command_config_init: Interaktiewe wizard om Jira & Git verbindingsbesonderhede op te stel.
+  command_config_init: Interaktiewe wizard vir Git-verskaffers, work-item-verskaffers (Jira/Linear) en geloofsbriewe.
   command_config_show: "Vertoon huidige konfigurasie (globaal en projek) met geheime verberg; veilig om te deel."
-  command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira en die Git-verskaffer bereikbaar is. Gebruik --skip-jira of --skip-git vir gedeeltelijke kontroles."
-  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Gebruik CLI-vlae, stud config:project-init --agent met JSON, of interaktief sonder vlae. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
-  option_config_project_init_project_key: "Jira-projekkode (oorgangs-kas met transition-id)"
-  option_config_project_init_base_branch: "Basis-tak; bestaan op origin word nagegaan tensy --skip-base-branch-remote-check gestel is"
-  option_config_project_init_skip_base: "Moenie nagaan of die basis-tak op origin bestaan nie"
+  command_config_validate: "Valideer dat konfigurasie teenwoordig is en dat Jira, die Git-verskaffer en Linear bereikbaar is. Gebruik --skip-jira, --skip-git of --skip-linear vir gedeeltelike kontroles."
+  command_config_project_init: "Skep of voeg .git/stud.config saam (projekkode, basis-tak, verskaffer, tokens, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Voer interaktief uit of gebruik stud config:project-init --agent met JSON. Onbekende agent-sleutels word geweier; migration_version is gereserveer."
   command_completion: Genereer shell outo-voltooiing scripts vir bash of zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Lys alle sigbare Jira projekte.
+  command_projects_workflow: Lys workflow-oorgange (Jira) of statusse (Linear) vir 'n projek.
+  option_projects_workflow_project: Projek- of spansleutel (bv. SCI)
+  command_projects_labels: Lys Linear LabelGroups en kind-etikette vir 'n projekspan.
+  option_projects_labels_project: Projek- of spansleutel (bv. SCI)
+  option_projects_labels_groups_only: Slegs LabelGroups teruggee; wees wees-etikette buite groepe uit
   command_items_list: Lys aktiewe werkitems (jou dashboard).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
@@ -757,6 +885,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Slaan Linear-verbindingskontrole oor"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

@@ -9,17 +9,19 @@ use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
+use App\Guard\Capability\GitRepositoryAware;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\WorkflowResponse;
 use App\Service\GitRepository;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
 
-class StatusHandler
+class StatusHandler implements GitRepositoryAware, JiraAware
 {
     private WorkflowEntryRecorder $recorder;
 
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
     ) {
         unset($_translator);
@@ -29,7 +31,7 @@ class StatusHandler
     {
         $this->recorder = new WorkflowRecorder();
         $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.section'));
-        $key = $this->gitRepository->getJiraKeyFromBranchName();
+        $key = $this->gitRepository->getIssueKeyFromBranchName();
         $branch = $this->gitRepository->getCurrentBranchName();
 
         if ($key) {
@@ -49,14 +51,19 @@ class StatusHandler
         $this->recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('status.fetching', ['key' => $key]), WorkflowChannel::Jira);
 
         try {
-            $issue = $this->jiraService->getIssue($key);
+            $issue = $this->provider->getIssue($key);
             $this->recorder->addLine(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
                 "Jira:   <fg=yellow>[{$issue->status}]</> {$issue->key}: {$issue->title}",
                 WorkflowChannel::Jira,
             );
         } catch (ApiException $e) {
-            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+            $hint = $e->getResolutionHint();
+            if ($hint !== null) {
+                $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, $hint);
+            } else {
+                $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));
+            }
             $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, ['', ' Technical details: ' . $e->getTechnicalDetails()]);
         } catch (\Exception $e) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('status.jira_error', ['error' => $e->getMessage()]));

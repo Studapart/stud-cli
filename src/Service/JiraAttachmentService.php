@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Exception\ApiException;
+use App\Exception\StudConfigException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Fetches issue attachment metadata and downloads attachment bytes using the same Jira-authenticated HTTP client as {@see JiraService}.
+ * Fetches issue attachment metadata and downloads attachment bytes using the same Jira-authenticated HTTP client as {@see JiraApiClient}.
  */
 class JiraAttachmentService
 {
@@ -149,7 +150,7 @@ class JiraAttachmentService
 
         $baseParts = parse_url(rtrim($this->jiraBaseUrl, '/') . '/');
         if ($baseParts === false || ! isset($baseParts['host'])) {
-            throw new ApiException('Invalid Jira base URL configuration.', '', 500);
+            throw StudConfigException::invalidJiraBaseUrl();
         }
 
         if (strcasecmp((string) $parts['host'], (string) $baseParts['host']) !== 0) {

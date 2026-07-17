@@ -7,14 +7,16 @@ namespace App\Handler;
 use App\DTO\ItemUpdateInput;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\IssueTracker\JiraAware;
 use App\Response\ItemUpdateResponse;
 use App\Service\FieldsParser;
-use App\Service\JiraService;
+use App\Service\IssueTrackerPort;
+use App\Service\StudIssueKeys;
 
-class ItemUpdateHandler
+class ItemUpdateHandler implements JiraAware
 {
     public function __construct(
-        private readonly JiraService $jiraService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator,
         private readonly FieldsParser $fieldsParser
     ) {
@@ -27,7 +29,7 @@ class ItemUpdateHandler
         $skipped = [];
 
         if ($input->summary !== null && trim($input->summary) !== '') {
-            $fields['summary'] = trim($input->summary);
+            $fields[StudIssueKeys::TITLE] = trim($input->summary);
         }
         $this->applyDescription($input, $fields);
         $parsedFields = $this->resolveParsedFields($input);
@@ -64,7 +66,7 @@ class ItemUpdateHandler
         $format = ($input->descriptionFormat !== null && trim($input->descriptionFormat) !== '')
             ? trim($input->descriptionFormat)
             : 'plain';
-        $fields['description'] = $this->jiraService->descriptionToAdf(trim($desc), $format);
+        $fields[StudIssueKeys::DESCRIPTION] = $this->provider->formatDescription(trim($desc), $format);
     }
 
     /**
@@ -88,7 +90,7 @@ class ItemUpdateHandler
     protected function fetchEditMeta(string $key): array|ItemUpdateResponse
     {
         try {
-            return $this->jiraService->getEditMetaFields($key);
+            return $this->provider->getEditMetaFields($key);
         } catch (ApiException $e) {
             $detail = $e->getTechnicalDetails();
             $error = $detail !== '' ? $e->getMessage() . ' ' . $detail : $e->getMessage();
@@ -106,7 +108,7 @@ class ItemUpdateHandler
     protected function sendUpdate(string $key, array $fields, array $skipped): ItemUpdateResponse
     {
         try {
-            $this->jiraService->updateIssue($key, $fields);
+            $this->provider->update($key, $fields);
 
             return ItemUpdateResponse::success($key, $skipped);
         } catch (ApiException $e) {

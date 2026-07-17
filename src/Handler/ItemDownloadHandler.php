@@ -6,17 +6,19 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
+use App\Guard\Capability\IssueTracker\JiraAware;
+use App\Guard\Capability\IssueTracker\LinearAware;
 use App\Response\ItemDownloadResponse;
 use App\Service\FileSystem;
-use App\Service\JiraAttachmentService;
+use App\Service\IssueTrackerPort;
 
-class ItemDownloadHandler
+class ItemDownloadHandler implements JiraAware, LinearAware
 {
     private const DEFAULT_RELATIVE_DIR = '.cursor/stud-downloads';
 
     public function __construct(
         private readonly FileSystem $fileSystem,
-        private readonly JiraAttachmentService $jiraAttachmentService,
+        private readonly IssueTrackerPort $provider,
         mixed $_translator
     ) {
         unset($_translator);
@@ -38,15 +40,25 @@ class ItemDownloadHandler
             );
         }
 
+        $cwd = getcwd();
+        // @codeCoverageIgnoreStart
+        if ($cwd === false) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_cwd')
+            );
+        }
+        // @codeCoverageIgnoreEnd
+
         try {
             $targetDir = $this->resolveTargetDirectory($path);
-        } catch (\InvalidArgumentException|\RuntimeException $e) {
-            $message = $e->getMessage();
-            if ($message === 'item.download.error_path_traversal') {
-                return ItemDownloadResponse::fatal(MessageRef::key($message));
-            }
-
-            return ItemDownloadResponse::fatal($message);
+        } catch (\InvalidArgumentException) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_path_traversal')
+            );
+        } catch (\RuntimeException $e) {
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_target_dir', ['error' => $e->getMessage()])
+            );
         }
 
         if ($key !== '') {
@@ -80,13 +92,6 @@ class ItemDownloadHandler
      */
     private function resolveTargetDirectory(?string $pathOption): string
     {
-        $cwd = getcwd();
-        // @codeCoverageIgnoreStart
-        if ($cwd === false) {
-            throw new \RuntimeException('Cannot determine current working directory.');
-        }
-        // @codeCoverageIgnoreEnd
-
         $rel = ($pathOption !== null && trim($pathOption) !== '') ? trim($pathOption) : self::DEFAULT_RELATIVE_DIR;
         $this->assertNoPathTraversal($rel);
         $this->fileSystem->mkdir($rel, 0777, true);
@@ -102,7 +107,7 @@ class ItemDownloadHandler
         $normalized = str_replace('\\', '/', $path);
         foreach (explode('/', $normalized) as $segment) {
             if ($segment === '..') {
-                throw new \InvalidArgumentException('item.download.error_path_traversal');
+                throw new \InvalidArgumentException('Path traversal');
             }
         }
     }
@@ -110,15 +115,17 @@ class ItemDownloadHandler
     private function downloadAllForIssue(string $issueKey, string $targetDir): ItemDownloadResponse
     {
         try {
-            $attachments = $this->jiraAttachmentService->fetchAttachmentsForIssue($issueKey);
+            $attachments = $this->provider->listAttachments($issueKey);
         } catch (ApiException $e) {
-            return ItemDownloadResponse::fatal($e->getMessage());
+            return ItemDownloadResponse::fatal(
+                MessageRef::key('item.download.error_fetch', ['error' => $e->getMessage()])
+            );
         }
 
         $files = [];
         $errors = [];
         foreach ($attachments as $attachment) {
-            $files = $this->pullOneAttachment($attachment['filename'], $attachment['contentUrl'], $targetDir, $files, $errors);
+            $files = $this->pullOneAttachment($attachment->filename, $attachment->contentUrl, $targetDir, $files, $errors);
         }
 
         return ItemDownloadResponse::result($files, $errors);
@@ -132,17 +139,15 @@ class ItemDownloadHandler
         $files = $this->pullOneAttachment($filename, $url, $targetDir, $files, $errors);
 
         if ($files === [] && $errors !== []) {
-            $first = $errors[0]['message'];
-
-            return ItemDownloadResponse::fatal((string) $first);
+            return ItemDownloadResponse::fatal($errors[0]['message']);
         }
 
         return ItemDownloadResponse::result($files, $errors);
     }
 
     /**
-     * @param list<array{filename: string, path: string}>             $files
-     * @param list<array{filename: string|null, message: string}> $errors
+     * @param list<array{filename: string, path: string}>                                    $files
+     * @param list<array{filename: string|null, message: MessageRef|string}> $errors
      * @return list<array{filename: string, path: string}>
      */
     private function pullOneAttachment(
@@ -152,26 +157,24 @@ class ItemDownloadHandler
         array $files,
         array &$errors
     ): array {
-        try {
-            $body = $this->jiraAttachmentService->downloadAttachmentContent($contentUrl);
-        } catch (ApiException $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
-
-            return $files;
-        } catch (\Throwable $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
-
-            return $files;
-        }
-
         $safe = $this->sanitizeFilename($originalFilename);
         $uniqueName = $this->allocateFilename($targetDir, $safe);
         $relativePath = $targetDir . '/' . $uniqueName;
 
         try {
-            $this->fileSystem->filePutContents($relativePath, $body);
+            $this->provider->downloadAttachment($contentUrl, $relativePath);
+        } catch (ApiException $e) {
+            $errors[] = [
+                'filename' => $originalFilename,
+                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
+            ];
+
+            return $files;
         } catch (\Throwable $e) {
-            $errors[] = ['filename' => $originalFilename, 'message' => $e->getMessage()];
+            $errors[] = [
+                'filename' => $originalFilename,
+                'message' => MessageRef::key('item.download.error_file', ['error' => $e->getMessage()]),
+            ];
 
             return $files;
         }

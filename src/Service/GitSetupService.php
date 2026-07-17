@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\MessageRef;
+use App\Exception\StudConfigException;
 
 class GitSetupService
 {
@@ -25,7 +26,7 @@ class GitSetupService
      * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
      * @param bool $quiet When true, use DEFAULT_BASE_BRANCH if not configured (no prompt); fail if invalid
      * @return string The base branch name with 'origin/' prefix
-     * @throws \RuntimeException If not in a git repository or if base branch validation fails
+     * @throws StudConfigException If not in a git repository or if base branch validation fails
      */
     public function ensureBaseBranchConfigured(
         \Symfony\Component\Console\Style\SymfonyStyle $io,
@@ -33,8 +34,8 @@ class GitSetupService
     ): string {
         try {
             $this->gitRepository->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException((string) MessageRef::key('config.base_branch_required'));
+        } catch (\RuntimeException) {
+            throw StudConfigException::baseBranchRequired();
         }
 
         $config = $this->gitRepository->readProjectConfig();
@@ -62,7 +63,7 @@ class GitSetupService
         $branchName = str_replace('origin/', '', $baseBranch);
         if (! $this->gitRepository->remoteBranchExists('origin', $branchName)) {
             if ($quiet) {
-                throw new \RuntimeException((string) MessageRef::key('config.base_branch_invalid', ['branch' => $branchName]));
+                throw StudConfigException::baseBranchInvalid($branchName);
             }
             $this->logger->addWarning(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_invalid', ['branch' => $branchName]));
 
@@ -80,9 +81,7 @@ class GitSetupService
             return str_starts_with($defaultBranch, 'origin/') ? $defaultBranch : 'origin/' . $defaultBranch;
         }
 
-        throw new \RuntimeException(
-            'Base branch is not configured and default branch "' . $branchName . '" does not exist on remote. Run without --quiet to configure, or run "stud config:init".'
-        );
+        throw StudConfigException::baseBranchDefaultMissing($branchName);
     }
 
     /**
@@ -101,18 +100,18 @@ class GitSetupService
             $defaultSuggestion,
             function (?string $value): string {
                 if (empty(trim($value ?? ''))) {
-                    throw new \RuntimeException('Base branch name cannot be empty.');
+                    throw StudConfigException::baseBranchNameEmpty();
                 }
 
                 return trim($value);
             }
         );
         if ($enteredBranch === null || trim($enteredBranch) === '') {
-            throw new \RuntimeException((string) MessageRef::key('config.base_branch_required'));
+            throw StudConfigException::baseBranchRequired();
         }
         $enteredBranch = trim($enteredBranch);
         if (! $this->gitRepository->remoteBranchExists('origin', $enteredBranch)) {
-            throw new \RuntimeException((string) MessageRef::key('config.base_branch_invalid', ['branch' => $enteredBranch]));
+            throw StudConfigException::baseBranchInvalid($enteredBranch);
         }
         $this->logger->addText(WorkflowOutput::VERBOSITY_NORMAL, MessageRef::key('config.base_branch_saving'));
         $config['baseBranch'] = $enteredBranch;
@@ -127,7 +126,7 @@ class GitSetupService
      * Returns the branch name with 'origin/' prefix for consistency with git commands.
      *
      * @return string The base branch name with 'origin/' prefix
-     * @throws \RuntimeException If base branch is not configured and cannot be auto-detected
+     * @throws StudConfigException If base branch is not configured and cannot be auto-detected
      */
     protected function getBaseBranch(): string
     {
@@ -147,7 +146,7 @@ class GitSetupService
             return 'origin/' . $detected;
         }
 
-        throw new \RuntimeException('Base branch not configured and could not be auto-detected.');
+        throw StudConfigException::baseBranchAutoDetectFailed();
     }
 
     /**
@@ -178,7 +177,7 @@ class GitSetupService
      * @param \Symfony\Component\Console\Style\SymfonyStyle $io The Symfony IO instance
      * @param bool $quiet When true, use auto-detected provider or throw; do not prompt
      * @return string The provider type ('github' or 'gitlab')
-     * @throws \RuntimeException If not in a git repository or if provider cannot be determined
+     * @throws StudConfigException If not in a git repository or if provider cannot be determined
      */
     public function ensureGitProviderConfigured(
         \Symfony\Component\Console\Style\SymfonyStyle $io,
@@ -186,8 +185,8 @@ class GitSetupService
     ): string {
         try {
             $this->gitRepository->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException((string) MessageRef::key('config.git_provider_required'));
+        } catch (\RuntimeException) {
+            throw StudConfigException::gitProviderRequired();
         }
 
         $config = $this->gitRepository->readProjectConfig();
@@ -205,9 +204,7 @@ class GitSetupService
                 return $detected;
             }
 
-            throw new \RuntimeException(
-                'Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run "stud config:init".'
-            );
+            throw StudConfigException::gitProviderQuietUnavailable();
         }
 
         return $this->promptAndSaveGitProvider($config, $detected);
@@ -237,7 +234,7 @@ class GitSetupService
         );
 
         if ($enteredProvider === null || ! in_array($enteredProvider, ['github', 'gitlab'], true)) {
-            throw new \RuntimeException((string) MessageRef::key('config.git_provider_required'));
+            throw StudConfigException::gitProviderRequired();
         }
 
         $this->logger->addText(
@@ -276,8 +273,8 @@ class GitSetupService
     ): ?string {
         try {
             $this->gitRepository->getProjectConfigPath();
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException((string) MessageRef::key('config.git_token_required'));
+        } catch (\RuntimeException) {
+            throw StudConfigException::gitTokenRequired();
         }
 
         $projectConfig = $this->gitRepository->readProjectConfig();
@@ -387,17 +384,13 @@ class GitSetupService
     /**
      * Ensures the branch exists on origin (same check as ensureBaseBranchConfigured).
      *
-     * @throws \RuntimeException When the branch is missing on the remote
+     * @throws StudConfigException When the branch is missing on the remote
      */
     public function validateBaseBranchOnRemote(string $baseBranch): void
     {
         $branchName = str_replace('origin/', '', $baseBranch);
         if ($branchName === '' || ! $this->gitRepository->remoteBranchExists('origin', $branchName)) {
-            throw new \RuntimeException(
-                (string) MessageRef::key('config.base_branch_invalid', [
-                    'branch' => $branchName !== '' ? $branchName : $baseBranch,
-                ])
-            );
+            throw StudConfigException::baseBranchInvalid($branchName !== '' ? $branchName : $baseBranch);
         }
     }
 

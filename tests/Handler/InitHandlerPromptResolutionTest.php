@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
-use App\Handler\InitHandler;
-use App\Service\FileSystem;
-use App\Service\GitTokenPromptResolver;
+use App\Handler\InitPromptInputHelper;
 use App\Service\Prompt\PromptInterface;
 use App\Service\TranslationService;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -29,21 +27,9 @@ class InitHandlerPromptResolutionTest extends TestCase
     /**
      * @param MockObject&PromptInterface $prompt
      */
-    private function createExposingHandler(PromptInterface $prompt): InitHandler
+    private function createInputHelper(PromptInterface $prompt): InitPromptInputHelper
     {
-        $fileSystem = $this->createMock(FileSystem::class);
-
-        return new class ($fileSystem, '/tmp/stud-test-config.yml', $this->translator, $prompt, new GitTokenPromptResolver()) extends InitHandler {
-            public function exposePromptRequiredVisible(string $question, ?string $existing, callable $normalize): string
-            {
-                return $this->promptRequiredVisible($question, $existing, $normalize);
-            }
-
-            public function exposePromptRequiredJiraApiToken(string $question, ?string $existing): string
-            {
-                return $this->promptRequiredJiraApiToken($question, $existing);
-            }
-        };
+        return new InitPromptInputHelper($prompt);
     }
 
     public function testPromptRequiredVisibleRepromptsWhenSkippedWithNoStoredValue(): void
@@ -53,8 +39,8 @@ class InitHandlerPromptResolutionTest extends TestCase
             ->method('ask')
             ->with('Q', null)
             ->willReturnOnConsecutiveCalls('', 'https://example.com/');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredVisible('Q', null, fn (string $s): string => rtrim($s, '/'));
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredVisible('Q', null, fn (string $s): string => rtrim($s, '/'));
         $this->assertSame('https://example.com', $result);
     }
 
@@ -65,8 +51,8 @@ class InitHandlerPromptResolutionTest extends TestCase
             ->method('ask')
             ->with('Q', 'https://old.example.com')
             ->willReturn('');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredVisible('Q', 'https://old.example.com', fn (string $s): string => rtrim($s, '/'));
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredVisible('Q', 'https://old.example.com', fn (string $s): string => rtrim($s, '/'));
         $this->assertSame('https://old.example.com', $result);
     }
 
@@ -78,8 +64,8 @@ class InitHandlerPromptResolutionTest extends TestCase
             ->method('ask')
             ->with($question, null)
             ->willReturnOnConsecutiveCalls($question, 'https://ok.example.com');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredVisible($question, null, fn (string $s): string => rtrim($s, '/'));
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredVisible($question, null, fn (string $s): string => rtrim($s, '/'));
         $this->assertSame('https://ok.example.com', $result);
     }
 
@@ -90,24 +76,24 @@ class InitHandlerPromptResolutionTest extends TestCase
             ->method('ask')
             ->with('Q', 'https://keep.example.com')
             ->willReturn('/');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredVisible('Q', 'https://keep.example.com', fn (string $s): string => rtrim($s, '/'));
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredVisible('Q', 'https://keep.example.com', fn (string $s): string => rtrim($s, '/'));
         $this->assertSame('https://keep.example.com', $result);
     }
 
-    public function testPromptRequiredJiraApiTokenRepromptsWhenSkippedWithNoStoredValue(): void
+    public function testPromptRequiredHiddenTokenRepromptsWhenSkippedWithNoStoredValue(): void
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->exactly(2))
             ->method('askHidden')
             ->with('H')
             ->willReturnOnConsecutiveCalls(null, 'secret');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredJiraApiToken('H', null);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredHiddenToken('H', null);
         $this->assertSame('secret', $result);
     }
 
-    public function testPromptRequiredJiraApiTokenRejectsPromptTextThenAccepts(): void
+    public function testPromptRequiredHiddenTokenRejectsPromptTextThenAccepts(): void
     {
         $question = $this->translator->trans('config.init.jira.token_prompt');
         $prompt = $this->createMock(PromptInterface::class);
@@ -115,20 +101,125 @@ class InitHandlerPromptResolutionTest extends TestCase
             ->method('askHidden')
             ->with($question)
             ->willReturnOnConsecutiveCalls($question, 'real-secret');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredJiraApiToken($question, null);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredHiddenToken($question, null);
         $this->assertSame('real-secret', $result);
     }
 
-    public function testPromptRequiredJiraApiTokenPreservesStoredOnSkip(): void
+    public function testPromptRequiredHiddenTokenPreservesStoredOnSkip(): void
     {
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->once())
             ->method('askHidden')
             ->with('H')
             ->willReturn('');
-        $handler = $this->createExposingHandler($prompt);
-        $result = $handler->exposePromptRequiredJiraApiToken('H', 'stored-token');
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredHiddenToken('H', 'stored-token');
         $this->assertSame('stored-token', $result);
+    }
+
+    public function testResolveWhenActiveReturnsStoredWhenInactive(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('ask');
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->resolveWhenActive(
+            false,
+            false,
+            [],
+            'jiraUrl',
+            '  https://stored.example.com/  ',
+            'Q',
+        );
+        $this->assertSame('https://stored.example.com/', $result);
+    }
+
+    public function testResolveWhenActiveUsesAgentInputWhenActive(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('ask');
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->resolveWhenActive(
+            true,
+            true,
+            ['jiraUrl' => 'https://agent.example.com/'],
+            'jiraUrl',
+            null,
+            'Q',
+            false,
+            fn (string $s): string => rtrim($s, '/'),
+        );
+        $this->assertSame('https://agent.example.com', $result);
+    }
+
+    public function testResolveWhenActiveUsesHiddenPromptWhenActiveInteractive(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('askHidden')
+            ->with('H')
+            ->willReturn('secret');
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->resolveWhenActive(
+            true,
+            false,
+            [],
+            'token',
+            null,
+            'H',
+            hidden: true,
+        );
+        $this->assertSame('secret', $result);
+    }
+
+    public function testResolveWhenActiveUsesVisiblePromptWhenActiveInteractive(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('ask')
+            ->with('Q', null)
+            ->willReturn('answer');
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->resolveWhenActive(
+            true,
+            false,
+            [],
+            'key',
+            null,
+            'Q',
+        );
+        $this->assertSame('answer', $result);
+    }
+
+    public function testPromptRequiredAgentStringFallsBackToStoredWhenInputEmpty(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredAgentString([], 'jiraUrl', 'https://stored.example.com', static fn (string $s): string => $s);
+        $this->assertSame('https://stored.example.com', $result);
+    }
+
+    public function testPromptRequiredAgentStringRejectsKeyAsValueAndUsesStored(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredAgentString(['jiraUrl' => 'jiraUrl'], 'jiraUrl', 'stored', static fn (string $s): string => $s);
+        $this->assertSame('stored', $result);
+    }
+
+    public function testPromptRequiredAgentStringReturnsEmptyWhenNoStoredValue(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredAgentString(['jiraUrl' => ''], 'jiraUrl', null, static fn (string $s): string => $s);
+        $this->assertSame('', $result);
+    }
+
+    public function testPromptRequiredAgentStringReturnsEmptyWhenKeyEchoedWithNoStored(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $helper = $this->createInputHelper($prompt);
+        $result = $helper->promptRequiredAgentString(['jiraUrl' => 'jiraUrl'], 'jiraUrl', null, static fn (string $s): string => $s);
+        $this->assertSame('', $result);
     }
 }

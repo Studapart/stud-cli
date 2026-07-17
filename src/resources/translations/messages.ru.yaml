@@ -18,6 +18,7 @@ confluence:
     section_content: "Content"
     error_page_or_url_required: "Page ID or URL is required. Use --page/-p or --url."
     error_page_not_found: "Confluence page \"%id%\" not found."
+    error_resolve: "Could not resolve Confluence page from URL: %error%"
 
 config:
   init:
@@ -40,6 +41,24 @@ config:
       multiple_tokens_note: 'Примечание: Вы можете настроить оба токена или только те, которые вам нужны. Провайдер будет настроен для каждого репозитория.'
       github_token_prompt: Введите ваш PAT GitHub (оставьте пустым, чтобы сохранить существующий или пропустить)
       gitlab_token_prompt: Введите ваш PAT GitLab (оставьте пустым, чтобы сохранить существующий или пропустить)
+    git_provider:
+      title: Выбор Git-провайдера
+      menu: "0 GitHub · 1 GitLab · 2 Оба"
+      prompt: Настроить Git-провайдера
+      choice_github: "0 GitHub"
+      choice_gitlab: "1 GitLab"
+      choice_both: "2 Оба"
+    issue_tracker_provider:
+      title: Выбор системы управления проектами
+      menu: "0 Jira · 1 Linear · 2 Оба"
+      prompt: Настроить управление проектами
+      choice_jira: "0 Jira"
+      choice_linear: "1 Linear"
+      choice_both: "2 Оба"
+    linear:
+      title: Настройка Linear
+      description: "Настройте доступ к API Linear. Требуется только если вы выбрали Linear."
+      api_key_prompt: "Введите API-ключ Linear (оставьте пустым, чтобы сохранить существующий)"
     jira_transition:
       title: Настройка перехода Jira
       description: Включить автоматический переход в 'В работе' при начале работы над задачей.
@@ -70,9 +89,20 @@ config:
     section_title: "Проверка конфигурации"
     label_jira: "Jira"
     label_git_provider: "Git-провайдер"
+    label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Ошибка"
     status_skipped: "Пропущено"
+    warn_github_token_missing: "GITHUB_TOKEN is missing but GitHub is listed in GIT_PROVIDERS. Commands in a GitHub repository will fail until this token is configured."
+    warn_gitlab_token_missing: "GITLAB_TOKEN is missing but GitLab is listed in GIT_PROVIDERS. Commands in a GitLab repository will fail until this token is configured."
+    warn_jira_credentials_missing: "Jira credentials are incomplete but Jira is listed in ISSUE_TRACKER_PROVIDERS. Jira-backed commands will fail until JIRA_URL, JIRA_EMAIL, and JIRA_API_TOKEN are configured."
+    warn_linear_api_key_missing: "LINEAR_API_KEY is missing but Linear is listed in ISSUE_TRACKER_PROVIDERS. Linear-backed commands will fail until this key is configured."
+    error_jira_not_configured: "Jira не настроен."
+    error_git_not_configured: "Git-провайдер не настроен."
+    error_jira_ping: "Ошибка подключения к Jira: %error%"
+    error_git_ping: "Ошибка подключения к Git-провайдеру: %error%"
+    error_linear_not_configured: "Linear не настроен."
+    error_linear_ping: "Ошибка подключения к Linear: %error%"
   project_init:
     section_title: "Конфигурация проекта"
     not_git_repository: "Вы не в репозитории Git. Запускайте команду из рабочей копии репозитория."
@@ -80,6 +110,8 @@ config:
     reserved_keys: "Эти ключи нельзя задать этой командой: %keys%"
     invalid_git_provider: "gitProvider должен быть github или gitlab."
     invalid_transition_id: "transitionId должен быть неотрицательным целым числом."
+    invalid_issue_tracker_provider: "issueTrackerProvider должен быть jira, linear или auto."
+    invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes должен быть картой непустых меток типов к непустым префиксам веток."
     base_branch_error: "%message%"
     interactive_title: "Конфигурация проекта stud"
     interactive_hint: "Нажмите Enter, чтобы оставить текущее значение. Оставьте необязательные поля пустыми, чтобы пропустить."
@@ -94,6 +126,20 @@ config:
     prompt_github_token: "Токен GitHub для этого репозитория (скрыт)"
     prompt_gitlab_token_hint: "Токен GitLab: оставьте пустым, чтобы пропустить; введите «.», чтобы сохранить текущий токен."
     prompt_gitlab_token: "Токен GitLab для этого репозитория (скрыт)"
+    prompt_issue_tracker_provider: "Провайдер задач для этого репозитория (когда глобальная конфигурация поддерживает Jira и Linear)"
+    prompt_linear_team_key: "Ключ команды Linear (необязательно; по умолчанию ключ проекта Jira при общем ключе)"
+    prompt_linear_start_state_id: "ID состояния workflow Linear для items:start (необязательно)"
+    prompt_linear_type_label_group_id: "ID LabelGroup Linear для сопоставления префиксов веток (необязательно)"
+    picker_skip: "Пропустить (оставить пустым)"
+    prompt_select_transition: "Выберите кэшированный переход Jira для items:start"
+    prompt_select_linear_start_state: "Выберите начальное состояние Linear для items:start"
+    prompt_select_linear_label_group: "Выберите LabelGroup Linear для сопоставления префиксов веток"
+    prompt_linear_branch_prefix: "Префикс ветки для метки «%label%» (необязательно)"
+    confirm_linear_branch_prefix_map: "Сохранить эту карту префиксов веток?"
+    linear_branch_prefix_summary: "  %label% → %prefix%"
+    workflow_fetch_failed: "Не удалось загрузить метаданные workflow: %error%"
+    labels_fetch_failed: "Не удалось загрузить группы меток: %error%"
+    no_labels_in_group: "В выбранной LabelGroup не найдено дочерних меток."
     status_updated: "Конфигурация проекта обновлена (.git/stud.config)."
     status_unchanged: "Изменения не записаны (конфигурация без изменений)."
     failed: "Не удалось обновить конфигурацию проекта."
@@ -116,12 +162,16 @@ config:
   base_branch_saved: "Базовая ветка настроена: %branch%"
   base_branch_invalid: Базовая ветка '%branch%' не существует в удаленном репозитории. Пожалуйста, проверьте имя ветки.
   base_branch_required: Базовая ветка обязательна. Команда не может продолжить работу без действительной базовой ветки.
+  base_branch_name_empty: "Base branch name cannot be empty."
+  base_branch_auto_detect_failed: "Base branch not configured and could not be auto-detected."
+  base_branch_default_missing: "Base branch is not configured and default branch \"%branch%\" does not exist on remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_provider_not_configured: Провайдер Git не настроен для этого репозитория.
   git_provider_prompt: Выберите провайдера Git для этого репозитория
   git_provider_detected: "Обнаружен провайдер Git: %provider%"
   git_provider_saving: Сохранение конфигурации провайдера Git...
   git_provider_saved: "Провайдер Git настроен: %provider%"
   git_provider_required: Провайдер Git обязателен. Команда не может продолжить работу без действительного провайдера Git.
+  git_provider_quiet_unavailable: "Git provider is not configured and could not be auto-detected from remote. Run without --quiet to configure, or run \"stud config:init\"."
   git_token_not_configured: Токен Git не настроен для этого репозитория.
   git_token_prompt: Введите ваш PAT %provider% (оставьте пустым, чтобы пропустить)
   git_token_saving: Сохранение конфигурации токена Git...
@@ -145,7 +195,23 @@ config:
     version_updated: "Версия миграции обновлена до %version%"
   missing_global_key: "Отсутствует обязательный ключ глобальной конфигурации: %key%"
   missing_project_key: "Отсутствует обязательный ключ конфигурации проекта: %key%"
+  missing_global_key_detailed: "Missing required global configuration key: %key%. Enter a value (saved to ~/.config/stud/config.yml)."
+  missing_project_key_detailed: "Missing required project configuration key: %key%. Enter a value (saved to .git/stud.config)."
+  missing_project_key_issue_tracker_provider: "Work-item provider for this repository (jira, linear, or auto). Saved to .git/stud.config."
+  remediation:
+    persist_hint_global: "This value will be saved to your global stud config (~/.config/stud/config.yml)."
+    persist_hint_project: "This value will be saved to .git/stud.config for this repository."
+    provider_alternative: "Tip: pass --provider jira|linear for a one-off run, or run stud config:project-init for guided setup."
   auto_detected: "Автоматически обнаружено %key%: %value%"
+
+guard:
+  error:
+    git_repository_required: "This command requires a git repository."
+    missing_config_keys: "Missing required configuration keys: %keys%"
+    missing_config_key: "Missing required configuration key: %key%"
+    ambiguous_issue_tracker_provider: "issueTrackerProvider is ambiguous. Set jira, linear, or auto in .git/stud.config, pass --provider jira|linear, or run stud config:project-init."
+    remediation_requires_tty: "Cannot prompt for missing configuration while stdin is piped. Set values in config, pass --provider, or run interactively."
+    missing_config_keys_hint: "Please run \"stud config:init\" to configure these keys, or run the command without --quiet in interactive mode."
 item:
   start:
     section: Начало работы над %key%
@@ -166,6 +232,15 @@ item:
     transition_success: ✅ Задача %key% переведена в 'В работе'
     transition_error: 'Ошибка получения переходов: %error%'
     transition_exec_error: 'Ошибка выполнения перехода: %error%. Продолжение создания ветки.'
+    linear_no_type_label: 'На задаче нет метки типа Linear; используется префикс feat/.'
+    linear_unknown_type_label: 'Для метки типа Linear «%label%» нет сопоставления префикса; используется feat/.'
+    linear_type_label_matched: 'Префикс %prefix% из метки типа Linear %label%.'
+    using_cached_linear_state: 'Используется кэшированный ID начального состояния Linear: %id%'
+    no_cached_linear_state_agent: 'Нет кэшированного начального состояния Linear для задачи %key%; переход состояния пропущен в режиме агента.'
+    no_linear_states: 'Нет доступных состояний workflow для задачи %key%. Переход состояния пропущен.'
+    select_linear_state: 'Выберите состояние workflow Linear для применения при старте:'
+    save_linear_state: 'Сохранить это состояние как начальное по умолчанию для проекта?'
+    linear_state_saved: 'Начальное состояние Linear сохранено в конфигурации проекта.'
     using_advanced_base: 'Настроенная база ''%configured%'' отстаёт от ''%resolved%''; используется ''%resolved%'' в качестве базы.'
     switching_branch: 'Switching to existing branch: %branch%'
     switching_remote_branch: 'Switching to remote branch: %branch%'
@@ -206,6 +281,8 @@ item:
     section: Детали задачи %key%
     fetching: 'Получение деталей для задачи: %key%'
     error_not_found: Не удалось найти задачу Jira с ключом "%key%".
+    error_work_item_not_found: "Could not find work item with key \"%key%\"."
+    error_fetch: "Не удалось получить сведения о задаче: %error%"
     label_key: Ключ
     label_title: Название
     label_status: Статус
@@ -222,7 +299,12 @@ item:
     col_filename: "Имя файла"
     col_path: "Путь"
     error_key_or_url: "Укажите ключ задачи Jira или --url с URL содержимого вложения Jira."
+    error_fetch: "Не удалось загрузить вложения: %error%"
+    error_file: "Failed to download attachment: %error%"
     error_path_traversal: "Путь не может содержать сегменты родительского каталога (..)."
+    error_unknown_attachment_host: "Could not infer work-item provider from attachment URL host. Pass --provider jira|linear or provide an issue key."
+    error_cwd: "Не удалось определить текущий рабочий каталог."
+    error_target_dir: "Не удалось создать целевой каталог: %error%"
     error_partial: "%filename%: %message%"
   upload:
     section: "Загруженные вложения"
@@ -235,6 +317,7 @@ item:
     error_not_found: "Файл не найден."
     error_not_file: "Путь не является читаемым файлом."
     error_cwd: "Не удалось определить текущий рабочий каталог."
+    error_file: "Failed to upload attachment: %error%"
     error_partial: "%filename%: %message%"
   create:
     section: "Creating Jira issue"
@@ -247,11 +330,15 @@ item:
     prompt_custom_field: "Value for \"%name%\" (required)"
     prompt_issue_type_choice: "Issue type"
     error_no_project: "Project is required. Set --project/-p, or JIRA_DEFAULT_PROJECT in .git/stud.config, or run interactively."
+    error_no_linear_team: "Team key is required to create a Linear issue. Set --project/-p or project key in create payload."
     error_project_not_found: "Project \"%key%\" not found."
     error_no_summary: "Summary is required. Set --summary/-m or run interactively."
     error_createmeta: "Could not fetch create metadata: %error%"
     error_extra_required: "This project/issue type has required custom fields: %fields%. Run the command interactively (stud items:create or stud ic)."
     error_create: "Could not create issue: %error%"
+    linear_type_group_not_configured: "Linear type LabelGroup is not configured. Set linearTypeLabelGroupId in .git/stud.config."
+    linear_type_label_not_found: "Could not resolve Linear type label \"%type%\" under the configured LabelGroup."
+    linear_type_resolver_unavailable: "Could not resolve Linear type label; Linear API client is not available."
     success: "Created issue %key% – %url%"
     note_skipped_optional_fields: "The following fields were skipped because they are not supported for this project/issue type: %fields%."
     skipped_field_labels: "labels"
@@ -280,11 +367,46 @@ item:
     error_fetch: 'Ошибка при получении задач: %error%'
     no_items: Не найдено задач, соответствующих вашим критериям.
     error_invalid_sort: 'Неверное значение сортировки ''%value%''. Допустимые значения: Key, Status'
+issue_tracker_provider:
+  missing_linear_api_key: 'Выбран Linear, но LINEAR_API_KEY не настроен. Запустите "stud config:init" или задайте LINEAR_API_KEY в ~/.config/stud/config.yml.'
+  missing_jira_configuration: 'Выбран Jira, но учётные данные Jira не настроены. Запустите "stud config:init".'
+  invalid_jira_base_url: "Invalid Jira base URL configuration."
+  not_configured: 'Провайдер work-item не настроен. Запустите "stud config:init" для настройки Jira или Linear.'
+  ambiguous_prefix: 'Префикс ключа %prefix% совпадает с ключами Jira и Linear. Укажите --provider или задайте разные projectKey и linearTeamKey в .git/stud.config.'
+  unknown_prefix: 'Префикс ключа %prefix% не совпадает с настроенными ключами (%configuredKeys%). Укажите --provider или задайте issueTrackerProvider в .git/stud.config.'
+  auto_requires_issue_key: 'issueTrackerProvider равен auto, но ключ задачи не указан. Передайте ключ задачи или задайте issueTrackerProvider как jira или linear.'
+  invalid_override: 'Недопустимый override провайдера %value%. Допустимые значения: jira, linear.'
+  unknown_resolved: 'Неизвестный разрешённый work-item provider %value%. Ожидается jira или linear.'
+  search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Получение проектов Jira
     error_fetch: 'Ошибка при получении проектов: %error%'
     no_projects: Проекты не найдены.
+  workflow:
+    section: Состояния workflow проекта
+    no_state_changes: Для проекта %project% не найдено изменений состояния.
+    error_ambiguous_provider: issueTrackerProvider неоднозначен. Укажите jira или linear в .git/stud.config или выполните stud config:project-init.
+    error_no_provider: Провайдер задач не настроен. Выполните stud config:init.
+    error_fetch: "Failed to fetch project workflow metadata: %error%"
+    column_id: ID
+    column_name: Название
+    column_target_status: Целевой статус
+    column_type: Тип
+    column_provider: Провайдер
+  labels:
+    section: Группы меток проекта
+    labels_not_supported_for_jira: Обнаружение групп меток недоступно для Jira. Используйте Linear или задайте linearTypeLabelGroupId вручную.
+    requires_linear: "projects:labels requires Linear. Pass --provider linear or use your linearTeamKey scope (e.g. SCIL)."
+    error_fetch: "Failed to fetch project label groups: %error%"
+    no_label_groups: Группы меток для проекта %project% не найдены.
+    column_group_id: ID группы
+    column_group_name: Имя группы
+    column_label_id: ID метки
+    column_label_name: Имя метки
+    column_color: Цвет
 search:
   section: Поиск задач Jira с помощью JQL
   jql_query: 'JQL Запрос: %jql%'
@@ -295,6 +417,7 @@ filter:
     section: Получение задач из фильтра '%filterName%'
     jql_query: 'JQL Запрос: %jql%'
     error_fetch: 'Ошибка при получении задач из фильтра: %error%'
+    error_not_found: "No filter or custom view named \"%filterName%\" was found on the configured providers."
     no_results: Не найдено задач в фильтре '%filterName%'.
   list:
     section: Получение фильтров Jira
@@ -363,11 +486,13 @@ submit:
     Попробуйте выполнить ''stud please'' для принудительной отправки.'
   finding_commit: Поиск первого логического коммита для использования в деталях PR...
   fetching_jira: 'Получение задачи Jira для тела PR: %key%'
+  fetching_issue: "Получение work item для тела PR: %key%"
   error_no_logical: Не удалось найти логический коммит на этой ветке. Невозможно создать PR.
   error_no_jira_key: Не удалось распарсить ключ Jira из сообщения коммита. Невозможно создать PR.
   warning_jira_fetch: 'Не удалось получить детали задачи Jira для тела PR: %error%
 
     Возврат к простой ссылке.'
+  warning_issue_fetch: "Не удалось получить детали work item для тела PR: %error%\nИспользуется простая ссылка."
   creating: Создание Pull Request...
   success_created: '✅ Pull Request создан: %url%'
   warning_no_provider: Провайдер Git не настроен для этого проекта.
@@ -654,6 +779,7 @@ table:
   key: Ключ
   status: Статус
   summary: Резюме
+  provider: "Provider"
   name: Имя
   command: Команда
   alias: Псевдоним
@@ -676,18 +802,20 @@ help:
   category_git_workflow: Рабочий процесс Git
   category_release_commands: Команды релиза
   example_prefix: 'Пример: %example%'
-  command_config_init: Интерактивный мастер для настройки деталей подключения Jira и Git.
+  command_config_init: Интерактивный мастер для Git-провайдеров, провайдеров задач (Jira/Linear) и учётных данных.
   command_config_show: "Показать текущую конфигурацию (глобальную и проекта) с скрытыми секретами; безопасно для обмена."
-  command_config_validate: "Проверить наличие конфигурации и доступность Jira и Git-провайдера. Используйте --skip-jira или --skip-git для частичных проверок."
-  command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Используйте флаги CLI, stud config:project-init --agent с JSON или интерактивно без флагов. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
-  option_config_project_init_project_key: "Ключ проекта Jira (кэш перехода с transition-id)"
-  option_config_project_init_base_branch: "Базовая ветка; наличие на origin проверяется, если не задан --skip-base-branch-remote-check"
-  option_config_project_init_skip_base: "Не проверять, существует ли базовая ветка на origin"
+  command_config_validate: "Проверить наличие конфигурации и доступность Jira, Git-провайдера и Linear. Используйте --skip-jira, --skip-git или --skip-linear для частичных проверок."
+  command_config_project_init: "Создаёт или объединяет .git/stud.config (ключ проекта, базовая ветка, провайдер, токены, JIRA_DEFAULT_PROJECT, CONFLUENCE_DEFAULT_SPACE). Запустите интерактивно или используйте stud config:project-init --agent с JSON. Неизвестные ключи агента отклоняются; migration_version зарезервирован."
   command_completion: Генерирует скрипты автодополнения для bash или zsh.
   command_docs_generate: Generate the exhaustive command reference from runtime command metadata.
   command_docs_check: Check that the generated command reference is up to date.
   command_help: Displays a list of available commands.
   command_projects_list: Список всех видимых проектов Jira.
+  command_projects_workflow: Список переходов workflow (Jira) или состояний (Linear) для проекта.
+  option_projects_workflow_project: Ключ проекта или команды (например SCI)
+  command_projects_labels: Список Linear LabelGroups и дочерних меток для команды проекта.
+  option_projects_labels_project: Ключ проекта или команды (например SCI)
+  option_projects_labels_groups_only: Только LabelGroups; без отдельных меток вне групп
   command_items_list: Список активных элементов работы (ваша панель управления).
   command_items_create: "Creates a Jira issue. Use -p/--project, -t/--type (default Story), -m/--summary, -d/--description, --description-format (plain|markdown), --parent (sub-task), -F/--fields for arbitrary fields. Default project from JIRA_DEFAULT_PROJECT in .git/stud.config. Description: STDIN then -d. Custom required fields require interactive run."
   command_items_update: "Updates a Jira issue's fields. Use -m/--summary, -d/--description, --description-format (plain|markdown), -F/--fields for arbitrary fields. At least one field must be provided."
@@ -757,6 +885,7 @@ help:
   option_config_show_quiet: "With --key: output only the raw value; ignored without --key"
   option_config_validate_skip_jira: "Skip the Jira connectivity check"
   option_config_validate_skip_git: "Skip the Git provider connectivity check"
+  option_config_validate_skip_linear: "Пропустить проверку подключения Linear"
   command_confluence_push: "Create or update a Confluence page from markdown. Use -s/--space and -t/--title for create; -p/--page for update. Content from -f/--file or STDIN (create or update); agent mode may use 'file' property. CONFLUENCE_DEFAULT_SPACE in .git/stud.config for default space."
   option_confluence_push_space: "Confluence space key (e.g. DEV); fallback CONFLUENCE_DEFAULT_SPACE in .git/stud.config"
   option_confluence_push_title: "Page title (required for create; optional for update)"

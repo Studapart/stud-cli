@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\BranchSwitchResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 
-class BranchSwitchHandler
+class BranchSwitchHandler implements GitRepositoryAware
 {
     public function __construct(
         private readonly GitRepository $gitRepository,
@@ -20,7 +21,7 @@ class BranchSwitchHandler
     }
 
     /**
-     * Switches to the branch matching the Jira issue key, or asks the caller to select one.
+     * Switches to the branch matching the work-item key (Jira or Linear), or asks the caller to select one.
      */
     public function handle(string $key, bool $quiet = false, ?string $selectedBranch = null): BranchSwitchResponse
     {

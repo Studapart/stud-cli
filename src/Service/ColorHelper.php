@@ -30,11 +30,7 @@ class ColorHelper
      */
     public function registerStyles(SymfonyStyle|OutputInterface $outputOrIo): void
     {
-        $output = $outputOrIo instanceof SymfonyStyle
-            ? $this->getOutputFromSymfonyStyle($outputOrIo)
-            : $outputOrIo;
-
-        $formatter = $output->getFormatter();
+        $formatter = $outputOrIo->getFormatter();
 
         foreach ($this->colors as $name => $color) {
             // Skip if style already exists (allows overriding)
@@ -111,18 +107,5 @@ class ColorHelper
     public function getColorName(string $key): string
     {
         return $this->colors[$key] ?? 'white';
-    }
-
-    /**
-     * Extracts OutputInterface from SymfonyStyle using reflection.
-     * SymfonyStyle stores the output as a private property.
-     */
-    private function getOutputFromSymfonyStyle(SymfonyStyle $io): OutputInterface
-    {
-        $reflection = new \ReflectionClass($io);
-        $property = $reflection->getProperty('output');
-        $property->setAccessible(true);
-
-        return $property->getValue($io);
     }
 }

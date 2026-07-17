@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
+use App\DTO\MessageRef;
 use App\Enum\OutputFormat;
 use App\Response\AgentJsonResponse;
 use App\Response\ConfigValidateResponse;
@@ -39,42 +40,76 @@ class ConfigValidateResponder
 
         $jiraLabel = $this->helper->translator->trans('config.validate.label_jira');
         $gitLabel = $this->helper->translator->trans('config.validate.label_git_provider');
+        $linearLabel = $this->helper->translator->trans('config.validate.label_linear');
         $jiraValue = $this->formatStatus($response->jiraStatus, $response->jiraMessage);
         $gitValue = $this->formatStatus($response->gitStatus, $response->gitMessage);
+        $linearValue = $this->formatStatus($response->linearStatus, $response->linearMessage);
 
         if ($this->helper->colorHelper !== null) {
             $jiraLabel = $this->helper->colorHelper->format('definition_key', $jiraLabel);
             $jiraValue = $this->helper->colorHelper->format('definition_value', $jiraValue);
             $gitLabel = $this->helper->colorHelper->format('definition_key', $gitLabel);
             $gitValue = $this->helper->colorHelper->format('definition_value', $gitValue);
+            $linearLabel = $this->helper->colorHelper->format('definition_key', $linearLabel);
+            $linearValue = $this->helper->colorHelper->format('definition_value', $linearValue);
         }
 
         $this->logger->definitionList(
             Logger::VERBOSITY_NORMAL,
             [$jiraLabel => $jiraValue],
-            [$gitLabel => $gitValue]
+            [$gitLabel => $gitValue],
+            [$linearLabel => $linearValue],
         );
+
+        foreach ($response->getWarnings() as $warning) {
+            $message = $warning->message;
+            $text = $message instanceof \App\DTO\MessageRef
+                ? $this->helper->translator->trans($message->key, $message->parameters)
+                : (string) $message;
+            $this->logger->warning(Logger::VERBOSITY_NORMAL, $text);
+        }
 
         return null;
     }
 
     protected function respondJson(ConfigValidateResponse $response): AgentJsonResponse
     {
+        $diagnostics = $response->diagnosticsPayload();
+
         if (! $response->isSuccess()) {
             $error = $response->getError() ?? 'Validation failed';
 
-            return new AgentJsonResponse(false, error: $this->helper->translator->transForAgentText($error));
+            return new AgentJsonResponse(
+                false,
+                error: $this->helper->translator->transForAgentText($error),
+                diagnostics: $diagnostics,
+            );
         }
 
         return new AgentJsonResponse(true, data: [
             'jiraStatus' => $response->jiraStatus,
-            'jiraMessage' => $response->jiraMessage,
+            'jiraMessage' => $this->formatMessageForAgent($response->jiraMessage),
             'gitStatus' => $response->gitStatus,
-            'gitMessage' => $response->gitMessage,
-        ]);
+            'gitMessage' => $this->formatMessageForAgent($response->gitMessage),
+            'linearStatus' => $response->linearStatus,
+            'linearMessage' => $this->formatMessageForAgent($response->linearMessage),
+        ], diagnostics: $diagnostics);
     }
 
-    protected function formatStatus(string $status, ?string $message): string
+    protected function formatMessageForAgent(MessageRef|string|null $message): ?string
+    {
+        if ($message === null) {
+            return null;
+        }
+
+        if ($message instanceof MessageRef) {
+            return $this->helper->translator->transForAgentText($message->key, $message->parameters);
+        }
+
+        return $message;
+    }
+
+    protected function formatStatus(string $status, MessageRef|string|null $message): string
     {
         if ($status === ConfigValidateResponse::STATUS_OK) {
             return $this->helper->translator->trans('config.validate.status_ok');
@@ -85,9 +120,23 @@ class ConfigValidateResponder
         }
 
         $failLabel = $this->helper->translator->trans('config.validate.status_fail');
+        $detail = $this->formatComponentMessage($message);
 
-        return $message !== null && $message !== ''
-            ? $failLabel . ' (' . $message . ')'
+        return $detail !== null && $detail !== ''
+            ? $failLabel . ' (' . $detail . ')'
             : $failLabel;
+    }
+
+    protected function formatComponentMessage(MessageRef|string|null $message): ?string
+    {
+        if ($message === null) {
+            return null;
+        }
+
+        if ($message instanceof MessageRef) {
+            return $this->helper->translator->trans($message->key, $message->parameters);
+        }
+
+        return $message;
     }
 }

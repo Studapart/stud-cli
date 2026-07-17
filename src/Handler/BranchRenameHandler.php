@@ -8,6 +8,7 @@ use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\WorkflowChannel;
+use App\Guard\Capability\GitRepositoryAware;
 use App\Response\WorkflowResponse;
 use App\Service\BranchNameGenerator;
 use App\Service\BranchNameValidator;
@@ -16,7 +17,7 @@ use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\Prompt\PromptInterface;
 
-class BranchRenameHandler
+class BranchRenameHandler implements GitRepositoryAware
 {
     private WorkflowEntryRecorder $recorder;
 
@@ -333,7 +334,7 @@ class BranchRenameHandler
 
     protected function generateBranchNameFromExtractedKey(string $targetBranch): ?string
     {
-        $extractedKey = $this->gitRepository->getJiraKeyFromBranchName();
+        $extractedKey = $this->gitRepository->getIssueKeyFromBranchName();
         if ($extractedKey === null) {
             $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('branch.rename.error_no_key_in_branch', ['branch' => $targetBranch]));
 
