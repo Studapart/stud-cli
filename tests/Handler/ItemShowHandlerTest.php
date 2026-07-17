@@ -75,6 +75,34 @@ class ItemShowHandlerTest extends CommandTestCase
         $this->assertMessageRef($response->getErrorMessage(), 'item.show.error_work_item_not_found', ['key' => 'TPW-35']);
     }
 
+    public function testHandlePrefersResolutionHintOnApiException(): void
+    {
+        $hint = \App\DTO\MessageRef::key('issue_tracker_provider.fetch_failed_prefix_matches_other', [
+            '%key%' => 'SCIL-195',
+            '%attempted%' => 'jira',
+            '%prefix%' => 'SCIL',
+            '%alternate%' => 'linear',
+        ]);
+        $this->issueTracker->expects($this->once())
+            ->method('getIssue')
+            ->with('SCIL-195', true)
+            ->willThrowException(new \App\Exception\ApiException('not found', '404', 404, null, $hint));
+
+        $response = $this->handler->handle('SCIL-195');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef(
+            $response->getErrorMessage(),
+            'issue_tracker_provider.fetch_failed_prefix_matches_other',
+            [
+                '%key%' => 'SCIL-195',
+                '%attempted%' => 'jira',
+                '%prefix%' => 'SCIL',
+                '%alternate%' => 'linear',
+            ],
+        );
+    }
+
     public function testHandleNormalizesKeyToUppercase(): void
     {
         $issue = new WorkItem(

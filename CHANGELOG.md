@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Provider-neutral PR body (submit):** PR description uses work-item URL when available (Linear `url`, else Jira browse link); link label is **Issue** not **Jira Issue**; markdown descriptions from Linear are not HTML-converted.
+- **Pinned provider vs issue-key prefix:** when `issueTrackerProvider` is pinned (`jira`/`linear`), stud still tries that tracker first for any key (no silent switch). If the fetch fails and the key prefix matches the other configured tracker, errors suggest `--provider` or `issueTrackerProvider: auto`. Dual-PM fetch failures that match neither scope also suggest `--provider`. Documented in `documentation/features/work-items.md`.
+- **Dead code cleanup (SCIL-195):** remove unused `IssueTrackerPort::listWorkflowMetadata` / `listTypeLabels` (Linear stubs and Jira-only adapter methods with no production callers); remove deprecated `AgentModeSchemaGenerator::itemsCommandsWithProviderOverride()`. Operator discovery unchanged via `projects:workflow` and `projects:labels`.
+
 ### Fixed
 
+- **Linear issue show (attachments):** stop querying non-existent GraphQL `Attachment.size` / `Attachment.contentType` fields so `items:show` / `items:start` / commit-from-issue work on Linear again.
 - **Unified dual-PM provider resolution (SCI-197):** central `IssueTrackerProviderResolver` implements R1–R5 for guard and runtime; guard peeks issue key, branch key, project scope, and attachment URL before blocking; `--provider` / agent `provider` on all in-scope work-item and git-workflow commands; dual-aggregate defaults for `filters:list` and `projects:list`; provider-neutral `items:show` errors; `items:search` blocks under dual PM without override.
 - **Issue-tracker provider UX (SCI-196):** readiness guard respects `--provider` and agent JSON `provider` before blocking; `stud ls` with `issueTrackerProvider: auto` queries Jira and Linear together; config remediation uses choice prompts with persist hints; piped stdin no longer corrupts `.git/stud.config`; agent/quiet ambiguous-provider errors are actionable.
 - **ReflectionProperty deprecation (SCI-192):** add `ReflectionAccessor::ensureAccessible()` and route test reflection through it so public members skip deprecated `setAccessible(true)` on PHP 8.1+; production `FileSystem` / `ColorHelper` paths avoid reflection where possible.

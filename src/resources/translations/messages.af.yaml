@@ -378,6 +378,8 @@ issue_tracker_provider:
   invalid_override: 'Ongeldige work-item provider override %value%. Toegestane waardes: jira, linear.'
   unknown_resolved: 'Onbekende opgeloste work-item provider %value%. Verwag jira of linear.'
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Kry Jira Projekte
@@ -484,11 +486,13 @@ submit:
     Probeer ''stud please'' uitvoer om te force-push.'
   finding_commit: Soek eerste logiese commit om te gebruik vir PR besonderhede...
   fetching_jira: 'Kry Jira item vir PR liggaam: %key%'
+  fetching_issue: "Haal work item vir PR liggaam: %key%"
   error_no_logical: Kon nie 'n logiese commit op hierdie tak vind nie. Kan nie PR skep nie.
   error_no_jira_key: Kon nie Jira sleutel parseer vanaf commit boodskap nie. Kan nie PR skep nie.
   warning_jira_fetch: 'Kon nie Jira item besonderhede kry vir PR liggaam nie: %error%
 
     Terugval na ''n eenvoudige skakel.'
+  warning_issue_fetch: "Kon nie work item besonderhede kry vir PR liggaam nie: %error%\nVal terug op 'n eenvoudige skakel."
   creating: Skep Pull Request...
   success_created: '✅ Pull Request geskep: %url%'
   warning_no_provider: Geen Git verskaffer gekonfigureer vir hierdie projek nie.

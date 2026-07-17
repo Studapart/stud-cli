@@ -88,11 +88,10 @@ class BranchRenamePrCoordinator
             $this->gitRepository,
             $this->issueTracker,
             $this->githubProvider,
-            $this->jiraConfig,
+            new SubmitPrBodyBuilder($this->jiraConfig, $this->htmlConverter),
             $this->baseBranch,
             $this->translator,
             $this->prompt,
-            $this->htmlConverter,
         );
     }
 

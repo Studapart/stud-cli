@@ -126,8 +126,6 @@ class LinearApiClient
                 id
                 title
                 url
-                size
-                contentType
               }
             }
           }

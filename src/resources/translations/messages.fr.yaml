@@ -378,6 +378,8 @@ issue_tracker_provider:
   invalid_override: 'Override de fournisseur invalide %value%. Valeurs autorisées : jira, linear.'
   unknown_resolved: 'Fournisseur work-item résolu inconnu %value%. Attendu jira ou linear.'
   search_requires_explicit_provider: "Dual work-item setup requires --provider jira|linear for search (JQL and Linear search terms are not interchangeable)."
+  fetch_failed_prefix_matches_other: "Could not find work item %key% on %attempted%. Prefix %prefix% matches configured %alternate%. Pass --provider %alternate% or set issueTrackerProvider: auto in .git/stud.config."
+  fetch_failed_suggest_override: "Could not find work item %key% on %attempted%. If the issue is on another tracker, pass --provider jira|linear."
 project:
   list:
     section: Récupération des projets Jira
@@ -484,11 +486,13 @@ submit:
     Essayez d''exécuter ''stud please'' pour forcer le push.'
   finding_commit: Recherche du premier commit logique à utiliser pour les détails de la PR...
   fetching_jira: 'Récupération du ticket Jira pour le corps de la PR : %key%'
+  fetching_issue: "Récupération du work item pour le corps de la PR : %key%"
   error_no_logical: Impossible de trouver un commit logique sur cette branche. Impossible de créer la PR.
   error_no_jira_key: Impossible de parser la clé Jira depuis le message de commit. Impossible de créer la PR.
   warning_jira_fetch: 'Impossible de récupérer les détails du ticket Jira pour le corps de la PR : %error%
 
     Retour à un simple lien.'
+  warning_issue_fetch: "Impossible de récupérer les détails du work item pour le corps de la PR : %error%\nRetour à un simple lien."
   creating: Création de la Pull Request...
   success_created: '✅ Pull Request créée : %url%'
   warning_no_provider: Aucun fournisseur Git configuré pour ce projet.

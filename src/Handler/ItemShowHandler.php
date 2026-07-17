@@ -25,9 +25,10 @@ class ItemShowHandler implements JiraAware, LinearAware
             $issue = $this->provider->getIssue($key, true);
 
             return ItemShowResponse::success($issue);
-        } catch (\App\Exception\ApiException) {
+        } catch (\App\Exception\ApiException $e) {
             return ItemShowResponse::error(
-                MessageRef::key('item.show.error_work_item_not_found', ['key' => $key])
+                $e->getResolutionHint()
+                    ?? MessageRef::key('item.show.error_work_item_not_found', ['key' => $key])
             );
         } catch (\Exception $e) {
             return ItemShowResponse::error(

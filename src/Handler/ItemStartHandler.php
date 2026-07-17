@@ -59,7 +59,7 @@ class ItemStartHandler implements GitRepositoryAware, ProjectBaseBranchAware, Ji
         } catch (ApiException $e) {
             $this->recorder->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
-                MessageRef::key('item.start.error_not_found', ['key' => $key]),
+                $e->getResolutionHint() ?? MessageRef::key('item.start.error_not_found', ['key' => $key]),
                 $e->getTechnicalDetails()
             );
 

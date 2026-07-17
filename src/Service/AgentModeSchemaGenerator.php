@@ -55,16 +55,6 @@ class AgentModeSchemaGenerator
         return self::COMMANDS_WITH_PROVIDER_OVERRIDE;
     }
 
-    /**
-     * @return list<string>
-     *
-     * @deprecated Use commandsWithProviderOverride()
-     */
-    public static function itemsCommandsWithProviderOverride(): array
-    {
-        return self::commandsWithProviderOverride();
-    }
-
     private const PROVIDER_OVERRIDE_INPUT_SCHEMA = [
         'type' => 'string|null',
         'optional' => true,

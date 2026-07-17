@@ -108,31 +108,6 @@ final class JiraIssueTrackerAdapter implements IssueTrackerPort
         return array_values($this->jiraApiClient->searchIssues($jql));
     }
 
-    public function listWorkflowMetadata(?string $projectKey = null): array
-    {
-        if ($projectKey === null || $projectKey === '') {
-            return [];
-        }
-
-        return [
-            'issueTypes' => $this->jiraApiClient->getCreateMetaIssueTypes($projectKey),
-        ];
-    }
-
-    public function listTypeLabels(?string $projectKey = null): array
-    {
-        if ($projectKey === null || $projectKey === '') {
-            return [];
-        }
-
-        $issueTypes = $this->jiraApiClient->getCreateMetaIssueTypes($projectKey);
-
-        return array_values(array_map(
-            static fn (array $type): string => $type['name'],
-            $issueTypes,
-        ));
-    }
-
     public function ping(): void
     {
         $this->jiraApiClient->getProjects();

@@ -70,14 +70,6 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertNotEmpty($this->schema['commands']);
     }
 
-    public function testItemsCommandsWithProviderOverrideAliasMatchesCanonicalList(): void
-    {
-        $this->assertSame(
-            AgentModeSchemaGenerator::commandsWithProviderOverride(),
-            AgentModeSchemaGenerator::itemsCommandsWithProviderOverride(),
-        );
-    }
-
     public function testEveryCommandHasRequiredKeys(): void
     {
         $requiredKeys = ['name', 'aliases', 'essential', 'description', 'parameters', 'input', 'output'];

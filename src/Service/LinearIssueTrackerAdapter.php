@@ -209,16 +209,6 @@ class LinearIssueTrackerAdapter implements IssueTrackerPort, IssueTrackerLabelGr
         return $issues;
     }
 
-    public function listWorkflowMetadata(?string $projectKey = null): array
-    {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
-    }
-
-    public function listTypeLabels(?string $projectKey = null): array
-    {
-        throw new \BadMethodCallException('Not implemented until SCI-164');
-    }
-
     public function listLabelGroups(string $projectKey, bool $groupsOnly = false): array
     {
         return $this->linearApiClient->getTeamLabelGroups($projectKey, $groupsOnly);
