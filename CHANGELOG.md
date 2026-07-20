@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.1] - 2026-07-20
+
 ### Fixed
 
 - **Dual-PM PR label sync CI (SCIL-196):** Jira and Linear label-sync workflows share `.github/scripts/sync-pr-labels.sh`; both always pass explicit `provider` to `items:show` / `items:update`; soft-skip (exit 0) when tracker secrets are missing or show fails for that provider; hard-fail only for invalid/missing label map, missing branch issue key, or update failure after a successful show. Documented soft-skip vs hard-fail and `stud-install-ref` (script ref vs latest-release PHAR) in `documentation/github-actions.md`.
