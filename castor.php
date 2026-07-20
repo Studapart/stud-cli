@@ -981,6 +981,18 @@ function _branch_issue_key(): ?string
     return strtoupper(trim($issueKey));
 }
 
+/**
+ * Issue key for dual-PM auto provider resolution: explicit CLI/agent key, else current branch.
+ */
+function _issue_key_for_provider_resolution(?string $explicitKey): ?string
+{
+    if (is_string($explicitKey) && trim($explicitKey) !== '') {
+        return strtoupper(trim($explicitKey));
+    }
+
+    return _branch_issue_key();
+}
+
 function _require_issue_tracker_for_git_workflow(?string $override = null): IssueTrackerPort
 {
     return _require_issue_tracker($override, _branch_issue_key());
@@ -2967,13 +2979,17 @@ function items_transition(
         $key = isset($input['key']) ? (string) $input['key'] : null;
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     }
+    $explicitKey = is_string($key) && trim($key) !== '' ? trim($key) : null;
     $handler = new ItemTransitionHandler(
         _get_git_repository(),
-        _require_issue_tracker($providerOverride ?? $provider, is_string($key) && trim($key) !== '' ? trim($key) : null),
+        _require_issue_tracker(
+            $providerOverride ?? $provider,
+            _issue_key_for_provider_resolution($explicitKey),
+        ),
         _get_translation_service(),
         _get_prompt(),
     );
-    $response = $handler->handle($key);
+    $response = $handler->handle($explicitKey);
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
 }

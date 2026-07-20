@@ -51,12 +51,13 @@ Essential `items:*` commands that accept `--provider` include `items:show`, `ite
 | `items:create` | `ic` | No | Yes | |
 | `items:update` | `iu` | No | Yes | |
 | `items:start` | `start` | No | Yes | |
-| `items:transition` | `tx` | No | Yes | |
+| `items:transition` | `tx` | No — key or **current branch** resolves provider | Yes | Omitting the key peeks `PROJ-123` from the branch name for dual-PM `auto` |
 | `items:search` | `search` | No | No | JQL vs plain text per provider |
 | `filters:list` | `fl` | No | No | Active provider only |
 | `filters:show` | `fs` | No | No | |
 | `projects:workflow` | — | Via `--project` scope | No | Discovery infers provider |
 | `projects:labels` | — | Via `--project` scope | No | Discovery infers provider |
+| `commit` / `push` / `submit` / `status` / `branch:rename` | — | Branch key (when present) | Yes | Same branch peek as `tx` for dual-PM `auto` |
 
 ## Search (`items:search` / `stud search`)
 
