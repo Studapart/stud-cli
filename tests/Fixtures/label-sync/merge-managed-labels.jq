@@ -1,4 +1,5 @@
-# Label merge algorithm shared by jira-label-sync.yml and linear-label-sync.yml.
+# Label merge algorithm used by .github/scripts/sync-pr-labels.sh
+# (jira-label-sync.yml and linear-label-sync.yml).
 # Inputs: $current, $prn, $m (slurpfile map JSON object)
 ($m[0]) as $map
 | ($map | to_entries) as $entries

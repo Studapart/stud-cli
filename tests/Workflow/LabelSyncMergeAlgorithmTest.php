@@ -9,7 +9,8 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
 /**
- * Verifies the jq merge algorithm used by jira-label-sync.yml and linear-label-sync.yml.
+ * Verifies the jq merge algorithm used by .github/scripts/sync-pr-labels.sh
+ * (jira-label-sync.yml and linear-label-sync.yml).
  */
 class LabelSyncMergeAlgorithmTest extends TestCase
 {

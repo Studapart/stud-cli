@@ -1,7 +1,9 @@
-# Sync mapped GitHub PR labels to Linear using stud items:show + items:update --agent.
+# Sync mapped GitHub PR labels to Linear using .github/scripts/sync-pr-labels.sh.
 # Preserves Linear labels that are not values in STUD_LINEAR_LABEL_MAP.
 #
 # Requires: secret STUD_LINEAR_API_KEY and repository variable STUD_LINEAR_LABEL_MAP (JSON object).
+# Soft-skips (exit 0) when Linear secret is missing or items:show fails for provider=linear.
+# Soft-skip is not a sync — configure STUD_LINEAR_API_KEY + STUD_LINEAR_LABEL_MAP for real sync.
 # See documentation/github-actions.md
 #
 # Safeguards:
@@ -26,76 +28,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Gate on Linear secret
+        id: gate
+        shell: bash
+        env:
+          LINEAR_API_KEY: ${{ secrets.STUD_LINEAR_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LINEAR_API_KEY}" ]; then
+            echo 'Soft-skip: STUD_LINEAR_API_KEY is not set. Soft-skip is not a sync; set STUD_LINEAR_API_KEY and STUD_LINEAR_LABEL_MAP for real Linear label sync.'
+            echo "continue=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo 'Linear secret present; continuing.'
+          echo "continue=true" >> "${GITHUB_OUTPUT}"
+
       - name: Set up stud and Linear config
+        if: steps.gate.outputs.continue == 'true'
         uses: ./.github/actions/stud-cli-setup
         with:
           linear-api-key: ${{ secrets.STUD_LINEAR_API_KEY }}
-          # Tip of the PR branch: ensures setup-stud.sh matches this workflow (e.g. --skip-init). Consumers should pin a release tag.
+          # SHA selects setup-stud.sh text from this ref; non-semver refs still install latest release PHAR.
           stud-install-ref: ${{ github.event.pull_request.head.sha }}
           validate-skip-git: true
 
-      - name: Merge mapped PR labels into Linear (items:show + items:update)
+      - name: Merge mapped PR labels into Linear
+        if: steps.gate.outputs.continue == 'true'
         shell: bash
         env:
+          PROVIDER: linear
+          MAP_VAR_NAME: STUD_LINEAR_LABEL_MAP
           LABELS_JSON: ${{ toJson(github.event.pull_request.labels) }}
           HEAD_REF: ${{ github.head_ref }}
           LABEL_MAP_JSON: ${{ vars.STUD_LINEAR_LABEL_MAP }}
-        run: |
-          set -euo pipefail
-          if [ -z "${LABEL_MAP_JSON//[[:space:]]/}" ]; then
-            echo 'Repository variable STUD_LINEAR_LABEL_MAP is not set. Set it to a JSON object mapping GitHub PR label names to Linear labels, e.g. {"bug":"Bug","enhancement":"Feature"}'
-            exit 1
-          fi
-          MAP_FILE="$(mktemp)"
-          SHOW_FILE="$(mktemp)"
-          trap 'rm -f "${MAP_FILE}" "${SHOW_FILE}" payload.json' EXIT
-          printf '%s' "${LABEL_MAP_JSON}" > "${MAP_FILE}"
-          if ! jq -e . "${MAP_FILE}" >/dev/null 2>&1; then
-            echo 'STUD_LINEAR_LABEL_MAP is not valid JSON.'
-            exit 1
-          fi
-          KEY="$(printf '%s' "${HEAD_REF}" | grep -oE '[A-Z][A-Z0-9]*-[0-9]+' | head -1)"
-          if [ -z "${KEY}" ]; then
-            echo 'No Linear issue key found in branch name; expected a segment like ENG-123.'
-            exit 1
-          fi
-          jq -n --arg key "${KEY}" '{key: $key, provider: "linear"}' | stud items:show --agent > "${SHOW_FILE}"
-          if ! jq -e '.success == true' "${SHOW_FILE}" >/dev/null 2>&1; then
-            echo 'stud items:show --agent failed or returned success=false.'
-            cat "${SHOW_FILE}"
-            exit 1
-          fi
-          CURRENT="$(jq -c '.data.issue.labels // []' "${SHOW_FILE}")"
-          PR_NAMES="$(echo "${LABELS_JSON}" | jq -c '[.[].name]')"
-          MERGED="$(jq -cn \
-            --argjson current "${CURRENT}" \
-            --argjson prn "${PR_NAMES}" \
-            --slurpfile m "${MAP_FILE}" \
-            '
-              ($m[0]) as $map
-              | ($map | to_entries) as $entries
-              | ($entries | map(.value) | unique) as $managed
-              | (reduce $entries[] as $e ({}; .[$e.value] += [$e.key])) as $groups
-              | (
-                  [ $current[] | . as $l | select(($managed | any(. == $l)) | not) ]
-                  + [
-                      $managed[] as $v
-                      | select(
-                          ($groups[$v] // []) as $ghs
-                          | any($ghs[]; . as $g | ($prn | index($g)) != null)
-                        )
-                      | $v
-                    ]
-                )
-              | unique
-              | sort
-            ')"
-          CUR_SORT="$(echo "${CURRENT}" | jq -c 'unique | sort')"
-          if [ "${MERGED}" = "${CUR_SORT}" ]; then
-            echo 'Linear labels already match merged PR sync map; skipping items:update.'
-            exit 0
-          fi
-          FIELDS_VALUE="$(echo "${MERGED}" | jq -r 'join(",")')"
-          jq -n --arg key "${KEY}" --arg fields "labels=${FIELDS_VALUE}" '{key: $key, fields: $fields, provider: "linear"}' > payload.json
-          stud items:update --agent < payload.json
-          rm -f payload.json
+        run: bash .github/scripts/sync-pr-labels.sh
