@@ -213,6 +213,26 @@ jobs:
 
 Store **`STUD_LINEAR_API_KEY`** as a repository secret. The composite action writes **`LINEAR_API_KEY`** and **`ISSUE_TRACKER_PROVIDERS: [linear]`** to global config, then runs **`config:validate`** with **`skipJira: true`**.
 
+## PR analytics (Google Sheets)
+
+Manual workflow **`.github/workflows/pr-analytics.yml`** (`workflow_dispatch`) syncs PR / review / label metrics for a date range and base branch into Google Sheets. It does **not** collect coverage (keep using **`tests.yml`**) and does **not** parse the changelog.
+
+| Sheet | Content |
+|-------|---------|
+| `PRs` | PR metadata and time-to-merge |
+| `Reviews` | Reviewer submissions and time-to-review |
+| `PRs Labels` | PR ↔ label rows |
+
+### Secrets and variables
+
+| Name | Required | Notes |
+|------|----------|-------|
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | yes | Service account JSON with access to the spreadsheet |
+| `GOOGLE_SHEET_ID` | yes (or workflow input) | Spreadsheet ID from the URL |
+| `vars.APP_ID` + `secrets.APP_PRIVATE_KEY` | optional | Prefer GitHub App token for PR API rate limits; falls back to `GITHUB_TOKEN` |
+
+**Local script tests:** `node --test .github/scripts/sync-pr-analytics-sheets.test.cjs .github/scripts/google-api-retry.test.cjs .github/scripts/pr-analytics-workflow-contract.test.cjs`
+
 ## Optional: action metadata checks
 
 This repository does not run a dedicated GitHub Action metadata linter in CI. Maintainers can verify workflows locally with **[actionlint](https://github.com/rhysd/actionlint)** (e.g. install via package manager or run the official container) to catch `uses:` pin issues, invalid `if:` expressions, and similar problems.

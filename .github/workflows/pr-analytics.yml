@@ -1,0 +1,354 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: '📊 PR Analytics'
+
+# Manual sync of PR / review / label metrics to Google Sheets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start date (YYYY-MM-DD). Default: first day of current month'
+        required: false
+        type: string
+        default: ''
+      end_date:
+        description: 'End date (YYYY-MM-DD). Default: last day of current month'
+        required: false
+        default: ''
+        type: string
+      target_branch:
+        description: 'Base branch to analyze (e.g. develop)'
+        required: false
+        default: 'develop'
+        type: string
+      google_sheet_id:
+        description: 'Spreadsheet ID (URL). Default: GOOGLE_SHEET_ID secret'
+        required: false
+        default: ''
+        type: string
+      append:
+        description: 'Append instead of clear+replace'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+permissions:
+  contents: 'read'
+  pull-requests: 'read'
+  id-token: 'write'
+
+defaults:
+  run:
+    shell: 'bash'
+
+jobs:
+  pr-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v6
+
+      - name: 'Mint identity token'
+        id: mint_identity_token
+        if: vars.APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: 'read'
+          permission-pull-requests: 'read'
+
+      - name: 'Set Default Values'
+        id: set_defaults
+        run: |
+          FIRST_DAY=$(date -u +"%Y-%m-01")
+          LAST_DAY=$(date -u -d "$(date -u +"%Y-%m-01") +1 month -1 day" +"%Y-%m-%d" 2>/dev/null || \
+                     date -u -v1d -v+1m -v-1d +"%Y-%m-%d" 2>/dev/null || \
+                     date -u +"%Y-%m-%d")
+
+          START_DATE="${{ inputs.start_date }}"
+          if [ -z "$START_DATE" ]; then
+            START_DATE="$FIRST_DAY"
+          fi
+
+          END_DATE="${{ inputs.end_date }}"
+          if [ -z "$END_DATE" ]; then
+            END_DATE="$LAST_DAY"
+          fi
+
+          TARGET_BRANCH="${{ inputs.target_branch }}"
+          if [ -z "$TARGET_BRANCH" ]; then
+            TARGET_BRANCH="develop"
+          fi
+
+          GOOGLE_SHEET_ID="${{ inputs.google_sheet_id }}"
+          if [ -z "$GOOGLE_SHEET_ID" ] && [ -n "${{ secrets.GOOGLE_SHEET_ID }}" ]; then
+            GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
+          fi
+
+          if [ -z "$GOOGLE_SHEET_ID" ]; then
+            echo "::error::google_sheet_id is required (input or GOOGLE_SHEET_ID secret)."
+            exit 1
+          fi
+
+          APPEND="${{ inputs.append }}"
+          if [ -z "$APPEND" ]; then
+            APPEND="false"
+          fi
+
+          echo "start_date=$START_DATE" >> "$GITHUB_OUTPUT"
+          echo "end_date=$END_DATE" >> "$GITHUB_OUTPUT"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "google_sheet_id=$GOOGLE_SHEET_ID" >> "$GITHUB_OUTPUT"
+          echo "append=$APPEND" >> "$GITHUB_OUTPUT"
+
+      - name: 'Validate Inputs'
+        env:
+          START_DATE: ${{ steps.set_defaults.outputs.start_date }}
+          END_DATE: ${{ steps.set_defaults.outputs.end_date }}
+        run: |
+          if ! [[ "$START_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::Invalid start_date. Expected YYYY-MM-DD"
+            exit 1
+          fi
+          if ! [[ "$END_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::Invalid end_date. Expected YYYY-MM-DD"
+            exit 1
+          fi
+          START_TIMESTAMP=$(date -d "$START_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%d" "$START_DATE" +%s 2>/dev/null)
+          END_TIMESTAMP=$(date -d "$END_DATE" +%s 2>/dev/null || date -j -f "%Y-%m-%d" "$END_DATE" +%s 2>/dev/null)
+          if [ -z "$START_TIMESTAMP" ] || [ -z "$END_TIMESTAMP" ]; then
+            echo "::error::Failed to parse dates"
+            exit 1
+          fi
+          if [ "$START_TIMESTAMP" -gt "$END_TIMESTAMP" ]; then
+            echo "::error::start_date must be before or equal to end_date"
+            exit 1
+          fi
+
+      - name: 'Fetch PR History'
+        id: fetch_prs
+        uses: actions/github-script@v9
+        env:
+          GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
+          START_DATE: ${{ steps.set_defaults.outputs.start_date }}
+          END_DATE: ${{ steps.set_defaults.outputs.end_date }}
+          TARGET_BRANCH: ${{ steps.set_defaults.outputs.target_branch }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const startDate = new Date(process.env.START_DATE + 'T00:00:00Z');
+            const endDate = new Date(process.env.END_DATE + 'T23:59:59Z');
+            const targetBranch = process.env.TARGET_BRANCH;
+            const prs = [];
+            let page = 1;
+            let hasMore = true;
+            let retries = 0;
+            const maxRetries = 5;
+
+            while (hasMore) {
+              try {
+                const { data } = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  state: 'all',
+                  base: targetBranch,
+                  sort: 'created',
+                  direction: 'desc',
+                  per_page: 100,
+                  page
+                });
+                retries = 0;
+                if (data.length === 0) {
+                  hasMore = false;
+                  break;
+                }
+                for (const pr of data) {
+                  const createdAt = new Date(pr.created_at);
+                  if (createdAt < startDate) {
+                    hasMore = false;
+                    break;
+                  }
+                  if (createdAt >= startDate && createdAt <= endDate) {
+                    const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
+                    const timeToMerge = mergedAt ? Math.max(0, Math.round((mergedAt - createdAt) / (1000 * 60 * 60))) : null;
+                    const timeToMergeDays = mergedAt ? Math.max(0, parseFloat((timeToMerge / 24).toFixed(2))) : null;
+                    prs.push({
+                      number: pr.number,
+                      title: pr.title,
+                      creator: pr.user.login,
+                      created_at: pr.created_at,
+                      merged_at: pr.merged_at || '',
+                      state: pr.state,
+                      base_branch: pr.base.ref,
+                      head_branch: pr.head.ref,
+                      time_to_merge_hours: timeToMerge,
+                      time_to_merge_days: timeToMergeDays,
+                      labels: (pr.labels || []).map((label) => label.name)
+                    });
+                  }
+                }
+                if (data.length < 100) {
+                  hasMore = false;
+                } else {
+                  page++;
+                }
+              } catch (error) {
+                if (error.status === 403 && String(error.message).includes('rate limit')) {
+                  if (retries >= maxRetries) {
+                    throw new Error(`Rate limit exceeded after ${maxRetries} retries`);
+                  }
+                  retries++;
+                  await new Promise((resolve) => setTimeout(resolve, 60000));
+                  continue;
+                }
+                throw error;
+              }
+            }
+            console.log(`Found ${prs.length} PRs in date range`);
+            require('fs').writeFileSync('pr_data.json', JSON.stringify(prs));
+
+      - name: 'Fetch Review Data'
+        uses: actions/github-script@v9
+        env:
+          GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const prs = JSON.parse(fs.readFileSync('pr_data.json', 'utf8'));
+            const reviews = [];
+
+            for (const pr of prs) {
+              let retries = 0;
+              const maxRetries = 5;
+              let prProcessed = false;
+              while (!prProcessed) {
+                try {
+                  const { data: prReviews } = await github.rest.pulls.listReviews({
+                    owner,
+                    repo,
+                    pull_number: pr.number
+                  });
+                  const allEvents = [];
+                  let eventsPage = 1;
+                  let hasMoreEvents = true;
+                  while (hasMoreEvents) {
+                    const { data: events } = await github.rest.issues.listEvents({
+                      owner,
+                      repo,
+                      issue_number: pr.number,
+                      per_page: 100,
+                      page: eventsPage
+                    });
+                    if (events.length === 0) {
+                      hasMoreEvents = false;
+                    } else {
+                      allEvents.push(...events);
+                      hasMoreEvents = events.length === 100;
+                      eventsPage++;
+                    }
+                  }
+                  const reviewerRequests = new Map();
+                  for (const event of allEvents) {
+                    if (event.event === 'review_requested' && event.requested_reviewer) {
+                      const login = event.requested_reviewer.login;
+                      if (!reviewerRequests.has(login)) {
+                        reviewerRequests.set(login, event.created_at);
+                      }
+                    }
+                  }
+                  for (const review of prReviews) {
+                    const reviewState = (review.state || '').toUpperCase();
+                    if (reviewState === 'PENDING' || reviewState === 'DISMISSED') {
+                      continue;
+                    }
+                    const requestedAt = reviewerRequests.get(review.user.login);
+                    const submittedAt = new Date(review.submitted_at);
+                    let timeToReviewHours = 0;
+                    let timeToReviewDays = 0;
+                    let finalRequestedAt = '';
+                    if (requestedAt) {
+                      const requestedAtDate = new Date(requestedAt);
+                      timeToReviewHours = Math.max(0, Math.round((submittedAt - requestedAtDate) / (1000 * 60 * 60)));
+                      timeToReviewDays = Math.max(0, parseFloat((timeToReviewHours / 24).toFixed(2)));
+                      finalRequestedAt = requestedAt;
+                    }
+                    reviews.push({
+                      pr_number: pr.number,
+                      reviewer: review.user.login,
+                      requested_at: finalRequestedAt,
+                      submitted_at: review.submitted_at,
+                      review_state: review.state,
+                      time_to_review_hours: timeToReviewHours,
+                      time_to_review_days: timeToReviewDays
+                    });
+                  }
+                  prProcessed = true;
+                } catch (error) {
+                  if (error.status === 403 && String(error.message).includes('rate limit')) {
+                    if (retries >= maxRetries) {
+                      console.error(`Rate limit for PR ${pr.number}; skipping`);
+                      break;
+                    }
+                    retries++;
+                    await new Promise((resolve) => setTimeout(resolve, 60000));
+                    continue;
+                  }
+                  console.error(`Error fetching reviews for PR ${pr.number}: ${error.message}`);
+                  break;
+                }
+              }
+            }
+            console.log(`Found ${reviews.length} review records`);
+            fs.writeFileSync('review_data.json', JSON.stringify(reviews));
+
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: 'Install googleapis'
+        id: googleapis_deps
+        run: |
+          set -euo pipefail
+          npm_install_cwd="${RUNNER_TEMP:-/tmp}/pr-analytics-googleapis"
+          mkdir -p "${npm_install_cwd}"
+          (cd "${npm_install_cwd}" && npm install --no-save googleapis@173.0.0 --ignore-scripts --registry=https://registry.npmjs.org/)
+          echo "node_modules_path=${npm_install_cwd}/node_modules" >> "${GITHUB_OUTPUT}"
+
+      - name: 'Sync Data to Google Sheets'
+        id: sync_sheets
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_SHEET_ID: ${{ steps.set_defaults.outputs.google_sheet_id }}
+          APPEND: ${{ steps.set_defaults.outputs.append }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
+        run: NODE_PATH="${{ steps.googleapis_deps.outputs.node_modules_path }}" node .github/scripts/sync-pr-analytics-sheets.cjs
+
+      - name: 'Summary'
+        env:
+          START_DATE: ${{ steps.set_defaults.outputs.start_date }}
+          END_DATE: ${{ steps.set_defaults.outputs.end_date }}
+          TARGET_BRANCH: ${{ steps.set_defaults.outputs.target_branch }}
+          GOOGLE_SHEET_ID: ${{ steps.set_defaults.outputs.google_sheet_id }}
+          APPEND: ${{ steps.set_defaults.outputs.append }}
+        run: |
+          echo "## PR Analytics Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Synced PR, review, and label data to Google Sheets" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Date Range:** ${START_DATE} to ${END_DATE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Target Branch:** ${TARGET_BRANCH}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Spreadsheet ID:** ${GOOGLE_SHEET_ID}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Append Mode:** ${APPEND}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Data Sheets" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PRs**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Reviews**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PRs Labels**" >> "$GITHUB_STEP_SUMMARY"

@@ -64,8 +64,8 @@ coverage*
 /tmp/stud-*
 tmp/stud-*
 
-# Cursor IDE agent config (rules, skills, local specs — not part of the repo)
-.cursor/
+# Cursor local scratch (tmp, reports, specs, copied workflow dumps)
+.cursor/*
 
 #IntelliJ config files
 .idea
