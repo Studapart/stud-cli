@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.2] - 2026-07-23
+
 ### Added
 
 - **PR analytics workflow (SCI-198):** add `.github/workflows/pr-analytics.yml` to sync PR / review / label metrics to Google Sheets (`workflow_dispatch`). Helpers under `.github/scripts/sync-pr-analytics-sheets.cjs` and `google-api-retry.cjs`. No coverage or changelog sheet sync; existing `tests.yml` remains the PHPUnit gate. No Germaine review/dispatch/RRP. Documented in `documentation/github-actions.md`. Secrets: `GOOGLE_SERVICE_ACCOUNT_KEY`, `GOOGLE_SHEET_ID` (optional GitHub App `APP_ID` / `APP_PRIVATE_KEY`).
