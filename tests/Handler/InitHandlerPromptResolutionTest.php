@@ -222,4 +222,54 @@ class InitHandlerPromptResolutionTest extends TestCase
         $result = $helper->promptRequiredAgentString(['jiraUrl' => 'jiraUrl'], 'jiraUrl', null, static fn (string $s): string => $s);
         $this->assertSame('', $result);
     }
+
+    public function testPromptRequiredVisibleThrowsAfterMaxEmptyAttempts(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->exactly(InitPromptInputHelper::MAX_REQUIRED_ATTEMPTS))
+            ->method('ask')
+            ->with('Q', null)
+            ->willReturn('');
+        $helper = $this->createInputHelper($prompt);
+
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $helper->promptRequiredVisible('Q', null, static fn (string $s): string => $s);
+    }
+
+    public function testPromptRequiredHiddenTokenThrowsAfterMaxEmptyAttempts(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->exactly(InitPromptInputHelper::MAX_REQUIRED_ATTEMPTS))
+            ->method('askHidden')
+            ->with('H')
+            ->willReturn('');
+        $helper = $this->createInputHelper($prompt);
+
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $helper->promptRequiredHiddenToken('H', null);
+    }
+
+    public function testPromptRequiredVisibleThrowsWhenAskReportsMissingInput(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('ask')
+            ->willThrowException(new \Symfony\Component\Console\Exception\MissingInputException('Aborted.'));
+        $helper = $this->createInputHelper($prompt);
+
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $helper->promptRequiredVisible('Q', null, static fn (string $s): string => $s);
+    }
+
+    public function testPromptRequiredHiddenThrowsWhenAskHiddenReportsMissingInput(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('askHidden')
+            ->willThrowException(new \Symfony\Component\Console\Exception\MissingInputException('Aborted.'));
+        $helper = $this->createInputHelper($prompt);
+
+        $this->expectException(\App\Exception\StudConfigException::class);
+        $helper->promptRequiredHiddenToken('H', null);
+    }
 }

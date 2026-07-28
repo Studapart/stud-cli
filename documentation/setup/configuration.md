@@ -6,6 +6,8 @@ Run the first-time wizard after installing:
 stud init
 ```
 
+The wizard needs an interactive terminal. If stdin is piped or closed, it exits with a clear error instead of treating stream content as answers. For non-interactive setup, use `stud init --agent` with JSON input.
+
 The wizard creates or updates `~/.config/stud/config.yml`. You choose which Git hosts and issue-tracker backends you use; credentials are collected only for the providers you select.
 
 ## Init wizard menus

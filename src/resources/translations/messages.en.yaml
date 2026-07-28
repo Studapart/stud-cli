@@ -23,6 +23,9 @@ confluence:
 
 config:
   init:
+    error:
+      requires_tty: "Interactive configuration needs a terminal. Run `stud init` in a terminal, or use `stud init --agent` with JSON input."
+      prompt_exhausted: "Could not read a required configuration value after several attempts. Run `stud init` again in a terminal."
     wizard:
       title: "Stud CLI Configuration Wizard"
       description: "This will create or update your configuration file at: %path%"

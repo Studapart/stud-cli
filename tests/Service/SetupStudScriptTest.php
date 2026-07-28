@@ -69,6 +69,23 @@ class SetupStudScriptTest extends TestCase
         self::assertSame('tty', trim(file_get_contents($this->workspace . '/stud-init-stdin.log') ?: ''));
     }
 
+    public function testPipedPortableSetupRunsInitFromTtyInsteadOfInstallerStdin(): void
+    {
+        $script = trim((string) shell_exec('command -v script 2>/dev/null'));
+        if ($script === '') {
+            self::markTestSkipped('The script command is required for pseudo-TTY setup coverage.');
+        }
+
+        $artifactPath = $this->createPortableArchive('linux-amd64');
+        $checksumPath = $this->createChecksums($artifactPath);
+        $this->writeCurlFake($artifactPath, $checksumPath);
+
+        $process = $this->runPipedSetupWithTty($script, "Y\n", ['--portable']);
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertSame('tty', trim(file_get_contents($this->workspace . '/stud-init-stdin.log') ?: ''));
+    }
+
     public function testPortableModeInstallsLinuxArtifactAndDoesNotRequireLocalPhp(): void
     {
         $artifactPath = $this->createPortableArchive('linux-amd64');
@@ -220,12 +237,13 @@ JSON);
         return $process;
     }
 
-    protected function runPipedSetupWithTty(string $scriptCommand, string $input): Process
+    protected function runPipedSetupWithTty(string $scriptCommand, string $input, array $setupArgs = []): Process
     {
         $root = dirname(__DIR__, 2);
         $path = $this->fakeBin . ':/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
         $setupScript = $root . '/setup-stud.sh';
-        $command = "bash -c 'cat \"\$1\" | bash' -- " . escapeshellarg($setupScript);
+        $args = $setupArgs === [] ? '' : ' ' . implode(' ', array_map('escapeshellarg', $setupArgs));
+        $command = "bash -c 'cat \"\$1\" | bash -s --{$args}' -- " . escapeshellarg($setupScript);
         $process = new Process([$scriptCommand, '-qfec', $command, '/dev/null'], $root, [
             'PATH' => $path,
             'HOME' => $this->home,
@@ -380,14 +398,22 @@ SH);
         mkdir($fixtureRoot . '/runtime', 0777, true);
         mkdir($fixtureRoot . '/app', 0777, true);
         file_put_contents($pharPath, 'phar payload');
-        $this->writeExecutable($runtimePath, <<<'SH'
+        $this->writeExecutable($runtimePath, <<<SH
 #!/usr/bin/env sh
-case "${2:-}" in
+case "\${2:-}" in
     --version)
-        printf 'portable stud 9.8.7\nruntime=%s\nphar=%s\nargs=%s\n' "$0" "$1" "$2"
+        printf 'portable stud 9.8.7\nruntime=%s\nphar=%s\nargs=%s\n' "\$0" "\$1" "\$2"
+        ;;
+    init)
+        if [ -t 0 ]; then
+            printf 'tty\n' > "{$this->workspace}/stud-init-stdin.log"
+        else
+            printf 'stdin\n' > "{$this->workspace}/stud-init-stdin.log"
+        fi
+        printf 'init ok\n'
         ;;
     *)
-        printf 'unexpected command: %s\n' "${2:-}" >&2
+        printf 'unexpected command: %s\n' "\${2:-}" >&2
         exit 1
         ;;
 esac
