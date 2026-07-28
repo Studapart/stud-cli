@@ -90,5 +90,7 @@ interface WorkflowEntryRecorder
 
     public function addNewLine(int $verbosity, int $count = 1): void;
 
+    public function setPullNumber(int $pullNumber): void;
+
     public function toResponse(int $exitCode): WorkflowResponse;
 }

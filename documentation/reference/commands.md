@@ -2220,19 +2220,20 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 
 #### Agent JSON Output
 
-Submit result
+Submit result with PR number when a PR was created or updated
 
 Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
+pullNumber: int
 ```
 
 Full success shape (`{"compact":false}`):
 
 ```text
 success: true
-message: string
+pullNumber: int
 ```
 
 Error shape: `{"success":false,"error":"string"}`

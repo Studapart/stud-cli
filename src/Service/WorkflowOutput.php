@@ -195,6 +195,11 @@ class WorkflowOutput implements WorkflowEntryRecorder
         return $this->prompt->choice($question, $choices, $default, $multiSelect);
     }
 
+    public function setPullNumber(int $pullNumber): void
+    {
+        $this->recorder->setPullNumber($pullNumber);
+    }
+
     public function toResponse(int $exitCode): WorkflowResponse
     {
         return $this->recorder->toResponse($exitCode);

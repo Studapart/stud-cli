@@ -51,6 +51,18 @@ final class WorkflowOutputTest extends TestCase
         self::assertFalse($response->isSuccess());
         self::assertSame(1, $response->exitCode);
         self::assertSame(MessageRef::key('error.key')->key, $response->getErrorMessage()?->key);
+        self::assertNull($response->pullNumber);
+    }
+
+    public function testSetPullNumberCarriesIntoResponse(): void
+    {
+        $output = new WorkflowOutput($this->createMock(PromptInterface::class));
+        $output->setPullNumber(7);
+
+        $response = $output->toResponse(0);
+
+        self::assertTrue($response->isSuccess());
+        self::assertSame(7, $response->pullNumber);
     }
 
     public function testDelegatesPrompts(): void

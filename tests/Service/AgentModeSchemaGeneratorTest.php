@@ -395,13 +395,25 @@ class AgentModeSchemaGeneratorTest extends TestCase
             $schemaByName[$cmd['name']] = $cmd;
         }
 
-        foreach (['items:start', 'submit'] as $commandName) {
-            $cmd = $schemaByName[$commandName];
-            $this->assertSame(['message' => 'string'], $cmd['output']['success']['data']);
-            $this->assertTrue($cmd['output']['compactSuccess']['success']);
-            $this->assertArrayNotHasKey('data', $cmd['output']['compactSuccess']);
-            $this->assertArrayHasKey('diagnostics?', $cmd['output']['compactSuccess']);
+        $cmd = $schemaByName['items:start'];
+        $this->assertSame(['message' => 'string'], $cmd['output']['success']['data']);
+        $this->assertTrue($cmd['output']['compactSuccess']['success']);
+        $this->assertArrayNotHasKey('data', $cmd['output']['compactSuccess']);
+        $this->assertArrayHasKey('diagnostics?', $cmd['output']['compactSuccess']);
+    }
+
+    public function testSubmitAgentOutputDocumentsPullNumberOnCompactAndFull(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
         }
+
+        $cmd = $schemaByName['submit'];
+        $this->assertSame(['pullNumber' => 'int'], $cmd['output']['success']['data']);
+        $this->assertSame($cmd['output']['success'], $cmd['output']['compactSuccess']);
+        $this->assertArrayHasKey('data', $cmd['output']['compactSuccess']);
+        $this->assertStringContainsString('PR number', (string) $cmd['output']['description']);
     }
 
     public function testConfigInitInSchemaWithExpectedInput(): void

@@ -235,6 +235,9 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
                 $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
                 $this->githubProvider->addLabelsToPullRequest($prData['number'], $finalLabels);
             }
+            if (isset($prData['number'])) {
+                $this->recorder()->setPullNumber((int) $prData['number']);
+            }
             $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_created', ['url' => $prData['html_url']]));
 
             return 0;
@@ -292,40 +295,82 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             return 0;
         }
 
-        $prNumber = $existingPr['number'];
-        if (! empty($finalLabels)) {
-            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
+        return $this->applyUpdatesToExistingPr($existingPr, $options, $finalLabels);
+    }
 
-            try {
-                $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
-            } catch (\Exception $labelError) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_add_labels', ['error' => $labelError->getMessage()]));
-            }
+    /**
+     * Apply labels/draft/assignment to an existing PR and record its number on success.
+     *
+     * @param array<string, mixed> $existingPr
+     * @param array<string> $finalLabels
+     */
+    protected function applyUpdatesToExistingPr(array $existingPr, SubmitOptions $options, array $finalLabels): int
+    {
+        $prNumber = (int) $existingPr['number'];
+        $this->applyLabelsToExistingPr($prNumber, $finalLabels);
+        $this->maybeMarkExistingPrDraft($prNumber, $existingPr, $options);
+        if ($options->assignToAuthor && ! $this->assignExistingPrToAuthor($existingPr)) {
+            return 1;
         }
-        if ($options->draft && ! $existingPr['draft']) {
-            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.updating_to_draft'));
-
-            try {
-                $this->githubProvider->updatePullRequest($prNumber, true);
-            } catch (\Exception $draftError) {
-                $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_update_draft', ['error' => $draftError->getMessage()]));
-            }
-        }
-        if ($options->assignToAuthor) {
-            try {
-                $this->githubProvider->assignPullRequestToAuthor($existingPr);
-            } catch (\Throwable $assignmentError) {
-                $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
-                    'url' => (string) ($existingPr['html_url'] ?? $existingPr['web_url'] ?? ''),
-                    'error' => $assignmentError->getMessage(),
-                ]));
-
-                return 1;
-            }
-        }
+        $this->recorder()->setPullNumber($prNumber);
         $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_pushed'));
 
         return 0;
+    }
+
+    /**
+     * @param array<string> $finalLabels
+     */
+    protected function applyLabelsToExistingPr(int $prNumber, array $finalLabels): void
+    {
+        if ($finalLabels === []) {
+            return;
+        }
+
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
+
+        try {
+            $this->githubProvider->addLabelsToPullRequest($prNumber, $finalLabels);
+        } catch (\Exception $labelError) {
+            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_add_labels', ['error' => $labelError->getMessage()]));
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $existingPr
+     */
+    protected function maybeMarkExistingPrDraft(int $prNumber, array $existingPr, SubmitOptions $options): void
+    {
+        if (! $options->draft || $existingPr['draft']) {
+            return;
+        }
+
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.updating_to_draft'));
+
+        try {
+            $this->githubProvider->updatePullRequest($prNumber, true);
+        } catch (\Exception $draftError) {
+            $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_update_draft', ['error' => $draftError->getMessage()]));
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $existingPr
+     */
+    protected function assignExistingPrToAuthor(array $existingPr): bool
+    {
+        try {
+            $this->githubProvider->assignPullRequestToAuthor($existingPr);
+
+            return true;
+        } catch (\Throwable $assignmentError) {
+            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_assign_author', [
+                'url' => (string) ($existingPr['html_url'] ?? $existingPr['web_url'] ?? ''),
+                'error' => $assignmentError->getMessage(),
+            ]));
+
+            return false;
+        }
     }
 
     /**

@@ -69,6 +69,61 @@ final class WorkflowResponderTest extends TestCase
         ], $agentResponse?->toPayload());
     }
 
+    public function testRespondJsonIncludesPullNumberInCompactSuccess(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, true);
+
+        self::assertSame([
+            'success' => true,
+            'data' => ['pullNumber' => 42],
+        ], $agentResponse?->toPayload());
+    }
+
+    public function testRespondJsonIncludesPullNumberInFullSuccess(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, false);
+
+        self::assertSame([
+            'success' => true,
+            'data' => ['pullNumber' => 42, 'exitCode' => 0],
+        ], $agentResponse?->toPayload());
+    }
+
+    public function testRespondJsonFullSuccessWithoutPullNumberKeepsExitCodeOnly(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(0);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, false);
+
+        self::assertSame([
+            'success' => true,
+            'data' => ['exitCode' => 0],
+        ], $agentResponse?->toPayload());
+    }
+
+    public function testRespondJsonFailedResponseOmitsPullNumber(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(1, messages: [
+            ResponseMessage::error(MessageRef::key('table.key')),
+        ], pullNumber: 99);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, true);
+
+        self::assertSame([
+            'success' => false,
+            'error' => 'Key',
+            'diagnostics' => ['errors' => [['message' => 'Key']]],
+        ], $agentResponse?->toPayload());
+    }
+
     public function testRespondJsonUsesAgentRendererWhenProvided(): void
     {
         $responder = new WorkflowResponder($this->createMock(Logger::class), $this->agentMessageRenderer());
