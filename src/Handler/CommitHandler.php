@@ -19,9 +19,13 @@ use App\Service\Prompt\PromptInterface;
 
 class CommitHandler implements GitRepositoryAware, JiraAware
 {
+    /**
+     * @param IssueTrackerPort|\Closure(): IssueTrackerPort $issueTracker
+     *        Closure defers provider resolution until a work-item fetch is required
+     */
     public function __construct(
         private readonly GitRepository $gitRepository,
-        private readonly IssueTrackerPort $provider,
+        private readonly IssueTrackerPort|\Closure $issueTracker,
         private readonly string $baseBranch,
         mixed $_translator,
         private readonly PromptInterface $prompt
@@ -168,7 +172,7 @@ class CommitHandler implements GitRepositoryAware, JiraAware
     protected function fetchIssueForCommit(string $key): WorkItem|CommandResponse
     {
         try {
-            return $this->provider->getIssue($key);
+            return $this->port()->getIssue($key);
         } catch (ApiException $e) {
             $error = $e->getResolutionHint()
                 ?? MessageRef::key('commit.error_not_found', ['key' => $key]);
@@ -178,6 +182,18 @@ class CommitHandler implements GitRepositoryAware, JiraAware
                 [ResponseMessage::error($error, $e->getTechnicalDetails())],
             );
         }
+    }
+
+    /**
+     * Resolve the issue-tracker port (eager instance or deferred Closure from Castor).
+     */
+    protected function port(): IssueTrackerPort
+    {
+        if ($this->issueTracker instanceof IssueTrackerPort) {
+            return $this->issueTracker;
+        }
+
+        return ($this->issueTracker)();
     }
 
     /**
