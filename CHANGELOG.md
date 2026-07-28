@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`stud push` with dirty working tree (SCI-199):** when nothing is staged and `-a` / `stageAll` was not passed, push skips the commit phase and pushes existing commits instead of failing with "No staged changes". Uncommitted files stay in the working tree; a notice explains they were not included. Standalone `stud commit` still errors when nothing is staged.
+- **`stud please` without upstream (SCI-199):** when the branch has no upstream, please sets upstream to origin and pushes instead of erroring. Non-quiet CLI shows a notice that upstream was set; agent / quiet mode succeeds without requiring that notice.
+
 ## [3.20.2] - 2026-07-23
 
 ### Added

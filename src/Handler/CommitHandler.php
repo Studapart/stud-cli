@@ -207,11 +207,7 @@ class CommitHandler implements GitRepositoryAware, JiraAware
 
     protected function hasStagedChanges(): bool
     {
-        $process = $this->gitRepository->runQuietly('git diff --cached --quiet');
-
-        // git diff --cached --quiet returns 0 if there are no staged changes, 1 if there are staged changes
-        // So we return !isSuccessful() to indicate if there are staged changes
-        return ! $process->isSuccessful();
+        return $this->gitRepository->hasStagedChanges();
     }
 
     /**

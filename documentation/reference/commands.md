@@ -1712,7 +1712,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-please"></a>
 ### `stud please`
 
-A power-user, safe force-push (force-with-lease).
+A power-user, safe force-push (force-with-lease). If the branch has no upstream, sets upstream to origin and pushes instead of erroring (CLI notice; quiet in agent mode).
 
 - **Alias:** `stud pl`
 - **Syntax:** `stud please`
@@ -1767,7 +1767,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-push"></a>
 ### `stud push`
 
-Commits like stud commit, then pushes HEAD to origin (same non-force push as stud submit preflight). After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false.
+Commits like stud commit when there is something to commit (staged files or --all), then pushes HEAD to origin (same non-force push as stud submit preflight). Uncommitted files with nothing staged do not block the push; a notice explains they were left behind. After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false.
 
 - **Alias:** `stud ps`
 - **Syntax:** `stud push [options]`

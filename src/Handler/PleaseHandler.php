@@ -19,12 +19,17 @@ class PleaseHandler implements GitRepositoryAware
         unset($_translator);
     }
 
-    public function handle(): CommandResponse|int
+    /**
+     * Force-push with lease when upstream exists; otherwise set upstream and push.
+     *
+     * @param bool $quiet When true (agent / quiet push fallback), omit the upstream-set notice
+     */
+    public function handle(bool $quiet = false): CommandResponse|int
     {
         $upstream = $this->gitRepository->getUpstreamBranch();
 
         if (null === $upstream) {
-            return CommandResponse::error(MessageRef::key('please.error_no_upstream'));
+            return $this->pushAndSetUpstream($quiet);
         }
 
         $this->gitRepository->forcePushWithLease();
@@ -33,5 +38,21 @@ class PleaseHandler implements GitRepositoryAware
             MessageRef::key('push.success'),
             messages: [ResponseMessage::warning(MessageRef::key('please.warning_force'))],
         );
+    }
+
+    protected function pushAndSetUpstream(bool $quiet): CommandResponse
+    {
+        $branch = $this->gitRepository->getCurrentBranchName();
+        $process = $this->gitRepository->pushToOrigin($branch);
+        if (! $process->isSuccessful()) {
+            return CommandResponse::error(MessageRef::key('push.error_push'));
+        }
+
+        $messages = [];
+        if (! $quiet) {
+            $messages[] = ResponseMessage::notice(MessageRef::key('please.note_upstream_set'));
+        }
+
+        return CommandResponse::success(MessageRef::key('push.success'), messages: $messages);
     }
 }

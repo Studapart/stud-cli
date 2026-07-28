@@ -437,6 +437,7 @@ please:
 
     Voor de eerste push en om een Pull Request te maken, gebruik alstublieft "stud submit".'
   warning_force: ⚠️  Forceren met lease...
+  note_upstream_set: "Er was geen upstream geconfigureerd. Gepusht en upstream gezet naar origin voor deze branch."
 git:
   error:
     timeout: "Git-commando time-out na %seconds% seconden (commando: %command%). Pre-commit hooks, tests of GPG-ondertekening kunnen nog actief zijn. Voer het git-commando handmatig uit in uw repository om hook-uitvoer te zien."
@@ -445,6 +446,7 @@ push:
   success: "✅ Branch naar origin gepusht."
   error_push: "Push mislukt. Uw branch wijkt mogelijk af van de remote.\nSynchroniseer of voer 'stud please' uit voor force-push met lease."
   confirm_please: "Normale push mislukt. Nu 'stud please' (force-with-lease) uitvoeren?"
+  note_uncommitted_left: "U heeft niet-gecommitte wijzigingen. De push gebruikte commits die al op deze branch staan; niet-gecommitte bestanden zijn niet meegenomen."
 commit_undo:
   error_not_repo: Niet in een git repository.
   error_no_commit: Er is geen commit om ongedaan te maken.

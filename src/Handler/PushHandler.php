@@ -27,6 +27,9 @@ class PushHandler implements GitRepositoryAware
      * Run commit (same semantics as stud commit), then push HEAD to origin. On a failed non-fast-forward
      * push, optionally delegates to {@see PleaseHandler} per quiet, agent, `--no-please` (CLI only), and
      * agent `pleaseFallback` (JSON / folded from CLI `--no-please` when using `--agent`).
+     *
+     * When nothing is staged and `--all` / `stageAll` was not requested, skips the commit phase so a dirty
+     * working tree does not block pushing existing commits (standalone `stud commit` still errors).
      */
     public function handle(
         mixed $first,
@@ -48,11 +51,7 @@ class PushHandler implements GitRepositoryAware
             $seventh,
             $eighth,
         );
-        $commitResponse = $this->normalizeResponse(
-            $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
-            'Commit created',
-            'Commit failed',
-        );
+        $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
         if (! $commitResponse->isSuccess()) {
             return $commitResponse;
         }
@@ -72,6 +71,35 @@ class PushHandler implements GitRepositoryAware
     }
 
     /**
+     * Commit when stageAll or staged files exist; otherwise soft-skip (dirty-tree notice if needed).
+     */
+    protected function runCommitPhase(bool $isNew, ?string $message, bool $stageAll, bool $quiet): CommandResponse
+    {
+        if (! $stageAll && ! $this->gitRepository->hasStagedChanges()) {
+            return $this->skippedCommitResponse();
+        }
+
+        return $this->normalizeResponse(
+            $this->commitHandler->handle($isNew, $message, $stageAll, $quiet),
+            'Commit created',
+            'Commit failed',
+        );
+    }
+
+    /**
+     * @return CommandResponse Success with optional dirty-tree notice
+     */
+    protected function skippedCommitResponse(): CommandResponse
+    {
+        $messages = [];
+        if (trim($this->gitRepository->getPorcelainStatus()) !== '') {
+            $messages[] = ResponseMessage::notice(MessageRef::key('push.note_uncommitted_left'));
+        }
+
+        return CommandResponse::success(messages: $messages);
+    }
+
+    /**
      * Handles a rejected normal push: error, prompt, or run please.
      *
      * @param list<ResponseMessage> $messages
@@ -83,30 +111,37 @@ class PushHandler implements GitRepositoryAware
         bool $pleaseFallback,
         array $messages,
     ): CommandResponse {
+        $pleaseQuiet = $quiet || $agentMode;
+
         if ($agentMode) {
             if (! $pleaseFallback) {
                 return $this->pushFailedResponse($messages);
             }
 
-            return $this->normalizeResponse($this->pleaseHandler->handle(), 'Force push completed', 'Force push failed');
+            return $this->runPlease($pleaseQuiet);
         }
 
         if ($noPlease) {
             return $this->pushFailedResponse($messages);
         }
 
-        $interactive = ! $quiet;
-        if ($interactive) {
-            $confirmed = $this->prompt->confirm(
-                MessageRef::key('push.confirm_please'),
-                false
-            );
+        if (! $quiet) {
+            $confirmed = $this->prompt->confirm(MessageRef::key('push.confirm_please'), false);
             if (! $confirmed) {
                 return $this->pushFailedResponse($messages);
             }
         }
 
-        return $this->normalizeResponse($this->pleaseHandler->handle(), 'Force push completed', 'Force push failed');
+        return $this->runPlease($pleaseQuiet);
+    }
+
+    protected function runPlease(bool $quiet): CommandResponse
+    {
+        return $this->normalizeResponse(
+            $this->pleaseHandler->handle($quiet),
+            'Force push completed',
+            'Force push failed',
+        );
     }
 
     /**

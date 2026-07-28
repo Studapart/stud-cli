@@ -437,6 +437,7 @@ please:
 
     Для первоначальной отправки и создания Pull Request, пожалуйста, используйте "stud submit".'
   warning_force: ⚠️  Принудительная отправка с lease...
+  note_upstream_set: "Upstream не был настроен. Выполнен push и установлен upstream на origin для этой ветки."
 git:
   error:
     timeout: "Команда git превысила лимит времени %seconds% секунд (команда: %command%). Pre-commit хуки, тесты или подпись GPG могут всё ещё выполняться. Запустите git вручную в репозитории, чтобы увидеть вывод хуков."
@@ -445,6 +446,7 @@ push:
   success: "✅ Ветка отправлена в origin."
   error_push: "Push не удался. Ветка могла разойтись с удалённым репозиторием.\nСинхронизируйтесь или выполните «stud please» для force-push с lease."
   confirm_please: "Обычный push не удался. Выполнить сейчас «stud please» (force-with-lease)?"
+  note_uncommitted_left: "У вас есть незакоммиченные изменения. Push использовал коммиты, уже находящиеся на этой ветке; незакоммиченные файлы не включены."
 commit_undo:
   error_not_repo: Не в git-репозитории.
   error_no_commit: Нет коммита для отмены.

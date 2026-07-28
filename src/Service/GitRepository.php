@@ -254,6 +254,17 @@ class GitRepository
         return $this->run('git status --porcelain')->getOutput();
     }
 
+    /**
+     * Returns true when the index has staged changes.
+     * Uses `git diff --cached --quiet` (exit 0 = clean index, non-zero = staged changes).
+     */
+    public function hasStagedChanges(): bool
+    {
+        $process = $this->runQuietly('git diff --cached --quiet');
+
+        return ! $process->isSuccessful();
+    }
+
     public function getCurrentBranchName(): string
     {
         return trim($this->run('git rev-parse --abbrev-ref HEAD')->getOutput());

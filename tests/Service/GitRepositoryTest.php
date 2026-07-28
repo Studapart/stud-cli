@@ -561,11 +561,39 @@ class GitRepositoryTest extends CommandTestCase
             ->method('mustRun');
         $process->expects($this->once())
             ->method('getOutput')
-            ->willReturn(' M file.txt\n');
+            ->willReturn(" M file.txt\n");
 
         $status = $this->gitRepository->getPorcelainStatus();
 
-        $this->assertSame(' M file.txt\n', $status);
+        $this->assertSame(" M file.txt\n", $status);
+    }
+
+    public function testHasStagedChangesWhenIndexDirty(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git diff --cached --quiet')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->method('isSuccessful')->willReturn(false);
+
+        $this->assertTrue($this->gitRepository->hasStagedChanges());
+    }
+
+    public function testHasStagedChangesWhenIndexClean(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with('git diff --cached --quiet')
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->method('isSuccessful')->willReturn(true);
+
+        $this->assertFalse($this->gitRepository->hasStagedChanges());
     }
 
     public function testGetCurrentBranchName(): void

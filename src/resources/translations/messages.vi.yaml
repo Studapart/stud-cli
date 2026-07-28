@@ -437,6 +437,7 @@ please:
 
     Để push lần đầu và tạo Pull Request, vui lòng sử dụng "stud submit".'
   warning_force: ⚠️  Đang ép buộc với lease...
+  note_upstream_set: "Chưa có upstream. Đã push và đặt upstream tới origin cho nhánh này."
 git:
   error:
     timeout: "Lệnh git đã hết thời gian chờ sau %seconds% giây (lệnh: %command%). Hook pre-commit, kiểm thử hoặc ký GPG có thể vẫn đang chạy. Chạy lệnh git thủ công trong repo để xem đầu ra hook."
@@ -445,6 +446,7 @@ push:
   success: "✅ Đã đẩy nhánh lên origin."
   error_push: "Push thất bại. Nhánh của bạn có thể đã lệch so với remote.\nĐồng bộ hoặc chạy 'stud please' để force-push với lease."
   confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
+  note_uncommitted_left: "Bạn có thay đổi chưa commit. Push dùng các commit đã có trên nhánh; tệp chưa commit không được đưa vào."
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
   error_no_commit: Không có commit nào để hoàn tác.
