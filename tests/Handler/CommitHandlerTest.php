@@ -65,9 +65,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -94,9 +93,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
             ->method('commit')
@@ -121,9 +119,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
             ->method('commit')
@@ -144,9 +141,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -192,9 +188,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(true)); // No staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(false); // No staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -225,9 +220,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('abcdef');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -302,9 +296,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('abcdef');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
             ->method('commitFixup')
@@ -329,9 +322,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn('abcdef');
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(true)); // No staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(false); // No staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -384,9 +376,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
             ->method('commit')
@@ -438,9 +429,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -506,9 +496,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -567,9 +556,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false));
+            ->method('hasStagedChanges')
+            ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
             ->method('commit')
@@ -681,9 +669,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(true)); // No staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(false); // No staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -835,9 +822,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -908,9 +894,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -976,9 +961,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
@@ -1052,9 +1036,8 @@ class CommitHandlerTest extends CommandTestCase
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
-            ->method('runQuietly')
-            ->with('git diff --cached --quiet')
-            ->willReturn($this->createMockProcess(false)); // Has staged changes
+            ->method('hasStagedChanges')
+            ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');

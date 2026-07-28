@@ -437,6 +437,7 @@ please:
 
     Para el push inicial y para crear una Pull Request, por favor use "stud submit".'
   warning_force: ⚠️  Forzando con lease...
+  note_upstream_set: "No había upstream configurado. Se hizo push y se estableció el upstream a origin para esta rama."
 git:
   error:
     timeout: "El comando git superó el tiempo de espera de %seconds% segundos (comando: %command%). Los hooks pre-commit, pruebas o la firma GPG pueden seguir ejecutándose. Ejecute el comando git manualmente en su repositorio para ver la salida de los hooks."
@@ -445,6 +446,7 @@ push:
   success: "✅ Rama enviada a origin."
   error_push: "Push fallido. Su rama puede haber divergido del remoto.\nSincronice o ejecute 'stud please' para force-push con lease."
   confirm_please: "El push normal falló. ¿Ejecutar ahora 'stud please' (force-with-lease)?"
+  note_uncommitted_left: "Tiene cambios sin confirmar. El push usó los commits ya presentes en esta rama; los archivos sin confirmar no se incluyeron."
 commit_undo:
   error_not_repo: No está en un repositorio git.
   error_no_commit: No hay commit que deshacer.

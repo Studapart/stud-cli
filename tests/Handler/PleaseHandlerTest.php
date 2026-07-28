@@ -1,14 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Handler;
 
 use App\Handler\PleaseHandler;
-use App\Service\Logger;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Process\Process;
 
 class PleaseHandlerTest extends CommandTestCase
 {
@@ -20,8 +19,7 @@ class PleaseHandlerTest extends CommandTestCase
 
         TestKernel::$gitRepository = $this->gitRepository;
         TestKernel::$translationService = $this->translationService;
-        $logger = $this->createMock(Logger::class);
-        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService, $logger);
+        $this->handler = new PleaseHandler($this->gitRepository, $this->translationService);
     }
 
     public function testHandleWithUpstream(): void
@@ -30,21 +28,18 @@ class PleaseHandlerTest extends CommandTestCase
             ->method('getUpstreamBranch')
             ->willReturn('origin/my-branch');
 
-        $processMock = $this->createMock(\Symfony\Component\Process\Process::class);
+        $processMock = $this->createMock(Process::class);
         $this->gitRepository->expects($this->once())
             ->method('forcePushWithLease')
             ->willReturn($processMock);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
-
-        $result = $this->handler->handle($io);
+        $result = $this->handler->handle();
 
         $this->assertTrue($result->isSuccess());
-        // Test intent: warning() was called, verified by return value
+        $this->assertNotEmpty($result->getMessages());
     }
 
-    public function testHandleWithoutUpstream(): void
+    public function testHandleWithoutUpstreamSetsUpstreamAndPushes(): void
     {
         $this->gitRepository->expects($this->once())
             ->method('getUpstreamBranch')
@@ -53,12 +48,49 @@ class PleaseHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('forcePushWithLease');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
+        $this->gitRepository->expects($this->once())
+            ->method('getCurrentBranchName')
+            ->willReturn('feat/foo');
 
-        $result = $this->handler->handle($io);
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->expects($this->once())
+            ->method('pushToOrigin')
+            ->with('feat/foo')
+            ->willReturn($process);
+
+        $result = $this->handler->handle(false);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertNotEmpty($result->getMessages());
+    }
+
+    public function testHandleWithoutUpstreamQuietOmitsNotice(): void
+    {
+        $this->gitRepository->method('getUpstreamBranch')->willReturn(null);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+
+        $result = $this->handler->handle(true);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame([], $result->getMessages());
+    }
+
+    public function testHandleWithoutUpstreamPushFailure(): void
+    {
+        $this->gitRepository->method('getUpstreamBranch')->willReturn(null);
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $this->gitRepository->method('pushToOrigin')->willReturn($process);
+
+        $result = $this->handler->handle(false);
 
         $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
     }
 }

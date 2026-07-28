@@ -3219,7 +3219,7 @@ function commit(
     exit($response->isSuccess() ? 0 : 1);
 }
 
-#[AsTask(name: 'push', aliases: ['ps'], description: 'Commit (like stud commit) then push to origin; optional stud please after a failed push')]
+#[AsTask(name: 'push', aliases: ['ps'], description: 'Commit when needed then push to origin; optional stud please after a failed push')]
 #[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Push result', completionOnly: true)]
 function push(
@@ -3285,7 +3285,7 @@ function push(
     exit($response->isSuccess() ? 0 : 1);
 }
 
-#[AsTask(name: 'please', aliases: ['pl'], description: 'A power-user, safe force-push (force-with-lease)')]
+#[AsTask(name: 'please', aliases: ['pl'], description: 'Safe force-push (force-with-lease); sets upstream and pushes when none exists')]
 #[AgentCommand(essential: true)]
 #[AgentOutput(properties: ['message' => 'string'], description: 'Force push result', completionOnly: true)]
 function please(
@@ -3304,7 +3304,7 @@ function please(
         $compact = _agent_compact_enabled($input);
     }
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
-    $response = $handler->handle();
+    $response = $handler->handle($agent);
     if (is_int($response)) {
         $response = CommandResponse::fromExitCode($response, 'Force push completed', 'Force push failed');
     }
