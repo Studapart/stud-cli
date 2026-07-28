@@ -19,6 +19,7 @@ final class WorkflowResponse extends AbstractResponse
         public readonly array $entries = [],
         MessageRef|string|null $error = null,
         array $messages = [],
+        public readonly ?int $pullNumber = null,
     ) {
         parent::__construct($exitCode === 0, $error, $messages);
     }
@@ -27,8 +28,12 @@ final class WorkflowResponse extends AbstractResponse
      * @param list<WorkflowOutputEntry> $entries
      * @param list<ResponseMessage> $messages
      */
-    public static function fromExitCode(int $exitCode, array $entries = [], array $messages = []): self
-    {
+    public static function fromExitCode(
+        int $exitCode,
+        array $entries = [],
+        array $messages = [],
+        ?int $pullNumber = null,
+    ): self {
         $error = null;
         foreach ($messages as $message) {
             if ($message->level === \App\Enum\ResponseMessageLevel::Error) {
@@ -38,6 +43,6 @@ final class WorkflowResponse extends AbstractResponse
             }
         }
 
-        return new self($exitCode, $entries, $error, $messages);
+        return new self($exitCode, $entries, $error, $messages, $pullNumber);
     }
 }

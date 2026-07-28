@@ -89,7 +89,7 @@ class SubmitHandlerTest extends CommandTestCase
                     && $prData->draft === false
                     && $prData->assignToAuthor === false;
             }))
-            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1']);
+            ->willReturn(['html_url' => 'https://github.com/my-owner/my-repo/pull/1', 'number' => 1]);
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
@@ -97,6 +97,7 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle();
 
         $this->assertSame(0, $response->exitCode);
+        $this->assertSame(1, $response->pullNumber);
     }
 
     public function testHandleUsesWorkItemUrlForLinearPrBody(): void
@@ -1734,6 +1735,7 @@ class SubmitHandlerTest extends CommandTestCase
         $response = $this->handler->handle(new SubmitOptions(false, 'bug,enhancement'));
 
         $this->assertSame(0, $response->exitCode);
+        $this->assertSame(42, $response->pullNumber);
     }
 
     public function testHandleWithExistingPRAndDraft(): void

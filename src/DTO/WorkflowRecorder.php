@@ -22,6 +22,8 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
      */
     private array $messages = [];
 
+    private ?int $pullNumber = null;
+
     /**
      * @return list<WorkflowOutputEntry>
      */
@@ -170,9 +172,14 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
         $this->entries[] = new WorkflowOutputEntry('newLine', $verbosity, count: $count);
     }
 
+    public function setPullNumber(int $pullNumber): void
+    {
+        $this->pullNumber = $pullNumber;
+    }
+
     public function toResponse(int $exitCode): WorkflowResponse
     {
-        return WorkflowResponse::fromExitCode($exitCode, $this->entries, $this->messages);
+        return WorkflowResponse::fromExitCode($exitCode, $this->entries, $this->messages, $this->pullNumber);
     }
 
     public function absorb(WorkflowOutput $output): void

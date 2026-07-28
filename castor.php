@@ -3508,7 +3508,7 @@ function cache_clear(
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Submit result', completionOnly: true)]
+#[AgentOutput(properties: ['pullNumber' => 'int'], description: 'Submit result with PR number when a PR was created or updated')]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')]
     bool $draft = false,
