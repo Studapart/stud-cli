@@ -7,5 +7,5 @@ declare(strict_types=1);
 return [
     'repo_slug' => 'studapart/stud-cli',
     'description' => 'Stud Cli DX - Jira & Git Workflow Streamliner',
-    'version' => '3.20.2',
+    'version' => '3.21.0',
 ];

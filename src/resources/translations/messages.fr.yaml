@@ -437,6 +437,7 @@ please:
 
     Pour le push initial et pour créer une Pull Request, veuillez utiliser "stud submit".'
   warning_force: ⚠️  Forçage avec lease...
+  note_upstream_set: "Aucun upstream n'était configuré. Poussé et upstream défini vers origin pour cette branche."
 git:
   error:
     timeout: "La commande git a expiré après %seconds% secondes (commande : %command%). Les hooks pre-commit, tests ou la signature GPG peuvent encore s'exécuter. Exécutez la commande git manuellement dans votre dépôt pour voir la sortie des hooks."
@@ -445,6 +446,7 @@ push:
   success: "✅ Branche poussée vers origin."
   error_push: "Échec du push. Votre branche a peut-être divergé du remote.\nSynchronisez ou exécutez « stud please » pour un force-push avec lease."
   confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
+  note_uncommitted_left: "Vous avez des modifications non commitées. Le push a utilisé les commits déjà sur cette branche ; les fichiers non commités n'ont pas été inclus."
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
   error_no_commit: Il n'y a pas de commit à annuler.

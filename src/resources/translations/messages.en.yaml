@@ -448,6 +448,7 @@ status:
 please:
   error_no_upstream: "Your current branch does not have an upstream remote configured.\nFor the initial push and to create a Pull Request, please use \"stud submit\"."
   warning_force: "⚠️  Forcing with lease..."
+  note_upstream_set: "No upstream was configured. Pushed and set upstream to origin for this branch."
 
 # Git subprocess errors
 git:
@@ -460,6 +461,7 @@ push:
   success: "✅ Branch pushed to origin."
   error_push: "Push failed. Your branch may have diverged from the remote.\nTry syncing or run 'stud please' to force-push with lease."
   confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
+  note_uncommitted_left: "You have uncommitted changes. Push used commits already on this branch; uncommitted files were not included."
 
 # Commit Undo Handler
 commit_undo:
@@ -864,8 +866,8 @@ help:
   command_branch_rename: "Renames a branch. Can regenerate name from Jira issue key or use explicit name with --name option."
   command_commit: "Guides you through making a conventional commit."
   command_commit_undo: "Removes the last commit and keeps changes unstaged. Refuses or prompts when the last commit is already pushed; use 'stud please' to force-push after undoing."
-  command_push: "Commits like stud commit, then pushes HEAD to origin (same non-force push as stud submit preflight). After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false."
-  command_please: "A power-user, safe force-push (force-with-lease)."
+  command_push: "Commits like stud commit when there is something to commit (staged files or --all), then pushes HEAD to origin (same non-force push as stud submit preflight). Uncommitted files with nothing staged do not block the push; a notice explains they were left behind. After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false."
+  command_please: "A power-user, safe force-push (force-with-lease). If the branch has no upstream, sets upstream to origin and pushes instead of erroring (CLI notice; quiet in agent mode)."
   command_flatten: "Automatically squash all fixup! commits into their target commits."
   command_cache_clear: "Clear the update check cache to force a version check on next command."
   command_submit: "Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Use --assign-to-author to assign a newly created PR/MR to the authenticated provider user. Agent JSON: optional assignToAuthor and stageAll — when stageAll is true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent)."
