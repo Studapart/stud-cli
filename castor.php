@@ -2073,7 +2073,7 @@ function _agent_submit_run_push_phase(array $input): \App\Response\CommandRespon
     $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
     $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
     $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
 
@@ -3204,7 +3204,7 @@ function commit(
 
         return;
     }
-    $handler = new CommitHandler(_get_git_repository(), _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $handler = new CommitHandler(_get_git_repository(), fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
     $response = $handler->handle($isNew, $message, $stageAll, $quiet);
     if (is_int($response)) {
         $response = CommandResponse::fromExitCode($response, 'Commit created', 'Commit failed');
@@ -3270,7 +3270,7 @@ function push(
         return;
     }
     $gitRepository = _get_git_repository();
-    $commitHandler = new CommitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
+    $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
     $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
     $noPleaseForHandler = $agent ? false : $noPlease;

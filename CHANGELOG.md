@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Eager issue-tracker on commit/push (SCI-200):** `stud commit` and `stud push` defer `_require_issue_tracker_for_git_workflow` until a work-item fetch is needed. Explicit `-m` / agent `message` and fixup-of-logical-commit paths no longer fail when the branch key cannot resolve a dual-PM provider. Work-item prompt / quiet-from-issue paths still resolve the provider (and honor `--provider`) before fetch.
 - **`stud push` with dirty working tree (SCI-199):** when nothing is staged and `-a` / `stageAll` was not passed, push skips the commit phase and pushes existing commits instead of failing with "No staged changes". Uncommitted files stay in the working tree; a notice explains they were not included. Standalone `stud commit` still errors when nothing is staged.
 - **`stud please` without upstream (SCI-199):** when the branch has no upstream, please sets upstream to origin and pushes instead of erroring. Non-quiet CLI shows a notice that upstream was set; agent / quiet mode succeeds without requiring that notice.
 
