@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Portable update cleanup crash (SCI-201):** accepting “Remove older portable versions now?” no longer deletes the running portable bundle mid-command. Non-running older versions are removed immediately; the version that ran the update is removed after the process exits. Cleanup failures surface as warnings without failing the update.
+
 ## [3.21.1] - 2026-07-28
 
 ## [3.21.0] - 2026-07-28
