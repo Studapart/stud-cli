@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.1] - 2026-07-28
+
+### Added
+
+- **Submit agent `pullNumber` (SCI-203):** successful `stud submit` / `stud su --agent` includes `data.pullNumber` for the created or updated PR in both compact and full agent JSON. Failures and successes without a known PR omit the field.
+
 ## [3.22.0] - 2026-07-28
 
 ### Fixed

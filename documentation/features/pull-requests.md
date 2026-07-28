@@ -19,6 +19,8 @@ Agent mode can commit, push, and submit in one step:
 echo '{"labels":"AI-Generated,RFR","stageAll":true}' | stud submit --agent
 ```
 
+On success, agent JSON includes `data.pullNumber` for the created or updated PR (compact and full). Failures omit the field.
+
 ## Comment
 
 ```bash

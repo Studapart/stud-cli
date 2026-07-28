@@ -28,8 +28,8 @@ class WorkflowResponder
         bool $compact = true,
     ): ?AgentJsonResponse {
         if ($format === OutputFormat::Json) {
-            if ($compact && $response->isSuccess()) {
-                return AgentJsonResponse::successWithoutData($response->diagnosticsPayload($this->messageRenderer));
+            if ($response->isSuccess()) {
+                return $this->respondJsonSuccess($response, $compact);
             }
 
             return AgentJsonResponse::fromResponse(
@@ -47,6 +47,24 @@ class WorkflowResponder
         }
 
         return null;
+    }
+
+    private function respondJsonSuccess(WorkflowResponse $response, bool $compact): AgentJsonResponse
+    {
+        $data = [];
+        if ($response->pullNumber !== null) {
+            $data['pullNumber'] = $response->pullNumber;
+        }
+        if (! $compact) {
+            $data['exitCode'] = $response->exitCode;
+        }
+
+        $diagnostics = $response->diagnosticsPayload($this->messageRenderer);
+        if ($data === []) {
+            return AgentJsonResponse::successWithoutData($diagnostics);
+        }
+
+        return new AgentJsonResponse(true, data: $data, diagnostics: $diagnostics);
     }
 
     private function renderEntry(WorkflowOutputEntry $entry): void
