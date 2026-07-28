@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.0] - 2026-07-28
+
 ### Fixed
 
 - **Eager issue-tracker on commit/push (SCI-200):** `stud commit` and `stud push` defer `_require_issue_tracker_for_git_workflow` until a work-item fetch is needed. Explicit `-m` / agent `message` and fixup-of-logical-commit paths no longer fail when the branch key cannot resolve a dual-PM provider. Work-item prompt / quiet-from-issue paths still resolve the provider (and honor `--provider`) before fetch.
