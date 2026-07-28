@@ -7,6 +7,7 @@ namespace App\Handler;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
+use App\Exception\StudConfigException;
 use App\Response\WorkflowResponse;
 use App\Service\FileSystem;
 use App\Service\GlobalMigrationIdResolver;
@@ -40,7 +41,14 @@ class InitHandler
         $this->recorder->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.title'));
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('config.init.wizard.description', ['path' => $this->configPath]));
 
-        $config = $this->promptCollector->buildGlobalConfig($existingConfig, $rawAgentInput, $isAgent, $this->recorder);
+        try {
+            $config = $this->promptCollector->buildGlobalConfig($existingConfig, $rawAgentInput, $isAgent, $this->recorder);
+        } catch (StudConfigException $e) {
+            $this->recorder->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, $e->messageRef);
+
+            return $this->recorder->toResponse(1);
+        }
+
         $this->applyMigrationVersion($config, $existingConfig);
         $this->saveConfig($config);
         $this->promptForCompletion();

@@ -1771,6 +1771,11 @@ function config_init(
     ?string $inputFile = null,
 ): void {
     _load_constants();
+    if (! $agent && _stdin_is_piped_for_remediation()) {
+        $error = _get_translation_service()->trans('config.init.error.requires_tty');
+        _get_logger()->error(\App\Service\Logger::VERBOSITY_NORMAL, $error);
+        exit(1);
+    }
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
     $compact = false;
     $rawAgentInput = [];
