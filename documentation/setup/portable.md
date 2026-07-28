@@ -40,6 +40,8 @@ stud update
 
 Portable update downloads the matching portable archive for the current platform, verifies it against `checksums.txt`, extracts it as a complete bundle, runs a launcher smoke check, and then switches the managed `~/.local/bin/stud` symlink to the new version. Previous portable versions are kept by default so rollback remains possible by repointing the symlink.
 
+When you answer yes to the cleanup prompt, older version directories are removed. The version that ran the update is removed only after that process exits, so the command can finish cleanly.
+
 Preview release notes without changing the install:
 
 ```bash
