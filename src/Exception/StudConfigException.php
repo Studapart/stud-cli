@@ -68,4 +68,14 @@ final class StudConfigException extends \RuntimeException
     {
         return new self(MessageRef::key('item.create.error_no_linear_team'));
     }
+
+    public static function initRequiresTty(): self
+    {
+        return new self(MessageRef::key('config.init.error.requires_tty'));
+    }
+
+    public static function initPromptExhausted(): self
+    {
+        return new self(MessageRef::key('config.init.error.prompt_exhausted'));
+    }
 }

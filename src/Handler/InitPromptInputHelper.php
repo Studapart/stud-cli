@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\DTO\MessageRef;
+use App\Exception\StudConfigException;
 use App\Service\Prompt\PromptInterface;
+use Symfony\Component\Console\Exception\MissingInputException;
 
 /**
  * Reusable visible/hidden prompt guards for stud config:init.
  */
 class InitPromptInputHelper
 {
+    public const MAX_REQUIRED_ATTEMPTS = 5;
+
     public function __construct(
         private readonly PromptInterface $prompt,
     ) {
@@ -49,8 +53,8 @@ class InitPromptInputHelper
     public function promptRequiredVisible(MessageRef|string $question, ?string $existingStored, callable $normalizeValue): string
     {
         $existing = $this->nonEmptyStoredString($existingStored);
-        while (true) {
-            $answer = $this->prompt->ask($question, $existing);
+        for ($attempt = 0; $attempt < self::MAX_REQUIRED_ATTEMPTS; ++$attempt) {
+            $answer = $this->askVisible($question, $existing);
             if ($this->isSkippedInput($answer)) {
                 if ($existing !== null) {
                     return $normalizeValue($existing);
@@ -75,13 +79,15 @@ class InitPromptInputHelper
 
             return $normalized;
         }
+
+        throw StudConfigException::initPromptExhausted();
     }
 
     public function promptRequiredHiddenToken(MessageRef|string $question, ?string $existingStored): string
     {
         $existing = $this->nonEmptyStoredString($existingStored);
-        while (true) {
-            $answer = $this->prompt->askHidden($question);
+        for ($attempt = 0; $attempt < self::MAX_REQUIRED_ATTEMPTS; ++$attempt) {
+            $answer = $this->askHidden($question);
             if ($this->isSkippedInput($answer)) {
                 if ($existing !== null) {
                     return $existing;
@@ -97,6 +103,8 @@ class InitPromptInputHelper
 
             return $trimmed;
         }
+
+        throw StudConfigException::initPromptExhausted();
     }
 
     /**
@@ -166,5 +174,23 @@ class InitPromptInputHelper
         }
 
         return $normalizeValue($trimmed);
+    }
+
+    protected function askVisible(MessageRef|string $question, ?string $default): ?string
+    {
+        try {
+            return $this->prompt->ask($question, $default);
+        } catch (MissingInputException) {
+            throw StudConfigException::initPromptExhausted();
+        }
+    }
+
+    protected function askHidden(MessageRef|string $question): ?string
+    {
+        try {
+            return $this->prompt->askHidden($question);
+        } catch (MissingInputException) {
+            throw StudConfigException::initPromptExhausted();
+        }
     }
 }

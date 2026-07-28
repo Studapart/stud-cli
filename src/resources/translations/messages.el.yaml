@@ -22,6 +22,9 @@ confluence:
 
 config:
   init:
+    error:
+      requires_tty: "Interactive configuration needs a terminal. Run `stud init` in a terminal, or use `stud init --agent` with JSON input."
+      prompt_exhausted: "Could not read a required configuration value after several attempts. Run `stud init` again in a terminal."
     wizard:
       title: Οδηγός Ρύθμισης Stud CLI
       description: 'Αυτό θα δημιουργήσει ή θα ενημερώσει το αρχείο ρύθμισης σας στο: %path%'
@@ -752,6 +755,9 @@ update:
   portable_symlink_failed: 'Portable update failed: could not switch the managed stud symlink. The previous version was kept active.'
   portable_success: Portable stud updated to %version%.
   portable_cleanup_prompt: Remove older portable versions now?
+  portable_cleanup_failed: Could not remove older portable version at %path%. It was left on disk.
+  portable_cleanup_schedule_failed: Could not schedule removal of older portable version at %path%. It was left on disk.
+  portable_cleanup_deferred: 'Previous portable version will be removed after this command exits: %paths%.'
   portable_update_failed: 'Portable update failed.
 
     Error: %error%'

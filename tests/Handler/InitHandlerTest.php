@@ -1256,4 +1256,30 @@ class InitHandlerTest extends CommandTestCase
         $result = $this->callPrivateMethod($handler, 'filterEmptyStrings', [false]);
         $this->assertTrue($result, 'False should return true');
     }
+
+    public function testHandleReturnsErrorWhenRequiredPromptIsExhausted(): void
+    {
+        $collector = new class (
+            $this->prompt,
+            new GitTokenPromptResolver(),
+            new MessageRenderer($this->translationService),
+            new GlobalConfigProviderResolver(),
+        ) extends InitPromptCollector {
+            public function buildGlobalConfig(
+                array $existingConfig,
+                array $rawAgentInput,
+                bool $isAgent,
+                \App\Contract\WorkflowEntryRecorder $recorder,
+            ): array {
+                throw \App\Exception\StudConfigException::initPromptExhausted();
+            }
+        };
+        $handler = $this->createInitHandler($this->prompt, $collector);
+        $this->fileSystem->expects($this->never())->method('filePutContents');
+
+        $response = $handler->handle();
+
+        $this->assertSame(1, $response->exitCode);
+        $this->assertFalse($response->isSuccess());
+    }
 }

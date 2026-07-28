@@ -15,13 +15,17 @@ class PortableUpdateService
 {
     private WorkflowEntryRecorder $recorder;
 
+    protected readonly PortableOldVersionCleaner $oldVersionCleaner;
+
     public function __construct(
         protected readonly UpdateRepositoryContext $repository,
         mixed $translator,
         protected readonly PromptInterface $prompt,
         protected readonly ?HttpClientInterface $httpClient = null,
+        ?PortableOldVersionCleaner $oldVersionCleaner = null,
     ) {
         unset($translator);
+        $this->oldVersionCleaner = $oldVersionCleaner ?? new PortableOldVersionCleaner($prompt);
     }
 
     /**
@@ -108,7 +112,7 @@ class PortableUpdateService
 
             return 1;
         } finally {
-            $this->removeDirectory($workspace);
+            $this->oldVersionCleaner->removeDirectory($workspace);
         }
     }
 
@@ -235,7 +239,7 @@ class PortableUpdateService
             return $this->fail('update.portable_unmanaged_symlink');
         }
 
-        $this->removeDirectory($versionRoot);
+        $this->oldVersionCleaner->removeDirectory($versionRoot);
         if (! is_dir(dirname($versionRoot))) {
             mkdir(dirname($versionRoot), 0777, true);
         }
@@ -248,7 +252,7 @@ class PortableUpdateService
         }
 
         $this->recorder->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('update.portable_success', ['version' => $version]));
-        $this->cleanupOldVersions($context, $version, $quiet);
+        $this->oldVersionCleaner->cleanup($context, $version, $quiet, $this->recorder);
 
         return 0;
     }
@@ -289,77 +293,5 @@ class PortableUpdateService
 
         return false;
         // @codeCoverageIgnoreEnd
-    }
-
-    protected function cleanupOldVersions(UpdateInstallContext $context, string $currentVersion, bool $quiet): void
-    {
-        if (! $this->shouldCleanupOldVersions($quiet)) {
-            return;
-        }
-
-        $platformRoot = $context->portableRoot . '/' . $context->platform;
-        foreach ($this->oldVersionDirectories($platformRoot, $currentVersion) as $path) {
-            $this->removeDirectory($path);
-        }
-    }
-
-    protected function shouldCleanupOldVersions(bool $quiet): bool
-    {
-        if ($quiet) {
-            return false;
-        }
-
-        return $this->prompt->confirm(MessageRef::key('update.portable_cleanup_prompt'), false);
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected function oldVersionDirectories(string $platformRoot, string $currentVersion): array
-    {
-        $items = scandir($platformRoot);
-        if ($items === false) {
-            // @codeCoverageIgnoreStart
-            return [];
-            // @codeCoverageIgnoreEnd
-        }
-
-        $versions = [];
-        foreach ($items as $item) {
-            $path = $platformRoot . '/' . $item;
-            if ($item === '.' || $item === '..' || $item === $currentVersion || ! is_dir($path) || is_link($path)) {
-                continue;
-            }
-
-            $versions[] = $path;
-        }
-
-        return $versions;
-    }
-
-    protected function removeDirectory(string $path): void
-    {
-        if (! is_dir($path) || is_link($path)) {
-            @unlink($path);
-
-            return;
-        }
-
-        $items = scandir($path);
-        if ($items === false) {
-            // @codeCoverageIgnoreStart
-            return;
-            // @codeCoverageIgnoreEnd
-        }
-
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
-                continue;
-            }
-
-            $this->removeDirectory($path . '/' . $item);
-        }
-
-        @rmdir($path);
     }
 }
