@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-07-28
+
 ### Fixed
 
 - **Init wizard non-interactive stdin (SCI-202):** `stud init` refuses to run when stdin is not a terminal (unless `--agent`), instead of consuming piped shell text as answers. Required prompts stop after a bounded number of failed attempts instead of looping forever.
