@@ -1,9 +1,13 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: '📊 PR Analytics'
 
-# Manual sync of PR / review / label metrics to Google Sheets.
+# Daily (04:00 Europe/Paris) and manual sync of PR / review / label metrics to Google Sheets.
 
 on:
+  schedule:
+    # GitHub cron is UTC-only. Fire at both DST offsets; Set Default Values gates to Paris hour 04.
+    - cron: '0 2 * * *' # 04:00 Europe/Paris under CEST (UTC+2)
+    - cron: '0 3 * * *' # 04:00 Europe/Paris under CET (UTC+1)
   workflow_dispatch:
     inputs:
       start_date:
@@ -29,7 +33,7 @@ on:
       append:
         description: 'Append instead of clear+replace'
         required: false
-        default: 'false'
+        default: 'true'
         type: choice
         options:
           - 'true'
@@ -48,45 +52,62 @@ jobs:
   pr-analytics:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
-        uses: actions/checkout@v6
-
-      - name: 'Mint identity token'
-        id: mint_identity_token
-        if: vars.APP_ID != ''
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          permission-contents: 'read'
-          permission-pull-requests: 'read'
-
       - name: 'Set Default Values'
         id: set_defaults
         run: |
-          FIRST_DAY=$(date -u +"%Y-%m-01")
-          LAST_DAY=$(date -u -d "$(date -u +"%Y-%m-01") +1 month -1 day" +"%Y-%m-%d" 2>/dev/null || \
-                     date -u -v1d -v+1m -v-1d +"%Y-%m-%d" 2>/dev/null || \
-                     date -u +"%Y-%m-%d")
+          set -euo pipefail
 
-          START_DATE="${{ inputs.start_date }}"
-          if [ -z "$START_DATE" ]; then
-            START_DATE="$FIRST_DAY"
-          fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            PARIS_HOUR=$(TZ=Europe/Paris date +%H)
+            if [ "$PARIS_HOUR" != "04" ]; then
+              echo "Skipping schedule tick: Paris hour is ${PARIS_HOUR} (want 04)."
+              {
+                echo "run=false"
+                echo "start_date="
+                echo "end_date="
+                echo "target_branch=develop"
+                echo "google_sheet_id="
+                echo "append=true"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-          END_DATE="${{ inputs.end_date }}"
-          if [ -z "$END_DATE" ]; then
-            END_DATE="$LAST_DAY"
-          fi
-
-          TARGET_BRANCH="${{ inputs.target_branch }}"
-          if [ -z "$TARGET_BRANCH" ]; then
+            YDAY=$(TZ=Europe/Paris date -d 'yesterday' +%Y-%m-%d)
+            START_DATE="$YDAY"
+            END_DATE="$YDAY"
             TARGET_BRANCH="develop"
-          fi
-
-          GOOGLE_SHEET_ID="${{ inputs.google_sheet_id }}"
-          if [ -z "$GOOGLE_SHEET_ID" ] && [ -n "${{ secrets.GOOGLE_SHEET_ID }}" ]; then
+            APPEND="true"
             GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
+          else
+            FIRST_DAY=$(date -u +"%Y-%m-01")
+            LAST_DAY=$(date -u -d "$(date -u +"%Y-%m-01") +1 month -1 day" +"%Y-%m-%d" 2>/dev/null || \
+                       date -u -v1d -v+1m -v-1d +"%Y-%m-%d" 2>/dev/null || \
+                       date -u +"%Y-%m-%d")
+
+            START_DATE="${{ inputs.start_date }}"
+            if [ -z "$START_DATE" ]; then
+              START_DATE="$FIRST_DAY"
+            fi
+
+            END_DATE="${{ inputs.end_date }}"
+            if [ -z "$END_DATE" ]; then
+              END_DATE="$LAST_DAY"
+            fi
+
+            TARGET_BRANCH="${{ inputs.target_branch }}"
+            if [ -z "$TARGET_BRANCH" ]; then
+              TARGET_BRANCH="develop"
+            fi
+
+            APPEND="${{ inputs.append }}"
+            if [ -z "$APPEND" ]; then
+              APPEND="true"
+            fi
+
+            GOOGLE_SHEET_ID="${{ inputs.google_sheet_id }}"
+            if [ -z "$GOOGLE_SHEET_ID" ] && [ -n "${{ secrets.GOOGLE_SHEET_ID }}" ]; then
+              GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
+            fi
           fi
 
           if [ -z "$GOOGLE_SHEET_ID" ]; then
@@ -94,18 +115,31 @@ jobs:
             exit 1
           fi
 
-          APPEND="${{ inputs.append }}"
-          if [ -z "$APPEND" ]; then
-            APPEND="false"
-          fi
+          {
+            echo "run=true"
+            echo "start_date=$START_DATE"
+            echo "end_date=$END_DATE"
+            echo "target_branch=$TARGET_BRANCH"
+            echo "google_sheet_id=$GOOGLE_SHEET_ID"
+            echo "append=$APPEND"
+          } >> "$GITHUB_OUTPUT"
 
-          echo "start_date=$START_DATE" >> "$GITHUB_OUTPUT"
-          echo "end_date=$END_DATE" >> "$GITHUB_OUTPUT"
-          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "google_sheet_id=$GOOGLE_SHEET_ID" >> "$GITHUB_OUTPUT"
-          echo "append=$APPEND" >> "$GITHUB_OUTPUT"
+      - name: 'Checkout Repository'
+        if: steps.set_defaults.outputs.run == 'true'
+        uses: actions/checkout@v6
+
+      - name: 'Mint identity token'
+        id: mint_identity_token
+        if: steps.set_defaults.outputs.run == 'true' && vars.APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: 'read'
+          permission-pull-requests: 'read'
 
       - name: 'Validate Inputs'
+        if: steps.set_defaults.outputs.run == 'true'
         env:
           START_DATE: ${{ steps.set_defaults.outputs.start_date }}
           END_DATE: ${{ steps.set_defaults.outputs.end_date }}
@@ -130,6 +164,7 @@ jobs:
           fi
 
       - name: 'Fetch PR History'
+        if: steps.set_defaults.outputs.run == 'true'
         id: fetch_prs
         uses: actions/github-script@v9
         env:
@@ -212,6 +247,7 @@ jobs:
             require('fs').writeFileSync('pr_data.json', JSON.stringify(prs));
 
       - name: 'Fetch Review Data'
+        if: steps.set_defaults.outputs.run == 'true'
         uses: actions/github-script@v9
         env:
           GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
@@ -307,12 +343,14 @@ jobs:
             fs.writeFileSync('review_data.json', JSON.stringify(reviews));
 
       - name: 'Setup Node.js'
+        if: steps.set_defaults.outputs.run == 'true'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
           package-manager-cache: false
 
       - name: 'Install googleapis'
+        if: steps.set_defaults.outputs.run == 'true'
         id: googleapis_deps
         run: |
           set -euo pipefail
@@ -322,6 +360,7 @@ jobs:
           echo "node_modules_path=${npm_install_cwd}/node_modules" >> "${GITHUB_OUTPUT}"
 
       - name: 'Sync Data to Google Sheets'
+        if: steps.set_defaults.outputs.run == 'true'
         id: sync_sheets
         env:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
@@ -332,6 +371,7 @@ jobs:
         run: NODE_PATH="${{ steps.googleapis_deps.outputs.node_modules_path }}" node .github/scripts/sync-pr-analytics-sheets.cjs
 
       - name: 'Summary'
+        if: steps.set_defaults.outputs.run == 'true'
         env:
           START_DATE: ${{ steps.set_defaults.outputs.start_date }}
           END_DATE: ${{ steps.set_defaults.outputs.end_date }}

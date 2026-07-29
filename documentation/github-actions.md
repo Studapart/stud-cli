@@ -215,7 +215,14 @@ Store **`STUD_LINEAR_API_KEY`** as a repository secret. The composite action wri
 
 ## PR analytics (Google Sheets)
 
-Manual workflow **`.github/workflows/pr-analytics.yml`** (`workflow_dispatch`) syncs PR / review / label metrics for a date range and base branch into Google Sheets. It does **not** collect coverage (keep using **`tests.yml`**) and does **not** parse the changelog.
+Workflow **`.github/workflows/pr-analytics.yml`** syncs PR / review / label metrics for a date range and base branch into Google Sheets. It does **not** collect coverage (keep using **`tests.yml`**) and does **not** parse the changelog.
+
+### Triggers
+
+| Trigger | Behaviour |
+|---------|-----------|
+| `schedule` | Daily at **04:00 Europe/Paris** (dual UTC crons `0 2` / `0 3` with a Paris-hour gate). Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, then applies existing `T00:00:00Z`–`T23:59:59Z` bounds on that date. Forces **`target_branch=develop`** and **`append=true`**. Soft-skips the non-matching DST cron tick. Runs from the workflow file on the repo **default branch `develop`**. |
+| `workflow_dispatch` | Manual / backfill. Optional date range (default: current UTC month), target branch (default `develop`), sheet id, and append. **Append defaults to `true`**; set `false` only to clear+replace. |
 
 | Sheet | Content |
 |-------|---------|
@@ -228,7 +235,7 @@ Manual workflow **`.github/workflows/pr-analytics.yml`** (`workflow_dispatch`) s
 | Name | Required | Notes |
 |------|----------|-------|
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | yes | Service account JSON with access to the spreadsheet |
-| `GOOGLE_SHEET_ID` | yes (or workflow input) | Spreadsheet ID from the URL |
+| `GOOGLE_SHEET_ID` | yes (or workflow input on dispatch) | Spreadsheet ID from the URL; required for scheduled runs |
 | `vars.APP_ID` + `secrets.APP_PRIVATE_KEY` | optional | Prefer GitHub App token for PR API rate limits; falls back to `GITHUB_TOKEN` |
 
 **Local script tests:** `node --test .github/scripts/sync-pr-analytics-sheets.test.cjs .github/scripts/google-api-retry.test.cjs .github/scripts/pr-analytics-workflow-contract.test.cjs`
