@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **PR analytics daily schedule (SCI-204):** `.github/workflows/pr-analytics.yml` runs daily at 04:00 Europe/Paris for the previous Paris calendar day with `develop` base and append mode. Manual `workflow_dispatch` remains; append now defaults to `true`.
+
 ## [3.22.1] - 2026-07-28
 
 ### Added
