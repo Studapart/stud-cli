@@ -7,7 +7,6 @@ on:
   schedule:
     # GitHub cron is UTC-only. Fire at both DST offsets; Set Default Values gates to Paris hour 04.
     - cron: '0 2 * * *' # 04:00 Europe/Paris under CEST (UTC+2)
-    - cron: '0 3 * * *' # 04:00 Europe/Paris under CET (UTC+1)
   workflow_dispatch:
     inputs:
       start_date:
