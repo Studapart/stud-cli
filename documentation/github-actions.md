@@ -221,7 +221,7 @@ Workflow **`.github/workflows/pr-analytics.yml`** syncs PR / review / label metr
 
 | Trigger | Behaviour |
 |---------|-----------|
-| `schedule` | Daily at **04:00 Europe/Paris** (dual UTC crons `0 2` / `0 3` with a Paris-hour gate). Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, then applies existing `T00:00:00Z`–`T23:59:59Z` bounds on that date. Forces **`target_branch=develop`** and **`append=true`**. Soft-skips the non-matching DST cron tick. Runs from the workflow file on the repo **default branch `develop`**. |
+| `schedule` | Once per day in the **early morning Europe/Paris** — single UTC cron `0 2 * * *` (04:00 Paris under CEST, 03:00 under CET). GitHub cron ticks are best-effort, so the actual start can drift; the run **always** syncs and is never skipped on the local hour. Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, then applies existing `T00:00:00Z`–`T23:59:59Z` bounds on that date. Forces **`target_branch=develop`** and **`append=true`**. Runs from the workflow file on the repo **default branch `develop`**. |
 | `workflow_dispatch` | Manual / backfill. Optional date range (default: current UTC month), target branch (default `develop`), sheet id, and append. **Append defaults to `true`**; set `false` only to clear+replace. |
 
 | Sheet | Content |
