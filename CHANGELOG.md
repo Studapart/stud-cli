@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **PR analytics daily schedule (SCI-204):** `.github/workflows/pr-analytics.yml` runs daily at 04:00 Europe/Paris for the previous Paris calendar day with `develop` base and append mode. Manual `workflow_dispatch` remains; append now defaults to `true`.
+- **PR analytics daily schedule (SCI-204):** `.github/workflows/pr-analytics.yml` runs once a day in the early morning Europe/Paris for the previous Paris calendar day with `develop` base and append mode. Manual `workflow_dispatch` remains; append now defaults to `true`.
+
+### Fixed
+
+- **Scheduled PR analytics no-op (SCI-205):** the daily run no longer skips the Google Sheets sync when it starts outside Paris hour 04 (late cron tick or CET). The exact-hour gate and its step guards are gone, and a single daily UTC cron still guarantees at most one scheduled append per day.
 
 ## [3.22.1] - 2026-07-28
 

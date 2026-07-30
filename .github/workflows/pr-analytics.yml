@@ -1,12 +1,13 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: '📊 PR Analytics'
 
-# Daily (04:00 Europe/Paris) and manual sync of PR / review / label metrics to Google Sheets.
+# Daily (early morning Europe/Paris) and manual sync of PR / review / label metrics to Google Sheets.
 
 on:
   schedule:
-    # GitHub cron is UTC-only. Fire at both DST offsets; Set Default Values gates to Paris hour 04.
-    - cron: '0 2 * * *' # 04:00 Europe/Paris under CEST (UTC+2)
+    # GitHub cron is UTC-only and best-effort: ticks can start late. A single daily tick
+    # keeps at most one scheduled append per day, whatever the Paris hour at start.
+    - cron: '0 2 * * *' # 04:00 Europe/Paris under CEST (UTC+2), 03:00 under CET (UTC+1)
   workflow_dispatch:
     inputs:
       start_date:
@@ -57,20 +58,6 @@ jobs:
           set -euo pipefail
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            PARIS_HOUR=$(TZ=Europe/Paris date +%H)
-            if [ "$PARIS_HOUR" != "04" ]; then
-              echo "Skipping schedule tick: Paris hour is ${PARIS_HOUR} (want 04)."
-              {
-                echo "run=false"
-                echo "start_date="
-                echo "end_date="
-                echo "target_branch=develop"
-                echo "google_sheet_id="
-                echo "append=true"
-              } >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
             YDAY=$(TZ=Europe/Paris date -d 'yesterday' +%Y-%m-%d)
             START_DATE="$YDAY"
             END_DATE="$YDAY"
@@ -115,7 +102,6 @@ jobs:
           fi
 
           {
-            echo "run=true"
             echo "start_date=$START_DATE"
             echo "end_date=$END_DATE"
             echo "target_branch=$TARGET_BRANCH"
@@ -124,12 +110,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: 'Checkout Repository'
-        if: steps.set_defaults.outputs.run == 'true'
         uses: actions/checkout@v6
 
       - name: 'Mint identity token'
         id: mint_identity_token
-        if: steps.set_defaults.outputs.run == 'true' && vars.APP_ID != ''
+        if: vars.APP_ID != ''
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.APP_ID }}
@@ -138,7 +123,6 @@ jobs:
           permission-pull-requests: 'read'
 
       - name: 'Validate Inputs'
-        if: steps.set_defaults.outputs.run == 'true'
         env:
           START_DATE: ${{ steps.set_defaults.outputs.start_date }}
           END_DATE: ${{ steps.set_defaults.outputs.end_date }}
@@ -163,7 +147,6 @@ jobs:
           fi
 
       - name: 'Fetch PR History'
-        if: steps.set_defaults.outputs.run == 'true'
         id: fetch_prs
         uses: actions/github-script@v9
         env:
@@ -246,7 +229,6 @@ jobs:
             require('fs').writeFileSync('pr_data.json', JSON.stringify(prs));
 
       - name: 'Fetch Review Data'
-        if: steps.set_defaults.outputs.run == 'true'
         uses: actions/github-script@v9
         env:
           GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
@@ -342,14 +324,12 @@ jobs:
             fs.writeFileSync('review_data.json', JSON.stringify(reviews));
 
       - name: 'Setup Node.js'
-        if: steps.set_defaults.outputs.run == 'true'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
           package-manager-cache: false
 
       - name: 'Install googleapis'
-        if: steps.set_defaults.outputs.run == 'true'
         id: googleapis_deps
         run: |
           set -euo pipefail
@@ -359,7 +339,6 @@ jobs:
           echo "node_modules_path=${npm_install_cwd}/node_modules" >> "${GITHUB_OUTPUT}"
 
       - name: 'Sync Data to Google Sheets'
-        if: steps.set_defaults.outputs.run == 'true'
         id: sync_sheets
         env:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
@@ -370,7 +349,6 @@ jobs:
         run: NODE_PATH="${{ steps.googleapis_deps.outputs.node_modules_path }}" node .github/scripts/sync-pr-analytics-sheets.cjs
 
       - name: 'Summary'
-        if: steps.set_defaults.outputs.run == 'true'
         env:
           START_DATE: ${{ steps.set_defaults.outputs.start_date }}
           END_DATE: ${{ steps.set_defaults.outputs.end_date }}

@@ -36,22 +36,29 @@ test('pr-analytics workflow passes required Google and repo env vars', () => {
   assert.match(yaml, /GITHUB_REPOSITORY_NAME:\s*\$\{\{\s*github\.event\.repository\.name\s*\}\}/);
 });
 
-test('pr-analytics workflow schedules daily Paris-hour crons', () => {
+test('pr-analytics workflow schedules exactly one daily cron plus manual dispatch', () => {
   const yaml = readWorkflow();
   assert.match(yaml, /schedule:/);
   assert.match(yaml, /cron:\s*'0 2 \* \* \*'/);
-  assert.match(yaml, /cron:\s*'0 3 \* \* \*'/);
+  assert.equal(yaml.match(/- cron:/g).length, 1, 'a single daily tick keeps one scheduled append per day');
   assert.match(yaml, /workflow_dispatch:/);
 });
 
-test('pr-analytics workflow defaults append to true and gates non-Paris schedule ticks', () => {
+test('pr-analytics workflow never skips a scheduled run on the local Paris hour', () => {
+  const yaml = readWorkflow();
+  const gateMarkers = [/PARIS_HOUR/, /date \+%H/, /want 04/, /run=false/, /outputs\.run/];
+
+  for (const pattern of gateMarkers) {
+    assert.doesNotMatch(yaml, pattern, `workflow must not gate on the clock: ${pattern}`);
+  }
+});
+
+test('pr-analytics workflow defaults append to true and pins scheduled sync parameters', () => {
   const yaml = readWorkflow();
   assert.match(yaml, /default: 'true'/);
   assert.match(yaml, /github\.event_name.*" = "schedule"/);
-  assert.match(yaml, /TZ=Europe\/Paris date \+%H/);
   assert.match(yaml, /TZ=Europe\/Paris date -d 'yesterday'/);
   assert.match(yaml, /TARGET_BRANCH="develop"/);
-  assert.match(yaml, /steps\.set_defaults\.outputs\.run == 'true'/);
   assert.match(yaml, /APPEND="true"/);
   assert.doesNotMatch(yaml, /APPEND="false"/);
   assert.doesNotMatch(yaml, /default: 'false'/);
