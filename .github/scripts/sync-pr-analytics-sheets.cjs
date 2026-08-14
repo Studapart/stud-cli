@@ -46,9 +46,12 @@ function readWorkflowInputData(fsImpl = fs) {
     return {
       prData: JSON.parse(fsImpl.readFileSync('pr_data.json', 'utf8')),
       reviewData: JSON.parse(fsImpl.readFileSync('review_data.json', 'utf8')),
+      reviewFetchedPrNumbers: JSON.parse(fsImpl.readFileSync('review_fetched_pr_numbers.json', 'utf8')),
     };
   } catch (error) {
-    throw new Error(`Failed to read or parse input data files (pr_data.json, review_data.json): ${error.message}`);
+    throw new Error(
+      `Failed to read or parse input data files (pr_data.json, review_data.json, review_fetched_pr_numbers.json): ${error.message}`,
+    );
   }
 }
 
@@ -95,22 +98,81 @@ function mergePRData(existingRows, newRows, headers, append) {
     return [headers, ...newRows];
   }
 
-  const existingPRNumbers = new Set();
+  const byId = new Map();
   for (let i = 1; i < existingRows.length; i += 1) {
     if (existingRows[i] && existingRows[i][0]) {
-      existingPRNumbers.add(String(existingRows[i][0]));
+      byId.set(String(existingRows[i][0]), existingRows[i]);
     }
   }
+  for (const row of newRows) {
+    byId.set(String(row[0]), row);
+  }
 
-  const newPRsToAdd = newRows.filter((row) => !existingPRNumbers.has(String(row[0])));
-  return [...existingRows, ...newPRsToAdd];
+  const seen = new Set();
+  const merged = [headers];
+  for (let i = 1; i < existingRows.length; i += 1) {
+    const id = existingRows[i] && existingRows[i][0] ? String(existingRows[i][0]) : '';
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    merged.push(byId.get(id));
+    seen.add(id);
+  }
+  for (const row of newRows) {
+    const id = String(row[0]);
+    if (seen.has(id)) {
+      continue;
+    }
+    merged.push(row);
+    seen.add(id);
+  }
+  return merged;
 }
 
-function appendData(existingRows, newRows, headers, append) {
+function childBatchIds(newRows, batchPrIds) {
+  if (Array.isArray(batchPrIds) && batchPrIds.length > 0) {
+    return new Set(batchPrIds.map((id) => String(id)));
+  }
+  return new Set(newRows.map((row) => String(row[0])));
+}
+
+function mergeChildDataByPrId(existingRows, newRows, headers, append, batchPrIds) {
   if (!append || existingRows.length === 0) {
     return [headers, ...newRows];
   }
-  return [...existingRows, ...newRows];
+
+  const batchIds = childBatchIds(newRows, batchPrIds);
+  const kept = [];
+  for (let i = 1; i < existingRows.length; i += 1) {
+    const row = existingRows[i];
+    if (!row || !row[0] || batchIds.has(String(row[0]))) {
+      continue;
+    }
+    kept.push(row);
+  }
+  return [headers, ...kept, ...newRows];
+}
+
+function leftoverClearRange(sheetName, writtenRowCount) {
+  const firstUnusedRow = Math.max(1, Number(writtenRowCount) || 0) + 1;
+  return formatSheetRange(sheetName, `A${firstUnusedRow}:Z`);
+}
+
+async function replaceSheetValues(sheets, spreadsheetId, sheetName, values) {
+  await updateSheetRange(
+    sheets,
+    spreadsheetId,
+    formatSheetRange(sheetName, 'A1'),
+    values,
+    'RAW',
+    `Google Sheets update ${sheetName}`,
+  );
+  await clearSheetRange(
+    sheets,
+    spreadsheetId,
+    leftoverClearRange(sheetName, values.length),
+    `Google Sheets clear leftover ${sheetName}`,
+  );
 }
 
 async function main() {
@@ -126,7 +188,7 @@ async function main() {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
   const append = process.env.APPEND === 'true';
 
-  const { prData, reviewData } = readWorkflowInputData();
+  const { prData, reviewData, reviewFetchedPrNumbers } = readWorkflowInputData();
 
   const [defaultOwner, defaultRepo] = String(process.env.GITHUB_REPOSITORY || '').split('/');
   const ownerSlug = normalizeSlug(
@@ -139,6 +201,9 @@ async function main() {
   );
 
   const formatPrId = (prNumber) => formatSpreadsheetPrId(ownerSlug, repoSlug, prNumber);
+  const syncedPrIds = prData.map((pr) => formatPrId(pr.number));
+  const reviewFetchedPrIds = (Array.isArray(reviewFetchedPrNumbers) ? reviewFetchedPrNumbers : [])
+    .map((prNumber) => formatPrId(prNumber));
 
   const prHeaders = [
     'PR Number', 'Title', 'Creator', 'Created At', 'Merged At',
@@ -186,7 +251,7 @@ async function main() {
   }
 
   if (append) {
-    console.log('Append mode: Adding new data to existing sheets...');
+    console.log('Append mode: Merging into existing sheets, then writing and trimming leftover rows...');
   } else {
     console.log('Override mode: Clearing and replacing all data in sheets...');
   }
@@ -198,63 +263,45 @@ async function main() {
     finalPRData = mergePRData(existingPRData, prRows, prHeaders, append);
     const newCount = finalPRData.length - existingPRData.length;
     console.log(`  Found ${Math.max(0, existingPRData.length - 1)} existing PR records`);
-    console.log(`  Adding ${newCount} new PR records`);
-  } else {
-    await clearSheetRange(sheets, spreadsheetId, formatSheetRange('PRs', 'A:Z'), 'Google Sheets clear PRs');
+    console.log(`  Merged PRs sheet to ${finalPRData.length - 1} rows (delta ${newCount})`);
   }
-
-  await updateSheetRange(
-    sheets,
-    spreadsheetId,
-    formatSheetRange('PRs', 'A1'),
-    finalPRData,
-    'RAW',
-    'Google Sheets update PRs',
-  );
+  await replaceSheetValues(sheets, spreadsheetId, 'PRs', finalPRData);
   console.log(`✅ Wrote ${finalPRData.length - 1} total PR records to PRs sheet`);
 
   console.log('Updating Reviews sheet...');
   let finalReviewData = [reviewHeaders, ...reviewRows];
   if (append) {
     const existingReviewData = await readExistingData(sheets, spreadsheetId, 'Reviews');
-    finalReviewData = appendData(existingReviewData, reviewRows, reviewHeaders, append);
+    finalReviewData = mergeChildDataByPrId(
+      existingReviewData,
+      reviewRows,
+      reviewHeaders,
+      append,
+      reviewFetchedPrIds,
+    );
     const newCount = finalReviewData.length - existingReviewData.length;
     console.log(`  Found ${Math.max(0, existingReviewData.length - 1)} existing review records`);
-    console.log(`  Adding ${newCount} new review records`);
-  } else {
-    await clearSheetRange(sheets, spreadsheetId, formatSheetRange('Reviews', 'A:Z'), 'Google Sheets clear Reviews');
+    console.log(`  Merged Reviews sheet to ${finalReviewData.length - 1} rows (delta ${newCount})`);
   }
-
-  await updateSheetRange(
-    sheets,
-    spreadsheetId,
-    formatSheetRange('Reviews', 'A1'),
-    finalReviewData,
-    'RAW',
-    'Google Sheets update Reviews',
-  );
+  await replaceSheetValues(sheets, spreadsheetId, 'Reviews', finalReviewData);
   console.log(`✅ Wrote ${finalReviewData.length - 1} total review records to Reviews sheet`);
 
   console.log('Updating PRs Labels sheet...');
   let finalLabelsData = [prLabelsHeaders, ...prLabelsRows];
   if (append) {
     const existingLabelsData = await readExistingData(sheets, spreadsheetId, 'PRs Labels');
-    finalLabelsData = appendData(existingLabelsData, prLabelsRows, prLabelsHeaders, append);
+    finalLabelsData = mergeChildDataByPrId(
+      existingLabelsData,
+      prLabelsRows,
+      prLabelsHeaders,
+      append,
+      syncedPrIds,
+    );
     const newCount = finalLabelsData.length - existingLabelsData.length;
     console.log(`  Found ${Math.max(0, existingLabelsData.length - 1)} existing label records`);
-    console.log(`  Adding ${newCount} new label records`);
-  } else {
-    await clearSheetRange(sheets, spreadsheetId, formatSheetRange('PRs Labels', 'A:Z'), 'Google Sheets clear PRs Labels');
+    console.log(`  Merged PRs Labels sheet to ${finalLabelsData.length - 1} rows (delta ${newCount})`);
   }
-
-  await updateSheetRange(
-    sheets,
-    spreadsheetId,
-    formatSheetRange('PRs Labels', 'A1'),
-    finalLabelsData,
-    'RAW',
-    'Google Sheets update PRs Labels',
-  );
+  await replaceSheetValues(sheets, spreadsheetId, 'PRs Labels', finalLabelsData);
   console.log(`✅ Wrote ${finalLabelsData.length - 1} total PR label records to PRs Labels sheet`);
 
   console.log('✅ Data sync completed successfully');
@@ -269,7 +316,9 @@ module.exports = {
   isMissingSheetError,
   readWorkflowInputData,
   mergePRData,
-  appendData,
+  childBatchIds,
+  mergeChildDataByPrId,
+  leftoverClearRange,
 };
 
 if (require.main === module) {

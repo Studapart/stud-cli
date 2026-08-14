@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **PR analytics sheet accuracy (SCI-206):** daily and manual syncs treat date inputs as Europe/Paris calendar days, upsert existing PR rows (including later merges), replace Reviews / PRs Labels for re-synced PRs instead of duplicating them, and paginate GitHub review lists. Re-running a period remediates that period’s sheet data. Append writes the merged block first, then clears leftover cells below it so a failed write cannot empty historical rows. Reviews replace uses only PRs whose review fetch completed (zero-review success still clears stale rows; a skipped fetch leaves existing Reviews rows). Closed-PR pagination stops only after a full `updated` page is older than the window, so a non-monotonic `updated_at` cannot skip later merges.
 - **Scheduled PR analytics no-op (SCI-205):** the daily run no longer skips the Google Sheets sync when it starts outside Paris hour 04 (late cron tick or CET). The exact-hour gate and its step guards are gone, and a single daily UTC cron still guarantees at most one scheduled append per day.
 
 ## [3.22.1] - 2026-07-28
