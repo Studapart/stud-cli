@@ -221,14 +221,16 @@ Workflow **`.github/workflows/pr-analytics.yml`** syncs PR / review / label metr
 
 | Trigger | Behaviour |
 |---------|-----------|
-| `schedule` | Once per day in the **early morning Europe/Paris** — single UTC cron `0 2 * * *` (04:00 Paris under CEST, 03:00 under CET). GitHub cron ticks are best-effort, so the actual start can drift; the run **always** syncs and is never skipped on the local hour. Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, then applies existing `T00:00:00Z`–`T23:59:59Z` bounds on that date. Forces **`target_branch=develop`** and **`append=true`**. Runs from the workflow file on the repo **default branch `develop`**. |
-| `workflow_dispatch` | Manual / backfill. Optional date range (default: current UTC month), target branch (default `develop`), sheet id, and append. **Append defaults to `true`**; set `false` only to clear+replace. |
+| `schedule` | Once per day in the **early morning Europe/Paris** — single UTC cron `0 2 * * *` (04:00 Paris under CEST, 03:00 under CET). GitHub cron ticks are best-effort, so the actual start can drift; the run **always** syncs and is never skipped on the local hour. Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, interpreted as a half-open Europe/Paris day `[00:00, next 00:00)` converted to UTC instants (not a UTC calendar day on that date label). Forces **`target_branch=develop`** and **`append=true`**. Runs from the workflow file on the repo **default branch `develop`**. |
+| `workflow_dispatch` | Manual / backfill / remediation. Optional date range (default: current UTC month), target branch (default `develop`), sheet id, and append. Date inputs are the same **Europe/Paris calendar days**. **Append defaults to `true`** (upsert PRs and replace Reviews / PRs Labels for PRs in the batch); set `false` only to clear+replace the whole sheet. Re-running a period with append is the supported way to refresh or remediate that period’s rows. |
 
-| Sheet | Content |
-|-------|---------|
-| `PRs` | PR metadata and time-to-merge |
-| `Reviews` | Reviewer submissions and time-to-review |
-| `PRs Labels` | PR ↔ label rows |
+| Sheet | Content | Append behaviour |
+|-------|---------|------------------|
+| `PRs` | PR metadata and time-to-merge | Upsert by spreadsheet PR id (existing rows update merge/state/metrics) |
+| `Reviews` | Reviewer submissions and time-to-review | Replace all rows for PR ids in the current batch; other PRs stay |
+| `PRs Labels` | PR ↔ label rows | Same PR-scoped replace as Reviews |
+
+Each run fetches PRs **created** in the Paris window, all currently **open** PRs for the target branch, and **closed** PRs **updated** in the window (so a later merge is written on the next successful run). Closed/`updated` pagination stops only after a full page is older than the window, so a single out-of-order `updated_at` cannot skip later merges. Review lists are fully paginated. Reviews replace uses only PRs whose review fetch completed; a skipped fetch leaves that PR’s existing Reviews rows. After merge, the full sheet block is written first, then leftover cells below that block are cleared so a failed write cannot empty historical rows. The job uses a 60-minute timeout and a per-repository concurrency group so overlapping runs do not interleave writes.
 
 ### Secrets and variables
 
