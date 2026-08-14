@@ -32,6 +32,10 @@ function isMissingSheetError(error) {
   return status === 404 || message.includes('Unable to parse range');
 }
 
+function isRangeBeyondGridError(error) {
+  return String(error?.message || '').includes('exceeds grid limits');
+}
+
 function parseServiceAccountKey() {
   try {
     return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
@@ -167,12 +171,21 @@ async function replaceSheetValues(sheets, spreadsheetId, sheetName, values) {
     'RAW',
     `Google Sheets update ${sheetName}`,
   );
-  await clearSheetRange(
-    sheets,
-    spreadsheetId,
-    leftoverClearRange(sheetName, values.length),
-    `Google Sheets clear leftover ${sheetName}`,
-  );
+  const leftoverRange = leftoverClearRange(sheetName, values.length);
+  try {
+    await clearSheetRange(
+      sheets,
+      spreadsheetId,
+      leftoverRange,
+      `Google Sheets clear leftover ${sheetName}`,
+    );
+  } catch (error) {
+    // The written block can fill the grid exactly, leaving no row to trim.
+    if (!isRangeBeyondGridError(error)) {
+      throw error;
+    }
+    console.log(`  No leftover rows to clear in "${sheetName}" (${leftoverRange} is outside the grid).`);
+  }
 }
 
 async function main() {
@@ -314,11 +327,13 @@ module.exports = {
   formatSpreadsheetPrId,
   formatSheetRange,
   isMissingSheetError,
+  isRangeBeyondGridError,
   readWorkflowInputData,
   mergePRData,
   childBatchIds,
   mergeChildDataByPrId,
   leftoverClearRange,
+  replaceSheetValues,
 };
 
 if (require.main === module) {

@@ -9,12 +9,39 @@ const {
   formatSpreadsheetPrId,
   formatSheetRange,
   isMissingSheetError,
+  isRangeBeyondGridError,
   readWorkflowInputData,
   mergePRData,
   childBatchIds,
   mergeChildDataByPrId,
   leftoverClearRange,
+  replaceSheetValues,
 } = require('./sync-pr-analytics-sheets.cjs');
+
+function fakeSheets(handlers = {}) {
+  const calls = [];
+  return {
+    calls,
+    spreadsheets: {
+      values: {
+        async update(params) {
+          calls.push({ method: 'update', range: params.range, rows: params.resource.values.length });
+          if (handlers.update) {
+            return handlers.update(params);
+          }
+          return {};
+        },
+        async clear(params) {
+          calls.push({ method: 'clear', range: params.range });
+          if (handlers.clear) {
+            return handlers.clear(params);
+          }
+          return {};
+        },
+      },
+    },
+  };
+}
 
 const prHeaders = ['PR Number', 'Title'];
 
@@ -59,6 +86,54 @@ test('isMissingSheetError detects missing sheet responses', () => {
   assert.equal(isMissingSheetError({ response: { status: 404 } }), true);
   assert.equal(isMissingSheetError({ message: 'Unable to parse range: PRs!A1' }), true);
   assert.equal(isMissingSheetError({ message: 'Invalid response body while trying to fetch token: Premature close' }), false);
+});
+
+test('isRangeBeyondGridError detects clear ranges outside the grid', () => {
+  assert.equal(
+    isRangeBeyondGridError({ status: 400, message: "Range ('PRs Labels'!A4530:Z) exceeds grid limits. Max rows: 4529, max columns: 26" }),
+    true,
+  );
+  assert.equal(isRangeBeyondGridError({ status: 400, message: 'Unable to parse range: PRs!A1' }), false);
+  assert.equal(isRangeBeyondGridError(undefined), false);
+});
+
+test('replaceSheetValues writes the block before trimming leftover rows', async () => {
+  const sheets = fakeSheets();
+
+  await replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders, ['studapart_studa3_1', 'one']]);
+
+  assert.deepEqual(sheets.calls, [
+    { method: 'update', range: "'PRs'!A1", rows: 2 },
+    { method: 'clear', range: "'PRs'!A3:Z" },
+  ]);
+});
+
+test('replaceSheetValues tolerates a leftover range outside the grid', async () => {
+  const sheets = fakeSheets({
+    clear: () => {
+      throw Object.assign(
+        new Error("Range ('PRs'!A3:Z) exceeds grid limits. Max rows: 2, max columns: 26"),
+        { status: 400 },
+      );
+    },
+  });
+
+  await replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders, ['studapart_studa3_1', 'one']]);
+
+  assert.equal(sheets.calls.filter((call) => call.method === 'clear').length, 1);
+});
+
+test('replaceSheetValues surfaces other clear failures', async () => {
+  const sheets = fakeSheets({
+    clear: () => {
+      throw Object.assign(new Error('The caller does not have permission'), { status: 403 });
+    },
+  });
+
+  await assert.rejects(
+    () => replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders]),
+    /does not have permission/,
+  );
 });
 
 test('readWorkflowInputData wraps missing input files with context', () => {
