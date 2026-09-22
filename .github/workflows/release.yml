@@ -27,7 +27,7 @@ jobs:
       - name: Setup PHP with tools
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
         with:
-          php-version: '8.2'
+          php-version: '8.4'
           tools: box
 
       - name: Get app name and version
@@ -47,6 +47,8 @@ jobs:
           echo "phar-filename=${PHAR_FILENAME}" >> $GITHUB_OUTPUT
 
       - name: Build PHAR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/build-phar --version "${{ env.APP_VERSION }}" --output "${{ env.PHAR_FILENAME }}"
 
       - name: Upload PHAR artifact
@@ -65,10 +67,10 @@ jobs:
         include:
           - platform: linux-amd64
             runner: ubuntu-latest
-            runtime-url: https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.2.31-cli-linux-x86_64.tar.gz
+            runtime-url: https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.4.23-cli-linux-x86_64.tar.gz
           - platform: darwin-arm64
             runner: macos-14
-            runtime-url: https://dl.static-php.dev/static-php-cli/common/php-8.2.31-cli-macos-aarch64.tar.gz
+            runtime-url: https://dl.static-php.dev/static-php-cli/common/php-8.4.23-cli-macos-aarch64.tar.gz
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd

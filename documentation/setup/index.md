@@ -10,7 +10,7 @@ Use PHAR unless you specifically need a bundled PHP runtime.
 curl -fsSL https://raw.githubusercontent.com/Studapart/stud-cli/develop/setup-stud.sh | bash
 ```
 
-The PHAR path requires PHP 8.2+ with `xml`, `curl`, and `mbstring`. It supports `stud update`, so upgrades are managed by the tool.
+The PHAR path requires PHP 8.4.1+ with `xml`, `curl`, and `mbstring`. It supports `stud update`, so upgrades are managed by the tool.
 
 ## Opt-In: Portable
 
@@ -40,4 +40,5 @@ Portable is useful when installing local PHP is not desirable. It is not yet the
 - [macOS setup](macos.md)
 - [PHAR details](phar.md)
 - [Portable details](portable.md)
+- [Migrating 3.x → 4.x](migrating-3x-to-4x.md)
 - [Configuration](configuration.md)

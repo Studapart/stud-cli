@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, PHPUnit 11.0, Symfony 7.3
+* **Technical Context:** PHP 8.4.1+, PHPUnit 11.0, Symfony 8.1
 
 ## 1. Context and Problem Statement
 
@@ -153,6 +153,6 @@ protected function getConfigPath(): string
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Defense in Depth** security principles by using multiple detection layers. While Symfony 7.4 favors **Attributes over Configuration**, this ADR uses constants and environment variables appropriately for test environment detection, which is a cross-cutting concern that benefits from explicit configuration.
+This decision follows **Defense in Depth** security principles by using multiple detection layers. While Symfony 8.1 favors **Attributes over Configuration**, this ADR uses constants and environment variables appropriately for test environment detection, which is a cross-cutting concern that benefits from explicit configuration.

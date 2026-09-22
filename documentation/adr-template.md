@@ -4,7 +4,7 @@
 * **Date:** YYYY-MM-DD
 * **Authors:** [Name]
 * **Deciders:** [Name] (Who has the final sign-off?)
-* **Technical Context:** Symfony 7.4, PHP 8.x, [Specific Bundle/Component]
+* **Technical Context:** Symfony 8.1, PHP 8.x, [Specific Bundle/Component]
 
 ## 1. Context and Problem Statement
 
@@ -58,6 +58,6 @@ Every architectural decision has a price.
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-When filling this out for Symfony 7.4, explicitly mention if you are favoring **Composition over Inheritance** or **Attributes over Configuration**, as these are key architectural shifts in recent Symfony versions.
+When filling this out for Symfony 8.1, explicitly mention if you are favoring **Composition over Inheritance** or **Attributes over Configuration**, as these are key architectural shifts in recent Symfony versions.

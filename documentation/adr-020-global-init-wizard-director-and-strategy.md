@@ -4,7 +4,7 @@
 * **Date:** 2026-06-17
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, `stud config:init` (SCI-150), ADR-016/019 precedents, SCI-151 project-init ahead
+* **Technical Context:** PHP 8.4.1+, `stud config:init` (SCI-150), ADR-016/019 precedents, SCI-151 project-init ahead
 
 ## 1. Context and Problem Statement
 

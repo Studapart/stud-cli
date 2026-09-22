@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, PHPStan, PHP-CS-Fixer, PHPUnit
+* **Technical Context:** PHP 8.4.1+, PHPStan, PHP-CS-Fixer, PHPUnit
 
 ## 1. Context and Problem Statement
 
@@ -188,6 +188,6 @@ protected function transformData(array $data): array
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Quality Gates** and **Continuous Integration** principles. While Symfony 7.4 favors **Attributes over Configuration**, code quality metrics are enforced through **Static Analysis Tools** (PHPStan) and **Code Style Tools** (PHP-CS-Fixer), which align with Symfony 7.4's emphasis on **Tooling and Automation**. The metrics support **SOLID Principles** by enforcing complexity limits that naturally lead to better design.
+This decision follows **Quality Gates** and **Continuous Integration** principles. While Symfony 8.1 favors **Attributes over Configuration**, code quality metrics are enforced through **Static Analysis Tools** (PHPStan) and **Code Style Tools** (PHP-CS-Fixer), which align with Symfony 8.1's emphasis on **Tooling and Automation**. The metrics support **SOLID Principles** by enforcing complexity limits that naturally lead to better design.

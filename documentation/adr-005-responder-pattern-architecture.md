@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Symfony 7.3, Castor Framework
+* **Technical Context:** PHP 8.4.1+, Symfony 8.1, Castor Framework
 
 ## 1. Context and Problem Statement
 
@@ -229,6 +229,6 @@ To ensure **all features that display data** behave in a consistent way, we stan
 
 See **[ADR-013]** for the extension that adds JSON output to Responders via `OutputFormat`. Responders now accept an `OutputFormat` parameter and return `?AgentJsonResponse` when in JSON mode. This was a direct consequence of applying ADR-005's principles to the agent mode feature (ADR-012).
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Composition over Inheritance** principles. Handlers compose services (JiraApiClient, GitRepository) rather than extending base classes. Responders compose ViewConfigs rather than inheriting presentation logic. This aligns with Symfony 7.4's preference for composition and dependency injection.
+This decision follows **Composition over Inheritance** principles. Handlers compose services (JiraApiClient, GitRepository) rather than extending base classes. Responders compose ViewConfigs rather than inheriting presentation logic. This aligns with Symfony 8.1's preference for composition and dependency injection.

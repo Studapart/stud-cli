@@ -8,7 +8,7 @@ Path in this repository: **`.github/actions/stud-cli-setup`**.
 
 ### What it does
 
-1. Sets up **PHP 8.2+** with extensions **xml**, **curl**, and **mbstring** (`shivammathur/setup-php`).
+1. Sets up **PHP 8.4+** with extensions **xml**, **curl**, and **mbstring** (`shivammathur/setup-php`).
 2. Downloads `setup-stud.sh` from **`Studapart/stud-cli`** at the Git ref you choose (`stud-install-ref`, default `develop`) and runs it with **`--force --skip-init`** so CI never blocks on interactive `stud init`.
 3. Writes **`~/.config/stud/config.yml`** (mode `600`) from action inputs. Optional Git tokens are only written when non-empty.
 4. Optionally writes **`.git/stud.config`** from the `project-stud-config` input (you must **`actions/checkout`** before this action when using project config).
@@ -27,10 +27,10 @@ Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.
 Callers outside `Studapart/stud-cli` should reference a **tag** or **SHA** so the action definition does not change unexpectedly:
 
 ```yaml
-uses: Studapart/stud-cli/.github/actions/stud-cli-setup@v3.12.1
+uses: Studapart/stud-cli/.github/actions/stud-cli-setup@v4.0.0
 ```
 
-Adjust the version to the tag you trust. Path-style actions are versioned with the repository ref.
+Adjust the version to the tag you trust. Path-style actions are versioned with the repository ref. For 3.x consumers, pin a `v3.*` tag and PHP 8.2 until you migrate — see [migrating 3.x → 4.x](setup/migrating-3x-to-4x.md).
 
 ### Inputs summary
 
@@ -50,7 +50,7 @@ Adjust the version to the tag you trust. Path-style actions are versioned with t
 | `run-config-validate` | no | Default `true`. |
 | `validate-skip-git` | no | Default **`true`** → skips Git provider connectivity check. Set `false` when you need GitHub/GitLab token validation. |
 | `project-stud-config` | no | Multiline content for `.git/stud.config`. |
-| `php-version` | no | Default `8.2`. |
+| `php-version` | no | Default `8.4`. |
 
 ### Provider-conditional validate
 
@@ -215,20 +215,29 @@ Store **`STUD_LINEAR_API_KEY`** as a repository secret. The composite action wri
 
 ## PR analytics (Google Sheets)
 
-Manual workflow **`.github/workflows/pr-analytics.yml`** (`workflow_dispatch`) syncs PR / review / label metrics for a date range and base branch into Google Sheets. It does **not** collect coverage (keep using **`tests.yml`**) and does **not** parse the changelog.
+Workflow **`.github/workflows/pr-analytics.yml`** syncs PR / review / label metrics for a date range and base branch into Google Sheets. It does **not** collect coverage (keep using **`tests.yml`**) and does **not** parse the changelog.
 
-| Sheet | Content |
-|-------|---------|
-| `PRs` | PR metadata and time-to-merge |
-| `Reviews` | Reviewer submissions and time-to-review |
-| `PRs Labels` | PR ↔ label rows |
+### Triggers
+
+| Trigger | Behaviour |
+|---------|-----------|
+| `schedule` | Once per day in the **early morning Europe/Paris** — single UTC cron `0 2 * * *` (04:00 Paris under CEST, 03:00 under CET). GitHub cron ticks are best-effort, so the actual start can drift; the run **always** syncs and is never skipped on the local hour. Covers the **previous Paris calendar day** as `start_date=end_date=yesterday`, interpreted as a half-open Europe/Paris day `[00:00, next 00:00)` converted to UTC instants (not a UTC calendar day on that date label). Forces **`target_branch=develop`** and **`append=true`**. Runs from the workflow file on the repo **default branch `develop`**. |
+| `workflow_dispatch` | Manual / backfill / remediation. Optional date range (default: current UTC month), target branch (default `develop`), sheet id, and append. Date inputs are the same **Europe/Paris calendar days**. **Append defaults to `true`** (upsert PRs and replace Reviews / PRs Labels for PRs in the batch); set `false` only to clear+replace the whole sheet. Re-running a period with append is the supported way to refresh or remediate that period’s rows. |
+
+| Sheet | Content | Append behaviour |
+|-------|---------|------------------|
+| `PRs` | PR metadata and time-to-merge | Upsert by spreadsheet PR id (existing rows update merge/state/metrics) |
+| `Reviews` | Reviewer submissions and time-to-review | Replace all rows for PR ids in the current batch; other PRs stay |
+| `PRs Labels` | PR ↔ label rows | Same PR-scoped replace as Reviews |
+
+Each run fetches PRs **created** in the Paris window, all currently **open** PRs for the target branch, and **closed** PRs **updated** in the window (so a later merge is written on the next successful run). Closed/`updated` pagination stops only after a full page is older than the window, so a single out-of-order `updated_at` cannot skip later merges. Review lists are fully paginated. Reviews replace uses only PRs whose review fetch completed; a skipped fetch leaves that PR’s existing Reviews rows. After merge, the full sheet block is written first, then leftover cells below that block are cleared so a failed write cannot empty historical rows. When the written block fills the sheet grid exactly there is nothing below it to clear, so the sync logs a notice instead of failing on `exceeds grid limits`. The job uses a 60-minute timeout and a per-repository concurrency group so overlapping runs do not interleave writes.
 
 ### Secrets and variables
 
 | Name | Required | Notes |
 |------|----------|-------|
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | yes | Service account JSON with access to the spreadsheet |
-| `GOOGLE_SHEET_ID` | yes (or workflow input) | Spreadsheet ID from the URL |
+| `GOOGLE_SHEET_ID` | yes (or workflow input on dispatch) | Spreadsheet ID from the URL; required for scheduled runs |
 | `vars.APP_ID` + `secrets.APP_PRIVATE_KEY` | optional | Prefer GitHub App token for PR API rate limits; falls back to `GITHUB_TOKEN` |
 
 **Local script tests:** `node --test .github/scripts/sync-pr-analytics-sheets.test.cjs .github/scripts/google-api-retry.test.cjs .github/scripts/pr-analytics-workflow-contract.test.cjs`

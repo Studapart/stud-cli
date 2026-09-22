@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-09-22
+
+### Breaking
+
+- **stud-cli 4.x foundation (SCI-195):** minimum PHP is **8.4.1**. Direct Symfony components are **^8.1**, Castor is **1.8.1**, and `composer.json` version is **4.0.0**. PHAR/portable builds, CI, `setup-stud.sh`, and the `stud-cli-setup` composite action target PHP 8.4 / StaticPHP 8.4.23. After 4.x GA, 3.x is unmaintained — see [migrating 3.x → 4.x](documentation/setup/migrating-3x-to-4x.md). PHP **8.5** is supported as a runtime (Castor/Symfony allow ≥8.4) but is **not** the minimum; portable StaticPHP builds remain on **8.4.x**. `castor.php` defines `CASTOR_USE_CHDIR` as **`false`** (silence Castor 1.8 deprecation while preserving pre-1.8 cwd / `getcwd()` path behavior).
+
+### Added
+
+- **4.x foundation spike (SCI-195):** contributor docs and TECH_SPEC record a **GO (phased)** plan for stud-cli 4.x (PHP ≥ 8.4.1, Symfony 8.1.x, Castor 1.6.1).
+
+### Changed
+
+- **adf-tools consume (SCI-195 / SCI-207):** require `studapart/adf-tools` `^1.2.2` from the public GitHub VCS repository (`https://github.com/Studapart/adf-tools.git`) until the package is on Packagist. `DH\Adf` API is unchanged.
+
+- **PR analytics daily schedule (SCI-204):** `.github/workflows/pr-analytics.yml` runs once a day in the early morning Europe/Paris for the previous Paris calendar day with `develop` base and append mode. Manual `workflow_dispatch` remains; append now defaults to `true`.
+
+### Fixed
+
+- **PHAR build Castor download (SCI-195):** `scripts/build-phar` fetches the Castor host PHAR from the GitHub release asset URL and passes `--castor-phar` to `repack`, so local builds no longer hit unauthenticated GitHub API rate limits (HTTP 403). `CASTOR_PHAR` overrides the download; release CI exports `GITHUB_TOKEN` for any residual Castor API calls.
+- **PR analytics sheet accuracy (SCI-206):** daily and manual syncs treat date inputs as Europe/Paris calendar days, upsert existing PR rows (including later merges), replace Reviews / PRs Labels for re-synced PRs instead of duplicating them, and paginate GitHub review lists. Re-running a period remediates that period’s sheet data. Append writes the merged block first, then clears leftover cells below it so a failed write cannot empty historical rows; when the block fills the sheet grid exactly, the leftover clear is a no-op instead of a `exceeds grid limits` failure. Reviews replace uses only PRs whose review fetch completed (zero-review success still clears stale rows; a skipped fetch leaves existing Reviews rows). Closed-PR pagination stops only after a full `updated` page is older than the window, so a non-monotonic `updated_at` cannot skip later merges.
+- **Scheduled PR analytics no-op (SCI-205):** the daily run no longer skips the Google Sheets sync when it starts outside Paris hour 04 (late cron tick or CET). The exact-hour gate and its step guards are gone, and a single daily UTC cron still guarantees at most one scheduled append per day.
+
 ## [3.22.1] - 2026-07-28
 
 ### Added

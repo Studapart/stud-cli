@@ -1,9 +1,13 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: '📊 PR Analytics'
 
-# Manual sync of PR / review / label metrics to Google Sheets.
+# Daily (early morning Europe/Paris) and manual sync of PR / review / label metrics to Google Sheets.
 
 on:
+  schedule:
+    # GitHub cron is UTC-only and best-effort: ticks can start late. A single daily tick
+    # keeps at most one scheduled append per day, whatever the Paris hour at start.
+    - cron: '0 2 * * *' # 04:00 Europe/Paris under CEST (UTC+2), 03:00 under CET (UTC+1)
   workflow_dispatch:
     inputs:
       start_date:
@@ -29,7 +33,7 @@ on:
       append:
         description: 'Append instead of clear+replace'
         required: false
-        default: 'false'
+        default: 'true'
         type: choice
         options:
           - 'true'
@@ -47,7 +51,87 @@ defaults:
 jobs:
   pr-analytics:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: pr-analytics-${{ github.repository }}
+      cancel-in-progress: false
     steps:
+      - name: 'Set Default Values'
+        id: set_defaults
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            YDAY=$(TZ=Europe/Paris date -d 'yesterday' +%Y-%m-%d)
+            START_DATE="$YDAY"
+            END_DATE="$YDAY"
+            TARGET_BRANCH="develop"
+            APPEND="true"
+            GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
+          else
+            FIRST_DAY=$(date -u +"%Y-%m-01")
+            LAST_DAY=$(date -u -d "$(date -u +"%Y-%m-01") +1 month -1 day" +"%Y-%m-%d" 2>/dev/null || \
+                       date -u -v1d -v+1m -v-1d +"%Y-%m-%d" 2>/dev/null || \
+                       date -u +"%Y-%m-%d")
+
+            START_DATE="${{ inputs.start_date }}"
+            if [ -z "$START_DATE" ]; then
+              START_DATE="$FIRST_DAY"
+            fi
+
+            END_DATE="${{ inputs.end_date }}"
+            if [ -z "$END_DATE" ]; then
+              END_DATE="$LAST_DAY"
+            fi
+
+            TARGET_BRANCH="${{ inputs.target_branch }}"
+            if [ -z "$TARGET_BRANCH" ]; then
+              TARGET_BRANCH="develop"
+            fi
+
+            APPEND="${{ inputs.append }}"
+            if [ -z "$APPEND" ]; then
+              APPEND="true"
+            fi
+
+            GOOGLE_SHEET_ID="${{ inputs.google_sheet_id }}"
+            if [ -z "$GOOGLE_SHEET_ID" ] && [ -n "${{ secrets.GOOGLE_SHEET_ID }}" ]; then
+              GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
+            fi
+          fi
+
+          if [ -z "$GOOGLE_SHEET_ID" ]; then
+            echo "::error::google_sheet_id is required (input or GOOGLE_SHEET_ID secret)."
+            exit 1
+          fi
+
+          START_ROUNDTRIP=$(TZ=Europe/Paris date -d "${START_DATE}" +%Y-%m-%d)
+          END_ROUNDTRIP=$(TZ=Europe/Paris date -d "${END_DATE}" +%Y-%m-%d)
+          if [ "$START_ROUNDTRIP" != "$START_DATE" ]; then
+            echo "::error::Invalid start_date calendar day. Expected a real YYYY-MM-DD."
+            exit 1
+          fi
+          if [ "$END_ROUNDTRIP" != "$END_DATE" ]; then
+            echo "::error::Invalid end_date calendar day. Expected a real YYYY-MM-DD."
+            exit 1
+          fi
+
+          START_EPOCH=$(TZ=Europe/Paris date -d "${START_DATE} 00:00:00" +%s)
+          START_INSTANT=$(date -u -d "@${START_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ")
+          END_NEXT=$(TZ=Europe/Paris date -d "${END_DATE} +1 day" +%Y-%m-%d)
+          END_EPOCH=$(TZ=Europe/Paris date -d "${END_NEXT} 00:00:00" +%s)
+          END_INSTANT=$(date -u -d "@${END_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ")
+
+          {
+            echo "start_date=$START_DATE"
+            echo "end_date=$END_DATE"
+            echo "start_instant=$START_INSTANT"
+            echo "end_instant=$END_INSTANT"
+            echo "target_branch=$TARGET_BRANCH"
+            echo "google_sheet_id=$GOOGLE_SHEET_ID"
+            echo "append=$APPEND"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 'Checkout Repository'
         uses: actions/checkout@v6
 
@@ -61,54 +145,12 @@ jobs:
           permission-contents: 'read'
           permission-pull-requests: 'read'
 
-      - name: 'Set Default Values'
-        id: set_defaults
-        run: |
-          FIRST_DAY=$(date -u +"%Y-%m-01")
-          LAST_DAY=$(date -u -d "$(date -u +"%Y-%m-01") +1 month -1 day" +"%Y-%m-%d" 2>/dev/null || \
-                     date -u -v1d -v+1m -v-1d +"%Y-%m-%d" 2>/dev/null || \
-                     date -u +"%Y-%m-%d")
-
-          START_DATE="${{ inputs.start_date }}"
-          if [ -z "$START_DATE" ]; then
-            START_DATE="$FIRST_DAY"
-          fi
-
-          END_DATE="${{ inputs.end_date }}"
-          if [ -z "$END_DATE" ]; then
-            END_DATE="$LAST_DAY"
-          fi
-
-          TARGET_BRANCH="${{ inputs.target_branch }}"
-          if [ -z "$TARGET_BRANCH" ]; then
-            TARGET_BRANCH="develop"
-          fi
-
-          GOOGLE_SHEET_ID="${{ inputs.google_sheet_id }}"
-          if [ -z "$GOOGLE_SHEET_ID" ] && [ -n "${{ secrets.GOOGLE_SHEET_ID }}" ]; then
-            GOOGLE_SHEET_ID="${{ secrets.GOOGLE_SHEET_ID }}"
-          fi
-
-          if [ -z "$GOOGLE_SHEET_ID" ]; then
-            echo "::error::google_sheet_id is required (input or GOOGLE_SHEET_ID secret)."
-            exit 1
-          fi
-
-          APPEND="${{ inputs.append }}"
-          if [ -z "$APPEND" ]; then
-            APPEND="false"
-          fi
-
-          echo "start_date=$START_DATE" >> "$GITHUB_OUTPUT"
-          echo "end_date=$END_DATE" >> "$GITHUB_OUTPUT"
-          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "google_sheet_id=$GOOGLE_SHEET_ID" >> "$GITHUB_OUTPUT"
-          echo "append=$APPEND" >> "$GITHUB_OUTPUT"
-
       - name: 'Validate Inputs'
         env:
           START_DATE: ${{ steps.set_defaults.outputs.start_date }}
           END_DATE: ${{ steps.set_defaults.outputs.end_date }}
+          START_INSTANT: ${{ steps.set_defaults.outputs.start_instant }}
+          END_INSTANT: ${{ steps.set_defaults.outputs.end_instant }}
         run: |
           if ! [[ "$START_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
             echo "::error::Invalid start_date. Expected YYYY-MM-DD"
@@ -128,99 +170,143 @@ jobs:
             echo "::error::start_date must be before or equal to end_date"
             exit 1
           fi
+          if ! [[ "$START_INSTANT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+            echo "::error::Invalid start_instant. Expected UTC ISO-8601 from Paris day start"
+            exit 1
+          fi
+          if ! [[ "$END_INSTANT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+            echo "::error::Invalid end_instant. Expected UTC ISO-8601 from Paris day end exclusive"
+            exit 1
+          fi
 
       - name: 'Fetch PR History'
         id: fetch_prs
         uses: actions/github-script@v9
         env:
-          GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
-          START_DATE: ${{ steps.set_defaults.outputs.start_date }}
-          END_DATE: ${{ steps.set_defaults.outputs.end_date }}
+          START_INSTANT: ${{ steps.set_defaults.outputs.start_instant }}
+          END_INSTANT: ${{ steps.set_defaults.outputs.end_instant }}
           TARGET_BRANCH: ${{ steps.set_defaults.outputs.target_branch }}
         with:
+          github-token: ${{ steps.mint_identity_token.outputs.token || github.token }}
           script: |
             const { owner, repo } = context.repo;
-            const startDate = new Date(process.env.START_DATE + 'T00:00:00Z');
-            const endDate = new Date(process.env.END_DATE + 'T23:59:59Z');
+            const startDate = new Date(process.env.START_INSTANT);
+            const endDate = new Date(process.env.END_INSTANT);
             const targetBranch = process.env.TARGET_BRANCH;
-            const prs = [];
-            let page = 1;
-            let hasMore = true;
-            let retries = 0;
             const maxRetries = 5;
 
-            while (hasMore) {
-              try {
-                const { data } = await github.rest.pulls.list({
-                  owner,
-                  repo,
-                  state: 'all',
-                  base: targetBranch,
-                  sort: 'created',
-                  direction: 'desc',
-                  per_page: 100,
-                  page
-                });
-                retries = 0;
-                if (data.length === 0) {
-                  hasMore = false;
-                  break;
-                }
-                for (const pr of data) {
-                  const createdAt = new Date(pr.created_at);
-                  if (createdAt < startDate) {
-                    hasMore = false;
+            function toPrRecord(pr) {
+              const createdAt = new Date(pr.created_at);
+              const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
+              const timeToMerge = mergedAt ? Math.max(0, Math.round((mergedAt - createdAt) / (1000 * 60 * 60))) : null;
+              const timeToMergeDays = mergedAt ? Math.max(0, parseFloat((timeToMerge / 24).toFixed(2))) : null;
+              return {
+                number: pr.number,
+                title: pr.title,
+                creator: pr.user.login,
+                created_at: pr.created_at,
+                merged_at: pr.merged_at || '',
+                state: pr.state,
+                base_branch: pr.base.ref,
+                head_branch: pr.head.ref,
+                time_to_merge_hours: timeToMerge,
+                time_to_merge_days: timeToMergeDays,
+                labels: (pr.labels || []).map((label) => label.name)
+              };
+            }
+
+            function inHalfOpenWindow(iso, start, end) {
+              const instant = new Date(iso);
+              return instant >= start && instant < end;
+            }
+
+            async function listPulls(params, options = {}) {
+              const stopWhenItem = options.stopWhenItem;
+              const stopWhenPage = options.stopWhenPage;
+              const collected = [];
+              let page = 1;
+              let retries = 0;
+              let hasMore = true;
+              while (hasMore) {
+                try {
+                  const { data } = await github.rest.pulls.list({
+                    owner,
+                    repo,
+                    base: targetBranch,
+                    per_page: 100,
+                    page,
+                    ...params
+                  });
+                  retries = 0;
+                  if (data.length === 0) {
                     break;
                   }
-                  if (createdAt >= startDate && createdAt <= endDate) {
-                    const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
-                    const timeToMerge = mergedAt ? Math.max(0, Math.round((mergedAt - createdAt) / (1000 * 60 * 60))) : null;
-                    const timeToMergeDays = mergedAt ? Math.max(0, parseFloat((timeToMerge / 24).toFixed(2))) : null;
-                    prs.push({
-                      number: pr.number,
-                      title: pr.title,
-                      creator: pr.user.login,
-                      created_at: pr.created_at,
-                      merged_at: pr.merged_at || '',
-                      state: pr.state,
-                      base_branch: pr.base.ref,
-                      head_branch: pr.head.ref,
-                      time_to_merge_hours: timeToMerge,
-                      time_to_merge_days: timeToMergeDays,
-                      labels: (pr.labels || []).map((label) => label.name)
-                    });
+                  if (stopWhenPage && stopWhenPage(data)) {
+                    break;
                   }
-                }
-                if (data.length < 100) {
-                  hasMore = false;
-                } else {
+                  let stopPaging = false;
+                  for (const pr of data) {
+                    if (stopWhenItem && stopWhenItem(pr)) {
+                      stopPaging = true;
+                      break;
+                    }
+                    collected.push(pr);
+                  }
+                  if (stopPaging) {
+                    break;
+                  }
+                  hasMore = data.length === 100;
                   page++;
-                }
-              } catch (error) {
-                if (error.status === 403 && String(error.message).includes('rate limit')) {
-                  if (retries >= maxRetries) {
-                    throw new Error(`Rate limit exceeded after ${maxRetries} retries`);
+                } catch (error) {
+                  if (error.status === 403 && String(error.message).includes('rate limit')) {
+                    if (retries >= maxRetries) {
+                      throw new Error(`Rate limit exceeded after ${maxRetries} retries`);
+                    }
+                    retries++;
+                    await new Promise((resolve) => setTimeout(resolve, 60000));
+                    continue;
                   }
-                  retries++;
-                  await new Promise((resolve) => setTimeout(resolve, 60000));
-                  continue;
+                  throw error;
                 }
-                throw error;
               }
+              return collected;
             }
-            console.log(`Found ${prs.length} PRs in date range`);
+
+            const created = await listPulls(
+              { state: 'all', sort: 'created', direction: 'desc' },
+              { stopWhenItem: (pr) => new Date(pr.created_at) < startDate }
+            );
+            const createdInWindow = created.filter((pr) => inHalfOpenWindow(pr.created_at, startDate, endDate));
+            const open = await listPulls({ state: 'open', sort: 'created', direction: 'desc' });
+            const closedUpdated = await listPulls(
+              { state: 'closed', sort: 'updated', direction: 'desc' },
+              {
+                stopWhenPage: (pagePRs) => pagePRs.length > 0
+                  && pagePRs.every((pr) => new Date(pr.updated_at) < startDate)
+              }
+            );
+            const closedInWindow = closedUpdated.filter((pr) => inHalfOpenWindow(pr.updated_at, startDate, endDate));
+
+            const byNumber = new Map();
+            for (const pr of [...createdInWindow, ...open, ...closedInWindow]) {
+              byNumber.set(pr.number, toPrRecord(pr));
+            }
+            const prs = [...byNumber.values()];
+            console.log(
+              `Found ${prs.length} PRs (created=${createdInWindow.length}, open=${open.length}, closed-updated=${closedInWindow.length})`,
+            );
             require('fs').writeFileSync('pr_data.json', JSON.stringify(prs));
 
       - name: 'Fetch Review Data'
         uses: actions/github-script@v9
-        env:
-          GH_TOKEN: ${{ steps.mint_identity_token.outputs.token || github.token }}
         with:
+          github-token: ${{ steps.mint_identity_token.outputs.token || github.token }}
           script: |
             const fs = require('fs');
             const { owner, repo } = context.repo;
             const prs = JSON.parse(fs.readFileSync('pr_data.json', 'utf8'));
             const reviews = [];
+            const fetchedPrNumbers = [];
 
             for (const pr of prs) {
               let retries = 0;
@@ -228,11 +314,25 @@ jobs:
               let prProcessed = false;
               while (!prProcessed) {
                 try {
-                  const { data: prReviews } = await github.rest.pulls.listReviews({
-                    owner,
-                    repo,
-                    pull_number: pr.number
-                  });
+                  const prReviews = [];
+                  let reviewsPage = 1;
+                  let hasMoreReviews = true;
+                  while (hasMoreReviews) {
+                    const { data: pageReviews } = await github.rest.pulls.listReviews({
+                      owner,
+                      repo,
+                      pull_number: pr.number,
+                      per_page: 100,
+                      page: reviewsPage
+                    });
+                    if (pageReviews.length === 0) {
+                      hasMoreReviews = false;
+                    } else {
+                      prReviews.push(...pageReviews);
+                      hasMoreReviews = pageReviews.length === 100;
+                      reviewsPage++;
+                    }
+                  }
                   const allEvents = [];
                   let eventsPage = 1;
                   let hasMoreEvents = true;
@@ -261,12 +361,17 @@ jobs:
                       }
                     }
                   }
+                  const prReviewRows = [];
                   for (const review of prReviews) {
                     const reviewState = (review.state || '').toUpperCase();
                     if (reviewState === 'PENDING' || reviewState === 'DISMISSED') {
                       continue;
                     }
-                    const requestedAt = reviewerRequests.get(review.user.login);
+                    const reviewerLogin = review.user && review.user.login;
+                    if (!reviewerLogin) {
+                      continue;
+                    }
+                    const requestedAt = reviewerRequests.get(reviewerLogin);
                     const submittedAt = new Date(review.submitted_at);
                     let timeToReviewHours = 0;
                     let timeToReviewDays = 0;
@@ -277,9 +382,9 @@ jobs:
                       timeToReviewDays = Math.max(0, parseFloat((timeToReviewHours / 24).toFixed(2)));
                       finalRequestedAt = requestedAt;
                     }
-                    reviews.push({
+                    prReviewRows.push({
                       pr_number: pr.number,
-                      reviewer: review.user.login,
+                      reviewer: reviewerLogin,
                       requested_at: finalRequestedAt,
                       submitted_at: review.submitted_at,
                       review_state: review.state,
@@ -287,7 +392,9 @@ jobs:
                       time_to_review_days: timeToReviewDays
                     });
                   }
+                  reviews.push(...prReviewRows);
                   prProcessed = true;
+                  fetchedPrNumbers.push(pr.number);
                 } catch (error) {
                   if (error.status === 403 && String(error.message).includes('rate limit')) {
                     if (retries >= maxRetries) {
@@ -303,8 +410,9 @@ jobs:
                 }
               }
             }
-            console.log(`Found ${reviews.length} review records`);
+            console.log(`Found ${reviews.length} review records from ${fetchedPrNumbers.length} successfully fetched PRs`);
             fs.writeFileSync('review_data.json', JSON.stringify(reviews));
+            fs.writeFileSync('review_fetched_pr_numbers.json', JSON.stringify(fetchedPrNumbers));
 
       - name: 'Setup Node.js'
         uses: actions/setup-node@v6

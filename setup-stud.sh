@@ -170,7 +170,7 @@ check_existing() {
     return 0
 }
 
-# Check PHP >= 8.2 and required extensions (xml, curl, mbstring)
+# Check PHP >= 8.4.1 and required extensions (xml, curl, mbstring)
 check_php() {
     local php_cmd
     php_cmd=$(command -v php 2>/dev/null || true)
@@ -179,16 +179,19 @@ check_php() {
         return 1
     fi
     local version
-    version=$("$php_cmd" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)
+    version=$("$php_cmd" -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION.".".PHP_RELEASE_VERSION;' 2>/dev/null || true)
     if [ -z "$version" ]; then
         show_php_install
         return 1
     fi
-    local major minor
+    local major minor patch
     major=$(echo "$version" | cut -d. -f1)
     minor=$(echo "$version" | cut -d. -f2)
-    if [ "$major" -lt 8 ] || { [ "$major" -eq 8 ] && [ "$minor" -lt 2 ]; }; then
-        echo "PHP $version found. PHP 8.2 or higher is required."
+    patch=$(echo "$version" | cut -d. -f3)
+    if [ "$major" -lt 8 ] \
+        || { [ "$major" -eq 8 ] && [ "$minor" -lt 4 ]; } \
+        || { [ "$major" -eq 8 ] && [ "$minor" -eq 4 ] && [ "$patch" -lt 1 ]; }; then
+        echo "PHP $version found. PHP 8.4.1 or higher is required."
         show_php_install
         return 1
     fi
@@ -206,8 +209,8 @@ show_php_install() {
     echo ""
     if [ -f /etc/debian_version ] || command -v apt-get >/dev/null 2>&1; then
         echo "Ubuntu/Debian:"
-        echo "  sudo apt update && sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring"
-        echo "  (On Ubuntu 22.04 you may need: sudo add-apt-repository ppa:ondrej/php first)"
+        echo "  sudo apt update && sudo apt install php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring"
+        echo "  (On Ubuntu 22.04/24.04 you may need: sudo add-apt-repository ppa:ondrej/php first)"
     elif [ "$(uname -s)" = "Darwin" ]; then
         echo "macOS (Homebrew):"
         echo "  brew install php"
@@ -215,7 +218,7 @@ show_php_install() {
         echo "Fedora/RHEL:"
         echo "  sudo dnf install php-cli php-xml php-curl php-mbstring"
     else
-        echo "Please install PHP 8.2+ with extensions: xml, curl, mbstring."
+        echo "Please install PHP 8.4.1+ with extensions: xml, curl, mbstring."
     fi
     echo ""
     printf "Would you like to run these commands now? [y/N] "
@@ -223,21 +226,21 @@ show_php_install() {
     case "$answer" in
         [yY]|[yY][eE][sS])
             if [ -f /etc/debian_version ] || command -v apt-get >/dev/null 2>&1; then
-                sudo apt update && sudo apt install -y php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring 2>/dev/null || {
+                sudo apt update && sudo apt install -y php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring 2>/dev/null || {
                     sudo add-apt-repository -y ppa:ondrej/php
-                    sudo apt update && sudo apt install -y php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring
+                    sudo apt update && sudo apt install -y php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring
                 }
             elif [ "$(uname -s)" = "Darwin" ]; then
                 brew install php
             elif command -v dnf >/dev/null 2>&1; then
                 sudo dnf install -y php-cli php-xml php-curl php-mbstring
             else
-                echo "Please install PHP 8.2+ manually and re-run this script."
+                echo "Please install PHP 8.4.1+ manually and re-run this script."
                 exit 1
             fi
             ;;
         *)
-            echo "Please install PHP 8.2+ manually and re-run this script."
+            echo "Please install PHP 8.4.1+ manually and re-run this script."
             exit 1
             ;;
     esac
@@ -429,7 +432,7 @@ case "$INSTALL_MODE" in
         check_existing "$LATEST_VERSION"
         if ! check_php; then
             if ! check_php; then
-                die "PHP 8.2+ with extensions (xml, curl, mbstring) is still not available."
+                die "PHP 8.4.1+ with extensions (xml, curl, mbstring) is still not available."
             fi
         fi
         install_phar "$LATEST_VERSION"

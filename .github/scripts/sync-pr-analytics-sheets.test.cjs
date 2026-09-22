@@ -9,10 +9,39 @@ const {
   formatSpreadsheetPrId,
   formatSheetRange,
   isMissingSheetError,
+  isRangeBeyondGridError,
   readWorkflowInputData,
   mergePRData,
-  appendData,
+  childBatchIds,
+  mergeChildDataByPrId,
+  leftoverClearRange,
+  replaceSheetValues,
 } = require('./sync-pr-analytics-sheets.cjs');
+
+function fakeSheets(handlers = {}) {
+  const calls = [];
+  return {
+    calls,
+    spreadsheets: {
+      values: {
+        async update(params) {
+          calls.push({ method: 'update', range: params.range, rows: params.resource.values.length });
+          if (handlers.update) {
+            return handlers.update(params);
+          }
+          return {};
+        },
+        async clear(params) {
+          calls.push({ method: 'clear', range: params.range });
+          if (handlers.clear) {
+            return handlers.clear(params);
+          }
+          return {};
+        },
+      },
+    },
+  };
+}
 
 const prHeaders = ['PR Number', 'Title'];
 
@@ -59,6 +88,54 @@ test('isMissingSheetError detects missing sheet responses', () => {
   assert.equal(isMissingSheetError({ message: 'Invalid response body while trying to fetch token: Premature close' }), false);
 });
 
+test('isRangeBeyondGridError detects clear ranges outside the grid', () => {
+  assert.equal(
+    isRangeBeyondGridError({ status: 400, message: "Range ('PRs Labels'!A4530:Z) exceeds grid limits. Max rows: 4529, max columns: 26" }),
+    true,
+  );
+  assert.equal(isRangeBeyondGridError({ status: 400, message: 'Unable to parse range: PRs!A1' }), false);
+  assert.equal(isRangeBeyondGridError(undefined), false);
+});
+
+test('replaceSheetValues writes the block before trimming leftover rows', async () => {
+  const sheets = fakeSheets();
+
+  await replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders, ['studapart_studa3_1', 'one']]);
+
+  assert.deepEqual(sheets.calls, [
+    { method: 'update', range: "'PRs'!A1", rows: 2 },
+    { method: 'clear', range: "'PRs'!A3:Z" },
+  ]);
+});
+
+test('replaceSheetValues tolerates a leftover range outside the grid', async () => {
+  const sheets = fakeSheets({
+    clear: () => {
+      throw Object.assign(
+        new Error("Range ('PRs'!A3:Z) exceeds grid limits. Max rows: 2, max columns: 26"),
+        { status: 400 },
+      );
+    },
+  });
+
+  await replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders, ['studapart_studa3_1', 'one']]);
+
+  assert.equal(sheets.calls.filter((call) => call.method === 'clear').length, 1);
+});
+
+test('replaceSheetValues surfaces other clear failures', async () => {
+  const sheets = fakeSheets({
+    clear: () => {
+      throw Object.assign(new Error('The caller does not have permission'), { status: 403 });
+    },
+  });
+
+  await assert.rejects(
+    () => replaceSheetValues(sheets, 'sheet-id', 'PRs', [prHeaders]),
+    /does not have permission/,
+  );
+});
+
 test('readWorkflowInputData wraps missing input files with context', () => {
   assert.throws(
     () => readWorkflowInputData({
@@ -66,7 +143,7 @@ test('readWorkflowInputData wraps missing input files with context', () => {
         throw new Error(`ENOENT: no such file or directory, open '${path}'`);
       },
     }),
-    /Failed to read or parse input data files \(pr_data\.json, review_data\.json\): ENOENT/,
+    /Failed to read or parse input data files \(pr_data\.json, review_data\.json, review_fetched_pr_numbers\.json\): ENOENT/,
   );
 });
 
@@ -79,22 +156,26 @@ test('readWorkflowInputData parses workflow input json files', () => {
       if (path === 'review_data.json') {
         return '[{"pr_number":1}]';
       }
+      if (path === 'review_fetched_pr_numbers.json') {
+        return '[1]';
+      }
       throw new Error(`unexpected path: ${path}`);
     },
   });
 
   assert.deepEqual(parsed.prData, [{ number: 1 }]);
   assert.deepEqual(parsed.reviewData, [{ pr_number: 1 }]);
+  assert.deepEqual(parsed.reviewFetchedPrNumbers, [1]);
 });
 
-test('mergePRData deduplicates prefixed PR numbers in append mode', () => {
+test('mergePRData upserts matching PR ids and appends new rows', () => {
   const existingRows = [prHeaders, ['studapart_studa3_1', 'Old'], ['studapart_studa3_2', 'Keep']];
   const newRows = [['studapart_studa3_1', 'New'], ['other_studa3_1', 'Other repo'], ['studapart_studa3_3', 'Added']];
   const merged = mergePRData(existingRows, newRows, prHeaders, true);
 
   assert.deepEqual(merged, [
     prHeaders,
-    ['studapart_studa3_1', 'Old'],
+    ['studapart_studa3_1', 'New'],
     ['studapart_studa3_2', 'Keep'],
     ['other_studa3_1', 'Other repo'],
     ['studapart_studa3_3', 'Added'],
@@ -109,18 +190,63 @@ test('mergePRData replaces data in override mode', () => {
   assert.deepEqual(merged, [prHeaders, [2, 'Fresh']]);
 });
 
-test('appendData concatenates rows in append mode', () => {
-  const existingRows = [prHeaders, [1, 'A']];
-  const newRows = [[2, 'B']];
-  const merged = appendData(existingRows, newRows, prHeaders, true);
+test('mergeChildDataByPrId replaces rows for PRs in the current batch', () => {
+  const existingRows = [
+    prHeaders,
+    ['studapart_studa3_1', 'stale'],
+    ['studapart_studa3_1', 'stale-dup'],
+    ['studapart_studa3_2', 'keep'],
+  ];
+  const newRows = [['studapart_studa3_1', 'fresh'], ['studapart_studa3_3', 'added']];
+  const merged = mergeChildDataByPrId(existingRows, newRows, prHeaders, true);
 
-  assert.deepEqual(merged, [prHeaders, [1, 'A'], [2, 'B']]);
+  assert.deepEqual(merged, [
+    prHeaders,
+    ['studapart_studa3_2', 'keep'],
+    ['studapart_studa3_1', 'fresh'],
+    ['studapart_studa3_3', 'added'],
+  ]);
 });
 
-test('appendData replaces data in override mode', () => {
+test('mergeChildDataByPrId is idempotent for the same batch', () => {
+  const existingRows = [prHeaders, ['studapart_studa3_1', 'a'], ['studapart_studa3_2', 'b']];
+  const newRows = [['studapart_studa3_1', 'a']];
+  const first = mergeChildDataByPrId(existingRows, newRows, prHeaders, true);
+  const second = mergeChildDataByPrId(first, newRows, prHeaders, true);
+
+  assert.deepEqual(first, second);
+  assert.equal(first.filter((row) => row[0] === 'studapart_studa3_1').length, 1);
+});
+
+test('mergeChildDataByPrId replaces data in override mode', () => {
   const existingRows = [prHeaders, [1, 'A']];
   const newRows = [[2, 'B']];
-  const merged = appendData(existingRows, newRows, prHeaders, false);
+  const merged = mergeChildDataByPrId(existingRows, newRows, prHeaders, false);
 
   assert.deepEqual(merged, [prHeaders, [2, 'B']]);
+});
+
+test('childBatchIds prefers explicit synced PR ids over new row ids', () => {
+  assert.deepEqual(
+    [...childBatchIds([['from-row']], ['studapart_studa3_1', 'studapart_studa3_2'])],
+    ['studapart_studa3_1', 'studapart_studa3_2'],
+  );
+  assert.deepEqual([...childBatchIds([['from-row']], [])], ['from-row']);
+});
+
+test('leftoverClearRange starts after the last written row', () => {
+  assert.equal(leftoverClearRange('PRs', 10), "'PRs'!A11:Z");
+  assert.equal(leftoverClearRange('PRs Labels', 1), "'PRs Labels'!A2:Z");
+  assert.equal(leftoverClearRange('Reviews', 0), "'Reviews'!A2:Z");
+});
+
+test('mergeChildDataByPrId drops existing rows for synced PRs with no new child rows', () => {
+  const existingRows = [
+    prHeaders,
+    ['studapart_studa3_1', 'stale-review'],
+    ['studapart_studa3_2', 'keep'],
+  ];
+  const merged = mergeChildDataByPrId(existingRows, [], prHeaders, true, ['studapart_studa3_1']);
+
+  assert.deepEqual(merged, [prHeaders, ['studapart_studa3_2', 'keep']]);
 });

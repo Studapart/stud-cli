@@ -26,7 +26,7 @@ scripts/download-portable-runtime \
   --output .cursor/tmp/static-php-darwin-arm64
 ```
 
-The script supports `linux-amd64` with the StaticPHP `gnu-bulk` PHP 8.2 CLI archive and `darwin-arm64` with the StaticPHP `common` PHP 8.2 CLI archive. It prints the extracted `php` path on success.
+The script supports `linux-amd64` with the StaticPHP `gnu-bulk` PHP 8.4 CLI archive and `darwin-arm64` with the StaticPHP `common` PHP 8.4 CLI archive. It prints the extracted `php` path on success.
 
 ## Usage
 

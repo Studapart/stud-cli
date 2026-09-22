@@ -4,7 +4,7 @@ This page is for contributors running `stud-cli` from source or changing release
 
 ## Requirements
 
-- PHP 8.2+
+- PHP 8.4.1+
 - Composer
 - Required PHP extensions: `xml`, `curl`, `mbstring`
 
@@ -50,9 +50,14 @@ Use the [documentation playbook update prompt](docs-playbook-update-prompt.md) w
 scripts/build-phar --version 1.0.0 --output stud-1.0.0.phar
 ```
 
+The script reads the locked `jolicode/castor` version from `composer.lock`, downloads the matching Castor host PHAR from the GitHub **release asset** URL (`…/releases/download/vX.Y.Z/castor.linux-amd64.phar`, not the REST API), and passes it to `castor repack --castor-phar`. That avoids unauthenticated GitHub API rate limits during local builds. Override with `CASTOR_PHAR=/path/to/castor.phar` when you already have the host PHAR. Use `--dry-run` to print the resolved tag, URL, and repack args without building.
 ## Portable Packaging
 
 Portable packaging consumes the canonical PHAR and a platform runtime. See [stud-portable packaging](../stud-portable-prototype.md).
+
+## Foundation upgrade (4.x)
+
+stud-cli **4.x** runs on PHP ≥ 8.4.1, Symfony 8.1.x, and Castor 1.8.1. Spike inventory and migration notes: [foundation upgrade 4.x](foundation-upgrade-4x.md). Consumer migration: [3.x → 4.x](../setup/migrating-3x-to-4x.md).
 
 ## AI and agent workflows
 
