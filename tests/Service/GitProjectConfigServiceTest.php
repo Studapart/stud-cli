@@ -111,7 +111,7 @@ class GitProjectConfigServiceTest extends TestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->atLeastOnce())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->atLeastOnce())->method('run');

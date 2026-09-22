@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\DTO;
 
-class Project
+final class Project
 {
     public function __construct(
-        public string $key,
-        public string $name,
-        public ?string $provider = null,
+        public readonly string $key,
+        public readonly string $name,
+        public readonly ?string $provider = null,
     ) {
     }
 }

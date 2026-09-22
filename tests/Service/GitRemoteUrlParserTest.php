@@ -48,7 +48,7 @@ class GitRemoteUrlParserTest extends TestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -66,7 +66,7 @@ class GitRemoteUrlParserTest extends TestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');

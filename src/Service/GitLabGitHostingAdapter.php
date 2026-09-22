@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
@@ -41,12 +42,12 @@ class GitLabGitHostingAdapter implements GitHostingPort
     protected function getClient(): HttpClientInterface
     {
         if ($this->client === null) {
-            $this->client = HttpClient::createForBaseUri("{$this->baseUrl}/api/v4", [
+            $this->client = HttpClient::createForBaseUri("{$this->baseUrl}/api/v4", HttpClientDefaults::withLimits([
                 'headers' => [
                     'PRIVATE-TOKEN' => $this->token,
                     'Content-Type' => 'application/json',
                 ],
-            ]);
+            ]));
         }
 
         return $this->client;

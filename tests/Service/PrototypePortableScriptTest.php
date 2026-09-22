@@ -214,6 +214,9 @@ SH);
         self::assertSame('app/stud.phar', $manifest['phar'] ?? null);
         self::assertSame('runtime/php', $manifest['runtime'] ?? null);
 
+        $launcher = (string) file_get_contents($artifactRoot . '/stud');
+        self::assertStringContainsString('CASTOR_DISABLE_AGENT_DETECTION=1', $launcher);
+
         $portableProcess = new Process([$artifactRoot . '/stud', '--version']);
         $portableProcess->mustRun();
         $this->assertPortableOutputUsesBundle($portableProcess->getOutput(), $artifactRoot);

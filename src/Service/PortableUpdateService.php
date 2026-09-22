@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Service\Prompt\PromptInterface;
@@ -162,7 +163,7 @@ class PortableUpdateService
             $headers['Authorization'] = 'Bearer ' . $this->repository->token;
         }
 
-        return HttpClient::create(['headers' => $headers]);
+        return HttpClient::create(HttpClientDefaults::withTransferLimits(['headers' => $headers]));
     }
 
     protected function verifyChecksum(string $checksumsPath, string $archivePath, string $artifactName): bool
