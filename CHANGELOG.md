@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-09-22
+
 ### Changed
 
 - **Safer 4.x follow-on (SCI-208):** git/workflow child processes use argument-array Process construction instead of shell strings. Agent stdin JSON is validated with `json_validate` before decode (invalid JSON still fails clearly). Chatty HttpClient API factories apply 30s idle timeout / 60s max duration; PHAR/portable downloads and attachment transfers use idle timeout only (no total-time cap) so large files are not aborted while bytes still arrive. Packaged PHAR bootstrap and the portable launcher always set `CASTOR_DISABLE_AGENT_DETECTION=1`; `--agent` remains the only stud JSON agent switch. See [packaging and Castor agent detection](documentation/development/packaging-and-castor-agent-detection.md).
