@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -133,9 +134,9 @@ class VersionCheckService
             $headers['Authorization'] = 'Bearer ' . $this->gitToken;
         }
 
-        $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', [
+        $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
             'headers' => $headers,
-        ]);
+        ]));
 
         return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
     }

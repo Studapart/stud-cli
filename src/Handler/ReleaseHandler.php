@@ -105,10 +105,10 @@ class ReleaseHandler implements GitRepositoryAware, ProjectBaseBranchAware
         $this->updateComposerVersion($targetVersion);
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_composer', ['version' => $targetVersion]));
 
-        $this->gitRepository->run('composer update --lock');
+        $this->gitRepository->run(['composer', 'update', '--lock']);
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.updated_lock'));
 
-        $this->gitRepository->run('composer dump-config');
+        $this->gitRepository->run(['composer', 'dump-config']);
         $this->recorder->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('release.dumped_config'));
 
         $this->updateChangelog($targetVersion);

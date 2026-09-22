@@ -26,7 +26,7 @@ class GitRepository
      */
     public function getIssueKeyFromBranchName(): ?string
     {
-        $process = $this->processFactory->create('git rev-parse --abbrev-ref HEAD');
+        $process = $this->processFactory->create(['git', 'rev-parse', '--abbrev-ref', 'HEAD']);
         $process->run();
 
         if (! $process->isSuccessful()) {
@@ -41,7 +41,7 @@ class GitRepository
 
     public function getUpstreamBranch(): ?string
     {
-        $process = $this->runQuietly('git rev-parse --abbrev-ref @{u} 2>/dev/null');
+        $process = $this->runQuietly(['git', 'rev-parse', '--abbrev-ref', '@{u}']);
 
         if (! $process->isSuccessful()) {
             return null;
@@ -62,12 +62,12 @@ class GitRepository
             return false;
         }
 
-        $headProcess = $this->runQuietly('git rev-parse HEAD');
+        $headProcess = $this->runQuietly(['git', 'rev-parse', 'HEAD']);
         if (! $headProcess->isSuccessful()) {
             return false;
         }
 
-        $upstreamProcess = $this->runQuietly('git rev-parse @{u} 2>/dev/null');
+        $upstreamProcess = $this->runQuietly(['git', 'rev-parse', '@{u}']);
         if (! $upstreamProcess->isSuccessful()) {
             return false;
         }
@@ -83,7 +83,7 @@ class GitRepository
      */
     public function hasAtLeastOneCommit(): bool
     {
-        $process = $this->runQuietly('git rev-parse HEAD');
+        $process = $this->runQuietly(['git', 'rev-parse', 'HEAD']);
 
         return $process->isSuccessful();
     }
@@ -96,52 +96,52 @@ class GitRepository
      */
     public function undoLastCommit(): void
     {
-        $this->run('git reset HEAD~1');
+        $this->run(['git', 'reset', 'HEAD~1']);
     }
 
     public function forcePushWithLease(): Process
     {
-        return $this->run('git push --force-with-lease');
+        return $this->run(['git', 'push', '--force-with-lease']);
     }
 
     public function forcePushWithLeaseRemote(string $remote, string $branch): Process
     {
-        return $this->run("git push --force-with-lease {$remote} {$branch}");
+        return $this->run(['git', 'push', '--force-with-lease', $remote, $branch]);
     }
 
     public function checkout(string $branch): void
     {
-        $this->run("git checkout {$branch}");
+        $this->run(['git', 'checkout', $branch]);
     }
 
     public function pull(string $remote, string $branch): void
     {
-        $this->run("git pull {$remote} {$branch}");
+        $this->run(['git', 'pull', $remote, $branch]);
     }
 
     public function pullWithRebase(string $remote, string $branch): void
     {
-        $this->run("git pull --rebase {$remote} {$branch}");
+        $this->run(['git', 'pull', '--rebase', $remote, $branch]);
     }
 
     public function merge(string $branch): void
     {
-        $this->run("git merge --no-ff {$branch}");
+        $this->run(['git', 'merge', '--no-ff', $branch]);
     }
 
     public function tag(string $tagName, string $message): void
     {
-        $this->run("git tag -a {$tagName} -m '{$message}'");
+        $this->run(['git', 'tag', '-a', $tagName, '-m', $message]);
     }
 
     public function pushTags(string $remote): void
     {
-        $this->run("git push --tags {$remote} main");
+        $this->run(['git', 'push', '--tags', $remote, 'main']);
     }
 
     public function rebase(string $branch): void
     {
-        $this->run("git rebase {$branch}");
+        $this->run(['git', 'rebase', $branch]);
     }
 
     /**
@@ -151,7 +151,7 @@ class GitRepository
      */
     public function tryRebase(string $branch): bool
     {
-        return $this->runQuietly("git rebase {$branch}")->isSuccessful();
+        return $this->runQuietly(['git', 'rebase', $branch])->isSuccessful();
     }
 
     /**
@@ -159,7 +159,7 @@ class GitRepository
      */
     public function rebaseAbort(): void
     {
-        $this->run('git rebase --abort');
+        $this->run(['git', 'rebase', '--abort']);
     }
 
     /**
@@ -167,7 +167,7 @@ class GitRepository
      */
     public function isAncestor(string $possibleAncestor, string $descendant): bool
     {
-        return $this->runQuietly("git merge-base --is-ancestor {$possibleAncestor} {$descendant}")->isSuccessful();
+        return $this->runQuietly(['git', 'merge-base', '--is-ancestor', $possibleAncestor, $descendant])->isSuccessful();
     }
 
     public function hasFixupCommits(string $baseSha): bool
@@ -187,12 +187,12 @@ class GitRepository
             $this->pruneRemoteTrackingRefs();
         }
 
-        $this->run("git branch -d {$branch}");
+        $this->run(['git', 'branch', '-d', $branch]);
     }
 
     public function deleteBranchForce(string $branch): Process
     {
-        return $this->run("git branch -D {$branch}");
+        return $this->run(['git', 'branch', '-D', $branch]);
     }
 
     /**
@@ -203,12 +203,12 @@ class GitRepository
      */
     public function pruneRemoteTrackingRefs(string $remote = 'origin'): void
     {
-        $this->run("git fetch --prune {$remote}");
+        $this->run(['git', 'fetch', '--prune', $remote]);
     }
 
     public function deleteRemoteBranch(string $remote, string $branch): void
     {
-        $this->run("git push {$remote} --delete {$branch}");
+        $this->run(['git', 'push', $remote, '--delete', $branch]);
     }
 
     public function findLatestLogicalSha(string $baseBranch): ?string
@@ -218,27 +218,27 @@ class GitRepository
 
     public function stageAllChanges(): void
     {
-        $this->run('git add -A');
+        $this->run(['git', 'add', '-A']);
     }
 
     public function commitFixup(string $sha): void
     {
-        $this->run("git commit --fixup {$sha}");
+        $this->run(['git', 'commit', '--fixup', $sha]);
     }
 
     public function commit(string $message): void
     {
-        $this->run('git commit -m ' . escapeshellarg($message));
+        $this->run(['git', 'commit', '-m', $message]);
     }
 
     public function fetch(): void
     {
-        $this->run('git fetch origin');
+        $this->run(['git', 'fetch', 'origin']);
     }
 
     public function createBranch(string $branchName, string $baseBranch): void
     {
-        $this->run("git switch -c {$branchName} " . $baseBranch);
+        $this->run(['git', 'switch', '-c', $branchName, $baseBranch]);
     }
 
     /**
@@ -246,12 +246,12 @@ class GitRepository
      */
     public function add(array $files): void
     {
-        $this->run('git add ' . implode(' ', $files));
+        $this->run(['git', 'add', ...$files]);
     }
 
     public function getPorcelainStatus(): string
     {
-        return $this->run('git status --porcelain')->getOutput();
+        return $this->run(['git', 'status', '--porcelain'])->getOutput();
     }
 
     /**
@@ -260,19 +260,19 @@ class GitRepository
      */
     public function hasStagedChanges(): bool
     {
-        $process = $this->runQuietly('git diff --cached --quiet');
+        $process = $this->runQuietly(['git', 'diff', '--cached', '--quiet']);
 
         return ! $process->isSuccessful();
     }
 
     public function getCurrentBranchName(): string
     {
-        return trim($this->run('git rev-parse --abbrev-ref HEAD')->getOutput());
+        return trim($this->run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])->getOutput());
     }
 
     public function pushToOrigin(string $branchName): Process
     {
-        return $this->runQuietly("git push --set-upstream origin {$branchName}");
+        return $this->runQuietly(['git', 'push', '--set-upstream', 'origin', $branchName]);
     }
 
     /**
@@ -285,7 +285,7 @@ class GitRepository
 
     public function getMergeBase(string $baseBranch, string $head): string
     {
-        return trim($this->run("git merge-base {$baseBranch} {$head}")->getOutput());
+        return trim($this->run(['git', 'merge-base', $baseBranch, $head])->getOutput());
     }
 
     public function findFirstLogicalSha(string $ancestorSha): ?string
@@ -295,19 +295,19 @@ class GitRepository
 
     public function getCommitMessage(string $sha): string
     {
-        return trim($this->run("git log -1 --pretty=%B {$sha}")->getOutput());
+        return trim($this->run(['git', 'log', '-1', '--pretty=%B', $sha])->getOutput());
     }
 
     public function localBranchExists(string $branchName): bool
     {
-        $process = $this->runQuietly("git rev-parse --verify --quiet {$branchName}");
+        $process = $this->runQuietly(['git', 'rev-parse', '--verify', '--quiet', $branchName]);
 
         return $process->isSuccessful();
     }
 
     public function remoteBranchExists(string $remote, string $branchName): bool
     {
-        $process = $this->runQuietly("git ls-remote --heads {$remote} {$branchName}");
+        $process = $this->runQuietly(['git', 'ls-remote', '--heads', $remote, $branchName]);
 
         return ! empty(trim($process->getOutput()));
     }
@@ -334,15 +334,19 @@ class GitRepository
         return $this->remoteUrlParser->parseRemote($remote);
     }
 
-    public function run(string $command): Process
+    /**
+     * @param array<int, string> $command
+     */
+    public function run(array $command): Process
     {
         $process = $this->processFactory->create($command);
+        $commandLine = implode(' ', $command);
 
         try {
             $process->mustRun();
         } catch (ProcessTimedOutException $e) {
             throw new GitTimeoutException(
-                $command,
+                $commandLine,
                 ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS,
                 $e->getMessage(),
                 $e,
@@ -352,7 +356,7 @@ class GitRepository
             $technicalDetails = trim($errorOutput) ?: 'Command failed with no error output';
 
             throw new GitException(
-                "Git command failed: {$command}",
+                "Git command failed: {$commandLine}",
                 $technicalDetails,
                 $e
             );
@@ -361,7 +365,10 @@ class GitRepository
         return $process;
     }
 
-    public function runQuietly(string $command): Process
+    /**
+     * @param array<int, string> $command
+     */
+    public function runQuietly(array $command): Process
     {
         $process = $this->processFactory->create($command);
         $process->run();

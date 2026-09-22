@@ -47,7 +47,7 @@ class GitBranchServiceTest extends TestCase
             ->willReturn('old-branch');
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git branch -m new-branch');
+            ->with(['git', 'branch', '-m', 'new-branch']);
 
         $this->gitBranchService->renameLocalBranch('old-branch', 'new-branch');
     }
@@ -59,7 +59,7 @@ class GitBranchServiceTest extends TestCase
             ->willReturn('current-branch');
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git branch -m old-branch new-branch');
+            ->with(['git', 'branch', '-m', 'old-branch', 'new-branch']);
 
         $this->gitBranchService->renameLocalBranch('old-branch', 'new-branch');
     }
@@ -73,12 +73,12 @@ class GitBranchServiceTest extends TestCase
 
         $this->gitRepository->expects($this->exactly(4))
             ->method('run')
-            ->willReturnCallback(function (string $command) {
+            ->willReturnCallback(function (array $command) {
                 $expected = [
-                    'git push origin old-branch:new-branch',
-                    'git push origin -u old-branch:new-branch',
-                    'git push origin --delete old-branch',
-                    'git branch --set-upstream-to=origin/new-branch old-branch',
+                    ['git', 'push', 'origin', 'old-branch:new-branch'],
+                    ['git', 'push', 'origin', '-u', 'old-branch:new-branch'],
+                    ['git', 'push', 'origin', '--delete', 'old-branch'],
+                    ['git', 'branch', '--set-upstream-to=origin/new-branch', 'old-branch'],
                 ];
                 static $callIndex = 0;
                 $this->assertSame($expected[$callIndex], $command);
@@ -99,12 +99,12 @@ class GitBranchServiceTest extends TestCase
 
         $this->gitRepository->expects($this->exactly(4))
             ->method('run')
-            ->willReturnCallback(function (string $command) {
+            ->willReturnCallback(function (array $command) {
                 $expected = [
-                    'git push origin new-branch:new-branch',
-                    'git push origin -u new-branch:new-branch',
-                    'git push origin --delete old-branch',
-                    'git branch --set-upstream-to=origin/new-branch new-branch',
+                    ['git', 'push', 'origin', 'new-branch:new-branch'],
+                    ['git', 'push', 'origin', '-u', 'new-branch:new-branch'],
+                    ['git', 'push', 'origin', '--delete', 'old-branch'],
+                    ['git', 'branch', '--set-upstream-to=origin/new-branch', 'new-branch'],
                 ];
                 static $callIndex = 0;
                 $this->assertSame($expected[$callIndex], $command);
@@ -120,7 +120,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git rev-list --count base..branch')
+            ->with(['git', 'rev-list', '--count', 'base..branch'])
             ->willReturn($this->createSuccessProcess('5'));
 
         $result = $this->gitBranchService->getBranchCommitsAhead('branch', 'base');
@@ -143,7 +143,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git rev-list --count branch..base')
+            ->with(['git', 'rev-list', '--count', 'branch..base'])
             ->willReturn($this->createSuccessProcess('3'));
 
         $result = $this->gitBranchService->getBranchCommitsBehind('branch', 'base');
@@ -166,7 +166,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git merge-base --is-ancestor onto branch')
+            ->with(['git', 'merge-base', '--is-ancestor', 'onto', 'branch'])
             ->willReturn($this->createSuccessProcess());
 
         $result = $this->gitBranchService->canRebaseBranch('branch', 'onto');
@@ -178,8 +178,8 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(2))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, 'merge-base')) {
+            ->willReturnCallback(function (array $command) {
+                if (in_array('merge-base', $command, true)) {
                     return $this->createFailedProcess();
                 }
 
@@ -206,27 +206,27 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(6))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, "git branch --list 'feat/PROJ-123-*'")) {
+            ->willReturnCallback(function (array $command) {
+                if ($command === ['git', 'branch', '--list', 'feat/PROJ-123-*']) {
                     return $this->createSuccessProcess("  feat/PROJ-123-title\n");
                 }
-                if (str_contains($command, "git branch --list 'fix/PROJ-123-*'")) {
+                if ($command === ['git', 'branch', '--list', 'fix/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git branch --list 'chore/PROJ-123-*'")) {
+                if ($command === ['git', 'branch', '--list', 'chore/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/feat/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/feat/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/fix/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/fix/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/chore/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/chore/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
 
-                throw new \RuntimeException("Unexpected command: {$command}");
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $result = $this->gitBranchService->findBranchesByIssueKey('PROJ-123');
@@ -239,15 +239,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(6))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, 'git branch --list')) {
+            ->willReturnCallback(function (array $command) {
+                if (in_array('--list', $command, true)) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, 'git ls-remote')) {
+                if (in_array('ls-remote', $command, true)) {
                     return $this->createFailedProcess();
                 }
 
-                throw new \RuntimeException("Unexpected command: {$command}");
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $result = $this->gitBranchService->findBranchesByIssueKey('PROJ-123');
@@ -260,27 +260,27 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(6))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, "git branch --list 'feat/PROJ-123-*'")) {
+            ->willReturnCallback(function (array $command) {
+                if ($command === ['git', 'branch', '--list', 'feat/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git branch --list 'fix/PROJ-123-*'")) {
+                if ($command === ['git', 'branch', '--list', 'fix/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git branch --list 'chore/PROJ-123-*'")) {
+                if ($command === ['git', 'branch', '--list', 'chore/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/feat/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/feat/PROJ-123-*']) {
                     return $this->createSuccessProcess("abc123\trefs/heads/feat/PROJ-123-title\n");
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/fix/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/fix/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
-                if (str_contains($command, "git ls-remote --heads origin 'refs/heads/chore/PROJ-123-*'")) {
+                if ($command === ['git', 'ls-remote', '--heads', 'origin', 'refs/heads/chore/PROJ-123-*']) {
                     return $this->createSuccessProcess('');
                 }
 
-                throw new \RuntimeException("Unexpected command: {$command}");
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $result = $this->gitBranchService->findBranchesByIssueKey('PROJ-123');
@@ -293,21 +293,21 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, 'git rev-list --count origin/feat/PROJ-123..feat/PROJ-123')) {
+            ->willReturnCallback(function (array $command) {
+                if ($command === ['git', 'rev-list', '--count', 'origin/feat/PROJ-123..feat/PROJ-123']) {
                     return $this->createSuccessProcess("2\n");
                 }
-                if (str_contains($command, 'git rev-list --count feat/PROJ-123..origin/feat/PROJ-123')) {
+                if ($command === ['git', 'rev-list', '--count', 'feat/PROJ-123..origin/feat/PROJ-123']) {
                     return $this->createSuccessProcess("1\n");
                 }
-                if (str_contains($command, 'git rev-list --count develop..feat/PROJ-123')) {
+                if ($command === ['git', 'rev-list', '--count', 'develop..feat/PROJ-123']) {
                     return $this->createSuccessProcess("5\n");
                 }
-                if (str_contains($command, 'git rev-list --count feat/PROJ-123..develop')) {
+                if ($command === ['git', 'rev-list', '--count', 'feat/PROJ-123..develop']) {
                     return $this->createSuccessProcess("3\n");
                 }
 
-                throw new \RuntimeException("Unexpected command: {$command}");
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $result = $this->gitBranchService->getBranchStatus('feat/PROJ-123', 'develop', 'origin/feat/PROJ-123');
@@ -322,15 +322,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(2))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $command) {
-                if (str_contains($command, 'git rev-list --count develop..feat/PROJ-123')) {
+            ->willReturnCallback(function (array $command) {
+                if ($command === ['git', 'rev-list', '--count', 'develop..feat/PROJ-123']) {
                     return $this->createSuccessProcess("5\n");
                 }
-                if (str_contains($command, 'git rev-list --count feat/PROJ-123..develop')) {
+                if ($command === ['git', 'rev-list', '--count', 'feat/PROJ-123..develop']) {
                     return $this->createSuccessProcess("3\n");
                 }
 
-                throw new \RuntimeException("Unexpected command: {$command}");
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $result = $this->gitBranchService->getBranchStatus('feat/PROJ-123', 'develop', null);
@@ -351,7 +351,7 @@ class GitBranchServiceTest extends TestCase
         $revParseProcess = $this->createSuccessProcess("abc123\n");
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git rev-parse develop')
+            ->with(['git', 'rev-parse', 'develop'])
             ->willReturn($revParseProcess);
 
         $result = $this->gitBranchService->isBranchBasedOn('feat/PROJ-123', 'develop');
@@ -369,7 +369,7 @@ class GitBranchServiceTest extends TestCase
         $revParseProcess = $this->createSuccessProcess("def456\n");
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git rev-parse develop')
+            ->with(['git', 'rev-parse', 'develop'])
             ->willReturn($revParseProcess);
 
         $result = $this->gitBranchService->isBranchBasedOn('feat/PROJ-123', 'develop');
@@ -393,7 +393,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with("git branch --format='%(refname:short)'")
+            ->with(['git', 'branch', '--format=%(refname:short)'])
             ->willReturn($this->createSuccessProcess("develop\nfeat/PROJ-123\nmain"));
 
         $result = $this->gitBranchService->getAllLocalBranches();
@@ -427,7 +427,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with("git branch --format='%(refname:short)'")
+            ->with(['git', 'branch', '--format=%(refname:short)'])
             ->willReturn($this->createSuccessProcess("develop\nfeat/SCI-123-title\nfix/sci-123-bug\nchore/OTHER-1"));
 
         $result = $this->gitBranchService->findLocalBranchesContainingIssueKey('SCI-123');
@@ -439,7 +439,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with("git branch --format='%(refname:short)'")
+            ->with(['git', 'branch', '--format=%(refname:short)'])
             ->willReturn($this->createSuccessProcess("develop\nfeat/SCI-123-foo\nchore/SCI-999-other"));
 
         $result = $this->gitBranchService->findLocalBranchesContainingIssueKey('SCI-123');
@@ -461,7 +461,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git branch --merged develop')
+            ->with(['git', 'branch', '--merged', 'develop'])
             ->willReturn($this->createSuccessProcess("  develop\n* feat/PROJ-123\n  main\n"));
 
         $result = $this->gitBranchService->isBranchMergedInto('feat/PROJ-123', 'develop');
@@ -473,7 +473,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git branch --merged develop')
+            ->with(['git', 'branch', '--merged', 'develop'])
             ->willReturn($this->createSuccessProcess("  develop\n  main\n"));
 
         $result = $this->gitBranchService->isBranchMergedInto('feat/PROJ-123', 'develop');
@@ -496,7 +496,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git branch --merged develop')
+            ->with(['git', 'branch', '--merged', 'develop'])
             ->willReturn($this->createSuccessProcess(''));
 
         $result = $this->gitBranchService->isBranchMergedInto('feat/PROJ-123', 'develop');
@@ -508,7 +508,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('runQuietly')
-            ->with('git ls-remote --heads origin')
+            ->with(['git', 'ls-remote', '--heads', 'origin'])
             ->willReturn($this->createSuccessProcess("abc123\trefs/heads/develop\n def456\trefs/heads/feat/PROJ-123\n"));
 
         $result = $this->gitBranchService->getAllRemoteBranches('origin');
@@ -542,14 +542,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                if ($line === 'git merge-base --is-ancestor develop origin/develop') {
                     return $this->createSuccessProcess();
                 }
 
@@ -565,14 +566,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                if ($line === 'git merge-base --is-ancestor develop origin/develop') {
                     return $this->createFailedProcess();
                 }
 
@@ -588,14 +590,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                if ($line === 'git merge-base --is-ancestor develop origin/develop') {
                     return $this->createSuccessProcess();
                 }
 
@@ -611,8 +614,9 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(2))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createFailedProcess();
                 }
 
@@ -628,8 +632,9 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(2))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
 
@@ -656,11 +661,12 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
 
@@ -676,14 +682,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                if ($line === 'git merge-base --is-ancestor develop origin/develop') {
                     return $this->createSuccessProcess();
                 }
 
@@ -699,14 +706,15 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->exactly(4))
             ->method('runQuietly')
-            ->willReturnCallback(function (string $cmd) {
-                if ($cmd === 'git rev-parse --verify --quiet develop') {
+            ->willReturnCallback(function (array $cmd) {
+                $line = implode(' ', $cmd);
+                if ($line === 'git rev-parse --verify --quiet develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git rev-parse --verify --quiet origin/develop') {
+                if ($line === 'git rev-parse --verify --quiet origin/develop') {
                     return $this->createSuccessProcess();
                 }
-                if ($cmd === 'git merge-base --is-ancestor develop origin/develop') {
+                if ($line === 'git merge-base --is-ancestor develop origin/develop') {
                     return $this->createFailedProcess();
                 }
 
@@ -722,7 +730,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git switch feat/PROJ-123-title');
+            ->with(['git', 'switch', 'feat/PROJ-123-title']);
 
         $this->gitBranchService->switchBranch('feat/PROJ-123-title');
     }
@@ -731,7 +739,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git switch -c feat/PROJ-123-title origin/feat/PROJ-123-title');
+            ->with(['git', 'switch', '-c', 'feat/PROJ-123-title', 'origin/feat/PROJ-123-title']);
 
         $this->gitBranchService->switchToRemoteBranch('feat/PROJ-123-title');
     }
@@ -740,7 +748,7 @@ class GitBranchServiceTest extends TestCase
     {
         $this->gitRepository->expects($this->once())
             ->method('run')
-            ->with('git switch -c feat/PROJ-123-title upstream/feat/PROJ-123-title');
+            ->with(['git', 'switch', '-c', 'feat/PROJ-123-title', 'upstream/feat/PROJ-123-title']);
 
         $this->gitBranchService->switchToRemoteBranch('feat/PROJ-123-title', 'upstream');
     }

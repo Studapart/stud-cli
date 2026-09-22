@@ -66,7 +66,7 @@ class GitBranchService
      */
     public function getBranchCommitsAhead(string $branch, string $compareBranch): int
     {
-        $process = $this->gitRepository->runQuietly("git rev-list --count {$compareBranch}..{$branch}");
+        $process = $this->gitRepository->runQuietly(['git', 'rev-list', '--count', $compareBranch . '..' . $branch]);
 
         if (! $process->isSuccessful()) {
             return 0;
@@ -86,7 +86,7 @@ class GitBranchService
      */
     public function getBranchCommitsBehind(string $branch, string $compareBranch): int
     {
-        $process = $this->gitRepository->runQuietly("git rev-list --count {$branch}..{$compareBranch}");
+        $process = $this->gitRepository->runQuietly(['git', 'rev-list', '--count', $branch . '..' . $compareBranch]);
 
         if (! $process->isSuccessful()) {
             return 0;
@@ -106,7 +106,7 @@ class GitBranchService
      */
     public function isBranchMergedInto(string $branch, string $baseBranch): bool
     {
-        $process = $this->gitRepository->runQuietly("git branch --merged {$baseBranch}");
+        $process = $this->gitRepository->runQuietly(['git', 'branch', '--merged', $baseBranch]);
         if (! $process->isSuccessful()) {
             return false;
         }
@@ -118,17 +118,13 @@ class GitBranchService
 
         $mergedBranches = array_filter(
             array_map('trim', explode("\n", $output)),
-            fn (string $line) => ! empty($line)
+            fn (string $line) => $line !== ''
         );
 
-        foreach ($mergedBranches as $mergedBranch) {
-            $cleanBranch = ltrim($mergedBranch, '* ');
-            if ($cleanBranch === $branch) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_find(
+            $mergedBranches,
+            fn (string $mergedBranch): bool => ltrim($mergedBranch, '* ') === $branch
+        ) !== null;
     }
 
     /**
@@ -142,7 +138,7 @@ class GitBranchService
     {
         try {
             $mergeBase = $this->gitRepository->getMergeBase($baseBranch, $branch);
-            $baseHead = trim($this->gitRepository->run("git rev-parse {$baseBranch}")->getOutput());
+            $baseHead = trim($this->gitRepository->run(['git', 'rev-parse', $baseBranch])->getOutput());
 
             return $mergeBase === $baseHead;
         } catch (\Exception $e) {
@@ -159,13 +155,13 @@ class GitBranchService
      */
     public function canRebaseBranch(string $branch, string $ontoBranch): bool
     {
-        $process = $this->gitRepository->runQuietly("git merge-base --is-ancestor {$ontoBranch} {$branch}");
+        $process = $this->gitRepository->runQuietly(['git', 'merge-base', '--is-ancestor', $ontoBranch, $branch]);
 
         if ($process->isSuccessful()) {
             return true;
         }
 
-        $dryRunProcess = $this->gitRepository->runQuietly("git rebase --dry-run {$ontoBranch} {$branch}");
+        $dryRunProcess = $this->gitRepository->runQuietly(['git', 'rebase', '--dry-run', $ontoBranch, $branch]);
 
         return $dryRunProcess->isSuccessful();
     }
@@ -177,7 +173,7 @@ class GitBranchService
      */
     public function getAllLocalBranches(): array
     {
-        $process = $this->gitRepository->runQuietly("git branch --format='%(refname:short)'");
+        $process = $this->gitRepository->runQuietly(['git', 'branch', '--format=%(refname:short)']);
         if (! $process->isSuccessful()) {
             return [];
         }
@@ -222,7 +218,7 @@ class GitBranchService
      */
     public function getAllRemoteBranches(string $remote = 'origin'): array
     {
-        $process = $this->gitRepository->runQuietly("git ls-remote --heads {$remote}");
+        $process = $this->gitRepository->runQuietly(['git', 'ls-remote', '--heads', $remote]);
         if (! $process->isSuccessful()) {
             return [];
         }
@@ -245,9 +241,9 @@ class GitBranchService
     {
         $currentBranch = $this->gitRepository->getCurrentBranchName();
         if ($oldName === $currentBranch) {
-            $this->gitRepository->run("git branch -m {$newName}");
+            $this->gitRepository->run(['git', 'branch', '-m', $newName]);
         } else {
-            $this->gitRepository->run("git branch -m {$oldName} {$newName}");
+            $this->gitRepository->run(['git', 'branch', '-m', $oldName, $newName]);
         }
     }
 
@@ -263,10 +259,10 @@ class GitBranchService
     {
         $localBranch = $this->gitRepository->localBranchExists($oldName) ? $oldName : $newName;
 
-        $this->gitRepository->run("git push {$remote} {$localBranch}:{$newName}");
-        $this->gitRepository->run("git push {$remote} -u {$localBranch}:{$newName}");
-        $this->gitRepository->run("git push {$remote} --delete {$oldName}");
-        $this->gitRepository->run("git branch --set-upstream-to={$remote}/{$newName} {$localBranch}");
+        $this->gitRepository->run(['git', 'push', $remote, $localBranch . ':' . $newName]);
+        $this->gitRepository->run(['git', 'push', $remote, '-u', $localBranch . ':' . $newName]);
+        $this->gitRepository->run(['git', 'push', $remote, '--delete', $oldName]);
+        $this->gitRepository->run(['git', 'branch', '--set-upstream-to=' . $remote . '/' . $newName, $localBranch]);
     }
 
     /**
@@ -281,7 +277,7 @@ class GitBranchService
         $branches = [];
 
         foreach ($prefixes as $prefix) {
-            $process = $this->gitRepository->runQuietly("git branch --list '{$prefix}/{$key}-*'");
+            $process = $this->gitRepository->runQuietly(['git', 'branch', '--list', $prefix . '/' . $key . '-*']);
             if ($process->isSuccessful()) {
                 $output = trim($process->getOutput());
                 if (! empty($output)) {
@@ -322,9 +318,13 @@ class GitBranchService
      */
     protected function queryRemoteBranchesByPrefix(string $prefix, string $key, string $remote): array
     {
-        $process = $this->gitRepository->runQuietly(
-            "git ls-remote --heads {$remote} 'refs/heads/{$prefix}/{$key}-*'"
-        );
+        $process = $this->gitRepository->runQuietly([
+            'git',
+            'ls-remote',
+            '--heads',
+            $remote,
+            "refs/heads/{$prefix}/{$key}-*",
+        ]);
 
         if (! $process->isSuccessful()) {
             return [];
@@ -368,7 +368,7 @@ class GitBranchService
      */
     public function switchBranch(string $branchName): void
     {
-        $this->gitRepository->run("git switch {$branchName}");
+        $this->gitRepository->run(['git', 'switch', $branchName]);
     }
 
     /**
@@ -380,7 +380,7 @@ class GitBranchService
      */
     public function switchToRemoteBranch(string $branchName, string $remote = 'origin'): void
     {
-        $this->gitRepository->run("git switch -c {$branchName} {$remote}/{$branchName}");
+        $this->gitRepository->run(['git', 'switch', '-c', $branchName, $remote . '/' . $branchName]);
     }
 
     /**
@@ -402,7 +402,7 @@ class GitBranchService
      */
     protected function refExists(string $ref): bool
     {
-        return $this->gitRepository->runQuietly("git rev-parse --verify --quiet {$ref}")->isSuccessful();
+        return $this->gitRepository->runQuietly(['git', 'rev-parse', '--verify', '--quiet', $ref])->isSuccessful();
     }
 
     /**
@@ -411,8 +411,8 @@ class GitBranchService
      */
     protected function pickMoreAdvancedRef(string $localRef, string $remoteRef, string $baseBranch): string
     {
-        $localIsAncestor = $this->gitRepository->runQuietly("git merge-base --is-ancestor {$localRef} {$remoteRef}")->isSuccessful();
-        $remoteIsAncestor = $this->gitRepository->runQuietly("git merge-base --is-ancestor {$remoteRef} {$localRef}")->isSuccessful();
+        $localIsAncestor = $this->gitRepository->runQuietly(['git', 'merge-base', '--is-ancestor', $localRef, $remoteRef])->isSuccessful();
+        $remoteIsAncestor = $this->gitRepository->runQuietly(['git', 'merge-base', '--is-ancestor', $remoteRef, $localRef])->isSuccessful();
 
         if ($localIsAncestor && $remoteIsAncestor) {
             return $baseBranch;

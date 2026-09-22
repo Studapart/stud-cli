@@ -191,6 +191,7 @@ class JiraAttachmentServiceTest extends TestCase
                         $flat .= strtolower((string) $k) . ':' . (is_array($v) ? implode(',', $v) : (string) $v);
                     }
                     $this->assertStringContainsStringIgnoringCase('x-atlassian-token', $flat);
+                    $this->assertSame(0.0, $options['max_duration'] ?? null);
 
                     return new MockResponse('[]', ['http_code' => 200]);
                 }

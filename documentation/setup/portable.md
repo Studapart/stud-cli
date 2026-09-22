@@ -30,6 +30,8 @@ The installer:
 
 The launcher resolves its real portable directory before executing, so `stud` works from `~/.local/bin/stud` even though that command is a symlink. The bundled runtime and `app/stud.phar` must stay beside the launcher inside the versioned portable directory.
 
+The portable launcher exports `CASTOR_DISABLE_AGENT_DETECTION=1` so Castor does not guess IDE/agent terminals. Use `--agent` for JSON mode. See [packaging and Castor agent detection](../development/packaging-and-castor-agent-detection.md).
+
 ## Updating Portable Installs
 
 Versioned portable installs support:

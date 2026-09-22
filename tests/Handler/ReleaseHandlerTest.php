@@ -45,8 +45,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -79,8 +79,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
         $gitRepository->pushToOrigin($releaseBranch)->shouldBeCalled();
@@ -113,8 +113,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(true);
@@ -147,8 +147,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -191,8 +191,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $version)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -425,8 +425,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -459,8 +459,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -493,8 +493,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);
@@ -527,8 +527,8 @@ class ReleaseHandlerTest extends CommandTestCase
 
         $gitRepository->fetch()->shouldBeCalled();
         $gitRepository->createBranch($releaseBranch, 'origin/develop')->shouldBeCalled();
-        $gitRepository->run('composer update --lock')->shouldBeCalled();
-        $gitRepository->run('composer dump-config')->shouldBeCalled();
+        $gitRepository->run(['composer', 'update', '--lock'])->shouldBeCalled();
+        $gitRepository->run(['composer', 'dump-config'])->shouldBeCalled();
         $gitRepository->stageAllChanges()->shouldBeCalled();
         $gitRepository->commit('chore(Version): Bump version to ' . $targetVersion)->shouldBeCalled();
         $prompt->confirm(Argument::any(), false)->willReturn(false);

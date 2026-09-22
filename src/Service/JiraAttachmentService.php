@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\Exception\ApiException;
 use App\Exception\StudConfigException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -93,11 +94,11 @@ class JiraAttachmentService
         $requestTarget = $this->buildRequestTarget($contentUrl);
         $this->assertAllowedAttachmentEndpoint($requestTarget);
 
-        $response = $this->client->request('GET', $requestTarget, [
+        $response = $this->client->request('GET', $requestTarget, HttpClientDefaults::withTransferLimits([
             'headers' => [
                 'Accept' => '*/*',
             ],
-        ]);
+        ]));
 
         if ($response->getStatusCode() !== 200) {
             throw new ApiException(
@@ -221,14 +222,14 @@ class JiraAttachmentService
         // @codeCoverageIgnoreEnd
 
         try {
-            $response = $this->client->request('POST', "/rest/api/3/issue/{$key}/attachments", [
+            $response = $this->client->request('POST', "/rest/api/3/issue/{$key}/attachments", HttpClientDefaults::withTransferLimits([
                 'headers' => [
                     'X-Atlassian-Token' => 'no-check',
                 ],
                 'body' => [
                     'file' => $handle,
                 ],
-            ]);
+            ]));
 
             if ($response->getStatusCode() !== 200) {
                 throw new ApiException(

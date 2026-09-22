@@ -63,7 +63,7 @@ class GitRemoteUrlParser
 
     public function getRemoteUrl(string $remote = 'origin'): ?string
     {
-        $process = $this->runQuietly("git config --get remote.{$remote}.url");
+        $process = $this->runQuietly(['git', 'config', '--get', "remote.{$remote}.url"]);
         if (! $process->isSuccessful()) {
             return null;
         }
@@ -74,7 +74,10 @@ class GitRemoteUrlParser
         return $remoteUrl === '' ? null : $remoteUrl;
     }
 
-    protected function runQuietly(string $command): Process
+    /**
+     * @param array<int, string> $command
+     */
+    protected function runQuietly(array $command): Process
     {
         $process = $this->processFactory->create($command);
         $process->run();

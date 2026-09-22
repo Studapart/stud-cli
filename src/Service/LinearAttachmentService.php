@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\Exception\ApiException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -162,12 +163,12 @@ class LinearAttachmentService
 
     private function uploadHttpClient(): HttpClientInterface
     {
-        return $this->uploadClient ?? HttpClient::create();
+        return $this->uploadClient ?? HttpClient::create(HttpClientDefaults::withTransferLimits());
     }
 
     private function assetHttpClient(): HttpClientInterface
     {
-        return $this->assetHttpClient ?? HttpClient::create();
+        return $this->assetHttpClient ?? HttpClient::create(HttpClientDefaults::withTransferLimits());
     }
 
     private function extractTechnicalDetails(ResponseInterface $response): string

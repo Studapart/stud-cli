@@ -7,8 +7,10 @@ declare(strict_types=1);
 \defined('CASTOR_USE_CHDIR') || \define('CASTOR_USE_CHDIR', false);
 
 // When running as repacked PHAR (Castor 1.3+), the stub only loads .castor-vendor; load project autoload so App\ is available.
-if (\extension_loaded('Phar') && \Phar::running(false) !== '') {
+$studPackagedBinary = \extension_loaded('Phar') && \Phar::running(false) !== '';
+if ($studPackagedBinary) {
     require_once 'phar://' . \Phar::running(false) . '/vendor/autoload.php';
+    \App\Service\CastorPackagingPolicy::applyWhenPackaged(true);
 }
 
 // =================================================================================
@@ -37,6 +39,7 @@ use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
 use App\Command\StudHelpCommand;
 use App\Config\GlobalStudConfigKeys;
+use App\Config\HttpClientDefaults;
 use App\DTO\ConfluencePushInput;
 use App\DTO\ConfluenceShowInput;
 use App\DTO\ItemCreateInput;
@@ -353,14 +356,14 @@ function _get_jira_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterf
     $config = _get_jira_config();
     $auth = base64_encode($config[GlobalStudConfigKeys::JIRA_EMAIL] . ':' . $config[GlobalStudConfigKeys::JIRA_API_TOKEN]);
 
-    return HttpClient::createForBaseUri($config[GlobalStudConfigKeys::JIRA_URL], [
+    return HttpClient::createForBaseUri($config[GlobalStudConfigKeys::JIRA_URL], HttpClientDefaults::withLimits([
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => 'Basic ' . $auth,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ],
-    ]);
+    ]));
 }
 
 function _get_jira_api_client(): JiraApiClient
@@ -410,13 +413,13 @@ function _get_linear_http_client(): ?\Symfony\Contracts\HttpClient\HttpClientInt
         $baseUri = rtrim(trim($baseUri), '/') . '/';
     }
 
-    return HttpClient::createForBaseUri($baseUri, [
+    return HttpClient::createForBaseUri($baseUri, HttpClientDefaults::withLimits([
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => trim($apiKey),
             'Content-Type' => 'application/json',
         ],
-    ]);
+    ]));
 }
 
 function _get_linear_graphql_client(): ?\App\Service\LinearGraphqlClient
@@ -462,12 +465,12 @@ function _get_linear_asset_http_client(): \Symfony\Contracts\HttpClient\HttpClie
     $config = _get_config();
     $apiKey = $config[GlobalStudConfigKeys::LINEAR_API_KEY] ?? '';
 
-    return HttpClient::create([
+    return HttpClient::create(HttpClientDefaults::withTransferLimits([
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => is_string($apiKey) ? trim($apiKey) : '',
         ],
-    ]);
+    ]));
 }
 
 function _get_linear_attachment_service_if_configured(): ?\App\Service\LinearAttachmentService
@@ -543,14 +546,14 @@ function _get_confluence_api_client(?string $urlOverride = null): ConfluenceApiC
     $baseUrl = rtrim(_get_confluence_base_url($urlOverride), '/') . '/';
     $config = _get_jira_config();
     $auth = base64_encode($config['JIRA_EMAIL'] . ':' . $config['JIRA_API_TOKEN']);
-    $client = HttpClient::createForBaseUri($baseUrl, [
+    $client = HttpClient::createForBaseUri($baseUrl, HttpClientDefaults::withLimits([
         'headers' => [
             'User-Agent' => 'stud-cli',
             'Authorization' => 'Basic ' . $auth,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ],
-    ]);
+    ]));
 
     return new ConfluenceApiClient($client);
 }

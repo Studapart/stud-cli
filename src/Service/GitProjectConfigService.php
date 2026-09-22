@@ -18,7 +18,7 @@ class GitProjectConfigService
 
     public function getProjectConfigPath(): string
     {
-        $process = $this->runQuietly('git rev-parse --git-dir');
+        $process = $this->runQuietly(['git', 'rev-parse', '--git-dir']);
         if (! $process->isSuccessful()) {
             throw new \RuntimeException('Not in a git repository.');
         }
@@ -107,7 +107,10 @@ class GitProjectConfigService
         return null;
     }
 
-    protected function runQuietly(string $command): Process
+    /**
+     * @param array<int, string> $command
+     */
+    protected function runQuietly(array $command): Process
     {
         $process = $this->processFactory->create($command);
         $process->run();
