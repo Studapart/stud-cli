@@ -49,10 +49,10 @@ done
 
 case "$platform" in
     linux-amd64)
-        default_url="https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.2.31-cli-linux-x86_64.tar.gz"
+        default_url="https://dl.static-php.dev/static-php-cli/gnu-bulk/php-8.4.23-cli-linux-x86_64.tar.gz"
         ;;
     darwin-arm64)
-        default_url="https://dl.static-php.dev/static-php-cli/common/php-8.2.31-cli-macos-aarch64.tar.gz"
+        default_url="https://dl.static-php.dev/static-php-cli/common/php-8.4.23-cli-macos-aarch64.tar.gz"
         ;;
     *)
         die "Only linux-amd64 and darwin-arm64 are supported"

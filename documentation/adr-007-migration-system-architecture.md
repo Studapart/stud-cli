@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Symfony 7.3, YAML configuration
+* **Technical Context:** PHP 8.4.1+, Symfony 8.1, YAML configuration
 
 ## 1. Context and Problem Statement
 
@@ -179,6 +179,6 @@ class Migration202501150000001_GitTokenFormat extends AbstractMigration
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Database Migration Patterns** adapted for configuration. The migration system uses **Composition over Inheritance** (migrations compose behavior rather than inheriting complex logic) and **Interface Segregation** (MigrationInterface defines only what's needed). This aligns with Symfony 7.4's preference for explicit, testable patterns over magic or convention-based approaches.
+This decision follows **Database Migration Patterns** adapted for configuration. The migration system uses **Composition over Inheritance** (migrations compose behavior rather than inheriting complex logic) and **Interface Segregation** (MigrationInterface defines only what's needed). This aligns with Symfony 8.1's preference for explicit, testable patterns over magic or convention-based approaches.

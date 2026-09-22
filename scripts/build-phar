@@ -4,9 +4,15 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/build-phar --version <version> --output <path>
+  scripts/build-phar --version <version> --output <path> [--dry-run]
 
 Builds the canonical stud PHAR artifact used by release packaging.
+
+Castor host PHAR is fetched from the GitHub release asset URL (not the
+GitHub REST API) and passed to `castor repack --castor-phar`, avoiding
+unauthenticated API rate limits. Override with CASTOR_PHAR=/path/to/castor.phar.
+
+  --dry-run  Print Castor tag, download URL, and repack args; do not build.
 USAGE
 }
 
@@ -15,8 +21,12 @@ die() {
     exit 1
 }
 
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+
 version=""
 output_path=""
+dry_run=0
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -27,6 +37,10 @@ while [ "$#" -gt 0 ]; do
         --output)
             output_path="${2:-}"
             shift 2
+            ;;
+        --dry-run)
+            dry_run=1
+            shift
             ;;
         -h|--help)
             usage
@@ -41,17 +55,93 @@ done
 [ -n "$version" ] || die "--version is required"
 [ -n "$output_path" ] || die "--output is required"
 
+resolve_castor_tag() {
+    local lock_file="${1}"
+    [ -f "$lock_file" ] || die "composer.lock not found at ${lock_file}"
+    php -r '
+        $lock = json_decode(file_get_contents($argv[1]), true);
+        if (!is_array($lock)) {
+            fwrite(STDERR, "Invalid composer.lock\n");
+            exit(1);
+        }
+        foreach (($lock["packages"] ?? []) as $package) {
+            if (($package["name"] ?? "") === "jolicode/castor") {
+                $version = (string) ($package["version"] ?? "");
+                if ($version === "") {
+                    fwrite(STDERR, "Empty jolicode/castor version in composer.lock\n");
+                    exit(1);
+                }
+                if ($version[0] !== "v") {
+                    $version = "v" . $version;
+                }
+                echo $version;
+                exit(0);
+            }
+        }
+        fwrite(STDERR, "jolicode/castor not found in composer.lock\n");
+        exit(1);
+    ' "$lock_file"
+}
+
+castor_download_url() {
+    local tag="${1}"
+    local os="${2:-linux}"
+    local arch="${3:-amd64}"
+    echo "https://github.com/jolicode/castor/releases/download/${tag}/castor.${os}-${arch}.phar"
+}
+
+castor_tag="$(resolve_castor_tag "${repo_root}/composer.lock")"
+castor_url="$(castor_download_url "$castor_tag")"
+castor_phar_path="${CASTOR_PHAR:-}"
+downloaded_castor_phar=""
+
+if [ -n "$castor_phar_path" ]; then
+    [ -f "$castor_phar_path" ] || die "CASTOR_PHAR is set but file not found: ${castor_phar_path}"
+else
+    mkdir -p "${repo_root}/.cursor/tmp"
+    downloaded_castor_phar="${repo_root}/.cursor/tmp/castor-${castor_tag#v}-linux-amd64.phar"
+    castor_phar_path="$downloaded_castor_phar"
+fi
+
+if [ "$dry_run" -eq 1 ]; then
+    echo "castor_tag=${castor_tag}"
+    echo "castor_url=${castor_url}"
+    echo "castor_phar=${castor_phar_path}"
+    echo "repack_args=--logo-file src/repack/logo.php --app-name stud --app-version ${version} --castor-version ${castor_tag} --castor-phar ${castor_phar_path}"
+    exit 0
+fi
+
 command -v composer >/dev/null 2>&1 || die "composer is required"
+command -v curl >/dev/null 2>&1 || die "curl is required"
+command -v box >/dev/null 2>&1 || die "box is required; install it before building the PHAR"
+
+cd "$repo_root"
 
 composer install --no-dev
 
 [ -x vendor/bin/castor ] || die "vendor/bin/castor is required after composer install"
-command -v box >/dev/null 2>&1 || die "box is required; install it before building the PHAR"
+
+if [ -n "$downloaded_castor_phar" ]; then
+    echo "Downloading Castor ${castor_tag} from release asset (API-free)..."
+    if ! curl -fsSL -o "$downloaded_castor_phar" "$castor_url"; then
+        rm -f "$downloaded_castor_phar"
+        die "Failed to download ${castor_url}. Check network access, or set CASTOR_PHAR to a local Castor PHAR. As a manual fallback you can export GITHUB_TOKEN and call castor repack without --castor-phar."
+    fi
+fi
+
+cleanup() {
+    if [ -n "$downloaded_castor_phar" ] && [ -f "$downloaded_castor_phar" ]; then
+        rm -f "$downloaded_castor_phar"
+    fi
+}
+trap cleanup EXIT
 
 vendor/bin/castor repack \
     --logo-file src/repack/logo.php \
     --app-name stud \
-    --app-version "$version"
+    --app-version "$version" \
+    --castor-version "$castor_tag" \
+    --castor-phar "$castor_phar_path"
 
 mkdir -p "$(dirname -- "$output_path")"
 mv stud.linux-amd64.phar "$output_path"

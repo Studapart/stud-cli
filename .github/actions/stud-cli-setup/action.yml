@@ -1,6 +1,6 @@
 name: stud-cli-setup
 description: >-
-  Install stud-cli (PHP 8.2+, pinned setup-stud.sh), write ~/.config/stud/config.yml and optionally
+  Install stud-cli (PHP 8.4.1+, pinned setup-stud.sh), write ~/.config/stud/config.yml and optionally
   .git/stud.config from workflow inputs/secrets, then run stud config:validate --agent.
 author: Studapart
 
@@ -84,7 +84,7 @@ inputs:
   php-version:
     description: PHP version passed to shivammathur/setup-php.
     required: false
-    default: '8.2'
+    default: '8.4'
 
 runs:
   using: composite

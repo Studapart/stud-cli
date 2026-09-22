@@ -10,19 +10,19 @@ The installer downloads the latest PHAR release, installs it to `~/.local/bin/st
 
 ## Requirements for PHAR
 
-Install PHP 8.2+ and required extensions.
+Install PHP 8.4.1+ and required extensions.
 
 Ubuntu 24.04+ / Debian 12+:
 
 ```bash
-sudo apt update && sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring
+sudo apt update && sudo apt install php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring
 ```
 
 Ubuntu 22.04 may need the Ondrej PPA first:
 
 ```bash
 sudo add-apt-repository ppa:ondrej/php
-sudo apt update && sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring
+sudo apt update && sudo apt install php8.4-cli php8.4-xml php8.4-curl php8.4-mbstring
 ```
 
 Fedora / RHEL:

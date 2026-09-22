@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+// Castor 1.8+: define CASTOR_USE_CHDIR explicitly to silence the deprecation.
+// Keep false so Process/getcwd/FileSystem behave as before (context root ≠ user cwd).
+\defined('CASTOR_USE_CHDIR') || \define('CASTOR_USE_CHDIR', false);
+
 // When running as repacked PHAR (Castor 1.3+), the stub only loads .castor-vendor; load project autoload so App\ is available.
 if (\extension_loaded('Phar') && \Phar::running(false) !== '') {
     require_once 'phar://' . \Phar::running(false) . '/vendor/autoload.php';

@@ -10,10 +10,11 @@ We release patches for security vulnerabilities for the following versions of st
 
 | Version | Supported          |
 |---------|--------------------|
-| 3.4.x   | :white_check_mark: |
-| < 3.4   | :x:                |
+| 4.x     | :white_check_mark: |
+| 3.x     | :x: (frozen after 4.x GA; pin last 3.x release at own risk) |
+| < 3.0   | :x:                |
 
-In general, only the latest minor line (e.g. 3.4.x) is supported with security updates. We encourage users to upgrade to the [latest release](https://github.com/studapart/stud-cli/releases).
+In general, only the current major line (4.x) receives security updates. Users who cannot move to PHP 8.4.1 should pin the last 3.x release and plan a migration — see [migrating 3.x → 4.x](documentation/setup/migrating-3x-to-4x.md). We encourage users to upgrade to the [latest release](https://github.com/studapart/stud-cli/releases).
 
 ## Reporting a Vulnerability
 

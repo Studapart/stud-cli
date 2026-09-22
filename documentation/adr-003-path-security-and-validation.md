@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Symfony 7.3, League Flysystem 3.0
+* **Technical Context:** PHP 8.4.1+, Symfony 8.1, League Flysystem 3.0
 
 ## 1. Context and Problem Statement
 
@@ -158,6 +158,6 @@ private function isPathWithinRoot(string $path): bool
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Security by Design** principles by validating input at the entry point of all public methods. While Symfony 7.4 favors **Attributes over Configuration**, path validation is a security concern that benefits from explicit, imperative validation logic rather than declarative attributes.
+This decision follows **Security by Design** principles by validating input at the entry point of all public methods. While Symfony 8.1 favors **Attributes over Configuration**, path validation is a security concern that benefits from explicit, imperative validation logic rather than declarative attributes.

@@ -4,7 +4,7 @@
 * **Date:** 2026-06-17
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, stud-cli config wizards (SCI-150), ADR-010 i18n
+* **Technical Context:** PHP 8.4.1+, stud-cli config wizards (SCI-150), ADR-010 i18n
 
 ## 1. Context and Problem Statement
 

@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Castor Framework, Symfony 7.3
+* **Technical Context:** PHP 8.4.1+, Castor Framework, Symfony 8.1
 
 ## 1. Context and Problem Statement
 
@@ -175,6 +175,6 @@ function _get_git_hosting(): ?GitHostingPort
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision is a **pragmatic compromise** between pure dependency injection and Castor's function-based architecture. While Symfony 7.4 favors **Autowiring and Service Container**, Castor's function-based tasks require a different approach. The service locator pattern provides the benefits of DI (testability, dependency management) while working within Castor's constraints. This aligns with Symfony 7.4's principle of **Pragmatism over Purity** - choosing the right tool for the job.
+This decision is a **pragmatic compromise** between pure dependency injection and Castor's function-based architecture. While Symfony 8.1 favors **Autowiring and Service Container**, Castor's function-based tasks require a different approach. The service locator pattern provides the benefits of DI (testability, dependency management) while working within Castor's constraints. This aligns with Symfony 8.1's principle of **Pragmatism over Purity** - choosing the right tool for the job.

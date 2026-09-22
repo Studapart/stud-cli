@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, PHPUnit 11.0, League Flysystem 3.0
+* **Technical Context:** PHP 8.4.1+, PHPUnit 11.0, League Flysystem 3.0
 
 ## 1. Context and Problem Statement
 
@@ -174,6 +174,6 @@ public function testDoesNotModifyRealConfig(): void
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Test-Driven Development** and **Defense in Depth** principles. While Symfony 7.4 favors **Attributes over Configuration**, test isolation is a cross-cutting concern that benefits from explicit, imperative logic that can be easily verified and tested. The hybrid approach (in-memory + selective real filesystem) provides both safety and flexibility.
+This decision follows **Test-Driven Development** and **Defense in Depth** principles. While Symfony 8.1 favors **Attributes over Configuration**, test isolation is a cross-cutting concern that benefits from explicit, imperative logic that can be easily verified and tested. The hybrid approach (in-memory + selective real filesystem) provides both safety and flexibility.

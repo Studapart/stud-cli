@@ -45,7 +45,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ## Development Setup
 
-1. **Requirements:** PHP 8.2+, `ext-xml`, `ext-curl`, `ext-mbstring`. See [Development guide – Requirements](documentation/development/index.md#requirements).
+1. **Requirements:** PHP 8.4.1+, `ext-xml`, `ext-curl`, `ext-mbstring`. See [Development guide – Requirements](documentation/development/index.md#requirements).
 2. **Clone and install:**
    ```bash
    git clone https://github.com/studapart/stud-cli.git
