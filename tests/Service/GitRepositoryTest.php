@@ -37,7 +37,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -59,7 +59,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -81,7 +81,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -100,7 +100,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -117,7 +117,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -134,7 +134,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref @{u} 2>/dev/null')
+            ->with(['git', 'rev-parse', '--abbrev-ref', '@{u}'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -156,7 +156,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref @{u} 2>/dev/null')
+            ->with(['git', 'rev-parse', '--abbrev-ref', '@{u}'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -178,7 +178,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref @{u} 2>/dev/null')
+            ->with(['git', 'rev-parse', '--abbrev-ref', '@{u}'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -197,7 +197,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref @{u} 2>/dev/null')
+            ->with(['git', 'rev-parse', '--abbrev-ref', '@{u}'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -222,15 +222,15 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->exactly(2))
             ->method('create')
-            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess) {
-                if (str_contains($command, '--abbrev-ref @{u}')) {
+            ->willReturnCallback(function (array $command) use ($upstreamProcess, $headProcess) {
+                if (in_array('--abbrev-ref', $command, true) && in_array('@{u}', $command, true)) {
                     return $upstreamProcess;
                 }
-                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                if (in_array('HEAD', $command, true) && ! in_array('@{u}', $command, true)) {
                     return $headProcess;
                 }
 
-                throw new \RuntimeException('Unexpected command: ' . $command);
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $this->assertFalse($this->gitRepository->isHeadPushed());
@@ -254,18 +254,18 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->exactly(3))
             ->method('create')
-            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
-                if (str_contains($command, '--abbrev-ref @{u}')) {
+            ->willReturnCallback(function (array $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (in_array('--abbrev-ref', $command, true) && in_array('@{u}', $command, true)) {
                     return $upstreamProcess;
                 }
-                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                if (in_array('HEAD', $command, true) && ! in_array('@{u}', $command, true)) {
                     return $headProcess;
                 }
-                if (str_contains($command, 'rev-parse @{u}')) {
+                if (in_array('@{u}', $command, true) && ! in_array('--abbrev-ref', $command, true)) {
                     return $atUProcess;
                 }
 
-                throw new \RuntimeException('Unexpected command: ' . $command);
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $this->assertFalse($this->gitRepository->isHeadPushed());
@@ -292,18 +292,18 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->exactly(3))
             ->method('create')
-            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
-                if (str_contains($command, '--abbrev-ref @{u}')) {
+            ->willReturnCallback(function (array $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (in_array('--abbrev-ref', $command, true) && in_array('@{u}', $command, true)) {
                     return $upstreamProcess;
                 }
-                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                if (in_array('HEAD', $command, true) && ! in_array('@{u}', $command, true)) {
                     return $headProcess;
                 }
-                if (str_contains($command, 'rev-parse @{u}')) {
+                if (in_array('@{u}', $command, true) && ! in_array('--abbrev-ref', $command, true)) {
                     return $atUProcess;
                 }
 
-                throw new \RuntimeException('Unexpected command: ' . $command);
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $this->assertTrue($this->gitRepository->isHeadPushed());
@@ -328,18 +328,18 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->exactly(3))
             ->method('create')
-            ->willReturnCallback(function (string $command) use ($upstreamProcess, $headProcess, $atUProcess) {
-                if (str_contains($command, '--abbrev-ref @{u}')) {
+            ->willReturnCallback(function (array $command) use ($upstreamProcess, $headProcess, $atUProcess) {
+                if (in_array('--abbrev-ref', $command, true) && in_array('@{u}', $command, true)) {
                     return $upstreamProcess;
                 }
-                if (str_contains($command, 'rev-parse HEAD') && ! str_contains($command, '@{u}')) {
+                if (in_array('HEAD', $command, true) && ! in_array('@{u}', $command, true)) {
                     return $headProcess;
                 }
-                if (str_contains($command, 'rev-parse @{u}')) {
+                if (in_array('@{u}', $command, true) && ! in_array('--abbrev-ref', $command, true)) {
                     return $atUProcess;
                 }
 
-                throw new \RuntimeException('Unexpected command: ' . $command);
+                throw new \RuntimeException('Unexpected command: ' . implode(' ', $command));
             });
 
         $this->assertFalse($this->gitRepository->isHeadPushed());
@@ -350,7 +350,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse HEAD')
+            ->with(['git', 'rev-parse', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -364,7 +364,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse HEAD')
+            ->with(['git', 'rev-parse', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -378,7 +378,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git reset HEAD~1')
+            ->with(['git', 'reset', 'HEAD~1'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('mustRun');
@@ -396,7 +396,7 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git reset HEAD~1')
+            ->with(['git', 'reset', 'HEAD~1'])
             ->willReturn($process);
 
         $this->gitRepository->undoLastCommit();
@@ -407,7 +407,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push --force-with-lease')
+            ->with(['git', 'push', '--force-with-lease'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -421,7 +421,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git log origin/develop..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1')
+            ->with(['git', 'log', 'origin/develop..HEAD', '--format=%H', '--grep=^fixup!', '--grep=^squash!', '--invert-grep', '--max-count=1'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -443,7 +443,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git log origin/develop..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1')
+            ->with(['git', 'log', 'origin/develop..HEAD', '--format=%H', '--grep=^fixup!', '--grep=^squash!', '--invert-grep', '--max-count=1'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -465,7 +465,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git log origin/develop..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1')
+            ->with(['git', 'log', 'origin/develop..HEAD', '--format=%H', '--grep=^fixup!', '--grep=^squash!', '--invert-grep', '--max-count=1'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -484,7 +484,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git add -A')
+            ->with(['git', 'add', '-A'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -498,7 +498,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git commit --fixup abcdef')
+            ->with(['git', 'commit', '--fixup', 'abcdef'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -512,7 +512,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git commit -m \'my message\'')
+            ->with(['git', 'commit', '-m', 'my message'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -526,7 +526,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git fetch origin')
+            ->with(['git', 'fetch', 'origin'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -540,7 +540,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git switch -c feature/PROJ-123-my-feature origin/develop')
+            ->with(['git', 'switch', '-c', 'feature/PROJ-123-my-feature', 'origin/develop'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -554,7 +554,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git status --porcelain')
+            ->with(['git', 'status', '--porcelain'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -573,7 +573,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git diff --cached --quiet')
+            ->with(['git', 'diff', '--cached', '--quiet'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -587,7 +587,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git diff --cached --quiet')
+            ->with(['git', 'diff', '--cached', '--quiet'])
             ->willReturn($process);
 
         $process->expects($this->once())->method('run');
@@ -601,7 +601,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --abbrev-ref HEAD')
+            ->with(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -620,7 +620,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push --set-upstream origin my-branch')
+            ->with(['git', 'push', '--set-upstream', 'origin', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -634,7 +634,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push --set-upstream origin HEAD')
+            ->with(['git', 'push', '--set-upstream', 'origin', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -648,7 +648,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git merge-base origin/develop HEAD')
+            ->with(['git', 'merge-base', 'origin/develop', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -667,7 +667,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git rev-list --reverse abcdef..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1")
+            ->with(['git', 'rev-list', '--reverse', 'abcdef..HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -684,12 +684,29 @@ class GitRepositoryTest extends CommandTestCase
         $this->assertSame('ghijkl', $sha);
     }
 
+    public function testFindFirstLogicalShaSkipsFixupPrefixedLines(): void
+    {
+        $process = $this->createMock(Process::class);
+        $this->processFactory->expects($this->once())
+            ->method('create')
+            ->with(['git', 'rev-list', '--reverse', 'abcdef..HEAD'])
+            ->willReturn($process);
+
+        $process->expects($this->once())->method('run');
+        $process->expects($this->once())->method('isSuccessful')->willReturn(true);
+        $process->expects($this->once())->method('getOutput')->willReturn(" fixup!\nghijkl\n");
+
+        $sha = $this->gitRepository->findFirstLogicalSha('abcdef');
+
+        $this->assertSame('ghijkl', $sha);
+    }
+
     public function testFindFirstLogicalShaReturnsNullIfNotFound(): void
     {
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git rev-list --reverse abcdef..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1")
+            ->with(['git', 'rev-list', '--reverse', 'abcdef..HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -711,7 +728,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git rev-list --reverse abcdef..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1")
+            ->with(['git', 'rev-list', '--reverse', 'abcdef..HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -730,7 +747,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git log -1 --pretty=%B abcdef')
+            ->with(['git', 'log', '-1', '--pretty=%B', 'abcdef'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -749,7 +766,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --verify --quiet my-branch')
+            ->with(['git', 'rev-parse', '--verify', '--quiet', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -768,7 +785,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --verify --quiet my-branch')
+            ->with(['git', 'rev-parse', '--verify', '--quiet', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -787,7 +804,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git ls-remote --heads origin my-branch')
+            ->with(['git', 'ls-remote', '--heads', 'origin', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -806,7 +823,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git ls-remote --heads origin my-branch')
+            ->with(['git', 'ls-remote', '--heads', 'origin', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -825,13 +842,13 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('my command')
+            ->with(['my', 'command'])
             ->willReturn($process);
 
         $process->expects($this->once())
             ->method('mustRun');
 
-        $this->gitRepository->run('my command');
+        $this->gitRepository->run(['my', 'command']);
     }
 
     public function testRunThrowsGitExceptionOnFailure(): void
@@ -839,7 +856,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('my command')
+            ->with(['my', 'command'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -853,7 +870,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->expectException(\App\Exception\GitException::class);
         $this->expectExceptionMessage('Git command failed: my command');
 
-        $this->gitRepository->run('my command');
+        $this->gitRepository->run(['my', 'command']);
     }
 
     public function testRunThrowsGitExceptionWithOutputWhenErrorOutputEmpty(): void
@@ -861,7 +878,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('my command')
+            ->with(['my', 'command'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -880,7 +897,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->expectExceptionMessage('Git command failed: my command');
 
         try {
-            $this->gitRepository->run('my command');
+            $this->gitRepository->run(['my', 'command']);
         } catch (\App\Exception\GitException $e) {
             $this->assertSame('Some output', $e->getTechnicalDetails());
 
@@ -893,7 +910,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('my command')
+            ->with(['my', 'command'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -912,7 +929,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->expectExceptionMessage('Git command failed: my command');
 
         try {
-            $this->gitRepository->run('my command');
+            $this->gitRepository->run(['my', 'command']);
         } catch (\App\Exception\GitException $e) {
             $this->assertSame('Command failed with no error output', $e->getTechnicalDetails());
 
@@ -925,7 +942,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git commit -m test')
+            ->with(['git', 'commit', '-m', 'test'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -941,7 +958,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->expectException(\App\Exception\GitTimeoutException::class);
 
         try {
-            $this->gitRepository->run('git commit -m test');
+            $this->gitRepository->run(['git', 'commit', '-m', 'test']);
         } catch (\App\Exception\GitTimeoutException $e) {
             $this->assertSame('git commit -m test', $e->getCommand());
             $this->assertSame(\App\Service\ProcessFactory::GIT_SUBPROCESS_TIMEOUT_SECONDS, $e->getTimeoutSeconds());
@@ -956,13 +973,13 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('my command')
+            ->with(['my', 'command'])
             ->willReturn($process);
 
         $process->expects($this->once())
             ->method('run');
 
-        $this->gitRepository->runQuietly('my command');
+        $this->gitRepository->runQuietly(['my', 'command']);
     }
 
     public function testAdd(): void
@@ -970,7 +987,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git add file1.txt file2.txt')
+            ->with(['git', 'add', 'file1.txt', 'file2.txt'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -984,7 +1001,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git checkout my-branch')
+            ->with(['git', 'checkout', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -998,7 +1015,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git pull origin main')
+            ->with(['git', 'pull', 'origin', 'main'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1012,7 +1029,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git merge --no-ff my-branch')
+            ->with(['git', 'merge', '--no-ff', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1026,7 +1043,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git tag -a v1.2.3 -m 'Release v1.2.3'")
+            ->with(['git', 'tag', '-a', 'v1.2.3', '-m', 'Release v1.2.3'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1040,7 +1057,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push --tags origin main')
+            ->with(['git', 'push', '--tags', 'origin', 'main'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1054,7 +1071,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rebase main')
+            ->with(['git', 'rebase', 'main'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1068,7 +1085,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git log abc123..HEAD --format=%s --grep='^fixup!' --grep='^squash!'")
+            ->with(['git', 'log', 'abc123..HEAD', '--format=%s', '--grep=^fixup!', '--grep=^squash!'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1090,7 +1107,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git log abc123..HEAD --format=%s --grep='^fixup!' --grep='^squash!'")
+            ->with(['git', 'log', 'abc123..HEAD', '--format=%s', '--grep=^fixup!', '--grep=^squash!'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1112,7 +1129,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git log abc123..HEAD --format=%s --grep='^fixup!' --grep='^squash!'")
+            ->with(['git', 'log', 'abc123..HEAD', '--format=%s', '--grep=^fixup!', '--grep=^squash!'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1132,7 +1149,7 @@ class GitRepositoryTest extends CommandTestCase
         $this->processFactory->expects($this->once())
             ->method('create')
             ->with($this->callback(function ($command) {
-                return str_contains($command, 'git rebase -i --autosquash abc123');
+                return $command === ['git', 'rebase', '-i', '--autosquash', 'abc123'];
             }))
             ->willReturn($process);
 
@@ -1206,7 +1223,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git branch -d my-branch')
+            ->with(['git', 'branch', '-d', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1220,7 +1237,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git branch -d my-branch')
+            ->with(['git', 'branch', '-d', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1237,10 +1254,10 @@ class GitRepositoryTest extends CommandTestCase
         $this->processFactory->expects($this->exactly(2))
             ->method('create')
             ->willReturnCallback(function ($command) use ($pruneProcess, $deleteProcess) {
-                if ($command === 'git fetch --prune origin') {
+                if ($command === ['git', 'fetch', '--prune', 'origin']) {
                     return $pruneProcess;
                 }
-                if ($command === 'git branch -d my-branch') {
+                if ($command === ['git', 'branch', '-d', 'my-branch']) {
                     return $deleteProcess;
                 }
 
@@ -1260,7 +1277,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git branch -D my-branch')
+            ->with(['git', 'branch', '-D', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1274,7 +1291,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git fetch --prune origin')
+            ->with(['git', 'fetch', '--prune', 'origin'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1288,7 +1305,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git fetch --prune upstream')
+            ->with(['git', 'fetch', '--prune', 'upstream'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1302,7 +1319,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push origin --delete my-branch')
+            ->with(['git', 'push', 'origin', '--delete', 'my-branch'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1316,7 +1333,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git push --force-with-lease origin main')
+            ->with(['git', 'push', '--force-with-lease', 'origin', 'main'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1330,7 +1347,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1352,7 +1369,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1374,7 +1391,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1396,7 +1413,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1415,7 +1432,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1437,7 +1454,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1459,7 +1476,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1481,7 +1498,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1504,7 +1521,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1526,7 +1543,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1548,7 +1565,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1570,7 +1587,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1589,7 +1606,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1611,7 +1628,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1633,7 +1650,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1655,7 +1672,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1677,7 +1694,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1699,7 +1716,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1721,7 +1738,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1743,7 +1760,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1765,7 +1782,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1787,7 +1804,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1809,7 +1826,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1831,7 +1848,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1853,7 +1870,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git config --get remote.origin.url')
+            ->with(['git', 'config', '--get', 'remote.origin.url'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1876,7 +1893,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1898,7 +1915,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1920,7 +1937,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1944,7 +1961,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -1977,7 +1994,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2010,7 +2027,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2040,7 +2057,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2091,7 +2108,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->exactly(2))
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->exactly(2))
@@ -2144,7 +2161,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->exactly(2))
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->exactly(2))
@@ -2177,7 +2194,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2220,7 +2237,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rev-parse --git-dir')
+            ->with(['git', 'rev-parse', '--git-dir'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2258,7 +2275,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git pull --rebase origin feat/PROJ-123')
+            ->with(['git', 'pull', '--rebase', 'origin', 'feat/PROJ-123'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2276,11 +2293,11 @@ class GitRepositoryTest extends CommandTestCase
         $config = ['gitProvider' => 'github'];
         $this->flysystem->write($configPath, \Symfony\Component\Yaml\Yaml::dump($config));
 
-        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+        $this->processFactory->method('create')->willReturnCallback(function (array $command) use ($configDir) {
             $process = $this->createMock(Process::class);
             $process->method('run');
             $process->method('isSuccessful')->willReturn(true);
-            if (str_contains($command, 'rev-parse')) {
+            if (in_array('rev-parse', $command, true)) {
                 $process->method('getOutput')->willReturn($configDir);
             }
 
@@ -2300,13 +2317,13 @@ class GitRepositoryTest extends CommandTestCase
         $this->flysystem->createDirectory($configDir);
         $this->flysystem->write($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
 
-        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+        $this->processFactory->method('create')->willReturnCallback(function (array $command) use ($configDir) {
             $process = $this->createMock(Process::class);
             $process->method('run');
             $process->method('isSuccessful')->willReturn(true);
-            if (str_contains($command, 'rev-parse')) {
+            if (in_array('rev-parse', $command, true)) {
                 $process->method('getOutput')->willReturn($configDir);
-            } elseif (str_contains($command, 'config --get remote.origin.url')) {
+            } elseif (in_array('config', $command, true)) {
                 $process->method('getOutput')->willReturn('file:///path/to/repo.git');
             }
 
@@ -2326,13 +2343,13 @@ class GitRepositoryTest extends CommandTestCase
         $this->flysystem->createDirectory($configDir);
         $this->flysystem->write($configPath, \Symfony\Component\Yaml\Yaml::dump([]));
 
-        $this->processFactory->method('create')->willReturnCallback(function ($command) use ($configDir) {
+        $this->processFactory->method('create')->willReturnCallback(function (array $command) use ($configDir) {
             $process = $this->createMock(Process::class);
             $process->method('run');
             $process->method('isSuccessful')->willReturn(true);
-            if (str_contains($command, 'rev-parse')) {
+            if (in_array('rev-parse', $command, true)) {
                 $process->method('getOutput')->willReturn($configDir);
-            } elseif (str_contains($command, 'config --get remote.origin.url')) {
+            } elseif (in_array('config', $command, true)) {
                 $process->method('getOutput')->willReturn('git@github.com:owner/repo.git');
             }
 
@@ -2354,7 +2371,7 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git rebase -i --autosquash {$baseSha}")
+            ->with(['git', 'rebase', '-i', '--autosquash', $baseSha])
             ->willReturn($process);
 
         // Mock FileSystem to throw RuntimeException on delete for temp script
@@ -2396,7 +2413,7 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with("git rebase -i --autosquash {$baseSha}")
+            ->with(['git', 'rebase', '-i', '--autosquash', $baseSha])
             ->willReturn($process);
 
         // Mock FileSystem to throw RuntimeException on delete for backup file
@@ -2430,7 +2447,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rebase origin/develop')
+            ->with(['git', 'rebase', 'origin/develop'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2446,7 +2463,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rebase origin/develop')
+            ->with(['git', 'rebase', 'origin/develop'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2462,7 +2479,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git rebase --abort')
+            ->with(['git', 'rebase', '--abort'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2476,7 +2493,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git merge-base --is-ancestor origin/develop HEAD')
+            ->with(['git', 'merge-base', '--is-ancestor', 'origin/develop', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())
@@ -2492,7 +2509,7 @@ class GitRepositoryTest extends CommandTestCase
         $process = $this->createMock(Process::class);
         $this->processFactory->expects($this->once())
             ->method('create')
-            ->with('git merge-base --is-ancestor origin/develop HEAD')
+            ->with(['git', 'merge-base', '--is-ancestor', 'origin/develop', 'HEAD'])
             ->willReturn($process);
 
         $process->expects($this->once())

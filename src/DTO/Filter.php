@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\DTO;
 
-class Filter
+final class Filter
 {
     public function __construct(
-        public string $name,
-        public ?string $description = null,
-        public ?string $provider = null,
+        public readonly string $name,
+        public readonly ?string $description = null,
+        public readonly ?string $provider = null,
     ) {
     }
 }

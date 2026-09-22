@@ -186,7 +186,7 @@ Source: [UPGRADE-8.0.md](https://github.com/symfony/symfony/blob/8.1/UPGRADE-8.0
 | `#[AsTask]` / `#[AsOption]` / `#[AsListener]` | Low | Full CLI + agent integration tests |
 | `castor repack` + PHAR bootstrap | **Medium** | Re-verify SCI-78 (`castor.php` L5–8); `scripts/build-phar` on PHP 8.4 |
 | `Castor\Console\Application` | Low | Class exists in 1.6.1; `UpdateFileService` reflection still valid |
-| Agent detection (`laravel/agent-detector`) | **Medium** | Castor hides logo when `PlatformHelper::isRunningInAgentContext()`. stud `--agent` JSON is our responder path. Regression-test agent JSON **and** human CLI under Cursor. Escape hatch: `CASTOR_DISABLE_AGENT_DETECTION`. |
+| Agent detection (`laravel/agent-detector`) | **Medium** | Castor hides logo when `PlatformHelper::isRunningInAgentContext()`. Packaged stud always sets `CASTOR_DISABLE_AGENT_DETECTION` (SCI-208). stud `--agent` JSON remains the responder path. See [packaging and Castor agent detection](packaging-and-castor-agent-detection.md). |
 | `.castor.context` file | Low | New optional Castor feature; ignore unless we adopt it |
 | `composer/composer ^2.10.1` | Low | Already in 3.x lock at 2.10.2 |
 

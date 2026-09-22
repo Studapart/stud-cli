@@ -35,6 +35,8 @@ stud up -i
 
 If you installed globally with `sudo`, updates may require elevated privileges. Prefer the user-owned `~/.local/bin` install path.
 
+Packaged PHAR always disables Castor’s AI-agent environment guessing. `stud --agent` remains the only switch for JSON agent mode. See [packaging and Castor agent detection](../development/packaging-and-castor-agent-detection.md).
+
 Portable installs also support `stud update`, but they update by installing a complete portable bundle and switching the managed symlink instead of replacing a PHAR in place.
 
 ## CI and Non-Interactive Install

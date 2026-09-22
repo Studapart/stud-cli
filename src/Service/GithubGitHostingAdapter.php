@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\DTO\PullRequestComment;
 use App\DTO\PullRequestData;
 use App\DTO\PullRequestFeedbackConversation;
@@ -35,13 +36,13 @@ class GithubGitHostingAdapter implements GitHostingPort
     protected function getClient(): HttpClientInterface
     {
         if ($this->client === null) {
-            $this->client = HttpClient::createForBaseUri('https://api.github.com', [
+            $this->client = HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->token,
                     'Accept' => 'application/vnd.github.v3+json',
                     'Content-Type' => 'application/json',
                 ],
-            ]);
+            ]));
         }
 
         return $this->client;

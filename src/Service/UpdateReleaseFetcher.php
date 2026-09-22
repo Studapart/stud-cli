@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\HttpClientDefaults;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
@@ -36,9 +37,9 @@ class UpdateReleaseFetcher
             $headers['Authorization'] = 'Bearer ' . $this->gitToken;
         }
 
-        $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', [
+        $client = $this->httpClient ?? HttpClient::createForBaseUri('https://api.github.com', HttpClientDefaults::withLimits([
             'headers' => $headers,
-        ]);
+        ]));
 
         return new GithubGitHostingAdapter($this->gitToken ?? '', $this->repoOwner, $this->repoName, $client);
     }
@@ -176,9 +177,9 @@ class UpdateReleaseFetcher
             }
 
             // @codeCoverageIgnoreStart
-            $downloadClient = $this->httpClient ?? HttpClient::create([
+            $downloadClient = $this->httpClient ?? HttpClient::create(HttpClientDefaults::withTransferLimits([
                 'headers' => $headers,
-            ]);
+            ]));
             // @codeCoverageIgnoreEnd
 
             $response = $downloadClient->request('GET', $apiUrl);

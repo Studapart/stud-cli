@@ -127,6 +127,7 @@ while [ -L "$script_path" ]; do
 done
 
 bin_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd -P)
+export CASTOR_DISABLE_AGENT_DETECTION=1
 exec "$bin_dir/runtime/php" "$bin_dir/app/stud.phar" "$@"
 LAUNCHER
 

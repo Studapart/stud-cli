@@ -30,9 +30,14 @@ SCRIPT;
 
     public function hasFixupCommits(string $baseSha): bool
     {
-        $process = $this->runQuietly(
-            "git log {$baseSha}..HEAD --format=%s --grep='^fixup!' --grep='^squash!'"
-        );
+        $process = $this->runQuietly([
+            'git',
+            'log',
+            $baseSha . '..HEAD',
+            '--format=%s',
+            '--grep=^fixup!',
+            '--grep=^squash!',
+        ]);
 
         if (! $process->isSuccessful()) {
             return false;
@@ -57,7 +62,7 @@ SCRIPT;
             $env = $_ENV;
             $env['GIT_SEQUENCE_EDITOR'] = $tempScript;
 
-            $process = $this->processFactory->create("git rebase -i --autosquash {$baseSha}");
+            $process = $this->processFactory->create(['git', 'rebase', '-i', '--autosquash', $baseSha]);
             $process->setEnv($env);
             $process->mustRun();
         } finally {
@@ -68,9 +73,16 @@ SCRIPT;
 
     public function findLatestLogicalSha(string $baseBranch): ?string
     {
-        $process = $this->runQuietly(
-            'git log ' . $baseBranch . '..HEAD --format=%H --grep="^fixup!" --grep="^squash!" --invert-grep --max-count=1'
-        );
+        $process = $this->runQuietly([
+            'git',
+            'log',
+            $baseBranch . '..HEAD',
+            '--format=%H',
+            '--grep=^fixup!',
+            '--grep=^squash!',
+            '--invert-grep',
+            '--max-count=1',
+        ]);
 
         if (! $process->isSuccessful()) {
             return null;
@@ -83,25 +95,41 @@ SCRIPT;
 
     public function findFirstLogicalSha(string $ancestorSha): ?string
     {
-        $process = $this->runQuietly(
-            "git rev-list --reverse {$ancestorSha}..HEAD | grep -v -E '^ (fixup|squash)!' | head -n 1"
-        );
+        $process = $this->runQuietly(['git', 'rev-list', '--reverse', $ancestorSha . '..HEAD']);
 
         if (! $process->isSuccessful()) {
             return null;
         }
 
-        $output = trim($process->getOutput());
-
-        return $output === '' ? null : $output;
+        return $this->firstNonFixupRevListSha($process->getOutput());
     }
 
-    protected function runQuietly(string $command): Process
+    /**
+     * @param array<int, string> $command
+     */
+    protected function runQuietly(array $command): Process
     {
         $process = $this->processFactory->create($command);
         $process->run();
 
         return $process;
+    }
+
+    protected function firstNonFixupRevListSha(string $output): ?string
+    {
+        foreach (explode("\n", $output) as $line) {
+            if (preg_match('/^ (fixup|squash)!/', $line) === 1) {
+                continue;
+            }
+            $sha = trim($line);
+            if ($sha === '') {
+                continue;
+            }
+
+            return $sha;
+        }
+
+        return null;
     }
 
     private function deleteIfExists(string $path): void

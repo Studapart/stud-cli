@@ -60,6 +60,9 @@ class AgentModeHelper
         }
 
         $raw = $this->readRawInput($inputFile);
+        if ($raw !== '' && ! json_validate($raw)) {
+            throw new AgentModeException('Invalid JSON: ' . json_last_error_msg());
+        }
         $decoded = json_decode($raw, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new AgentModeException('Invalid JSON: ' . json_last_error_msg());
