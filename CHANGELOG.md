@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-09-22
+
 ### Breaking
 
 - **stud-cli 4.x foundation (SCI-195):** minimum PHP is **8.4.1**. Direct Symfony components are **^8.1**, Castor is **1.8.1**, and `composer.json` version is **4.0.0**. PHAR/portable builds, CI, `setup-stud.sh`, and the `stud-cli-setup` composite action target PHP 8.4 / StaticPHP 8.4.23. After 4.x GA, 3.x is unmaintained — see [migrating 3.x → 4.x](documentation/setup/migrating-3x-to-4x.md). PHP **8.5** is supported as a runtime (Castor/Symfony allow ≥8.4) but is **not** the minimum; portable StaticPHP builds remain on **8.4.x**. `castor.php` defines `CASTOR_USE_CHDIR` as **`false`** (silence Castor 1.8 deprecation while preserving pre-1.8 cwd / `getcwd()` path behavior).
