@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, PHPUnit 11.0, PSR-12
+* **Technical Context:** PHP 8.4.1+, PHPUnit 11.0, PSR-12
 
 ## 1. Context and Problem Statement
 
@@ -162,6 +162,6 @@ public function testDownloadPhar(): void
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision prioritizes **Testability over Strict Encapsulation**. While Symfony 7.4 favors **Attributes over Configuration**, visibility modifiers are a language-level concern that benefits from explicit, pragmatic conventions. The `protected` approach balances encapsulation with the practical need for comprehensive testing, aligning with modern PHP testing practices.
+This decision prioritizes **Testability over Strict Encapsulation**. While Symfony 8.1 favors **Attributes over Configuration**, visibility modifiers are a language-level concern that benefits from explicit, pragmatic conventions. The `protected` approach balances encapsulation with the practical need for comprehensive testing, aligning with modern PHP testing practices.

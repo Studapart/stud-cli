@@ -11,7 +11,7 @@ Omitting `--phar` does the same thing.
 ## What the Installer Does
 
 1. Resolves the latest GitHub release.
-2. Checks for PHP 8.2+ and required extensions.
+2. Checks for PHP 8.4.1+ and required extensions.
 3. Downloads the latest `stud-<version>.phar` asset.
 4. Installs it as `~/.local/bin/stud`.
 5. Ensures `~/.local/bin` is available in future shells.

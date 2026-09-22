@@ -4,7 +4,7 @@
 * **Date:** 2026-03-11
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Castor Framework, stud-cli quality audit (SCI-71)
+* **Technical Context:** PHP 8.4.1+, Castor Framework, stud-cli quality audit (SCI-71)
 
 ## 1. Context and Problem Statement
 

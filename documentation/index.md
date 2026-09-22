@@ -20,6 +20,8 @@ Central map for `stud-cli` documentation.
 ## Contributor documentation
 
 - [Development guide](development/index.md)
+- [Foundation upgrade 4.x](development/foundation-upgrade-4x.md) (SCI-195 TECH_SPEC; PHP 8.4 / Symfony 8.1 / Castor 1.8.1)
+- [Migrating 3.x → 4.x](setup/migrating-3x-to-4x.md)
 - [Engineering conventions](../CONVENTIONS.md)
 - [AI development protocol](../AI.md)
 - [Contributing](../CONTRIBUTING.md)

@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Castor Framework, Symfony Console
+* **Technical Context:** PHP 8.4.1+, Castor Framework, Symfony Console
 
 ## 1. Context and Problem Statement
 
@@ -142,6 +142,6 @@ function branch_rename(...): void {
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Convention over Configuration** principles. By establishing a clear naming convention, we reduce cognitive load for developers and users. The `object:verb` pattern is self-documenting and aligns with Symfony Console's namespace support, making it a natural fit for Symfony 7.4 applications.
+This decision follows **Convention over Configuration** principles. By establishing a clear naming convention, we reduce cognitive load for developers and users. The `object:verb` pattern is self-documenting and aligns with Symfony Console's namespace support, making it a natural fit for Symfony 8.1 applications.

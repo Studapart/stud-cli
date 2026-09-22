@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Symfony 7.3 Translation Component
+* **Technical Context:** PHP 8.4.1+, Symfony 8.1 Translation Component
 
 ## 1. Context and Problem Statement
 
@@ -177,6 +177,6 @@ function _get_translation_service(): TranslationService
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
-This decision follows **Symfony Best Practices** for internationalization. Symfony 7.4's Translation component uses **YAML over XML** for configuration (more readable) and supports **Pluralization and Parameters** out of the box. The `TranslationService` wrapper provides a clean abstraction while leveraging Symfony's translation capabilities, aligning with Symfony 7.4's preference for **Service Composition** over direct framework usage.
+This decision follows **Symfony Best Practices** for internationalization. Symfony 8.1's Translation component uses **YAML over XML** for configuration (more readable) and supports **Pluralization and Parameters** out of the box. The `TranslationService` wrapper provides a clean abstraction while leveraging Symfony's translation capabilities, aligning with Symfony 8.1's preference for **Service Composition** over direct framework usage.

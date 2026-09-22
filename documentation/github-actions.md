@@ -8,7 +8,7 @@ Path in this repository: **`.github/actions/stud-cli-setup`**.
 
 ### What it does
 
-1. Sets up **PHP 8.2+** with extensions **xml**, **curl**, and **mbstring** (`shivammathur/setup-php`).
+1. Sets up **PHP 8.4+** with extensions **xml**, **curl**, and **mbstring** (`shivammathur/setup-php`).
 2. Downloads `setup-stud.sh` from **`Studapart/stud-cli`** at the Git ref you choose (`stud-install-ref`, default `develop`) and runs it with **`--force --skip-init`** so CI never blocks on interactive `stud init`.
 3. Writes **`~/.config/stud/config.yml`** (mode `600`) from action inputs. Optional Git tokens are only written when non-empty.
 4. Optionally writes **`.git/stud.config`** from the `project-stud-config` input (you must **`actions/checkout`** before this action when using project config).
@@ -27,10 +27,10 @@ Global and project paths match the CLI: **`~/.config/stud/config.yml`** and **`.
 Callers outside `Studapart/stud-cli` should reference a **tag** or **SHA** so the action definition does not change unexpectedly:
 
 ```yaml
-uses: Studapart/stud-cli/.github/actions/stud-cli-setup@v3.12.1
+uses: Studapart/stud-cli/.github/actions/stud-cli-setup@v4.0.0
 ```
 
-Adjust the version to the tag you trust. Path-style actions are versioned with the repository ref.
+Adjust the version to the tag you trust. Path-style actions are versioned with the repository ref. For 3.x consumers, pin a `v3.*` tag and PHP 8.2 until you migrate — see [migrating 3.x → 4.x](setup/migrating-3x-to-4x.md).
 
 ### Inputs summary
 
@@ -50,7 +50,7 @@ Adjust the version to the tag you trust. Path-style actions are versioned with t
 | `run-config-validate` | no | Default `true`. |
 | `validate-skip-git` | no | Default **`true`** → skips Git provider connectivity check. Set `false` when you need GitHub/GitLab token validation. |
 | `project-stud-config` | no | Multiline content for `.git/stud.config`. |
-| `php-version` | no | Default `8.2`. |
+| `php-version` | no | Default `8.4`. |
 
 ### Provider-conditional validate
 

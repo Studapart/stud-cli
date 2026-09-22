@@ -4,7 +4,7 @@
 * **Date:** 2026-02-02
 * **Authors:** Engineering Team
 * **Deciders:** Head of Engineering
-* **Technical Context:** PHP 8.2+, Symfony 7.3, League Flysystem 3.0
+* **Technical Context:** PHP 8.4.1+, Symfony 8.1, League Flysystem 3.0
 
 ## 1. Context and Problem Statement
 
@@ -121,6 +121,6 @@ $fileSystem->dumpFile($path, $data);
 
 ---
 
-### Pro-Tip for Symfony 7.4 ADRs
+### Pro-Tip for Symfony 8.1 ADRs
 
 This decision follows **Composition over Inheritance** principles by using Flysystem's adapter pattern rather than extending a base filesystem class. The `FileSystem` service composes a `FilesystemOperator` and adds additional behavior (validation, path normalization) without modifying Flysystem's core functionality.
