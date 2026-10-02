@@ -39,7 +39,10 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->prompt = $this->createMock(PromptInterface::class);
     }
 
-    private function createHandler(): ItemCreateHandler
+    /**
+     * @param list<string> $defaultWorkItemLabels
+     */
+    private function createHandler(array $defaultWorkItemLabels = []): ItemCreateHandler
     {
         return new ItemCreateHandler(
             new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
@@ -48,6 +51,7 @@ class ItemCreateHandlerTest extends CommandTestCase
             $this->fieldResolver,
             $this->fieldsParser,
             $this->prompt,
+            $defaultWorkItemLabels,
         );
     }
 
@@ -1740,5 +1744,117 @@ class ItemCreateHandlerTest extends CommandTestCase
 
         $this->assertSame('linearMarkdown', $state->fields['description']['content'][0]['type']);
         $this->assertSame('plain body', $state->fields['description']['content'][0]['markdown']);
+    }
+
+    public function testHandleAppliesWorkItemLabelDefaultWhenFieldsOmitLabels(): void
+    {
+        $this->stubProjectCreateMetaWithLabels();
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->with($this->callback(static function (array $fields): bool {
+                return ($fields['labels'] ?? null) === ['AI-Generated'];
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $response = $this->createHandler(['AI-Generated'])->handle(
+            false,
+            new ItemCreateInput('PROJ', 'Story', 'My summary', null),
+        );
+
+        $this->assertTrue($response->isSuccess());
+    }
+
+    public function testHandleEmptyLabelsOptionDoesNotApplyWorkItemLabelDefault(): void
+    {
+        $this->stubProjectCreateMetaWithLabels();
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->with($this->callback(static function (array $fields): bool {
+                return ! array_key_exists('labels', $fields);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $response = $this->createHandler(['AI-Generated'])->handle(
+            false,
+            new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels='),
+        );
+
+        $this->assertTrue($response->isSuccess());
+    }
+
+    public function testHandleEmptyLabelsMapDoesNotApplyWorkItemLabelDefault(): void
+    {
+        $this->stubProjectCreateMetaWithLabels();
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->with($this->callback(static function (array $fields): bool {
+                return ! array_key_exists('labels', $fields);
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $response = $this->createHandler(['AI-Generated'])->handle(
+            false,
+            new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsMap: ['labels' => []]),
+        );
+
+        $this->assertTrue($response->isSuccess());
+    }
+
+    public function testHandleExplicitLabelsWinOverWorkItemLabelDefault(): void
+    {
+        $this->stubProjectCreateMetaWithLabels();
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->with($this->callback(static function (array $fields): bool {
+                return ($fields['labels'] ?? null) === ['Other'];
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $response = $this->createHandler(['AI-Generated'])->handle(
+            false,
+            new ItemCreateInput('PROJ', 'Story', 'My summary', null, fieldsOption: 'labels=Other'),
+        );
+
+        $this->assertTrue($response->isSuccess());
+    }
+
+    public function testHandleKeepsPromptedRequiredLabelsWhenWorkItemDefaultIsSet(): void
+    {
+        $meta = [
+            'project' => ['required' => true, 'name' => 'Project'],
+            'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+            'summary' => ['required' => true, 'name' => 'Summary'],
+            'labels' => ['required' => true, 'name' => 'Labels'],
+        ];
+        $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->jiraApiClient->method('getCreateMetaFields')->willReturn($meta);
+        $this->issueTracker->method('getCreateMetaFields')->willReturn($meta);
+        $this->prompt->method('ask')->willReturn('Prompted');
+        $this->issueTracker->expects($this->once())
+            ->method('create')
+            ->with($this->callback(static function (array $fields): bool {
+                return ($fields['labels'] ?? null) === 'Prompted';
+            }))
+            ->willReturn(['key' => 'PROJ-1', 'self' => 'https://jira/issue/1']);
+
+        $response = $this->createHandler(['AI-Generated'])->handle(
+            true,
+            new ItemCreateInput('PROJ', 'Story', 'My summary', null),
+        );
+
+        $this->assertTrue($response->isSuccess());
+    }
+
+    private function stubProjectCreateMetaWithLabels(): void
+    {
+        $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $this->issueTracker->method('getCreateMetaFields')->willReturn([
+            'project' => ['required' => true, 'name' => 'Project'],
+            'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+            'summary' => ['required' => true, 'name' => 'Summary'],
+            'labels' => ['required' => false, 'name' => 'Labels'],
+        ]);
     }
 }

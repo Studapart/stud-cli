@@ -8,6 +8,7 @@ use App\Attribute\AgentCommand;
 use App\Attribute\AgentOutput;
 use App\Config\GlobalStudConfigFieldMap;
 use App\Config\ProjectStudConfigFieldMap;
+use App\Config\ProjectStudConfigKeys;
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -278,6 +279,7 @@ class AgentModeSchemaGenerator
             $properties[$key] = match ($key) {
                 'transitionId' => ['type' => 'int|null', 'optional' => true, 'default' => null],
                 'linearTypeBranchPrefixes' => ['type' => 'object', 'optional' => true, 'default' => null],
+                'workItemLabels', 'pullRequestLabels' => ['type' => 'array', 'optional' => true, 'default' => null],
                 default => ['type' => 'string|null', 'optional' => true, 'default' => null],
             };
         }
@@ -493,5 +495,52 @@ class AgentModeSchemaGenerator
         }
 
         return $schema;
+    }
+
+    /**
+     * Overlay repository label defaults onto submit and items:create schema defaults.
+     *
+     * @param array<string, mixed> $schema
+     * @param array<string, mixed> $projectConfig
+     * @return array<string, mixed>
+     */
+    public function applyProjectLabelDefaults(array $schema, array $projectConfig): array
+    {
+        $commands = $schema['commands'] ?? null;
+        if (! is_array($commands)) {
+            return $schema;
+        }
+
+        $workItemLabels = ProjectStudConfigKeys::readLabelList($projectConfig, ProjectStudConfigKeys::WORK_ITEM_LABELS);
+        $pullRequestLabels = ProjectStudConfigKeys::readLabelList($projectConfig, ProjectStudConfigKeys::PULL_REQUEST_LABELS);
+
+        foreach ($commands as $index => $command) {
+            if (! is_array($command)) {
+                continue;
+            }
+            $schema['commands'][$index] = $this->overlayCommandLabelDefault($command, $workItemLabels, $pullRequestLabels);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * @param array<string, mixed> $command
+     * @param list<string> $workItemLabels
+     * @param list<string> $pullRequestLabels
+     * @return array<string, mixed>
+     */
+    private function overlayCommandLabelDefault(array $command, array $workItemLabels, array $pullRequestLabels): array
+    {
+        $name = $command['name'] ?? '';
+        if ($name === 'submit' && $pullRequestLabels !== []) {
+            $command['input']['properties']['labels']['default'] = implode(',', $pullRequestLabels);
+        }
+        if ($name === 'items:create' && $workItemLabels !== []) {
+            $command['input']['properties']['fields']['default'] = ['labels' => $workItemLabels];
+            $command['input']['properties']['fields']['type'] = 'string|array|null';
+        }
+
+        return $command;
     }
 }

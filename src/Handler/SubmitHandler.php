@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
@@ -30,6 +31,9 @@ use App\Service\SubmitPrBodyBuilder;
 class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, ProjectBaseBranchAware, JiraAware
 {
     private ?WorkflowEntryRecorder $recorder = null;
+
+    /** @var array<string> */
+    private array $explicitSubmitLabels = [];
 
     public function __construct(
         private readonly GitRepository $gitRepository,
@@ -67,12 +71,14 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         $headBranch = ($remoteOwner !== null && $remoteOwner !== '') ? "{$remoteOwner}:{$branch}" : $branch;
         $this->recorder()->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.using_head', ['head' => $headBranch]), WorkflowChannel::Git);
 
-        $finalLabels = $this->resolveLabels($options->labels, $options->quiet);
-        if ($finalLabels === null) {
+        $this->explicitSubmitLabels = [];
+        $plannedLabels = $this->planSubmitLabels($options);
+        if ($plannedLabels === null) {
             return $this->recorder()->toResponse(1);
         }
+        $this->explicitSubmitLabels = $plannedLabels['existing'];
 
-        return $this->recorder()->toResponse($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $finalLabels));
+        return $this->recorder()->toResponse($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $plannedLabels['create']));
     }
 
     /**
@@ -212,6 +218,77 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     }
 
     /**
+     * @return array{create: array<string>, existing: array<string>}|null
+     */
+    protected function planSubmitLabels(SubmitOptions $options): ?array
+    {
+        if ($options->labels === null) {
+            return $this->planOmittedSubmitLabels($options->quiet);
+        }
+
+        $resolved = $this->resolveLabels($options->labels, $options->quiet);
+        if ($resolved === null) {
+            return null;
+        }
+
+        return ['create' => $resolved, 'existing' => $resolved];
+    }
+
+    /**
+     * @return array{create: array<string>, existing: array<string>}|null
+     */
+    protected function planOmittedSubmitLabels(bool $quiet): ?array
+    {
+        $defaults = $this->readPullRequestLabels();
+        if ($defaults === []) {
+            return ['create' => [], 'existing' => []];
+        }
+
+        $catalogError = $this->pullRequestLabelCatalogError();
+        if ($catalogError !== null) {
+            $this->recorder()->addWarning(
+                WorkflowEntryRecorder::VERBOSITY_NORMAL,
+                MessageRef::key('submit.warning_label_default_unavailable', ['error' => $catalogError]),
+            );
+
+            return ['create' => [], 'existing' => []];
+        }
+
+        $resolved = $this->resolveLabels(implode(',', $defaults), $quiet);
+        if ($resolved === null) {
+            return null;
+        }
+
+        return ['create' => $resolved, 'existing' => []];
+    }
+
+    protected function pullRequestLabelCatalogError(): ?string
+    {
+        try {
+            $this->githubProvider?->getLabels();
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function readPullRequestLabels(): array
+    {
+        try {
+            return ProjectStudConfigKeys::readLabelList(
+                $this->gitRepository->readProjectConfig(),
+                ProjectStudConfigKeys::PULL_REQUEST_LABELS,
+            );
+        } catch (\RuntimeException) {
+            return [];
+        }
+    }
+
+    /**
      * Create PR via provider; handle 422 "already exists" by updating existing PR.
      *
      * @param array<string> $finalLabels
@@ -230,15 +307,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             $baseBranchName = str_replace('origin/', '', $this->baseBranch);
             $prRequestData = new PullRequestData($prTitle, $headBranch, $baseBranchName, $prBody, $options->draft, $options->assignToAuthor);
             $prData = $this->githubProvider->createPullRequest($prRequestData);
-
-            if (! empty($finalLabels)) {
-                $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
-                $this->githubProvider->addLabelsToPullRequest($prData['number'], $finalLabels);
-            }
-            if (isset($prData['number'])) {
-                $this->recorder()->setPullNumber((int) $prData['number']);
-            }
-            $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_created', ['url' => $prData['html_url']]));
+            $this->recordCreatedPullRequest($this->githubProvider, $prData, $finalLabels);
 
             return 0;
         } catch (PullRequestAssignmentException $e) {
@@ -250,7 +319,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             return 1;
         } catch (ApiException $e) {
             if ($e->getStatusCode() === 422 && str_contains(strtolower($e->getTechnicalDetails()), 'pull request already exists')) {
-                return $this->handleExistingPr($headBranch, $options, $finalLabels);
+                return $this->handleExistingPr($headBranch, $options, $this->explicitSubmitLabels);
             }
             $this->recorder()->addErrorWithDetails(
                 WorkflowEntryRecorder::VERBOSITY_NORMAL,
@@ -264,6 +333,22 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
 
             return 1;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $prData
+     * @param array<string> $finalLabels
+     */
+    protected function recordCreatedPullRequest(GitHostingPort $provider, array $prData, array $finalLabels): void
+    {
+        if (! empty($finalLabels)) {
+            $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.adding_labels'), WorkflowChannel::Git);
+            $provider->addLabelsToPullRequest($prData['number'], $finalLabels);
+        }
+        if (isset($prData['number'])) {
+            $this->recorder()->setPullNumber((int) $prData['number']);
+        }
+        $this->recorder()->addSuccess(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.success_created', ['url' => $prData['html_url']]));
     }
 
     /**

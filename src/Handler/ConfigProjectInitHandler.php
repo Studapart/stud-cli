@@ -256,7 +256,38 @@ class ConfigProjectInitHandler
             }
         }
 
+        return $this->validateConfiguredLabelLists($yamlPatches);
+    }
+
+    /**
+     * @param array<string, mixed> $yamlPatches
+     */
+    protected function validateConfiguredLabelLists(array $yamlPatches): ?ConfigProjectInitResponse
+    {
+        foreach ([ProjectStudConfigKeys::WORK_ITEM_LABELS, ProjectStudConfigKeys::PULL_REQUEST_LABELS] as $key) {
+            if (! isset($yamlPatches[$key])) {
+                continue;
+            }
+            if (! $this->isNonEmptyStringList($yamlPatches[$key])) {
+                return ConfigProjectInitResponse::error('config.project_init.invalid_label_list');
+            }
+        }
+
         return null;
+    }
+
+    protected function isNonEmptyStringList(mixed $value): bool
+    {
+        if (! is_array($value) || $value === []) {
+            return false;
+        }
+        foreach ($value as $label) {
+            if (! is_string($label) || trim($label) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -334,11 +365,29 @@ class ConfigProjectInitHandler
             return $this->normalizeLinearTypeBranchPrefixes($value);
         }
 
+        if (in_array($key, [ProjectStudConfigKeys::WORK_ITEM_LABELS, ProjectStudConfigKeys::PULL_REQUEST_LABELS], true)) {
+            return $this->coerceLabelListValue($value);
+        }
+
         if (is_string($value)) {
             return trim($value);
         }
 
         return $value;
+    }
+
+    protected function coerceLabelListValue(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        foreach ($value as $label) {
+            if (! is_string($label)) {
+                return $value;
+            }
+        }
+
+        return ProjectStudConfigKeys::normalizeLabelList($value);
     }
 
     /**
