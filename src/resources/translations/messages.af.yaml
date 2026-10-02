@@ -115,10 +115,13 @@ config:
     invalid_transition_id: "transitionId moet 'n nie-negatiewe heelgetal wees."
     invalid_issue_tracker_provider: "issueTrackerProvider moet jira, linear of auto wees."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes moet 'n kaart van nie-leë tipe-etikette na nie-leë tak-voorvoegsels wees."
+    invalid_label_list: "workItemLabels en pullRequestLabels moet lyste van stringe wees."
     base_branch_error: "%message%"
     interactive_title: "Stud-projekkonfigurasie"
     interactive_hint: "Druk Enter om die huidige waarde te hou. Laat opsionele velde leeg om oor te slaan."
     prompt_project_key: "Jira-projekkode (oorgangs-kas; opsioneel)"
+    prompt_work_item_labels: "Versteketikette vir nuwe werkitems (voorstel: AI-Generated)"
+    prompt_pull_request_labels: "Versteketikette vir nuwe pull requests (voorstel: AI-Generated)"
     prompt_jira_default_project: "Verstek Jira-projekkode vir items:create (opsioneel)"
     prompt_confluence_default_space: "Verstek Confluence-ruimtekode (opsioneel)"
     prompt_transition_id: "Gebufferde Jira-oorgang-ID (opsioneel, slegs syfers)"
@@ -515,6 +518,7 @@ submit:
   label_creating: Skep etiket '%label%'...
   label_created: ✅ Etiket '%label%' suksesvol geskep
   label_ignored: Etiket '%label%' sal geïgnoreer word
+  warning_label_default_unavailable: "Kon nie die gekonfigureerde pull-request-etikette toepas nie, so die pull request word daarsonder oopgemaak.\nFout: %error%"
   error_fetch_labels: 'Kon nie etikette van GitHub kry nie.
 
     Fout: %error%'

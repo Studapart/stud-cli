@@ -29,6 +29,8 @@ final class ProjectStudConfigFieldMap
         'linearStartStateId' => ProjectStudConfigKeys::LINEAR_START_STATE_ID,
         'linearTypeLabelGroupId' => ProjectStudConfigKeys::LINEAR_TYPE_LABEL_GROUP_ID,
         'linearTypeBranchPrefixes' => ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,
+        'workItemLabels' => ProjectStudConfigKeys::WORK_ITEM_LABELS,
+        'pullRequestLabels' => ProjectStudConfigKeys::PULL_REQUEST_LABELS,
     ];
 
     /**

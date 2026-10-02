@@ -27,6 +27,8 @@ final class ProjectStudConfigKeys
     public const LINEAR_START_STATE_ID = 'linearStartStateId';
     public const LINEAR_TYPE_LABEL_GROUP_ID = 'linearTypeLabelGroupId';
     public const LINEAR_TYPE_BRANCH_PREFIXES = 'linearTypeBranchPrefixes';
+    public const WORK_ITEM_LABELS = 'workItemLabels';
+    public const PULL_REQUEST_LABELS = 'pullRequestLabels';
     public const MIGRATION_VERSION = 'migration_version';
 
     /**
@@ -49,6 +51,8 @@ final class ProjectStudConfigKeys
             self::LINEAR_START_STATE_ID,
             self::LINEAR_TYPE_LABEL_GROUP_ID,
             self::LINEAR_TYPE_BRANCH_PREFIXES,
+            self::WORK_ITEM_LABELS,
+            self::PULL_REQUEST_LABELS,
             self::MIGRATION_VERSION,
         ];
     }
@@ -70,5 +74,44 @@ final class ProjectStudConfigKeys
         }
 
         return null;
+    }
+
+    /**
+     * @param array<string, mixed> $projectConfig
+     * @return list<string>
+     */
+    public static function readLabelList(array $projectConfig, string $key): array
+    {
+        if (! array_key_exists($key, $projectConfig) || ! is_array($projectConfig[$key])) {
+            return [];
+        }
+
+        return self::normalizeLabelList($projectConfig[$key]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function normalizeLabelList(mixed $value): array
+    {
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $labels = [];
+        foreach ($value as $label) {
+            if (! is_string($label)) {
+                continue;
+            }
+            $trimmed = trim($label);
+            if ($trimmed !== '') {
+                $labels[] = $trimmed;
+            }
+        }
+
+        return $labels;
     }
 }

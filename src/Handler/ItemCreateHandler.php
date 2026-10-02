@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\ProjectStudConfigKeys;
 use App\DTO\IssueCreationState;
 use App\DTO\ItemCreateInput;
 use App\DTO\MessageRef;
@@ -31,6 +32,8 @@ class ItemCreateHandler implements JiraAware
         private readonly IssueFieldResolver $fieldResolver,
         private readonly FieldsParser $fieldsParser,
         private readonly PromptInterface $prompt,
+        /** @var list<string> */
+        private readonly array $defaultWorkItemLabels = [],
     ) {
     }
 
@@ -69,6 +72,7 @@ class ItemCreateHandler implements JiraAware
     protected function applyFieldsOption(IssueCreationState $state, ItemCreateInput $input): array
     {
         $parsedFields = $input->fieldsMap ?? ($input->fieldsOption !== null ? $this->fieldsParser->parse($input->fieldsOption) : []);
+        $parsedFields = $this->mergeWorkItemLabelDefault($parsedFields, $state);
         if ($parsedFields === []) {
             return [];
         }
@@ -78,6 +82,50 @@ class ItemCreateHandler implements JiraAware
         }
 
         return $result['unmatched'];
+    }
+
+    /**
+     * @param array<string, string|list<string>> $parsedFields
+     * @return array<string, string|list<string>>
+     */
+    protected function mergeWorkItemLabelDefault(array $parsedFields, IssueCreationState $state): array
+    {
+        $labelsKey = $this->findLabelsFieldKey($parsedFields);
+        if ($labelsKey !== null) {
+            if (ProjectStudConfigKeys::normalizeLabelList($parsedFields[$labelsKey]) === []) {
+                unset($parsedFields[$labelsKey]);
+            }
+
+            return $parsedFields;
+        }
+        if ($this->defaultWorkItemLabels === [] || $this->creationStateHasLabels($state)) {
+            return $parsedFields;
+        }
+        $parsedFields[StudIssueKeys::LABELS] = $this->defaultWorkItemLabels;
+
+        return $parsedFields;
+    }
+
+    /**
+     * @param array<string, mixed> $parsedFields
+     */
+    protected function findLabelsFieldKey(array $parsedFields): ?string
+    {
+        foreach (array_keys($parsedFields) as $key) {
+            if (strtolower((string) $key) === StudIssueKeys::LABELS) {
+                return (string) $key;
+            }
+        }
+
+        return null;
+    }
+
+    protected function creationStateHasLabels(IssueCreationState $state): bool
+    {
+        $labelsKey = $this->findLabelsFieldKey($state->fields);
+
+        return $labelsKey !== null
+            && ProjectStudConfigKeys::normalizeLabelList($state->fields[$labelsKey]) !== [];
     }
 
     protected function resolveTypeMetadata(

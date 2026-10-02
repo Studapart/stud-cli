@@ -45,4 +45,10 @@ class ProjectStudConfigKeysTest extends TestCase
     {
         $this->assertNull(ProjectStudConfigKeys::readIssueTrackerProvider([]));
     }
+
+    public function testNormalizeLabelListReturnsEmptyForNonListValues(): void
+    {
+        $this->assertSame([], ProjectStudConfigKeys::normalizeLabelList(12));
+        $this->assertSame(['AI-Generated', 'RFR'], ProjectStudConfigKeys::normalizeLabelList(' AI-Generated, RFR '));
+    }
 }

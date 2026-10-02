@@ -75,6 +75,7 @@ class ConfigProjectInitPromptCollector
             $patches = array_merge($patches, $this->promptLinearFields($mergedAfterProjectKey, $recorder));
         }
         $patches = array_merge($patches, $this->promptBaseBranch($existing, $recorder));
+        $patches = array_merge($patches, $this->promptLabelDefaults($existing));
         $patches = array_merge($patches, $this->promptGitProvider($existing, $recorder));
         $patches = array_merge($patches, $this->promptGitlabInstanceUrl($existing));
         $patches = array_merge($patches, $this->promptGithubToken($existing, $recorder));
@@ -376,6 +377,49 @@ class ConfigProjectInitPromptCollector
         }
 
         return ['baseBranch' => trim((string) $answer)];
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    protected function promptLabelDefaults(array $existing): array
+    {
+        return array_merge(
+            $this->promptStoredLabelList(
+                $existing,
+                ProjectStudConfigKeys::WORK_ITEM_LABELS,
+                'workItemLabels',
+                'config.project_init.prompt_work_item_labels',
+            ),
+            $this->promptStoredLabelList(
+                $existing,
+                ProjectStudConfigKeys::PULL_REQUEST_LABELS,
+                'pullRequestLabels',
+                'config.project_init.prompt_pull_request_labels',
+            ),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    protected function promptStoredLabelList(array $existing, string $yamlKey, string $inputKey, string $messageKey): array
+    {
+        $stored = ProjectStudConfigKeys::readLabelList($existing, $yamlKey);
+        $joined = $stored === [] ? null : implode(',', $stored);
+        $answer = $this->prompt->ask(MessageRef::key($messageKey), $joined);
+        if ($answer === null || trim((string) $answer) === '') {
+            return [];
+        }
+
+        $normalized = ProjectStudConfigKeys::normalizeLabelList((string) $answer);
+        if ($normalized === [] || $normalized === $stored) {
+            return [];
+        }
+
+        return [$inputKey => $normalized];
     }
 
     /**

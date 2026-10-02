@@ -638,6 +638,11 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
     $jiraService = _get_jira_api_client();
     $provider = _require_issue_tracker($providerOverride);
 
+    $workItemLabels = \App\Config\ProjectStudConfigKeys::readLabelList(
+        _project_config_or_empty(),
+        \App\Config\ProjectStudConfigKeys::WORK_ITEM_LABELS,
+    );
+
     return new ItemCreateHandler(
         new ItemCreateProjectResolver(_get_git_repository(), $jiraService, $prompt, _get_linear_api_client(), _get_logger()),
         new ItemCreatePromptService($jiraService, _get_issue_field_resolver(), $prompt),
@@ -645,6 +650,7 @@ function _get_item_create_handler(?string $providerOverride = null): ItemCreateH
         _get_issue_field_resolver(),
         _get_fields_parser(),
         $prompt,
+        $workItemLabels,
     );
 }
 
@@ -3915,9 +3921,10 @@ function help(
             return;
         }
         $generator = new \App\Service\AgentModeSchemaGenerator(_get_translation_service());
+        $projectConfig = _project_config_or_empty();
         $filterCommand = $input['commandName'] ?? $input['command'] ?? null;
         if ($filterCommand !== null) {
-            $schema = $generator->generate();
+            $schema = $generator->applyProjectLabelDefaults($generator->generate(), $projectConfig);
             foreach ($schema['commands'] as $cmd) {
                 if ($cmd['name'] === $filterCommand || in_array($filterCommand, $cmd['aliases'] ?? [], true)) {
                     _agent_respond(new AgentJsonResponse(true, data: $cmd));
@@ -3930,7 +3937,10 @@ function help(
             return;
         }
         $essentialOnly = ($input['essential'] ?? true) !== false;
-        $schema = $generator->generate(essentialOnly: $essentialOnly, expandedOutput: false);
+        $schema = $generator->applyProjectLabelDefaults(
+            $generator->generate(essentialOnly: $essentialOnly, expandedOutput: false),
+            $projectConfig,
+        );
         _agent_respond(new AgentJsonResponse(true, data: $schema));
 
         return;

@@ -451,6 +451,8 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayHasKey('linearTeamKey', $props);
         $this->assertArrayHasKey('linearTypeLabelGroupId', $props);
         $this->assertArrayHasKey('linearTypeBranchPrefixes', $props);
+        $this->assertSame('array', $props['workItemLabels']['type']);
+        $this->assertSame('array', $props['pullRequestLabels']['type']);
         $this->assertArrayHasKey('skipBaseBranchRemoteCheck', $props);
         $out = $cmd['output']['success']['data'] ?? [];
         $this->assertArrayHasKey('updated', $out);
@@ -748,5 +750,67 @@ class AgentModeSchemaGeneratorTest extends TestCase
     private function generatorWithTranslations(): AgentModeSchemaGenerator
     {
         return new AgentModeSchemaGenerator(new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations'));
+    }
+
+    public function testApplyProjectLabelDefaultsOverlaysOnlyLabelInputs(): void
+    {
+        $schema = $this->generator->applyProjectLabelDefaults($this->schema, [
+            'workItemLabels' => [' AI-Generated ', 12],
+            'pullRequestLabels' => ['AI-Generated', 'RFR'],
+            'githubToken' => 'secret',
+        ]);
+        $commands = [];
+        foreach ($schema['commands'] as $command) {
+            $commands[$command['name']] = $command;
+        }
+
+        $this->assertSame('AI-Generated,RFR', $commands['submit']['input']['properties']['labels']['default']);
+        $this->assertSame(['labels' => ['AI-Generated']], $commands['items:create']['input']['properties']['fields']['default']);
+        $this->assertSame('string|array|null', $commands['items:create']['input']['properties']['fields']['type']);
+        $this->assertFalse($commands['submit']['input']['properties']['stageAll']['default']);
+        $this->assertNull($commands['submit']['input']['properties']['message']['default']);
+        $this->assertArrayNotHasKey('githubToken', $commands['submit']['input']['properties']);
+    }
+
+    public function testApplyProjectLabelDefaultsLeavesReflectedNullWhenListsAreEmpty(): void
+    {
+        $schema = $this->generator->applyProjectLabelDefaults($this->schema, [
+            'workItemLabels' => 'AI-Generated',
+            'pullRequestLabels' => [],
+        ]);
+        $commands = [];
+        foreach ($schema['commands'] as $command) {
+            $commands[$command['name']] = $command;
+        }
+
+        $this->assertNull($commands['submit']['input']['properties']['labels']['default']);
+        $this->assertNull($commands['items:create']['input']['properties']['fields']['default']);
+        $this->assertSame('string|null', $commands['items:create']['input']['properties']['fields']['type']);
+    }
+
+    public function testApplyProjectLabelDefaultsIgnoresSchemasWithoutCommandMaps(): void
+    {
+        $schema = ['commands' => 'not-a-list'];
+
+        $this->assertSame($schema, $this->generator->applyProjectLabelDefaults($schema, [
+            'workItemLabels' => ['AI-Generated'],
+            'pullRequestLabels' => ['AI-Generated'],
+        ]));
+    }
+
+    public function testApplyProjectLabelDefaultsSkipsNonArrayCommandEntries(): void
+    {
+        $schema = $this->generator->applyProjectLabelDefaults([
+            'commands' => [
+                'skip',
+                ['name' => 'other'],
+            ],
+        ], [
+            'workItemLabels' => ['AI-Generated'],
+            'pullRequestLabels' => ['RFR'],
+        ]);
+
+        $this->assertSame('skip', $schema['commands'][0]);
+        $this->assertSame(['name' => 'other'], $schema['commands'][1]);
     }
 }

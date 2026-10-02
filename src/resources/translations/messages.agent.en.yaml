@@ -174,6 +174,7 @@
 "submit.note_dirty_working": "uncommitted files not included; PR uses existing commits"
 "submit.warning_jira_fetch": "Jira fetch failed: %error%. PR body uses simple link"
 "submit.warning_issue_fetch": "Work item fetch failed: %error%. PR body uses simple link"
+"submit.warning_label_default_unavailable": "Configured pull request labels were not applied: %error%. The pull request will open without them."
 "submit.fetching_issue": "Fetching work item for PR body: %key%"
 "sync.already_up_to_date": "already up to date"
 "sync.error_conflicts": "rebase conflicts; branch unchanged. resolve with git rebase %base%"
