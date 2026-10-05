@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-10-05
+
+### Added
+
+- **Project label defaults (SCI-209):** `.git/stud.config` can store `workItemLabels` and `pullRequestLabels`. Both stay empty until set. `config:project-init` suggests `AI-Generated` and stores it only when entered. `items:create` applies the work-item list when `fields` omits labels. `submit` applies the pull-request list only when opening a new pull request with labels omitted. If that host label list cannot be read, `submit` warns and still opens the pull request without the default. `stud help --agent` reports those values as the matching input defaults.
+
 ## [4.1.0] - 2026-09-22
 
 ### Changed

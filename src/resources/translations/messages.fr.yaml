@@ -115,10 +115,13 @@ config:
     invalid_transition_id: "transitionId doit être un entier positif ou nul."
     invalid_issue_tracker_provider: "issueTrackerProvider doit être jira, linear ou auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes doit être une map de libellés de type non vides vers des préfixes de branche non vides."
+    invalid_label_list: "workItemLabels et pullRequestLabels doivent être des listes de chaînes."
     base_branch_error: "%message%"
     interactive_title: "Configuration stud du projet"
     interactive_hint: "Appuyez sur Entrée pour conserver la valeur actuelle. Laissez les champs optionnels vides pour les ignorer."
     prompt_project_key: "Clé de projet Jira (cache de transition ; optionnel)"
+    prompt_work_item_labels: "Libellés par défaut des nouveaux tickets (suggestion : AI-Generated)"
+    prompt_pull_request_labels: "Libellés par défaut des nouvelles pull requests (suggestion : AI-Generated)"
     prompt_jira_default_project: "Clé de projet Jira par défaut pour items:create (optionnel)"
     prompt_confluence_default_space: "Clé d'espace Confluence par défaut (optionnel)"
     prompt_transition_id: "ID de transition Jira mis en cache (optionnel, chiffres uniquement)"
@@ -515,6 +518,7 @@ submit:
   label_creating: Création du label '%label%'...
   label_created: ✅ Label '%label%' créé avec succès
   label_ignored: Le label '%label%' sera ignoré
+  warning_label_default_unavailable: "Impossible d'appliquer les labels de pull request configurés, la pull request sera ouverte sans eux.\nErreur : %error%"
   error_fetch_labels: 'Échec de la récupération des labels depuis GitHub.
 
     Erreur : %error%'

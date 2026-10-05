@@ -115,10 +115,13 @@ config:
     invalid_transition_id: "transitionId phải là số nguyên không âm."
     invalid_issue_tracker_provider: "issueTrackerProvider phải là jira, linear hoặc auto."
     invalid_linear_type_branch_prefixes: "linearTypeBranchPrefixes phải là map các nhãn loại không rỗng tới tiền tố nhánh không rỗng."
+    invalid_label_list: "workItemLabels và pullRequestLabels phải là danh sách chuỗi."
     base_branch_error: "%message%"
     interactive_title: "Cấu hình stud cho dự án"
     interactive_hint: "Nhấn Enter để giữ giá trị hiện tại. Để trống các trường tùy chọn nếu muốn bỏ qua."
     prompt_project_key: "Mã dự án Jira (bộ nhớ chuyển trạng thái; tùy chọn)"
+    prompt_work_item_labels: "Nhãn mặc định cho work item mới (gợi ý: AI-Generated)"
+    prompt_pull_request_labels: "Nhãn mặc định cho pull request mới (gợi ý: AI-Generated)"
     prompt_jira_default_project: "Mã dự án Jira mặc định cho items:create (tùy chọn)"
     prompt_confluence_default_space: "Mã không gian Confluence mặc định (tùy chọn)"
     prompt_transition_id: "ID chuyển trạng thái Jira đã lưu (tùy chọn, chỉ chữ số)"
@@ -515,6 +518,7 @@ submit:
   label_creating: Đang tạo nhãn '%label%'...
   label_created: ✅ Nhãn '%label%' đã được tạo thành công
   label_ignored: Nhãn '%label%' sẽ bị bỏ qua
+  warning_label_default_unavailable: "Không thể áp dụng nhãn pull request đã cấu hình, nên pull request sẽ được mở mà không có các nhãn đó.\nLỗi: %error%"
   error_fetch_labels: 'Không thể lấy nhãn từ GitHub.
 
     Lỗi: %error%'

@@ -115,10 +115,13 @@ config:
     invalid_transition_id: "Το transitionId πρέπει να είναι μη αρνητικός ακέραιος."
     invalid_issue_tracker_provider: "Το issueTrackerProvider πρέπει να είναι jira, linear ή auto."
     invalid_linear_type_branch_prefixes: "Το linearTypeBranchPrefixes πρέπει να είναι χάρτης μη κενών ετικετών τύπου σε μη κενά προθέματα κλάδων."
+    invalid_label_list: "Τα workItemLabels και pullRequestLabels πρέπει να είναι λίστες συμβολοσειρών."
     base_branch_error: "%message%"
     interactive_title: "Ρύθμιση stud έργου"
     interactive_hint: "Πατήστε Enter για να κρατήσετε την τρέχουσα τιμή. Αφήστε κενά τα προαιρετικά πεδία για παράλειψη."
     prompt_project_key: "Κλειδί έργου Jira (κρυφή μνήμη μετάβασης· προαιρετικό)"
+    prompt_work_item_labels: "Προεπιλεγμένες ετικέτες για νέα στοιχεία εργασίας (πρόταση: AI-Generated)"
+    prompt_pull_request_labels: "Προεπιλεγμένες ετικέτες για νέα pull request (πρόταση: AI-Generated)"
     prompt_jira_default_project: "Προεπιλεγμένο κλειδί έργου Jira για items:create (προαιρετικό)"
     prompt_confluence_default_space: "Προεπιλεγμένο κλειδί χώρου Confluence (προαιρετικό)"
     prompt_transition_id: "Αποθηκευμένο ID μετάβασης Jira (προαιρετικό, μόνο ψηφία)"
@@ -515,6 +518,7 @@ submit:
   label_creating: Δημιουργία ετικέτας '%label%'...
   label_created: ✅ Η ετικέτα '%label%' δημιουργήθηκε επιτυχώς
   label_ignored: Η ετικέτα '%label%' θα αγνοηθεί
+  warning_label_default_unavailable: "Δεν ήταν δυνατή η εφαρμογή των ρυθμισμένων ετικετών pull request, οπότε το pull request θα ανοίξει χωρίς αυτές.\nΣφάλμα: %error%"
   error_fetch_labels: 'Αποτυχία λήψης ετικετών από το GitHub.
 
     Σφάλμα: %error%'

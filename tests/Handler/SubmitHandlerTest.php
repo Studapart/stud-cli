@@ -2384,4 +2384,180 @@ class SubmitHandlerTest extends CommandTestCase
 
         $this->assertSame(0, $response->exitCode);
     }
+
+    public function testHandleAppliesPullRequestLabelDefaultWhenOpeningNewPullRequest(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
+        $this->githubProvider->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['number' => 7, 'html_url' => 'https://github.com/my-owner/my-repo/pull/7']);
+        $this->githubProvider->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(7, ['bug']);
+        $this->githubProvider->expects($this->never())->method('findPullRequestByBranch');
+
+        $response = $this->handler->handle(new SubmitOptions());
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(7, $response->pullNumber);
+    }
+
+    public function testHandleOpensPullRequestWithoutLabelsWhenDefaultLabelCatalogCannotBeRead(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willThrowException(
+            new \App\Exception\ApiException('Failed to fetch labels.', 'network', 500),
+        );
+        $this->githubProvider->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['number' => 11, 'html_url' => 'https://github.com/my-owner/my-repo/pull/11']);
+        $this->githubProvider->expects($this->never())->method('addLabelsToPullRequest');
+
+        $response = $this->handler->handle(new SubmitOptions());
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(11, $response->pullNumber);
+        $warningParameters = [];
+        foreach ($response->entries as $entry) {
+            if ($entry->type === 'warning' && $entry->message instanceof \App\DTO\MessageRef) {
+                $warningKeys[] = $entry->message->key;
+                $warningParameters[] = $entry->message->parameters;
+            }
+        }
+        $this->assertContains('submit.warning_label_default_unavailable', $warningKeys);
+        $this->assertContains(['error' => 'Failed to fetch labels.'], $warningParameters);
+    }
+
+    public function testHandleDoesNotCreatePullRequestWhenDefaultLabelRetryAborts(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willReturn([]);
+        $this->prompt->method('choice')->willReturn('Retry: Abort the command and re-run with a corrected list');
+        $this->githubProvider->expects($this->never())->method('createPullRequest');
+
+        $response = $this->handler->handle(new SubmitOptions());
+
+        $this->assertSame(1, $response->exitCode);
+    }
+
+    public function testHandleDoesNotApplyPullRequestLabelDefaultToExistingPullRequest(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willReturn([['name' => 'bug']]);
+        $this->githubProvider->method('createPullRequest')->willThrowException(
+            new \App\Exception\ApiException('Failed to create pull request.', 'pull request already exists', 422),
+        );
+        $this->githubProvider->method('findPullRequestByBranch')->willReturn([
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ]);
+        $this->githubProvider->expects($this->never())->method('addLabelsToPullRequest');
+
+        $response = $this->handler->handle(new SubmitOptions());
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(42, $response->pullNumber);
+    }
+
+    public function testHandleOpensPullRequestWithoutLabelsWhenProjectConfigIsUnreadable(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willThrowException(new \RuntimeException('Not in a git repository.'));
+        $this->githubProvider->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['number' => 8, 'html_url' => 'https://github.com/my-owner/my-repo/pull/8']);
+        $this->githubProvider->expects($this->never())->method('addLabelsToPullRequest');
+
+        $response = $this->handler->handle(new SubmitOptions());
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(8, $response->pullNumber);
+    }
+
+    public function testHandleUsesExplicitLabelsInsteadOfPullRequestDefault(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
+        $this->githubProvider->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['number' => 9, 'html_url' => 'https://github.com/my-owner/my-repo/pull/9']);
+        $this->githubProvider->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(9, ['enhancement']);
+
+        $response = $this->handler->handle(new SubmitOptions(labels: 'enhancement'));
+
+        $this->assertSame(0, $response->exitCode);
+    }
+
+    public function testHandleUsesExplicitLabelsOnExistingPullRequestInsteadOfDefault(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->method('getLabels')->willReturn([['name' => 'enhancement'], ['name' => 'bug']]);
+        $this->githubProvider->method('createPullRequest')->willThrowException(
+            new \App\Exception\ApiException('Failed to create pull request.', 'pull request already exists', 422),
+        );
+        $this->githubProvider->method('findPullRequestByBranch')->willReturn([
+            'number' => 42,
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/42',
+            'draft' => false,
+        ]);
+        $this->githubProvider->expects($this->once())
+            ->method('addLabelsToPullRequest')
+            ->with(42, ['enhancement']);
+
+        $response = $this->handler->handle(new SubmitOptions(labels: 'enhancement'));
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(42, $response->pullNumber);
+    }
+
+    public function testHandleTreatsEmptyLabelStringAsOptOutWhenPullRequestDefaultIsSet(): void
+    {
+        $this->stubSubmitPreflight();
+        $this->gitRepository->method('readProjectConfig')->willReturn(['pullRequestLabels' => ['bug']]);
+        $this->githubProvider->expects($this->once())
+            ->method('createPullRequest')
+            ->willReturn(['number' => 10, 'html_url' => 'https://github.com/my-owner/my-repo/pull/10']);
+        $this->githubProvider->expects($this->never())->method('addLabelsToPullRequest');
+        $this->githubProvider->expects($this->never())->method('getLabels');
+
+        $response = $this->handler->handle(new SubmitOptions(labels: ''));
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(10, $response->pullNumber);
+    }
+
+    private function stubSubmitPreflight(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $this->gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+        $this->issueTracker->method('getIssue')->willReturn(new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description',
+        ));
+    }
 }

@@ -148,6 +148,15 @@ echo '{"project":"ENG","groupsOnly":true}' | stud projects:labels --agent
 
 Repository-specific values live in `.git/stud.config`.
 
+Optional label lists stay absent until you set them:
+
+| Key | Purpose |
+|-----|---------|
+| `workItemLabels` | Labels applied when `items:create` omits a `labels` field |
+| `pullRequestLabels` | Labels applied when `submit` opens a new pull request and omits `--labels` |
+
+`stud config:project-init` suggests `AI-Generated` for each list. That word is stored only if you enter it. An empty answer leaves the list unset. Passing labels on the command overrides the list. When labels are omitted and `pullRequestLabels` is set, a failure to read the host label list warns and still opens the pull request without that default. An explicit label value still stops `submit` if that list cannot be read. Updates of an existing work item or pull request do not use these defaults. `stud help --agent` shows a non-empty pull-request list as the `submit` `labels` default, and a non-empty work-item list as `items:create` `fields.default` `{"labels":["…"]}`.
+
 ```bash
 stud config:project-init
 stud cpi

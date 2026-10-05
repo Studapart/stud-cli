@@ -89,6 +89,10 @@ class SecretKeyPolicyTest extends TestCase
         $this->assertContains('JIRA_DEFAULT_PROJECT', $allowed);
         $this->assertContains('CONFLUENCE_DEFAULT_SPACE', $allowed);
         $this->assertContains('baseBranch', $allowed);
+        $this->assertContains('workItemLabels', $allowed);
+        $this->assertContains('pullRequestLabels', $allowed);
+        $this->assertFalse(SecretKeyPolicy::isSecretKey('workItemLabels'));
+        $this->assertFalse(SecretKeyPolicy::isSecretKey('pullRequestLabels'));
         $this->assertContains('gitProvider', $allowed);
         $this->assertContains('issueTrackerProvider', $allowed);
         $this->assertContains('linearTeamKey', $allowed);
