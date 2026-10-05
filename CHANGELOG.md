@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Project init label prompts (SCI-209):** When a work-item or pull-request label list is already stored, the question shows that list and no longer suggests `AI-Generated`. Enter leaves the stored list unchanged.
+
 ## [4.2.0] - 2026-10-05
 
 ### Added
