@@ -739,4 +739,92 @@ class ConfigProjectInitHandlerTest extends TestCase
         $this->assertSame('state-uuid', $response->redactedProjectConfig['linearStartStateId'] ?? null);
         $this->assertSame($linearTypeLabelGroupId, $response->redactedProjectConfig['linearTypeLabelGroupId'] ?? null);
     }
+
+    public function testAgentWritesNormalizedLabelLists(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls([], [
+            'workItemLabels' => ['AI-Generated'],
+            'pullRequestLabels' => ['AI-Generated', 'RFR'],
+        ]);
+        $gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with([
+                'workItemLabels' => ['AI-Generated'],
+                'pullRequestLabels' => ['AI-Generated', 'RFR'],
+            ]);
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle([
+            'workItemLabels' => [' AI-Generated ', ''],
+            'pullRequestLabels' => ['AI-Generated', 'RFR'],
+        ], true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->updated);
+    }
+
+    public function testAgentEmptyLabelListsDoNotDeleteStoredValues(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn(['workItemLabels' => ['Keep'], 'pullRequestLabels' => ['Keep']]);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+
+        foreach ([[], [''], null] as $empty) {
+            $response = $handler->handle([
+                'workItemLabels' => $empty,
+                'pullRequestLabels' => $empty,
+            ], true, true);
+            $this->assertTrue($response->isSuccess());
+            $this->assertFalse($response->updated);
+        }
+    }
+
+    public function testAgentRejectsNonStringLabelListElements(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle(['workItemLabels' => ['AI-Generated', 1]], true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+    }
+
+    public function testAgentRejectsStringLabelList(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn([]);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle(['pullRequestLabels' => 'AI-Generated'], true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+    }
 }

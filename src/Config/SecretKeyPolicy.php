@@ -48,6 +48,8 @@ final class SecretKeyPolicy
             ProjectStudConfigKeys::PROJECT_KEY,
             ProjectStudConfigKeys::TRANSITION_ID,
             ProjectStudConfigKeys::BASE_BRANCH,
+            ProjectStudConfigKeys::WORK_ITEM_LABELS,
+            ProjectStudConfigKeys::PULL_REQUEST_LABELS,
             ProjectStudConfigKeys::GIT_PROVIDER,
             ProjectStudConfigKeys::GITLAB_INSTANCE_URL,
             ProjectStudConfigKeys::ISSUE_TRACKER_PROVIDER,

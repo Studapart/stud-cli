@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Config\ProjectStudConfigKeys;
+use App\DTO\MessageRef;
 use App\DTO\WorkflowRecorder;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitPromptCollector;
@@ -112,6 +114,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             '',
             '',
+            '',
+            '',
             ''
         );
         $prompt->method('choice')->willReturn('github');
@@ -163,6 +167,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             '',
             'develop',
+            '',
+            '',
             ''
         );
         $prompt->method('choice')->willReturn('github');
@@ -199,6 +205,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
+            '',
+            '',
             '',
             '',
             '',
@@ -293,6 +301,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'jira',
             '  myspace  ',
             '',
+            '',
+            '',
             'https://gitlab.example/'
         );
         $prompt->method('choice')->willReturn('gitlab');
@@ -386,7 +396,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
@@ -526,7 +536,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('choice')->willReturn('github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
@@ -588,7 +598,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
@@ -654,7 +664,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createDefaultMetadataPromptsMock();
@@ -736,5 +746,80 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             ['projectKey' => 'SCI'],
             $method->invoke($collector, [], ['unknownKey' => 'x', 'projectKey' => 'SCI']),
         );
+    }
+
+    public function testPromptStoredLabelListSkipsEmptyAnswerWhenUnset(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('ask')
+            ->with($this->callback(static function (mixed $question): bool {
+                return $question instanceof MessageRef
+                    && $question->key === 'config.project_init.prompt_work_item_labels';
+            }), null)
+            ->willReturn('');
+
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $prompt,
+            $this->createMock(GitSetupService::class),
+        );
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertSame([], $method->invoke(
+            $collector,
+            [],
+            ProjectStudConfigKeys::WORK_ITEM_LABELS,
+            'workItemLabels',
+            'config.project_init.prompt_work_item_labels',
+        ));
+    }
+
+    public function testPromptStoredLabelListStoresAcceptedSuggestion(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->method('ask')->willReturn('AI-Generated');
+
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $prompt,
+            $this->createMock(GitSetupService::class),
+        );
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertSame(['workItemLabels' => ['AI-Generated']], $method->invoke(
+            $collector,
+            [],
+            ProjectStudConfigKeys::WORK_ITEM_LABELS,
+            'workItemLabels',
+            'config.project_init.prompt_work_item_labels',
+        ));
+    }
+
+    public function testPromptStoredLabelListSkipsUnchangedStoredValue(): void
+    {
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())
+            ->method('ask')
+            ->with($this->anything(), 'AI-Generated,RFR')
+            ->willReturn('AI-Generated,RFR');
+
+        $collector = $this->createCollector(
+            $this->createMock(GitRepository::class),
+            $prompt,
+            $this->createMock(GitSetupService::class),
+        );
+        $method = new \ReflectionMethod(ConfigProjectInitPromptCollector::class, 'promptStoredLabelList');
+        \App\Util\ReflectionAccessor::ensureAccessible($method);
+
+        $this->assertSame([], $method->invoke(
+            $collector,
+            ['pullRequestLabels' => ['AI-Generated', 'RFR']],
+            ProjectStudConfigKeys::PULL_REQUEST_LABELS,
+            'pullRequestLabels',
+            'config.project_init.prompt_pull_request_labels',
+        ));
     }
 }
