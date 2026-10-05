@@ -409,7 +409,8 @@ class ConfigProjectInitPromptCollector
     {
         $stored = ProjectStudConfigKeys::readLabelList($existing, $yamlKey);
         $joined = $stored === [] ? null : implode(',', $stored);
-        $answer = $this->prompt->ask(MessageRef::key($messageKey), $joined);
+        $questionKey = $stored === [] ? $messageKey : $messageKey . '_stored';
+        $answer = $this->prompt->ask(MessageRef::key($questionKey), $joined);
         if ($answer === null || trim((string) $answer) === '') {
             return [];
         }

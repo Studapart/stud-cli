@@ -803,7 +803,10 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->expects($this->once())
             ->method('ask')
-            ->with($this->anything(), 'AI-Generated,RFR')
+            ->with($this->callback(static function (mixed $question): bool {
+                return $question instanceof MessageRef
+                    && $question->key === 'config.project_init.prompt_pull_request_labels_stored';
+            }), 'AI-Generated,RFR')
             ->willReturn('AI-Generated,RFR');
 
         $collector = $this->createCollector(
