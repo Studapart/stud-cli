@@ -77,4 +77,18 @@ final class CommandResponse extends AbstractResponse
 
         return $data;
     }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    public function withAdditionalMessages(array $messages): self
+    {
+        return new self(
+            $this->success,
+            $this->getErrorMessage(),
+            $this->message,
+            $this->data,
+            array_merge($this->messages, $messages),
+        );
+    }
 }

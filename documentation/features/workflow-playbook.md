@@ -116,6 +116,8 @@ stud flatten
 stud please
 ```
 
+`stud commit`, `stud push`, `stud please`, and `stud submit` also accept `flatten` (CLI `--flatten`, agent JSON `"flatten": true`, default false). When it is set, the command runs the same autosquash as `stud flatten` after its commit step and before any network update. A flatten failure stops the command before push or pull-request creation. Omitting the flag keeps the previous behavior. `pleaseFallback` still force-with-lease only after a rejected normal push, or when `stud please` itself is the command.
+
 Do not use `stud please` as a normal push command. Its main role is after `stud flatten`, `git rebase`, or another intentional history rewrite. If the branch has never been pushed, `stud please` still succeeds: it sets upstream to origin and pushes (CLI shows a notice; agent mode stays quiet).
 
 ### Submit and respond to review

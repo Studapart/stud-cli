@@ -17,6 +17,7 @@ class PushHandler implements GitRepositoryAware
         private readonly CommitHandler $commitHandler,
         private readonly GitRepository $gitRepository,
         private readonly PleaseHandler $pleaseHandler,
+        private readonly FlattenHandler $flattenHandler,
         mixed $_translator,
         private readonly PromptInterface $prompt,
     ) {
@@ -30,6 +31,9 @@ class PushHandler implements GitRepositoryAware
      *
      * When nothing is staged and `--all` / `stageAll` was not requested, skips the commit phase so a dirty
      * working tree does not block pushing existing commits (standalone `stud commit` still errors).
+     *
+     * When `$flatten` is true, autosquash runs after the commit phase and before the network push.
+     * A flatten failure returns immediately and does not push.
      */
     public function handle(
         mixed $first,
@@ -40,8 +44,9 @@ class PushHandler implements GitRepositoryAware
         mixed $sixth = false,
         mixed $seventh = false,
         mixed $eighth = true,
+        mixed $ninth = false,
     ): CommandResponse {
-        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback] = $this->normalizeHandleArguments(
+        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback, $flatten] = $this->normalizeHandleArguments(
             $first,
             $second,
             $third,
@@ -50,24 +55,48 @@ class PushHandler implements GitRepositoryAware
             $sixth,
             $seventh,
             $eighth,
+            $ninth,
         );
         $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
         if (! $commitResponse->isSuccess()) {
             return $commitResponse;
         }
 
-        $branch = $this->gitRepository->getCurrentBranchName();
+        $prepared = $this->applyFlatten($flatten, $commitResponse->getMessages());
+        if (! $prepared->isSuccess()) {
+            return $prepared;
+        }
 
+        $messages = $prepared->getMessages();
+        $branch = $this->gitRepository->getCurrentBranchName();
         $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if ($pushProcess->isSuccessful()) {
             return CommandResponse::success(
                 MessageRef::key('push.success'),
                 ['branch' => $branch, 'commit' => $commitResponse->payloadData()],
-                $commitResponse->getMessages(),
+                $messages,
             );
         }
 
-        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $commitResponse->getMessages());
+        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $messages);
+    }
+
+    /**
+     * @param list<ResponseMessage> $priorMessages
+     */
+    protected function applyFlatten(bool $flatten, array $priorMessages): CommandResponse
+    {
+        if (! $flatten) {
+            return CommandResponse::success(messages: $priorMessages);
+        }
+
+        $flat = $this->flattenHandler->handle();
+        $messages = array_merge($priorMessages, $flat->getMessages());
+        if (! $flat->isSuccess()) {
+            return CommandResponse::error($flat->getErrorMessage() ?? 'flatten failed', $messages);
+        }
+
+        return CommandResponse::success(messages: $messages);
     }
 
     /**
@@ -118,7 +147,7 @@ class PushHandler implements GitRepositoryAware
                 return $this->pushFailedResponse($messages);
             }
 
-            return $this->runPlease($pleaseQuiet);
+            return $this->runPlease($pleaseQuiet, $messages);
         }
 
         if ($noPlease) {
@@ -132,16 +161,21 @@ class PushHandler implements GitRepositoryAware
             }
         }
 
-        return $this->runPlease($pleaseQuiet);
+        return $this->runPlease($pleaseQuiet, $messages);
     }
 
-    protected function runPlease(bool $quiet): CommandResponse
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    protected function runPlease(bool $quiet, array $messages = []): CommandResponse
     {
-        return $this->normalizeResponse(
+        $response = $this->normalizeResponse(
             $this->pleaseHandler->handle($quiet),
             'Force push completed',
             'Force push failed',
         );
+
+        return $messages === [] ? $response : $response->withAdditionalMessages($messages);
     }
 
     /**
@@ -153,7 +187,7 @@ class PushHandler implements GitRepositoryAware
     }
 
     /**
-     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool}
+     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool, 7: bool}
      */
     private function normalizeHandleArguments(
         mixed $first,
@@ -164,6 +198,7 @@ class PushHandler implements GitRepositoryAware
         mixed $sixth,
         mixed $seventh,
         mixed $eighth,
+        mixed $ninth,
     ): array {
         if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
             return [
@@ -174,6 +209,7 @@ class PushHandler implements GitRepositoryAware
                 (bool) $sixth,
                 (bool) $seventh,
                 (bool) $eighth,
+                (bool) $ninth,
             ];
         }
 
@@ -185,6 +221,7 @@ class PushHandler implements GitRepositoryAware
             (bool) $fifth,
             (bool) $sixth,
             (bool) $seventh,
+            (bool) $ninth,
         ];
     }
 

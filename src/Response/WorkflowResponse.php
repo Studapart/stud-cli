@@ -45,4 +45,18 @@ final class WorkflowResponse extends AbstractResponse
 
         return new self($exitCode, $entries, $error, $messages, $pullNumber);
     }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    public function withAdditionalMessages(array $messages): self
+    {
+        return new self(
+            $this->exitCode,
+            $this->entries,
+            $this->getErrorMessage(),
+            array_merge($this->messages, $messages),
+            $this->pullNumber,
+        );
+    }
 }

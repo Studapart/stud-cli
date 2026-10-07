@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Handler\CommitHandler;
+use App\Handler\FlattenHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PushHandler;
 use App\Response\CommandResponse;
@@ -23,13 +26,19 @@ class PushHandlerTest extends CommandTestCase
         GitRepository $gitRepository,
         PleaseHandler $pleaseHandler,
         ?Logger $logger = null,
+        ?FlattenHandler $flattenHandler = null,
     ): PushHandler {
         $logger ??= $this->createMock(Logger::class);
+        if ($flattenHandler === null) {
+            $flattenHandler = $this->createMock(FlattenHandler::class);
+            $flattenHandler->expects($this->never())->method('handle');
+        }
 
         return new PushHandler(
             $commitHandler,
             $gitRepository,
             $pleaseHandler,
+            $flattenHandler,
             $this->translationService,
             $logger,
         );
@@ -185,7 +194,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(0);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success());
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
@@ -230,7 +239,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(0);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success());
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
@@ -254,7 +263,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(0);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success());
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
@@ -300,7 +309,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->with(false)->willReturn(0);
+        $pleaseHandler->expects($this->once())->method('handle')->with(false)->willReturn(CommandResponse::success());
 
         $logger = $this->createMock(Logger::class);
         $logger->expects($this->once())->method('confirm')->willReturn(true);
@@ -324,7 +333,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->willReturn(1);
+        $pleaseHandler->expects($this->once())->method('handle')->willReturn(CommandResponse::error(MessageRef::key('push.error_push')));
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
@@ -389,10 +398,78 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
-        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(0);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success());
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $this->assertTrue($handler->handle(false, null, false, true, false, true, true)->isSuccess());
+    }
+
+    public function testFlattenFailureSkipsPush(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success(MessageRef::key('push.success')));
+
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->expects($this->once())->method('handle')->willReturn(
+            CommandResponse::error(MessageRef::key('flatten.error_rebase', ['error' => 'conflict'])),
+        );
+
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, flattenHandler: $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $error = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $error);
+        $this->assertSame('flatten.error_rebase', $error->key);
+    }
+
+    public function testFlattenRewritesThenPleaseFallbackAfterRejectedPush(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(0);
+
+        $flattened = false;
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->expects($this->once())->method('handle')->willReturnCallback(
+            function () use (&$flattened): CommandResponse {
+                $flattened = true;
+
+                return CommandResponse::success(messages: [
+                    ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite')),
+                ]);
+            },
+        );
+
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getCurrentBranchName')->willReturn('chore/SCI-213');
+        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturnCallback(
+            function () use (&$flattened, $process): Process {
+                $this->assertTrue($flattened);
+
+                return $process;
+            },
+        );
+
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(
+            CommandResponse::success(MessageRef::key('push.success')),
+        );
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, flattenHandler: $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertNotEmpty($response->getWarnings());
     }
 }

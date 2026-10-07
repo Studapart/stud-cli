@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","workItemLabels":["example"],"pullRequestLabels":["example"],"skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -177,6 +177,8 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `linearStartStateId` | `string\|null` | yes | `NULL` |
 | `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
+| `workItemLabels` | `array` | yes | `NULL` |
+| `pullRequestLabels` | `array` | yes | `NULL` |
 | `skipBaseBranchRemoteCheck` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1559,7 +1561,7 @@ stud commit --new
 stud commit --message "Ready for review"
 stud commit --all
 stud commit --quiet
-echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
+echo '{"isNew":true,"message":"Ready for review","stageAll":true,"flatten":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
 ```
 
 #### Agent JSON Input
@@ -1570,6 +1572,7 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"exa
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
+| `flatten` | `bool` | yes | `false` |
 | `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
@@ -1726,7 +1729,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `flatten` | See command schema. |
 
 
 #### Examples
@@ -1734,7 +1739,7 @@ None.
 ```bash
 stud please
 stud pl
-echo '{}' | stud please --agent
+echo '{"flatten":true}' | stud please --agent
 ```
 
 #### Agent JSON Input
@@ -1742,6 +1747,7 @@ echo '{}' | stud please --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
@@ -1800,7 +1806,7 @@ stud push --message "Ready for review"
 stud push --all
 stud push --quiet
 stud push --no-please
-echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
+echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"flatten":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
 ```
 
 #### Agent JSON Input
@@ -1812,6 +1818,7 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
+| `flatten` | `bool` | yes | `false` |
 | `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
@@ -2200,7 +2207,7 @@ stud submit --draft
 stud submit --labels "AI-Generated,RFR"
 stud submit --assign-to-author
 stud submit --quiet
-echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
+echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"flatten":true,"provider":"example","quiet":true}' | stud submit --agent
 ```
 
 #### Agent JSON Input
@@ -2215,6 +2222,7 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 | `draft` | `bool` | yes | `false` |
 | `labels` | `string\|null` | yes | `NULL` |
 | `assignToAuthor` | `bool` | yes | `false` |
+| `flatten` | `bool` | yes | `false` |
 | `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
 

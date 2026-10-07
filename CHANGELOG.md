@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Optional flatten on commit, push, please, and submit (SCI-213):** `flatten` (boolean, default false) autosquashes fixup commits after the commit step and before any network push. On commit it does not push. On please it requires a clean tree, flattens, then force-with-lease. A flatten failure skips the push and does not open or update a pull request. `pleaseFallback` is unchanged.
+
 ## [4.2.1] - 2026-10-05
 
 ### Changed

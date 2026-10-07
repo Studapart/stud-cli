@@ -598,9 +598,11 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
         $this->assertArrayHasKey('submit', $schemaByName);
         $props = $schemaByName['submit']['input']['properties'] ?? [];
-        foreach (['assignToAuthor', 'stageAll', 'isNew', 'message', 'pleaseFallback'] as $key) {
+        foreach (['assignToAuthor', 'stageAll', 'isNew', 'message', 'pleaseFallback', 'flatten'] as $key) {
             $this->assertArrayHasKey($key, $props, 'submit agent input must include "' . $key . '" property');
         }
+        $this->assertSame('bool', $props['flatten']['type'] ?? null);
+        $this->assertFalse($props['flatten']['default'] ?? true);
         $this->assertSame('bool', $props['assignToAuthor']['type'] ?? null);
         $this->assertFalse($props['assignToAuthor']['default'] ?? true);
         $this->assertArrayNotHasKey('noPlease', $props, 'submit agent input must not include redundant noPlease; use pleaseFallback');
@@ -616,6 +618,30 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $props = $schemaByName['push']['input']['properties'] ?? [];
         $this->assertArrayHasKey('pleaseFallback', $props);
         $this->assertArrayNotHasKey('noPlease', $props, 'push agent JSON uses pleaseFallback only; CLI retains --no-please');
+        $this->assertDeliveryFlattenDefaultsFalse($schemaByName);
+    }
+
+    public function testCommitAndPleaseExposeFlattenDefaultFalse(): void
+    {
+        $schemaByName = [];
+        foreach ($this->schema['commands'] as $cmd) {
+            $schemaByName[$cmd['name']] = $cmd;
+        }
+
+        $this->assertDeliveryFlattenDefaultsFalse($schemaByName);
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $schemaByName
+     */
+    private function assertDeliveryFlattenDefaultsFalse(array $schemaByName): void
+    {
+        foreach (['commit', 'push', 'please', 'submit'] as $name) {
+            $props = $schemaByName[$name]['input']['properties'] ?? [];
+            $this->assertArrayHasKey('flatten', $props, $name . ' agent input must include flatten');
+            $this->assertSame('bool', $props['flatten']['type'] ?? null);
+            $this->assertFalse($props['flatten']['default'] ?? true);
+        }
     }
 
     public function testConfluencePushInputIncludesFileAndContentProperties(): void
