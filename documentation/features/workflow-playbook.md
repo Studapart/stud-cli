@@ -116,6 +116,8 @@ stud flatten
 stud please
 ```
 
+`stud commit`, `stud push`, `stud submit`, and `stud please` also accept `--flatten` (agent JSON `"flatten": true`). The default is off. When the option is on, fixup commits are squashed only when that command can do so safely: commit and push after they create a commit and leave a clean tree, submit after its agent stage-all commit does the same, and please when the tree is already clean. A dirty tree skips the squash and the command finishes as it does without the option. Rewritten history is published with the same safe force-push as `stud please`. Interactive `stud push` asks before that force-push. Quiet mode, agent mode, and `stud please` do not ask again. Standalone `stud flatten` remains available and still warns that a force-push may be required afterward.
+
 Do not use `stud please` as a normal push command. Its main role is after `stud flatten`, `git rebase`, or another intentional history rewrite. If the branch has never been pushed, `stud please` still succeeds: it sets upstream to origin and pushes (CLI shows a notice; agent mode stays quiet).
 
 ### Submit and respond to review

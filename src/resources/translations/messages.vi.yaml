@@ -454,6 +454,7 @@ push:
   success: "✅ Đã đẩy nhánh lên origin."
   error_push: "Push thất bại. Nhánh của bạn có thể đã lệch so với remote.\nĐồng bộ hoặc chạy 'stud please' để force-push với lease."
   confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
+  confirm_flatten_publish: "Lịch sử đã được viết lại. Xuất bản bằng force-push an toàn?"
   note_uncommitted_left: "Bạn có thay đổi chưa commit. Push dùng các commit đã có trên nhánh; tệp chưa commit không được đưa vào."
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
@@ -465,6 +466,8 @@ flatten:
   section: Làm phẳng các commit fixup
   error_dirty_working: Thư mục làm việc của bạn không sạch. Vui lòng commit các thay đổi của bạn với 'stud commit' trước khi làm phẳng.
   warning_rewrite: ⚠️  Điều này sẽ viết lại lịch sử commit của bạn. Bạn có thể cần chạy 'stud please' để force-push sau đó.
+  warning_rewritten: "Lịch sử commit đã được viết lại."
+  notice_skipped: "Bỏ qua flatten. Cây làm việc còn thay đổi, hoặc lệnh này không tạo commit."
   success: ✅ Tất cả các commit fixup! đã được gộp vào các commit mục tiêu của chúng.
   error_rebase: 'Rebase thất bại: %error%'
   no_fixups: Không tìm thấy commit fixup! hoặc squash!. Không có gì để làm phẳng.
@@ -871,6 +874,7 @@ help:
   option_commit_message: Bỏ qua trình nhắc tương tác và sử dụng thông báo được cung cấp cho commit
   option_commit_all: Stage tất cả các thay đổi trước khi commit (khôi phục hành vi cũ)
   option_push_no_please: "Sau khi push thường thất bại, không chạy hoặc hỏi stud please"
+  option_flatten: "Gộp các commit fixup khi an toàn, trước khi lệnh tiếp tục"
   option_submit_draft: Tạo Pull Request ở chế độ nháp (được đánh dấu là "Draft" trên GitHub)
   option_submit_labels: Danh sách nhãn được phân tách bằng dấu phẩy để áp dụng cho Pull Request. Nếu nhãn không tồn tại, bạn sẽ được nhắc tạo, bỏ qua hoặc thử lại với danh sách đã sửa
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"

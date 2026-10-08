@@ -200,6 +200,11 @@ class WorkflowOutput implements WorkflowEntryRecorder
         $this->recorder->setPullNumber($pullNumber);
     }
 
+    public function setRewritten(?bool $rewritten): void
+    {
+        $this->recorder->setRewritten($rewritten);
+    }
+
     public function toResponse(int $exitCode): WorkflowResponse
     {
         return $this->recorder->toResponse($exitCode);

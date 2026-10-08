@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Optional flatten on delivery commands (SCI-215):** `stud commit`, `stud push`, `stud submit`, and `stud please` accept `--flatten` (agent `"flatten": true|false`, default false). When it is safe, fixup commits are squashed before the command continues. A dirty tree skips flatten. Rewritten history is published with the existing safe force-push. Standalone `stud flatten` still reports `rewritten` and warns that a force-push may be required afterward.
+
 ## [4.2.1] - 2026-10-05
 
 ### Changed

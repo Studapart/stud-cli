@@ -43,6 +43,15 @@ final class WorkflowRecorderTest extends TestCase
 
         self::assertTrue($response->isSuccess());
         self::assertSame(42, $response->pullNumber);
+        self::assertNull($response->rewritten);
+    }
+
+    public function testSetRewrittenCarriesIntoResponse(): void
+    {
+        $recorder = new WorkflowRecorder();
+        $recorder->setRewritten(true);
+
+        self::assertTrue($recorder->toResponse(0)->rewritten);
     }
 
     public function testAbsorbsWorkflowResponseEntriesAndMessages(): void

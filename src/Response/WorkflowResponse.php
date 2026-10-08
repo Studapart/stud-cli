@@ -7,6 +7,7 @@ namespace App\Response;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\DTO\WorkflowOutputEntry;
+use App\Enum\ResponseMessageLevel;
 
 final class WorkflowResponse extends AbstractResponse
 {
@@ -20,6 +21,7 @@ final class WorkflowResponse extends AbstractResponse
         MessageRef|string|null $error = null,
         array $messages = [],
         public readonly ?int $pullNumber = null,
+        public readonly ?bool $rewritten = null,
     ) {
         parent::__construct($exitCode === 0, $error, $messages);
     }
@@ -33,16 +35,17 @@ final class WorkflowResponse extends AbstractResponse
         array $entries = [],
         array $messages = [],
         ?int $pullNumber = null,
+        ?bool $rewritten = null,
     ): self {
         $error = null;
         foreach ($messages as $message) {
-            if ($message->level === \App\Enum\ResponseMessageLevel::Error) {
+            if ($message->level === ResponseMessageLevel::Error) {
                 $error = $message->message;
 
                 break;
             }
         }
 
-        return new self($exitCode, $entries, $error, $messages, $pullNumber);
+        return new self($exitCode, $entries, $error, $messages, $pullNumber, $rewritten);
     }
 }

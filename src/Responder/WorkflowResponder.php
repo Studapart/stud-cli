@@ -32,11 +32,14 @@ class WorkflowResponder
                 return $this->respondJsonSuccess($response, $compact);
             }
 
+            $data = [];
+            if ($response->rewritten !== null) {
+                $data['rewritten'] = $response->rewritten;
+            }
+
             return AgentJsonResponse::fromResponse(
                 $response,
-                [
-                    'exitCode' => $response->exitCode,
-                ],
+                $data,
                 false,
                 $this->messageRenderer,
             );
@@ -54,6 +57,9 @@ class WorkflowResponder
         $data = [];
         if ($response->pullNumber !== null) {
             $data['pullNumber'] = $response->pullNumber;
+        }
+        if ($response->rewritten !== null) {
+            $data['rewritten'] = $response->rewritten;
         }
         if (! $compact) {
             $data['exitCode'] = $response->exitCode;

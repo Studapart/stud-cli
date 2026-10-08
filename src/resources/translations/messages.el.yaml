@@ -454,6 +454,7 @@ push:
   success: "✅ Ο κλάδος ωθήθηκε στο origin."
   error_push: "Το push απέτυχε. Ο κλάδος σας μπορεί να έχει αποκλίνει από το remote.\nΣυγχρονίστε ή εκτελέστε 'stud please' για force-push με lease."
   confirm_please: "Το κανονικό push απέτυχε. Εκτέλεση 'stud please' (force-with-lease) τώρα;"
+  confirm_flatten_publish: "Το ιστορικό ξαναγράφηκε. Δημοσίευση με ασφαλή force-push;"
   note_uncommitted_left: "Έχετε μη committed αλλαγές. Το push χρησιμοποίησε commits που βρίσκονται ήδη σε αυτόν τον κλάδο· τα μη committed αρχεία δεν συμπεριλήφθηκαν."
 commit_undo:
   error_not_repo: Δεν βρίσκεστε σε git repository.
@@ -465,6 +466,8 @@ flatten:
   section: Εξομάλυνση fixup commits
   error_dirty_working: Ο κατάλογος εργασίας σας δεν είναι καθαρός. Παρακαλώ κάντε commit τις αλλαγές σας με 'stud commit' πριν την εξομάλυνση.
   warning_rewrite: ⚠️  Αυτό θα ξαναγράψει το ιστορικό των commits σας. Μπορεί να χρειαστεί να εκτελέσετε 'stud please' για force-push μετά.
+  warning_rewritten: "Το ιστορικό των commits ξαναγράφηκε."
+  notice_skipped: "Το flatten παραλείφθηκε. Το working tree είναι βρώμικο ή η εντολή δεν δημιούργησε commit."
   success: ✅ Όλα τα fixup! commits έχουν συγχωνευθεί στα commits στόχους τους.
   error_rebase: 'Αποτυχία rebase: %error%'
   no_fixups: Δεν βρέθηκαν fixup! ή squash! commits. Τίποτα προς εξομάλυνση.
@@ -871,6 +874,7 @@ help:
   option_commit_message: Παράκαμψη του διαδραστικού prompt και χρήση του παρεχόμενου μηνύματος για το commit
   option_commit_all: Προετοιμασία όλων των αλλαγών πριν από το commit (επιστρέφει την παλιά συμπεριφορά)
   option_push_no_please: "Μετά από αποτυχημένο κανονικό push, να μην εκτελείται ή να προσφέρεται το stud please"
+  option_flatten: "Συγχώνευση των fixup commits όταν είναι ασφαλές, πριν συνεχίσει η εντολή"
   option_submit_draft: Δημιουργία Pull Request ως πρόχειρο (σημειωμένο ως "Draft" στο GitHub)
   option_submit_labels: Λίστα ετικετών διαχωρισμένη με κόμματα για εφαρμογή στην Pull Request. Εάν μια ετικέτα δεν υπάρχει, θα σας ζητηθεί να τη δημιουργήσετε, να την αγνοήσετε ή να ξαναπροσπαθήσετε με διορθωμένη λίστα
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"

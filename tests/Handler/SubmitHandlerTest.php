@@ -100,6 +100,52 @@ class SubmitHandlerTest extends CommandTestCase
         $this->assertSame(1, $response->pullNumber);
     }
 
+    public function testAlreadyPublishedSkipsPushAndKeepsRewritten(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/TPW-35-my-feature');
+        $this->gitRepository->method('getRepositoryOwner')->willReturn('studapart');
+        $this->gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $this->gitRepository->method('getMergeBase')->willReturn('abcdef');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('ghijkl');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat(my-scope): My feature [TPW-35]');
+
+        $workItem = new WorkItem(
+            id: '10001',
+            key: 'TPW-35',
+            title: 'My feature',
+            status: 'In Progress',
+            assignee: 'John Doe',
+            description: 'A description',
+            labels: [],
+            issueType: 'story',
+            components: ['my-scope'],
+            renderedDescription: 'My rendered description'
+        );
+        $this->issueTracker->method('getIssue')->willReturn($workItem);
+        $this->htmlConverter->method('toMarkdown')->willReturn('My rendered description');
+        $this->githubProvider->method('createPullRequest')->willReturn([
+            'html_url' => 'https://github.com/my-owner/my-repo/pull/1',
+            'number' => 1,
+        ]);
+
+        $response = $this->handler->handle(new SubmitOptions(
+            alreadyPublished: true,
+            rewritten: true,
+            flattenDiagnostics: [
+                \App\DTO\ResponseMessage::warning('history rewritten'),
+                \App\DTO\ResponseMessage::error('flatten detail'),
+                \App\DTO\ResponseMessage::notice('flatten note'),
+                \App\DTO\ResponseMessage::info('flatten info'),
+            ],
+        ));
+
+        $this->assertSame(0, $response->exitCode);
+        $this->assertSame(1, $response->pullNumber);
+        $this->assertTrue($response->rewritten);
+        $this->assertNotEmpty($response->getWarnings());
+    }
+
     public function testHandleUsesWorkItemUrlForLinearPrBody(): void
     {
         $this->gitRepository->method('getPorcelainStatus')->willReturn('');

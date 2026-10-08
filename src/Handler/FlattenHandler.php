@@ -22,41 +22,71 @@ class FlattenHandler implements GitRepositoryAware, ProjectBaseBranchAware
         unset($_translator);
     }
 
-    public function handle(): CommandResponse
+    /**
+     * Squash fixup commits. Standalone flatten keeps the please hint; delivery commands pass false.
+     */
+    public function handle(bool $includePleaseHint = true): CommandResponse
     {
-        // 1. Check for clean working directory
-        $gitStatus = $this->gitRepository->getPorcelainStatus();
-        if (! empty($gitStatus)) {
-            return CommandResponse::error(MessageRef::key('flatten.error_dirty_working'));
-        }
-
-        // 2. Check if there are any fixup commits
-        $baseSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
-        $hasFixups = $this->gitRepository->hasFixupCommits($baseSha);
-
-        if (! $hasFixups) {
-            return CommandResponse::success(
-                messages: [ResponseMessage::notice(MessageRef::key('flatten.no_fixups'))],
+        if ($this->gitRepository->getPorcelainStatus() !== '') {
+            return CommandResponse::error(
+                MessageRef::key('flatten.error_dirty_working'),
+                data: ['rewritten' => false],
             );
         }
 
-        // 3. Warn about history rewrite
-        $messages = [ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'))];
+        $baseSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
+        if (! $this->gitRepository->hasFixupCommits($baseSha)) {
+            return $this->noFixups();
+        }
 
-        // 4. Perform the rebase with autosquash
+        return $this->rebase($baseSha, $includePleaseHint);
+    }
+
+    /**
+     * Nothing to squash is a successful no-op.
+     */
+    private function noFixups(): CommandResponse
+    {
+        return CommandResponse::success(
+            data: ['rewritten' => false],
+            messages: [ResponseMessage::notice(MessageRef::key('flatten.no_fixups'))],
+        );
+    }
+
+    /**
+     * Autosquash onto the merge base. The please hint stays only for standalone flatten.
+     */
+    private function rebase(string $baseSha, bool $includePleaseHint): CommandResponse
+    {
+        $messages = $includePleaseHint
+            ? [ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'))]
+            : [];
+
         try {
             $this->gitRepository->rebaseAutosquash($baseSha);
 
-            return CommandResponse::success(MessageRef::key('flatten.success'), messages: $messages);
-        } catch (GitException $e) {
-            $error = MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]);
-
-            return CommandResponse::error(
-                $error,
-                [ResponseMessage::error($error, $e->getTechnicalDetails())],
+            return CommandResponse::success(
+                MessageRef::key('flatten.success'),
+                ['rewritten' => true],
+                $messages,
             );
+        } catch (GitException $e) {
+            return $this->rebaseFailed($e->getMessage(), $e->getTechnicalDetails());
         } catch (\Exception $e) {
-            return CommandResponse::error(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]));
+            return $this->rebaseFailed($e->getMessage(), null);
         }
+    }
+
+    /**
+     * Git failures keep technical details. Other failures keep the error message only.
+     */
+    private function rebaseFailed(string $error, ?string $technicalDetails): CommandResponse
+    {
+        $message = MessageRef::key('flatten.error_rebase', ['error' => $error]);
+        $messages = $technicalDetails === null
+            ? []
+            : [ResponseMessage::error($message, $technicalDetails)];
+
+        return CommandResponse::error($message, $messages, ['rewritten' => false]);
     }
 }

@@ -454,6 +454,7 @@ push:
   success: "✅ Branche poussée vers origin."
   error_push: "Échec du push. Votre branche a peut-être divergé du remote.\nSynchronisez ou exécutez « stud please » pour un force-push avec lease."
   confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
+  confirm_flatten_publish: "L'historique a été réécrit. Souhaitez-vous le publier avec un force-push ?"
   note_uncommitted_left: "Vous avez des modifications non commitées. Le push a utilisé les commits déjà sur cette branche ; les fichiers non commités n'ont pas été inclus."
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
@@ -465,6 +466,8 @@ flatten:
   section: Aplatissement des commits fixup
   error_dirty_working: Votre répertoire de travail n'est pas propre. Veuillez commiter vos modifications avec 'stud commit' avant d'aplatir.
   warning_rewrite: ⚠️  Ceci va réécrire l'historique de vos commits. Vous devrez peut-être exécuter 'stud please' pour force-push par la suite.
+  warning_rewritten: "L'historique des commits a été réécrit."
+  notice_skipped: "Les commits n'ont pu être combinés. L'espace de travail contient des fichiers non indexés, ou cette commande n'a pas créé de commit."
   success: ✅ Tous les commits fixup! ont été fusionnés dans leurs commits cibles.
   error_rebase: 'Échec du rebase : %error%'
   no_fixups: Aucun commit fixup! ou squash! trouvé. Rien à aplatir.
@@ -871,6 +874,7 @@ help:
   option_commit_message: Contourner le prompteur interactif et utiliser le message fourni pour le commit
   option_commit_all: Mettre en staging toutes les modifications avant de committer (restaure l'ancien comportement)
   option_push_no_please: "Après un push normal échoué, ne pas exécuter ni proposer stud please"
+  option_flatten: "Écraser les commits fixup quand c'est sûr, avant que la commande continue"
   option_submit_draft: Créer une Pull Request en brouillon (marquée comme "Draft" sur GitHub)
   option_submit_labels: Liste séparée par des virgules d'étiquettes à appliquer à la Pull Request. Si une étiquette n'existe pas, vous serez invité à la créer, l'ignorer ou réessayer avec une liste corrigée
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"

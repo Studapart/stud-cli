@@ -454,6 +454,7 @@ push:
   success: "✅ Rama enviada a origin."
   error_push: "Push fallido. Su rama puede haber divergido del remoto.\nSincronice o ejecute 'stud please' para force-push con lease."
   confirm_please: "El push normal falló. ¿Ejecutar ahora 'stud please' (force-with-lease)?"
+  confirm_flatten_publish: "El historial se reescribió. ¿Publicarlo con un force-push seguro?"
   note_uncommitted_left: "Tiene cambios sin confirmar. El push usó los commits ya presentes en esta rama; los archivos sin confirmar no se incluyeron."
 commit_undo:
   error_not_repo: No está en un repositorio git.
@@ -465,6 +466,8 @@ flatten:
   section: Aplanando commits fixup
   error_dirty_working: Su directorio de trabajo no está limpio. Por favor haga commit de sus cambios con 'stud commit' antes de aplanar.
   warning_rewrite: ⚠️  Esto reescribirá el historial de sus commits. Es posible que necesite ejecutar 'stud please' para force-push después.
+  warning_rewritten: "El historial de commits se reescribió."
+  notice_skipped: "Se omitió flatten. El árbol de trabajo está sucio o este comando no creó un commit."
   success: ✅ Todos los commits fixup! han sido fusionados en sus commits objetivo.
   error_rebase: 'Error en el rebase: %error%'
   no_fixups: No se encontraron commits fixup! o squash!. Nada que aplanar.
@@ -871,6 +874,7 @@ help:
   option_commit_message: Omitir el prompt interactivo y usar el mensaje proporcionado para el commit
   option_commit_all: Preparar todos los cambios antes de hacer commit (restaura el comportamiento anterior)
   option_push_no_please: "Tras un push normal fallido, no ejecutar ni ofrecer stud please"
+  option_flatten: "Aplastar commits fixup cuando sea seguro, antes de que el comando continúe"
   option_submit_draft: Crear una Pull Request en borrador (marcada como "Draft" en GitHub)
   option_submit_labels: Lista separada por comas de etiquetas para aplicar a la Pull Request. Si una etiqueta no existe, se le pedirá que la cree, la ignore o reintente con una lista corregida
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"
