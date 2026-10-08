@@ -454,6 +454,7 @@ push:
   success: "✅ Ветка отправлена в origin."
   error_push: "Push не удался. Ветка могла разойтись с удалённым репозиторием.\nСинхронизируйтесь или выполните «stud please» для force-push с lease."
   confirm_please: "Обычный push не удался. Выполнить сейчас «stud please» (force-with-lease)?"
+  confirm_flatten_publish: "История переписана. Опубликовать её безопасным force-push?"
   note_uncommitted_left: "У вас есть незакоммиченные изменения. Push использовал коммиты, уже находящиеся на этой ветке; незакоммиченные файлы не включены."
 commit_undo:
   error_not_repo: Не в git-репозитории.
@@ -465,6 +466,8 @@ flatten:
   section: Сжатие fixup коммитов
   error_dirty_working: Ваша рабочая директория не чиста. Пожалуйста, закоммитьте ваши изменения с помощью 'stud commit' перед сжатием.
   warning_rewrite: ⚠️  Это перепишет историю ваших коммитов. Возможно, вам потребуется выполнить 'stud please' для force-push после этого.
+  warning_rewritten: "История коммитов переписана."
+  notice_skipped: "Flatten пропущен. Рабочее дерево грязное, или эта команда не создала коммит."
   success: ✅ Все fixup! коммиты были объединены в их целевые коммиты.
   error_rebase: 'Ошибка rebase: %error%'
   no_fixups: Не найдено fixup! или squash! коммитов. Нечего сжимать.
@@ -871,6 +874,7 @@ help:
   option_commit_message: Обойти интерактивный промптер и использовать предоставленное сообщение для коммита
   option_commit_all: Подготовить все изменения перед коммитом (восстанавливает старое поведение)
   option_push_no_please: "После неудачного обычного push не запускать и не предлагать stud please"
+  option_flatten: "Склеить fixup-коммиты, когда это безопасно, прежде чем команда продолжится"
   option_submit_draft: Создать черновик Pull Request (помечен как "Draft" на GitHub)
   option_submit_labels: Список меток, разделенных запятыми, для применения к Pull Request. Если метка не существует, вам будет предложено создать её, проигнорировать или повторить попытку с исправленным списком
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"

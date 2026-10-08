@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","workItemLabels":["example"],"pullRequestLabels":["example"],"skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -177,6 +177,8 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `linearStartStateId` | `string\|null` | yes | `NULL` |
 | `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
+| `workItemLabels` | `array` | yes | `NULL` |
+| `pullRequestLabels` | `array` | yes | `NULL` |
 | `skipBaseBranchRemoteCheck` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1548,6 +1550,7 @@ None.
 | `--message <message><br>`-m <message>`` | Bypass the interactive prompter and use the provided message for the commit |
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
+| `--flatten` | Squash fixup commits when it is safe before this command continues |
 
 
 #### Examples
@@ -1559,7 +1562,8 @@ stud commit --new
 stud commit --message "Ready for review"
 stud commit --all
 stud commit --quiet
-echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
+stud commit --flatten
+echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"flatten":true,"help":true}' | stud commit --agent
 ```
 
 #### Agent JSON Input
@@ -1572,6 +1576,7 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"exa
 | `stageAll` | `bool` | yes | `false` |
 | `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
+| `flatten` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1589,6 +1594,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1703,6 +1709,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1715,7 +1722,7 @@ Error shape: `{"success":false,"error":"string"}`
 A power-user, safe force-push (force-with-lease). If the branch has no upstream, sets upstream to origin and pushes instead of erroring (CLI notice; quiet in agent mode).
 
 - **Alias:** `stud pl`
-- **Syntax:** `stud please`
+- **Syntax:** `stud please [options]`
 
 <details>
 <summary>Options, examples, and agent schema</summary>
@@ -1726,7 +1733,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `--flatten` | Squash fixup commits when it is safe before this command continues |
 
 
 #### Examples
@@ -1734,7 +1743,8 @@ None.
 ```bash
 stud please
 stud pl
-echo '{}' | stud please --agent
+stud please --flatten
+echo '{"flatten":true}' | stud please --agent
 ```
 
 #### Agent JSON Input
@@ -1742,6 +1752,7 @@ echo '{}' | stud please --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
@@ -1758,6 +1769,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1788,6 +1800,7 @@ None.
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
 | `--no-please` | After a failed normal push, do not run or prompt for stud please |
+| `--flatten` | Squash fixup commits when it is safe before this command continues |
 
 
 #### Examples
@@ -1800,7 +1813,8 @@ stud push --message "Ready for review"
 stud push --all
 stud push --quiet
 stud push --no-please
-echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
+stud push --flatten
+echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"flatten":true,"help":true}' | stud push --agent
 ```
 
 #### Agent JSON Input
@@ -1814,6 +1828,7 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 | `stageAll` | `bool` | yes | `false` |
 | `provider` | `string\|null` | yes | `NULL` |
 | `quiet` | `bool` | yes | `false` |
+| `flatten` | `bool` | yes | `false` |
 | `help` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1831,6 +1846,8 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
+published: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -2189,6 +2206,7 @@ None.
 | `--labels <labels>` | Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list |
 | `--assign-to-author` | Assign the created Pull Request or Merge Request to the authenticated provider user |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
+| `--flatten` | Squash fixup commits when it is safe before this command continues |
 
 
 #### Examples
@@ -2200,7 +2218,8 @@ stud submit --draft
 stud submit --labels "AI-Generated,RFR"
 stud submit --assign-to-author
 stud submit --quiet
-echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
+stud submit --flatten
+echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"flatten":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
 ```
 
 #### Agent JSON Input
@@ -2212,6 +2231,7 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `pleaseFallback` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 | `draft` | `bool` | yes | `false` |
 | `labels` | `string\|null` | yes | `NULL` |
 | `assignToAuthor` | `bool` | yes | `false` |
@@ -2227,6 +2247,7 @@ Default compact success shape (`{"compact":true}` or omitted):
 ```text
 success: true
 pullNumber: int
+rewritten: bool
 ```
 
 Full success shape (`{"compact":false}`):
@@ -2234,6 +2255,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 pullNumber: int
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`

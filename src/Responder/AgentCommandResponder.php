@@ -20,11 +20,17 @@ class AgentCommandResponder
     public function respond(CommandResponse $response, bool $compact = false): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return AgentJsonResponse::fromResponse($response, renderer: $this->messageRenderer);
+            return AgentJsonResponse::fromResponse($response, $response->data, renderer: $this->messageRenderer);
         }
 
         if ($compact) {
-            return AgentJsonResponse::successWithoutData($response->diagnosticsPayload($this->messageRenderer));
+            $reusable = $this->reusableCompactData($response);
+            $diagnostics = $response->diagnosticsPayload($this->messageRenderer);
+            if ($reusable === []) {
+                return AgentJsonResponse::successWithoutData($diagnostics);
+            }
+
+            return new AgentJsonResponse(true, data: $reusable, diagnostics: $diagnostics);
         }
 
         return AgentJsonResponse::fromResponse(
@@ -46,5 +52,22 @@ class AgentCommandResponder
     public function respondSuccess(string $message, bool $compact = false): AgentJsonResponse
     {
         return $this->respond(CommandResponse::success($message), $compact);
+    }
+
+    /**
+     * Compact output stays data-free unless flatten recorded reusable fields.
+     *
+     * @return array<string, mixed>
+     */
+    private function reusableCompactData(CommandResponse $response): array
+    {
+        $reusable = [];
+        foreach (['rewritten', 'published'] as $key) {
+            if (array_key_exists($key, $response->data)) {
+                $reusable[$key] = $response->data[$key];
+            }
+        }
+
+        return $reusable;
     }
 }

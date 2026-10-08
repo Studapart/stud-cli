@@ -92,5 +92,10 @@ interface WorkflowEntryRecorder
 
     public function setPullNumber(int $pullNumber): void;
 
+    /**
+     * Store whether optional flatten rewrote history. Null means flatten was not requested.
+     */
+    public function setRewritten(?bool $rewritten): void;
+
     public function toResponse(int $exitCode): WorkflowResponse;
 }

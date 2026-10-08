@@ -216,6 +216,7 @@ class AgentModeSchemaGenerator
                 'isNew' => ['type' => 'bool', 'optional' => true, 'default' => false],
                 'message' => ['type' => 'string|null', 'optional' => true, 'default' => null],
                 'pleaseFallback' => ['type' => 'bool', 'optional' => true, 'default' => true],
+                'flatten' => ['type' => 'bool', 'optional' => true, 'default' => false],
             ] + $inputProperties;
         }
 

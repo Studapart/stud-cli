@@ -56,6 +56,33 @@ class AgentCommandResponderTest extends TestCase
         $this->assertSame(['success' => true], $result->toPayload());
     }
 
+    public function testCompactSuccessIncludesRewrittenWhenFlattenWasRequested(): void
+    {
+        $result = $this->responder->respond(
+            CommandResponse::success('pushed', ['branch' => 'feat/x', 'rewritten' => true, 'published' => true]),
+            compact: true,
+        );
+
+        $this->assertSame([
+            'success' => true,
+            'data' => ['rewritten' => true, 'published' => true],
+        ], $result->toPayload());
+    }
+
+    public function testErrorPayloadKeepsCommitData(): void
+    {
+        $result = $this->responder->respond(CommandResponse::error('rebase failed', data: [
+            'commitMessage' => 'feat: one',
+            'rewritten' => false,
+        ]));
+
+        $this->assertSame([
+            'success' => false,
+            'error' => 'rebase failed',
+            'data' => ['commitMessage' => 'feat: one', 'rewritten' => false],
+        ], $result->toPayload());
+    }
+
     public function testRespondUsesAgentRendererForPayloadData(): void
     {
         $responder = new AgentCommandResponder(new MessageRenderer(

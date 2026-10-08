@@ -469,6 +469,7 @@ push:
   success: "✅ Branch pushed to origin."
   error_push: "Push failed. Your branch may have diverged from the remote.\nTry syncing or run 'stud please' to force-push with lease."
   confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
+  confirm_flatten_publish: "History was rewritten. Publish it with a safe force-push?"
   note_uncommitted_left: "You have uncommitted changes. Push used commits already on this branch; uncommitted files were not included."
 
 # Commit Undo Handler
@@ -484,6 +485,8 @@ flatten:
   section: "Flattening fixup commits"
   error_dirty_working: "Your working directory is not clean. Please commit your changes with 'stud commit' before flattening."
   warning_rewrite: "⚠️  This will rewrite your commit history. You may need to run 'stud please' to force-push afterward."
+  warning_rewritten: "Commit history was rewritten."
+  notice_skipped: "Flatten was skipped. The working tree is dirty, or this command did not create a commit."
   success: "✅ All fixup! commits have been squashed into their target commits."
   error_rebase: "Failed to rebase: %error%"
   no_fixups: "No fixup! or squash! commits found. Nothing to flatten."
@@ -906,6 +909,7 @@ help:
   option_commit_message: "Bypass the interactive prompter and use the provided message for the commit"
   option_commit_all: "Stage all changes before committing (restores old behavior)"
   option_push_no_please: "After a failed normal push, do not run or prompt for stud please"
+  option_flatten: "Squash fixup commits when it is safe before this command continues"
   option_submit_draft: "Create a Draft Pull Request (marked as \"Draft\" on GitHub)"
   option_submit_labels: "Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list"
   option_submit_assign_to_author: "Assign the created Pull Request or Merge Request to the authenticated provider user"

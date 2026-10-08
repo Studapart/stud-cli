@@ -82,6 +82,33 @@ class GitWorkflowCliParityIntegrationTest extends TestCase
         self::assertSame(0, $this->runProcess(['git', 'rev-parse', '--verify', 'feature/push-short'], $this->tempDir . '/remote.git')->getExitCode());
     }
 
+    public function testFlattenOptionIsAcceptedOnDeliveryAliases(): void
+    {
+        foreach (['commit', 'co', 'push', 'ps', 'submit', 'su', 'please', 'pl'] as $command) {
+            $process = $this->runStud([$command, '--help']);
+
+            self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+            self::assertStringContainsString('--flatten', $process->getOutput());
+        }
+    }
+
+    public function testAgentCommitFlattenReportsRewrittenFalseWhenNothingToSquash(): void
+    {
+        $repo = $this->createRepository('flatten-agent');
+        file_put_contents($repo . '/change.txt', 'changed');
+
+        $process = $this->runStud(
+            ['commit', '--agent'],
+            $repo,
+            '{"stageAll":true,"flatten":true,"message":"feat: add change"}',
+        );
+
+        self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        $payload = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertTrue($payload['success']);
+        self::assertFalse($payload['data']['rewritten']);
+    }
+
     /**
      * Create a local repository with isolated stud config and a bare origin.
      */

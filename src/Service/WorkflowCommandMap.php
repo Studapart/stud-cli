@@ -31,6 +31,7 @@ class WorkflowCommandMap
                     ['name' => '--message', 'shortcut' => '-m', 'description_key' => 'help.option_commit_message', 'argument' => '<message>'],
                     ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
                     ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                    ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
@@ -51,6 +52,7 @@ class WorkflowCommandMap
                     ['name' => '--all', 'shortcut' => '-a', 'description_key' => 'help.option_commit_all', 'argument' => null],
                     ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
                     ['name' => '--no-please', 'shortcut' => null, 'description_key' => 'help.option_push_no_please', 'argument' => null],
+                    ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
                 ],
                 'arguments' => [],
             ],
@@ -77,7 +79,9 @@ class WorkflowCommandMap
             'please' => [
                 'alias' => 'pl',
                 'description_key' => 'help.command_please',
-                'options' => [],
+                'options' => [
+                    ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
+                ],
                 'arguments' => [],
             ],
             'flatten' => [
@@ -130,6 +134,7 @@ class WorkflowCommandMap
                     ['name' => '--labels', 'shortcut' => null, 'description_key' => 'help.option_submit_labels', 'argument' => '<labels>'],
                     ['name' => '--assign-to-author', 'shortcut' => null, 'description_key' => 'help.option_submit_assign_to_author', 'argument' => null],
                     ['name' => '--quiet', 'shortcut' => '-q', 'description_key' => 'help.option_quiet', 'argument' => null],
+                    ['name' => '--flatten', 'shortcut' => null, 'description_key' => 'help.option_flatten', 'argument' => null],
                 ],
                 'arguments' => [],
             ],

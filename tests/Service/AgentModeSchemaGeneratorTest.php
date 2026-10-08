@@ -287,7 +287,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         $this->assertArrayNotHasKey('compact', $commit['input']['properties']);
         $this->assertSame(['successOnly', 'error'], $commit['output']['compact']);
         $this->assertSame(['successData', 'error'], $commit['output']['full']);
-        $this->assertSame(['message' => 'string'], $commit['output']['data']);
+        $this->assertSame(['message' => 'string', 'rewritten' => 'bool'], $commit['output']['data']);
         $this->assertSame('commit result', $commit['output']['description']);
         $this->assertSame('Commit changes.', $commit['description']);
         $this->assertArrayNotHasKey('success', $commit['output']);
@@ -410,7 +410,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
 
         $cmd = $schemaByName['submit'];
-        $this->assertSame(['pullNumber' => 'int'], $cmd['output']['success']['data']);
+        $this->assertSame(['pullNumber' => 'int', 'rewritten' => 'bool'], $cmd['output']['success']['data']);
         $this->assertSame($cmd['output']['success'], $cmd['output']['compactSuccess']);
         $this->assertArrayHasKey('data', $cmd['output']['compactSuccess']);
         $this->assertStringContainsString('PR number', (string) $cmd['output']['description']);
