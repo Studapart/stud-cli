@@ -35,7 +35,12 @@ final class AgentJsonResponse
             return $this->withDiagnostics($payload);
         }
 
-        return $this->withDiagnostics(['success' => false, 'error' => $this->error ?? 'Unknown error']);
+        $payload = ['success' => false, 'error' => $this->error ?? 'Unknown error'];
+        if ($this->hasData && is_array($this->data) && $this->data !== []) {
+            $payload['data'] = $this->data;
+        }
+
+        return $this->withDiagnostics($payload);
     }
 
     /**
