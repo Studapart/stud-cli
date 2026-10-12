@@ -92,5 +92,7 @@ interface WorkflowEntryRecorder
 
     public function setPullNumber(int $pullNumber): void;
 
+    public function setRewritten(?bool $rewritten): void;
+
     public function toResponse(int $exitCode): WorkflowResponse;
 }

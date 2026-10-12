@@ -55,6 +55,9 @@ class WorkflowResponder
         if ($response->pullNumber !== null) {
             $data['pullNumber'] = $response->pullNumber;
         }
+        if ($response->rewritten !== null) {
+            $data['rewritten'] = $response->rewritten;
+        }
         if (! $compact) {
             $data['exitCode'] = $response->exitCode;
         }

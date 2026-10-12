@@ -410,7 +410,7 @@ class AgentModeSchemaGeneratorTest extends TestCase
         }
 
         $cmd = $schemaByName['submit'];
-        $this->assertSame(['pullNumber' => 'int'], $cmd['output']['success']['data']);
+        $this->assertSame(['pullNumber' => 'int', 'rewritten' => 'bool'], $cmd['output']['success']['data']);
         $this->assertSame($cmd['output']['success'], $cmd['output']['compactSuccess']);
         $this->assertArrayHasKey('data', $cmd['output']['compactSuccess']);
         $this->assertStringContainsString('PR number', (string) $cmd['output']['description']);

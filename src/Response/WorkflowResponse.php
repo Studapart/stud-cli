@@ -20,6 +20,7 @@ final class WorkflowResponse extends AbstractResponse
         MessageRef|string|null $error = null,
         array $messages = [],
         public readonly ?int $pullNumber = null,
+        public readonly ?bool $rewritten = null,
     ) {
         parent::__construct($exitCode === 0, $error, $messages);
     }
@@ -33,6 +34,7 @@ final class WorkflowResponse extends AbstractResponse
         array $entries = [],
         array $messages = [],
         ?int $pullNumber = null,
+        ?bool $rewritten = null,
     ): self {
         $error = null;
         foreach ($messages as $message) {
@@ -43,6 +45,6 @@ final class WorkflowResponse extends AbstractResponse
             }
         }
 
-        return new self($exitCode, $entries, $error, $messages, $pullNumber);
+        return new self($exitCode, $entries, $error, $messages, $pullNumber, $rewritten);
     }
 }

@@ -24,6 +24,8 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
 
     private ?int $pullNumber = null;
 
+    private ?bool $rewritten = null;
+
     /**
      * @return list<WorkflowOutputEntry>
      */
@@ -177,9 +179,14 @@ final class WorkflowRecorder implements WorkflowEntryRecorder
         $this->pullNumber = $pullNumber;
     }
 
+    public function setRewritten(?bool $rewritten): void
+    {
+        $this->rewritten = $rewritten;
+    }
+
     public function toResponse(int $exitCode): WorkflowResponse
     {
-        return WorkflowResponse::fromExitCode($exitCode, $this->entries, $this->messages, $this->pullNumber);
+        return WorkflowResponse::fromExitCode($exitCode, $this->entries, $this->messages, $this->pullNumber, $this->rewritten);
     }
 
     public function absorb(WorkflowOutput $output): void

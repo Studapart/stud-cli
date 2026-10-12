@@ -45,6 +45,14 @@ final class WorkflowRecorderTest extends TestCase
         self::assertSame(42, $response->pullNumber);
     }
 
+    public function testSetRewrittenCarriesIntoResponse(): void
+    {
+        $recorder = new WorkflowRecorder();
+        $recorder->setRewritten(false);
+
+        self::assertFalse($recorder->toResponse(0)->rewritten);
+    }
+
     public function testAbsorbsWorkflowResponseEntriesAndMessages(): void
     {
         $base = \App\Response\WorkflowResponse::fromExitCode(

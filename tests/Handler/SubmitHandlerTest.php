@@ -2560,4 +2560,55 @@ class SubmitHandlerTest extends CommandTestCase
             renderedDescription: 'My rendered description',
         ));
     }
+
+    public function testAlreadyPublishedSkipsOriginPush(): void
+    {
+        $this->gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('feat/SCI-217-story');
+        $this->gitRepository->method('getMergeBase')->willReturn('abc');
+        $this->gitRepository->method('findFirstLogicalSha')->willReturn('def');
+        $this->gitRepository->method('getCommitMessage')->willReturn('feat: title [SCI-217]');
+        $this->gitRepository->method('getIssueKeyFromBranchName')->willReturn('SCI-217');
+
+        $result = $this->callPrivateMethod($this->handler, 'runSubmitPreflight', [new SubmitOptions(alreadyPublished: true, rewritten: true)]);
+
+        $this->assertSame(0, $result['exitCode']);
+        $this->assertSame('SCI-217', $result['jiraKey']);
+    }
+
+    public function testHandleKeepsRewrittenAndFlattenNotice(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
+
+        $response = $this->handler->handle(new SubmitOptions(
+            alreadyPublished: true,
+            rewritten: true,
+            flattenMessages: [\App\DTO\ResponseMessage::notice(\App\DTO\MessageRef::key('flatten.notice_skipped'))],
+        ));
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertTrue($response->rewritten);
+        $this->assertInstanceOf(\App\DTO\MessageRef::class, $response->getNotices()[0]->message);
+        $this->assertSame('flatten.notice_skipped', $response->getNotices()[0]->message->key);
+    }
+
+    public function testHandleRecordsFlattenInfoWarningAndError(): void
+    {
+        $this->gitRepository->method('getPorcelainStatus')->willReturn('');
+        $this->gitRepository->method('getCurrentBranchName')->willReturn('main');
+
+        $response = $this->handler->handle(new SubmitOptions(
+            flattenMessages: [
+                \App\DTO\ResponseMessage::info('flatten info'),
+                \App\DTO\ResponseMessage::warning(\App\DTO\MessageRef::key('flatten.warning_published')),
+                \App\DTO\ResponseMessage::error(\App\DTO\MessageRef::key('flatten.error_rebase')),
+            ],
+        ));
+
+        $this->assertSame('info', $response->entries[1]->type);
+        $this->assertSame('warning', $response->entries[2]->type);
+        $this->assertSame('error', $response->entries[3]->type);
+    }
 }

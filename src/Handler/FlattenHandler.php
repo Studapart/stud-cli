@@ -22,41 +22,88 @@ class FlattenHandler implements GitRepositoryAware, ProjectBaseBranchAware
         unset($_translator);
     }
 
-    public function handle(): CommandResponse
+    /**
+     * Squash fixup commits on a clean tree.
+     *
+     * @param bool $includePleaseHint When true, warn that a later force-push may be required
+     */
+    public function handle(bool $includePleaseHint = true): CommandResponse
     {
-        // 1. Check for clean working directory
-        $gitStatus = $this->gitRepository->getPorcelainStatus();
-        if (! empty($gitStatus)) {
+        if ($this->workingTreeIsDirty()) {
             return CommandResponse::error(MessageRef::key('flatten.error_dirty_working'));
         }
 
-        // 2. Check if there are any fixup commits
         $baseSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
-        $hasFixups = $this->gitRepository->hasFixupCommits($baseSha);
-
-        if (! $hasFixups) {
+        if (! $this->gitRepository->hasFixupCommits($baseSha)) {
             return CommandResponse::success(
                 messages: [ResponseMessage::notice(MessageRef::key('flatten.no_fixups'))],
+                data: ['rewritten' => false],
             );
         }
 
-        // 3. Warn about history rewrite
-        $messages = [ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'))];
-
-        // 4. Perform the rebase with autosquash
         try {
             $this->gitRepository->rebaseAutosquash($baseSha);
-
-            return CommandResponse::success(MessageRef::key('flatten.success'), messages: $messages);
         } catch (GitException $e) {
-            $error = MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]);
-
-            return CommandResponse::error(
-                $error,
-                [ResponseMessage::error($error, $e->getTechnicalDetails())],
-            );
+            return $this->rebaseError(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]), $e->getTechnicalDetails());
         } catch (\Exception $e) {
-            return CommandResponse::error(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]));
+            return $this->rebaseError(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]));
         }
+
+        return CommandResponse::success(
+            MessageRef::key('flatten.success'),
+            ['rewritten' => true],
+            [$this->rewriteWarning($includePleaseHint)],
+        );
+    }
+
+    /**
+     * Flatten only after a created commit on a clean tree. A skip keeps the commit result.
+     *
+     * Commit keeps the standalone please hint. Push and please pass false because they publish the rewrite.
+     */
+    public function applyToCommitResult(CommandResponse $commit, bool $includePleaseHint = false): CommandResponse
+    {
+        if (! $this->commitWasCreated($commit) || $this->workingTreeIsDirty()) {
+            return $commit->withFlattenResult(false, [ResponseMessage::notice(MessageRef::key('flatten.notice_skipped'))]);
+        }
+
+        $flatten = $this->handle($includePleaseHint);
+        $messages = array_merge($commit->getMessages(), $flatten->getMessages());
+        $rewritten = (bool) ($flatten->data['rewritten'] ?? false);
+        if (! $flatten->isSuccess()) {
+            return CommandResponse::error(
+                $flatten->getErrorMessage() ?? MessageRef::key('flatten.error_rebase', ['error' => 'flatten failed']),
+                $messages,
+                ['rewritten' => false] + $commit->data,
+            );
+        }
+
+        return CommandResponse::success($commit->message, ['rewritten' => $rewritten] + $commit->data, $messages);
+    }
+
+    private function workingTreeIsDirty(): bool
+    {
+        return trim($this->gitRepository->getPorcelainStatus()) !== '';
+    }
+
+    private function commitWasCreated(CommandResponse $commit): bool
+    {
+        return isset($commit->data['commitMessage']) || isset($commit->data['fixupSha']);
+    }
+
+    private function rewriteWarning(bool $includePleaseHint): ResponseMessage
+    {
+        $key = $includePleaseHint ? 'flatten.warning_rewrite' : 'flatten.warning_published';
+
+        return ResponseMessage::warning(MessageRef::key($key));
+    }
+
+    private function rebaseError(MessageRef $error, ?string $technicalDetails = null): CommandResponse
+    {
+        return CommandResponse::error(
+            $error,
+            [ResponseMessage::error($error, $technicalDetails)],
+            ['rewritten' => false],
+        );
     }
 }

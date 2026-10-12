@@ -65,6 +65,14 @@ final class WorkflowOutputTest extends TestCase
         self::assertSame(7, $response->pullNumber);
     }
 
+    public function testSetRewrittenCarriesIntoResponse(): void
+    {
+        $output = new WorkflowOutput($this->createMock(PromptInterface::class));
+        $output->setRewritten(true);
+
+        self::assertTrue($output->toResponse(0)->rewritten);
+    }
+
     public function testDelegatesPrompts(): void
     {
         $prompt = $this->createMock(PromptInterface::class);

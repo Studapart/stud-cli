@@ -35,4 +35,13 @@ final class CommandResponseTest extends TestCase
         $this->assertSame(['branch' => 'feat/test'], $response->payloadData());
         $this->assertSame('Failed', $response->getErrors()[0]->message);
     }
+
+    public function testWithFlattenResultKeepsAnErrorAndAddsRewritten(): void
+    {
+        $response = CommandResponse::error('Failed', [ResponseMessage::error('Failed')])->withFlattenResult(false, []);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertSame('Failed', $response->getError());
+    }
 }

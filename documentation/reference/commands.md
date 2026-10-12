@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","workItemLabels":["example"],"pullRequestLabels":["example"],"skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -177,6 +177,8 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `linearStartStateId` | `string\|null` | yes | `NULL` |
 | `linearTypeLabelGroupId` | `string\|null` | yes | `NULL` |
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
+| `workItemLabels` | `array` | yes | `NULL` |
+| `pullRequestLabels` | `array` | yes | `NULL` |
 | `skipBaseBranchRemoteCheck` | `bool` | yes | `false` |
 
 #### Agent JSON Output
@@ -1528,7 +1530,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-commit"></a>
 ### `stud commit`
 
-Guides you through making a conventional commit.
+Guides you through making a conventional commit. Optional --flatten squashes fixup commits after a commit that leaves a clean tree.
 
 - **Alias:** `stud co`
 - **Syntax:** `stud commit [options]`
@@ -1548,6 +1550,7 @@ None.
 | `--message <message><br>`-m <message>`` | Bypass the interactive prompter and use the provided message for the commit |
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
+| `--flatten` | Squash fixup commits when it is safe, then continue this command |
 
 
 #### Examples
@@ -1559,7 +1562,8 @@ stud commit --new
 stud commit --message "Ready for review"
 stud commit --all
 stud commit --quiet
-echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
+stud commit --flatten
+echo '{"flatten":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud commit --agent
 ```
 
 #### Agent JSON Input
@@ -1567,6 +1571,7 @@ echo '{"isNew":true,"message":"Ready for review","stageAll":true,"provider":"exa
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
@@ -1657,7 +1662,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-flatten"></a>
 ### `stud flatten`
 
-Automatically squash all fixup! commits into their target commits.
+Automatically squash all fixup! commits into their target commits. Reports whether history was rewritten and still warns that stud please may be required afterward.
 
 - **Alias:** `stud ft`
 - **Syntax:** `stud flatten`
@@ -1703,6 +1708,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -1712,10 +1718,10 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-please"></a>
 ### `stud please`
 
-A power-user, safe force-push (force-with-lease). If the branch has no upstream, sets upstream to origin and pushes instead of erroring (CLI notice; quiet in agent mode).
+A power-user, safe force-push (force-with-lease). If the branch has no upstream, sets upstream to origin and pushes instead of erroring (CLI notice; quiet in agent mode). Optional --flatten squashes fixup commits when the working tree is already clean, then force-pushes. A dirty tree skips flatten and still force-pushes.
 
 - **Alias:** `stud pl`
-- **Syntax:** `stud please`
+- **Syntax:** `stud please [options]`
 
 <details>
 <summary>Options, examples, and agent schema</summary>
@@ -1726,7 +1732,9 @@ None.
 
 #### Options
 
-None.
+| Option | Description |
+| --- | --- |
+| `--flatten` | Squash fixup commits when it is safe, then continue this command |
 
 
 #### Examples
@@ -1734,7 +1742,8 @@ None.
 ```bash
 stud please
 stud pl
-echo '{}' | stud please --agent
+stud please --flatten
+echo '{"flatten":true}' | stud please --agent
 ```
 
 #### Agent JSON Input
@@ -1742,6 +1751,7 @@ echo '{}' | stud please --agent
 | Property | Type | Optional | Default |
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 
 #### Agent JSON Output
 
@@ -1767,7 +1777,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-push"></a>
 ### `stud push`
 
-Commits like stud commit when there is something to commit (staged files or --all), then pushes HEAD to origin (same non-force push as stud submit preflight). Uncommitted files with nothing staged do not block the push; a notice explains they were left behind. After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false.
+Commits like stud commit when there is something to commit (staged files or --all), then pushes HEAD to origin (same non-force push as stud submit preflight). Uncommitted files with nothing staged do not block the push; a notice explains they were left behind. After a failed push, runs or offers stud please unless disabled. CLI: --no-please (interactive/quiet). Agent JSON: pleaseFallback only (default true; false skips stud please). stud push --agent --no-please equals pleaseFallback false. Optional --flatten squashes fixup commits after a created commit on a clean tree, then publishes rewritten history with the safe force-push. Interactive mode asks first. Quiet and agent mode publish without another prompt.
 
 - **Alias:** `stud ps`
 - **Syntax:** `stud push [options]`
@@ -1788,6 +1798,7 @@ None.
 | `--all<br>`-a`` | Stage all changes before committing (restores old behavior) |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
 | `--no-please` | After a failed normal push, do not run or prompt for stud please |
+| `--flatten` | Squash fixup commits when it is safe, then continue this command |
 
 
 #### Examples
@@ -1800,7 +1811,8 @@ stud push --message "Ready for review"
 stud push --all
 stud push --quiet
 stud push --no-please
-echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
+stud push --flatten
+echo '{"pleaseFallback":true,"flatten":true,"isNew":true,"message":"Ready for review","stageAll":true,"provider":"example","quiet":true,"help":true}' | stud push --agent
 ```
 
 #### Agent JSON Input
@@ -1809,6 +1821,7 @@ echo '{"pleaseFallback":true,"isNew":true,"message":"Ready for review","stageAll
 | --- | --- | --- | --- |
 | `compact` | `bool` | yes | `true` |
 | `pleaseFallback` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `stageAll` | `bool` | yes | `false` |
@@ -1831,6 +1844,8 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 message: string
+rewritten: bool
+published: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`
@@ -2169,7 +2184,7 @@ Error shape: `{"success":false,"error":"string"}`
 <a id="stud-submit"></a>
 ### `stud submit`
 
-Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Use --assign-to-author to assign a newly created PR/MR to the authenticated provider user. Agent JSON: optional assignToAuthor and stageAll — when stageAll is true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent).
+Pushes the current branch and creates a Pull Request. Uncommitted local changes do not block submit; you get an informational note that push/PR use commits on the branch. Use --assign-to-author to assign a newly created PR/MR to the authenticated provider user. Agent JSON: optional assignToAuthor and stageAll — when stageAll is true, runs stud push first (optional isNew, message, pleaseFallback; same as stud push --agent). Optional --flatten applies only after that stage-all path creates a commit on a clean tree. Rewritten history is published once before the pull request.
 
 - **Alias:** `stud su`
 - **Syntax:** `stud submit [options]`
@@ -2189,6 +2204,7 @@ None.
 | `--labels <labels>` | Comma-separated list of labels to apply to the Pull Request. If a label doesn't exist, you'll be prompted to create it, ignore it, or retry with a corrected list |
 | `--assign-to-author` | Assign the created Pull Request or Merge Request to the authenticated provider user |
 | `--quiet<br>`-q`` | Non-interactive: use defaults, no prompts |
+| `--flatten` | Squash fixup commits when it is safe, then continue this command |
 
 
 #### Examples
@@ -2200,7 +2216,8 @@ stud submit --draft
 stud submit --labels "AI-Generated,RFR"
 stud submit --assign-to-author
 stud submit --quiet
-echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
+stud submit --flatten
+echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback":true,"flatten":true,"draft":true,"labels":"AI-Generated,RFR","assignToAuthor":true,"provider":"example","quiet":true}' | stud submit --agent
 ```
 
 #### Agent JSON Input
@@ -2212,6 +2229,7 @@ echo '{"stageAll":true,"isNew":true,"message":"Ready for review","pleaseFallback
 | `isNew` | `bool` | yes | `false` |
 | `message` | `string\|null` | yes | `NULL` |
 | `pleaseFallback` | `bool` | yes | `true` |
+| `flatten` | `bool` | yes | `false` |
 | `draft` | `bool` | yes | `false` |
 | `labels` | `string\|null` | yes | `NULL` |
 | `assignToAuthor` | `bool` | yes | `false` |
@@ -2227,6 +2245,7 @@ Default compact success shape (`{"compact":true}` or omitted):
 ```text
 success: true
 pullNumber: int
+rewritten: bool
 ```
 
 Full success shape (`{"compact":false}`):
@@ -2234,6 +2253,7 @@ Full success shape (`{"compact":false}`):
 ```text
 success: true
 pullNumber: int
+rewritten: bool
 ```
 
 Error shape: `{"success":false,"error":"string"}`

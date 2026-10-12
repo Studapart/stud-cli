@@ -8,9 +8,11 @@ use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
+use App\DTO\ResponseMessage;
 use App\DTO\SubmitOptions;
 use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
+use App\Enum\ResponseMessageLevel;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
@@ -55,8 +57,12 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     {
         $this->recorder = new WorkflowRecorder();
         $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.section'));
+        if ($options->rewritten !== null) {
+            $this->recorder()->setRewritten($options->rewritten);
+        }
+        $this->recordFlattenDiagnostics($options->flattenMessages);
 
-        $preflight = $this->runSubmitPreflight();
+        $preflight = $this->runSubmitPreflight($options);
         if ($preflight['exitCode'] !== 0) {
             return $this->recorder()->toResponse($preflight['exitCode']);
         }
@@ -86,7 +92,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      *
      * @return array{exitCode: int, branch?: string, jiraKey?: string, prTitle?: string}
      */
-    protected function runSubmitPreflight(): array
+    protected function runSubmitPreflight(SubmitOptions $options = new SubmitOptions()): array
     {
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
@@ -101,11 +107,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             return ['exitCode' => 1];
         }
 
-        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
-        $pushProcess = $this->gitRepository->pushHeadToOrigin();
-        if (! $pushProcess->isSuccessful()) {
-            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
-
+        if (! $options->alreadyPublished && ! $this->pushHeadDuringPreflight($branch)) {
             return ['exitCode' => 1];
         }
 
@@ -132,6 +134,37 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             'jiraKey' => $jiraKey,
             'prTitle' => $this->extractPrTitleFromCommitMessage($firstLogicalMessage),
         ];
+    }
+
+    /**
+     * Push the branch during preflight. Already-published flatten results skip this call.
+     */
+    protected function pushHeadDuringPreflight(string $branch): bool
+    {
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
+        $pushProcess = $this->gitRepository->pushHeadToOrigin();
+        if ($pushProcess->isSuccessful()) {
+            return true;
+        }
+
+        $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
+
+        return false;
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    private function recordFlattenDiagnostics(array $messages): void
+    {
+        foreach ($messages as $message) {
+            match ($message->level) {
+                ResponseMessageLevel::Error => $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+                ResponseMessageLevel::Warning => $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+                ResponseMessageLevel::Notice => $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+                ResponseMessageLevel::Info => $this->recorder()->addInfo(WorkflowEntryRecorder::VERBOSITY_NORMAL, (string) $message->message),
+            };
+        }
     }
 
     /**

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
+use App\DTO\ResponseMessage;
 use App\Handler\CommitHandler;
+use App\Handler\FlattenHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PushHandler;
 use App\Response\CommandResponse;
@@ -23,8 +26,10 @@ class PushHandlerTest extends CommandTestCase
         GitRepository $gitRepository,
         PleaseHandler $pleaseHandler,
         ?Logger $logger = null,
+        ?FlattenHandler $flattenHandler = null,
     ): PushHandler {
         $logger ??= $this->createMock(Logger::class);
+        $flattenHandler ??= $this->createMock(FlattenHandler::class);
 
         return new PushHandler(
             $commitHandler,
@@ -32,6 +37,7 @@ class PushHandlerTest extends CommandTestCase
             $pleaseHandler,
             $this->translationService,
             $logger,
+            $flattenHandler,
         );
     }
 
@@ -394,5 +400,155 @@ class PushHandlerTest extends CommandTestCase
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $this->assertTrue($handler->handle(false, null, false, true, false, true, true)->isSuccess());
+    }
+
+    public function testFlattenWithoutRewritePublishesOnceWithMetadata(): void
+    {
+        $commit = CommandResponse::success(MessageRef::key('commit.success'), ['commitMessage' => 'feat: keep']);
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->expects($this->once())
+            ->method('applyToCommitResult')
+            ->willReturn($commit->withFlattenResult(false, [ResponseMessage::notice(MessageRef::key('flatten.notice_skipped'))]));
+
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, null, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertTrue($response->data['published']);
+        $this->assertSame('feat: keep', $response->data['commit']['commitMessage']);
+    }
+
+    public function testFlattenFailureDoesNotPush(): void
+    {
+        $commit = CommandResponse::success(MessageRef::key('commit.success'), ['commitMessage' => 'feat: keep']);
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->method('applyToCommitResult')->willReturn(CommandResponse::error(
+            MessageRef::key('flatten.error_rebase', ['error' => 'boom']),
+            [],
+            ['rewritten' => false, 'commitMessage' => 'feat: keep'],
+        ));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, null, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('feat: keep', $response->data['commitMessage']);
+    }
+
+    public function testInteractivePushDeclinesRewrittenPublish(): void
+    {
+        $commit = CommandResponse::success(MessageRef::key('commit.success'), ['rewritten' => true, 'commitMessage' => 'feat: keep']);
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->method('applyToCommitResult')->willReturn($commit);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->once())->method('confirm')->willReturn(false);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, false, false, false, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertFalse($response->data['published']);
+        $this->assertSame('feat: keep', $response->data['commit']['commitMessage']);
+    }
+
+    public function testQuietPushPublishesRewriteWithoutConfirmation(): void
+    {
+        $commit = CommandResponse::success(MessageRef::key('commit.success'), ['rewritten' => true, 'commitMessage' => 'feat: keep']);
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->method('applyToCommitResult')->willReturn($commit);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success(MessageRef::key('push.success')));
+        $logger = $this->createMock(Logger::class);
+        $logger->expects($this->never())->method('confirm');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, false, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertTrue($response->data['published']);
+    }
+
+    public function testFailedCommitWithFlattenDoesNotPublish(): void
+    {
+        $commit = CommandResponse::error(MessageRef::key('commit.error'), [], ['commitMessage' => 'feat: keep']);
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->expects($this->never())->method('applyToCommitResult');
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, null, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertSame('feat: keep', $response->data['commitMessage']);
+    }
+
+    public function testForcePushFailureAfterRewriteKeepsFlattenWarning(): void
+    {
+        $warning = ResponseMessage::warning(MessageRef::key('flatten.warning_published'));
+        $commit = CommandResponse::success(
+            MessageRef::key('commit.success'),
+            ['rewritten' => true, 'commitMessage' => 'feat: keep'],
+            [$warning],
+        );
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn($commit);
+        $flattenHandler = $this->createMock(FlattenHandler::class);
+        $flattenHandler->method('applyToCommitResult')->willReturn($commit);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->method('handle')->willReturn(CommandResponse::error(MessageRef::key('push.error_push')));
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, null, $flattenHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertFalse($response->data['published']);
+        $this->assertSame($warning, $response->getMessages()[0]);
     }
 }

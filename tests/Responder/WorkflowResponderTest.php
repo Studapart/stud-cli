@@ -82,6 +82,19 @@ final class WorkflowResponderTest extends TestCase
         ], $agentResponse?->toPayload());
     }
 
+    public function testRespondJsonIncludesRewrittenBesidePullNumber(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42, rewritten: true);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, true);
+
+        self::assertSame([
+            'success' => true,
+            'data' => ['pullNumber' => 42, 'rewritten' => true],
+        ], $agentResponse?->toPayload());
+    }
+
     public function testRespondJsonIncludesPullNumberInFullSuccess(): void
     {
         $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());

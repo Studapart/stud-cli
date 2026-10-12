@@ -116,6 +116,8 @@ stud flatten
 stud please
 ```
 
+`stud commit`, `stud push`, `stud submit`, and `stud please` also accept `--flatten` (agent `"flatten": true` or `"flatten": false`, default false). When the option is on and it is safe, they squash fixup commits and publish rewritten history once. A dirty tree skips flatten and keeps that command's current result. Standalone `stud flatten` followed by `stud please` remains the explicit cleanup path.
+
 Do not use `stud please` as a normal push command. Its main role is after `stud flatten`, `git rebase`, or another intentional history rewrite. If the branch has never been pushed, `stud please` still succeeds: it sets upstream to origin and pushes (CLI shows a notice; agent mode stays quiet).
 
 ### Submit and respond to review

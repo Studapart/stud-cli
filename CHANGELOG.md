@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Optional flatten on delivery commands (SCI-217):** `commit`, `push`, `submit`, and `please` accept `--flatten` (agent `"flatten": true` or `"flatten": false`, default false). When it is safe they squash fixup commits and publish rewritten history once. Omitting the option keeps the current behavior. Standalone `flatten` reports `rewritten` and still warns that a force-push may be required afterward.
+
 ## [4.2.1] - 2026-10-05
 
 ### Changed

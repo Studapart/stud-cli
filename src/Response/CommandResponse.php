@@ -77,4 +77,23 @@ final class CommandResponse extends AbstractResponse
 
         return $data;
     }
+
+    /**
+     * Keep this result and attach flatten diagnostics requested by the caller.
+     *
+     * @param list<ResponseMessage> $prefixMessages
+     */
+    public function withFlattenResult(?bool $rewritten, array $prefixMessages): self
+    {
+        $data = $this->data;
+        if ($rewritten !== null) {
+            $data = ['rewritten' => $rewritten] + $data;
+        }
+        $messages = array_merge($prefixMessages, $this->messages);
+        if ($this->success) {
+            return self::success($this->message, $data, $messages);
+        }
+
+        return self::error($this->error ?? MessageRef::key('push.error_push'), $messages, $data);
+    }
 }

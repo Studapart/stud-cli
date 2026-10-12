@@ -57,6 +57,29 @@ class GitWorkflowCliParityIntegrationTest extends TestCase
         self::assertSame('commit', json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR)['data']['name']);
     }
 
+    public function testFlattenOptionIsAcceptedOnDeliveryCommands(): void
+    {
+        foreach (['commit', 'co', 'push', 'ps', 'submit', 'su', 'please', 'pl'] as $command) {
+            $process = $this->runStud([$command, '--help']);
+
+            self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+            self::assertStringContainsString('--flatten', $process->getOutput());
+        }
+    }
+
+    public function testPushAgentSchemaAcceptsFlattenBoolean(): void
+    {
+        $process = $this->runStud(['help', '--agent'], getcwd() ?: null, '{"command":"push"}');
+
+        self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        $payload = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        $flatten = $payload['data']['input']['properties']['flatten'] ?? null;
+
+        self::assertIsArray($flatten);
+        self::assertSame('bool', $flatten['type'] ?? null);
+        self::assertFalse($flatten['default'] ?? true);
+    }
+
     public function testCommitShortFlagsStageAllChanges(): void
     {
         $repo = $this->createRepository('commit-short');

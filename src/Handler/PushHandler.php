@@ -19,6 +19,7 @@ class PushHandler implements GitRepositoryAware
         private readonly PleaseHandler $pleaseHandler,
         mixed $_translator,
         private readonly PromptInterface $prompt,
+        private readonly FlattenHandler $flattenHandler,
     ) {
         unset($_translator);
     }
@@ -40,8 +41,9 @@ class PushHandler implements GitRepositoryAware
         mixed $sixth = false,
         mixed $seventh = false,
         mixed $eighth = true,
+        mixed $ninth = false,
     ): CommandResponse {
-        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback] = $this->normalizeHandleArguments(
+        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback, $flatten] = $this->normalizeHandleArguments(
             $first,
             $second,
             $third,
@@ -50,14 +52,122 @@ class PushHandler implements GitRepositoryAware
             $sixth,
             $seventh,
             $eighth,
+            $ninth,
+            func_num_args(),
         );
         $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
         if (! $commitResponse->isSuccess()) {
-            return $commitResponse;
+            return $flatten ? $commitResponse->withFlattenResult(false, []) : $commitResponse;
+        }
+        if ($flatten) {
+            return $this->pushAfterOptionalFlatten($commitResponse, $quiet, $noPlease, $agentMode, $pleaseFallback);
         }
 
-        $branch = $this->gitRepository->getCurrentBranchName();
+        return $this->pushExistingHistory($commitResponse, $quiet, $noPlease, $agentMode, $pleaseFallback);
+    }
 
+    /**
+     * Publish after an optional flatten. A flatten failure does not push.
+     */
+    protected function pushAfterOptionalFlatten(
+        CommandResponse $commitResponse,
+        bool $quiet,
+        bool $noPlease,
+        bool $agentMode,
+        bool $pleaseFallback,
+    ): CommandResponse {
+        $flattened = $this->flattenHandler->applyToCommitResult($commitResponse);
+        if (! $flattened->isSuccess()) {
+            return $flattened;
+        }
+        if (($flattened->data['rewritten'] ?? false) === true) {
+            return $this->publishRewrittenHistory($flattened, $quiet, $agentMode);
+        }
+
+        return $this->withFlattenPublication(
+            $this->pushExistingHistory($flattened, $quiet, $noPlease, $agentMode, $pleaseFallback),
+            $flattened,
+        );
+    }
+
+    /**
+     * Ask before publishing rewritten history, except in quiet and agent mode.
+     */
+    protected function publishRewrittenHistory(CommandResponse $commit, bool $quiet, bool $agentMode): CommandResponse
+    {
+        if (! $this->confirmsFlattenPublish($quiet, $agentMode)) {
+            return CommandResponse::error(
+                MessageRef::key('push.error_push'),
+                $commit->getMessages(),
+                $this->flattenPublicationData($commit, false),
+            );
+        }
+
+        return $this->withFlattenPublication($this->runPlease($quiet || $agentMode), $commit);
+    }
+
+    protected function confirmsFlattenPublish(bool $quiet, bool $agentMode): bool
+    {
+        if ($quiet || $agentMode) {
+            return true;
+        }
+
+        return $this->prompt->confirm(MessageRef::key('push.confirm_flatten_publish'), false);
+    }
+
+    protected function withFlattenPublication(CommandResponse $published, CommandResponse $commit): CommandResponse
+    {
+        $data = $this->flattenPublicationData($commit, $published->isSuccess());
+        $messages = $this->prependMissingMessages($published->getMessages(), $commit->getMessages());
+        if ($published->isSuccess()) {
+            return CommandResponse::success($published->message, $data, $messages);
+        }
+
+        return CommandResponse::error(
+            $published->getErrorMessage() ?? MessageRef::key('push.error_push'),
+            $messages,
+            $data,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function flattenPublicationData(CommandResponse $commit, bool $published): array
+    {
+        $commitData = $commit->payloadData();
+        unset($commitData['rewritten']);
+
+        return [
+            'branch' => $this->gitRepository->getCurrentBranchName(),
+            'commit' => $commitData,
+            'rewritten' => (bool) ($commit->data['rewritten'] ?? false),
+            'published' => $published,
+        ];
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     * @param list<ResponseMessage> $prefix
+     * @return list<ResponseMessage>
+     */
+    protected function prependMissingMessages(array $messages, array $prefix): array
+    {
+        if ($prefix === [] || array_slice($messages, 0, count($prefix)) == $prefix) {
+            return $messages;
+        }
+
+        return array_merge($prefix, $messages);
+    }
+
+    protected function pushExistingHistory(
+        CommandResponse $commitResponse,
+        bool $quiet,
+        bool $noPlease,
+        bool $agentMode,
+        bool $pleaseFallback,
+    ): CommandResponse {
+        $branch = $this->gitRepository->getCurrentBranchName();
         $pushProcess = $this->gitRepository->pushHeadToOrigin();
         if ($pushProcess->isSuccessful()) {
             return CommandResponse::success(
@@ -153,7 +263,7 @@ class PushHandler implements GitRepositoryAware
     }
 
     /**
-     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool}
+     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool, 7: bool}
      */
     private function normalizeHandleArguments(
         mixed $first,
@@ -164,6 +274,8 @@ class PushHandler implements GitRepositoryAware
         mixed $sixth,
         mixed $seventh,
         mixed $eighth,
+        mixed $ninth,
+        int $argumentCount,
     ): array {
         if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
             return [
@@ -174,6 +286,7 @@ class PushHandler implements GitRepositoryAware
                 (bool) $sixth,
                 (bool) $seventh,
                 (bool) $eighth,
+                (bool) $ninth,
             ];
         }
 
@@ -185,6 +298,7 @@ class PushHandler implements GitRepositoryAware
             (bool) $fifth,
             (bool) $sixth,
             (bool) $seventh,
+            $argumentCount >= 8 && (bool) $eighth,
         ];
     }
 
