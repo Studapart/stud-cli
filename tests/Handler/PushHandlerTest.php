@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\ResponseMessage;
 use App\Handler\CommitHandler;
+use App\Handler\FlattenHandler;
 use App\Handler\PleaseHandler;
 use App\Handler\PushHandler;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
-use App\Service\Logger;
+use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -22,16 +24,16 @@ class PushHandlerTest extends CommandTestCase
         CommitHandler $commitHandler,
         GitRepository $gitRepository,
         PleaseHandler $pleaseHandler,
-        ?Logger $logger = null,
+        ?PromptInterface $prompt = null,
+        ?FlattenHandler $flattenHandler = null,
     ): PushHandler {
-        $logger ??= $this->createMock(Logger::class);
-
         return new PushHandler(
             $commitHandler,
             $gitRepository,
             $pleaseHandler,
             $this->translationService,
-            $logger,
+            $prompt ?? $this->createMock(PromptInterface::class),
+            $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop', $this->translationService),
         );
     }
 
@@ -163,10 +165,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $pleaseHandler->expects($this->never())->method('handle');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addError');
-
-        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $this->assertFalse($handler->handle($this->io(), false, null, false, false, true, false, true)->isSuccess());
     }
@@ -208,10 +207,7 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $pleaseHandler->expects($this->never())->method('handle');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->method('addError');
-
-        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $this->assertFalse($handler->handle($this->io(), false, null, false, true, false, true, false)->isSuccess());
     }
@@ -277,11 +273,10 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $pleaseHandler->expects($this->never())->method('handle');
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('confirm')->willReturn(false);
-        $logger->method('addError');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(false);
 
-        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
         $this->assertFalse($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
     }
@@ -302,10 +297,10 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $pleaseHandler->expects($this->once())->method('handle')->with(false)->willReturn(0);
 
-        $logger = $this->createMock(Logger::class);
-        $logger->expects($this->once())->method('confirm')->willReturn(true);
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(true);
 
-        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $logger);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
         $this->assertTrue($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
     }
@@ -394,5 +389,224 @@ class PushHandlerTest extends CommandTestCase
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $this->assertTrue($handler->handle(false, null, false, true, false, true, true)->isSuccess());
+    }
+
+    public function testFlattenAfterCreatedCommitForcePushesWithoutPromptInAgentMode(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->with('base')->willReturn(true);
+        $gitRepository->expects($this->once())->method('rebaseAutosquash')->with('base');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(CommandResponse::success('pushed'));
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->never())->method('confirm');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->data['published']);
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertSame('feat: add [SCI-216]', $response->data['commit']['commitMessage']);
+    }
+
+    public function testFlattenPublishDeclineDoesNotPush(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->willReturn(true);
+        $gitRepository->expects($this->once())->method('rebaseAutosquash');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(false);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
+
+        $response = $handler->handle($this->io(), false, null, true, false, false, false, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertArrayNotHasKey('published', $response->data);
+        $this->assertSame('feat: add [SCI-216]', $response->data['commit']['commitMessage']);
+    }
+
+    public function testFlattenWithNoFixupsUsesNormalPush(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['fixupSha' => 'abc']));
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->willReturn(false);
+        $gitRepository->expects($this->never())->method('rebaseAutosquash');
+        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->data['published']);
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertSame('abc', $response->data['commit']['fixupSha']);
+    }
+
+    public function testDirtyTreeSkipsFlattenAndPushes(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(true);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn(' M left.txt');
+        $gitRepository->expects($this->never())->method('rebaseAutosquash');
+        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $this->createMock(PleaseHandler::class));
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertTrue($response->data['published']);
+        $this->assertNotEmpty($response->getNotices());
+    }
+
+    public function testFlattenRebaseFailureDoesNotPublish(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->willReturn(true);
+        $gitRepository->method('rebaseAutosquash')->willThrowException(new \RuntimeException('Rebase failed'));
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('feat: add [SCI-216]', $response->data['commitMessage']);
+        $this->assertArrayNotHasKey('published', $response->data);
+    }
+
+    public function testFlattenConfirmedForcePushPublishesRewrittenHistory(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->willReturn(true);
+        $gitRepository->expects($this->once())->method('rebaseAutosquash');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->with(false)->willReturn(CommandResponse::success('pushed'));
+        $prompt = $this->createMock(PromptInterface::class);
+        $prompt->expects($this->once())->method('confirm')->willReturn(true);
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
+
+        $response = $handler->handle(false, null, true, false, false, false, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->data['published']);
+        $this->assertTrue($response->data['rewritten']);
+    }
+
+    public function testFlattenForcePushFailureKeepsCommitAndRewrittenFlag(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn('');
+        $gitRepository->method('getMergeBase')->willReturn('base');
+        $gitRepository->method('hasFixupCommits')->willReturn(true);
+        $gitRepository->method('rebaseAutosquash');
+        $gitRepository->expects($this->never())->method('pushHeadToOrigin');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->method('handle')->willReturn(CommandResponse::error('force failed'));
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertTrue($response->data['rewritten']);
+        $this->assertSame('feat: add [SCI-216]', $response->data['commit']['commitMessage']);
+        $this->assertArrayNotHasKey('published', $response->data);
+    }
+
+    public function testSkippedFlattenKeepsRewrittenWhenPushFails(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn(' M left.txt');
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->never())->method('handle');
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, false, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertArrayNotHasKey('published', $response->data);
+        $this->assertSame('flatten.notice_skipped', (string) $response->getNotices()[0]->message);
+    }
+
+    public function testSkippedFlattenKeepsNoticeWhenPleaseFallbackSucceeds(): void
+    {
+        $commitHandler = $this->createMock(CommitHandler::class);
+        $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
+        $process = $this->createMock(Process::class);
+        $process->method('isSuccessful')->willReturn(false);
+        $gitRepository = $this->createMock(GitRepository::class);
+        $this->expectCommitPath($gitRepository);
+        $gitRepository->method('getPorcelainStatus')->willReturn(' M left.txt');
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
+        $pleaseHandler = $this->createMock(PleaseHandler::class);
+        $pleaseHandler->expects($this->once())->method('handle')->with(true)->willReturn(
+            CommandResponse::success('force pushed', [], [ResponseMessage::warning('please done')]),
+        );
+        $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
+
+        $response = $handler->handle(false, null, true, true, false, true, true, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->data['rewritten']);
+        $this->assertTrue($response->data['published']);
+        $this->assertSame('feat: add [SCI-216]', $response->data['commit']['commitMessage']);
+        $this->assertSame('flatten.notice_skipped', (string) $response->getNotices()[0]->message);
+        $this->assertSame('please done', (string) $response->getWarnings()[0]->message);
     }
 }

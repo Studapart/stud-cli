@@ -82,6 +82,47 @@ class GitWorkflowCliParityIntegrationTest extends TestCase
         self::assertSame(0, $this->runProcess(['git', 'rev-parse', '--verify', 'feature/push-short'], $this->tempDir . '/remote.git')->getExitCode());
     }
 
+    public function testFlattenOptionIsAdvertisedOnDeliveryAliases(): void
+    {
+        foreach (['co', 'ps', 'su', 'pl'] as $alias) {
+            $process = $this->runStud([$alias, '--help']);
+
+            self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+            self::assertStringContainsString('--flatten', $process->getOutput());
+        }
+    }
+
+    public function testCommitFlattenOnCleanTreeDoesNotRewriteHistory(): void
+    {
+        $repo = $this->createRepository('flatten-clean');
+        $before = trim($this->runProcess(['git', 'rev-parse', 'HEAD'], $repo)->getOutput());
+
+        $process = $this->runStud(['co', '--flatten', '-q'], $repo);
+
+        self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        self::assertSame($before, trim($this->runProcess(['git', 'rev-parse', 'HEAD'], $repo)->getOutput()));
+    }
+
+    public function testAgentPleaseFlattenRewritesFixupAndPushes(): void
+    {
+        $repo = $this->createRepository('flatten-please');
+        file_put_contents($repo . '/feature.txt', "one\n");
+        $this->runProcess(['git', 'add', 'feature.txt'], $repo);
+        $this->runProcess(['git', 'commit', '-m', 'feat: add feature [SCI-216]'], $repo);
+        file_put_contents($repo . '/feature.txt', "two\n");
+        $this->runProcess(['git', 'add', 'feature.txt'], $repo);
+        $this->runProcess(['git', 'commit', '--fixup', 'HEAD'], $repo);
+        $before = trim($this->runProcess(['git', 'rev-parse', 'HEAD'], $repo)->getOutput());
+
+        $process = $this->runStud(['pl', '--agent'], $repo, '{"flatten":true}');
+
+        self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        $decoded = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertTrue($decoded['data']['rewritten'] ?? false);
+        self::assertNotSame($before, trim($this->runProcess(['git', 'rev-parse', 'HEAD'], $repo)->getOutput()));
+        self::assertSame(0, $this->runProcess(['git', 'rev-parse', '--verify', 'feature/flatten-please'], $this->tempDir . '/remote.git')->getExitCode());
+    }
+
     /**
      * Create a local repository with isolated stud config and a bare origin.
      */

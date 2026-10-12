@@ -19,6 +19,7 @@ class PushHandler implements GitRepositoryAware
         private readonly PleaseHandler $pleaseHandler,
         mixed $_translator,
         private readonly PromptInterface $prompt,
+        private readonly FlattenHandler $flattenHandler,
     ) {
         unset($_translator);
     }
@@ -39,9 +40,10 @@ class PushHandler implements GitRepositoryAware
         mixed $fifth = false,
         mixed $sixth = false,
         mixed $seventh = false,
-        mixed $eighth = true,
+        mixed $eighth = false,
+        mixed $ninth = false,
     ): CommandResponse {
-        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback] = $this->normalizeHandleArguments(
+        [$isNew, $message, $stageAll, $quiet, $noPlease, $agentMode, $pleaseFallback, $flatten] = $this->normalizeHandleArguments(
             $first,
             $second,
             $third,
@@ -50,24 +52,19 @@ class PushHandler implements GitRepositoryAware
             $sixth,
             $seventh,
             $eighth,
+            $ninth,
         );
         $commitResponse = $this->runCommitPhase($isNew, $message, $stageAll, $quiet);
         if (! $commitResponse->isSuccess()) {
             return $commitResponse;
         }
 
-        $branch = $this->gitRepository->getCurrentBranchName();
-
-        $pushProcess = $this->gitRepository->pushHeadToOrigin();
-        if ($pushProcess->isSuccessful()) {
-            return CommandResponse::success(
-                MessageRef::key('push.success'),
-                ['branch' => $branch, 'commit' => $commitResponse->payloadData()],
-                $commitResponse->getMessages(),
-            );
+        $prepared = $this->prepareFlatten($commitResponse, $flatten);
+        if (! $prepared->isSuccess()) {
+            return $prepared;
         }
 
-        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $commitResponse->getMessages());
+        return $this->publish($prepared, $quiet, $noPlease, $agentMode, $pleaseFallback);
     }
 
     /**
@@ -153,7 +150,7 @@ class PushHandler implements GitRepositoryAware
     }
 
     /**
-     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool}
+     * @return array{0: bool, 1: string|null, 2: bool, 3: bool, 4: bool, 5: bool, 6: bool, 7: bool}
      */
     private function normalizeHandleArguments(
         mixed $first,
@@ -164,6 +161,7 @@ class PushHandler implements GitRepositoryAware
         mixed $sixth,
         mixed $seventh,
         mixed $eighth,
+        mixed $ninth,
     ): array {
         if ($first instanceof \Symfony\Component\Console\Style\SymfonyStyle) {
             return [
@@ -174,6 +172,7 @@ class PushHandler implements GitRepositoryAware
                 (bool) $sixth,
                 (bool) $seventh,
                 (bool) $eighth,
+                (bool) $ninth,
             ];
         }
 
@@ -185,7 +184,190 @@ class PushHandler implements GitRepositoryAware
             (bool) $fifth,
             (bool) $sixth,
             (bool) $seventh,
+            (bool) $eighth,
         ];
+    }
+
+    private function prepareFlatten(CommandResponse $commitResponse, bool $flatten): CommandResponse
+    {
+        if (! $flatten) {
+            return $commitResponse;
+        }
+
+        return $this->withPublishWarning($this->flattenHandler->applyWhenSafe($commitResponse, true));
+    }
+
+    private function withPublishWarning(CommandResponse $response): CommandResponse
+    {
+        if (! $response->isSuccess() || ($response->data['rewritten'] ?? false) !== true) {
+            return $response;
+        }
+        $messages = $response->getMessages();
+        $messages[] = ResponseMessage::warning(MessageRef::key('flatten.warning_published'));
+
+        return CommandResponse::success($response->message, $response->data, $messages);
+    }
+
+    private function publish(
+        CommandResponse $prepared,
+        bool $quiet,
+        bool $noPlease,
+        bool $agentMode,
+        bool $pleaseFallback,
+    ): CommandResponse {
+        if (($prepared->data['rewritten'] ?? false) === true) {
+            return $this->publishRewritten($prepared, $quiet, $agentMode);
+        }
+        $response = $this->pushCurrent($prepared, $quiet, $noPlease, $agentMode, $pleaseFallback);
+        if (! array_key_exists('rewritten', $prepared->data)) {
+            return $response;
+        }
+        $response = $this->retainFlattenContext($response, $prepared);
+        if (! $response->isSuccess()) {
+            return $response;
+        }
+
+        return $this->markPublished($response, false);
+    }
+
+    private function pushCurrent(
+        CommandResponse $prepared,
+        bool $quiet,
+        bool $noPlease,
+        bool $agentMode,
+        bool $pleaseFallback,
+    ): CommandResponse {
+        $pushProcess = $this->gitRepository->pushHeadToOrigin();
+        if ($pushProcess->isSuccessful()) {
+            return CommandResponse::success(
+                MessageRef::key('push.success'),
+                [
+                    'branch' => $this->gitRepository->getCurrentBranchName(),
+                    'commit' => $this->commitPayload($prepared),
+                ],
+                $prepared->getMessages(),
+            );
+        }
+
+        return $this->handleFailedPush($quiet, $noPlease, $agentMode, $pleaseFallback, $prepared->getMessages());
+    }
+
+    private function publishRewritten(CommandResponse $prepared, bool $quiet, bool $agentMode): CommandResponse
+    {
+        if (! $this->confirmFlattenPublish($quiet, $agentMode)) {
+            return $this->unpublishedRewrite($prepared, MessageRef::key('push.error_push'), $prepared->getMessages());
+        }
+        $please = $this->runPlease($quiet || $agentMode);
+        $messages = array_merge($prepared->getMessages(), $please->getMessages());
+        if (! $please->isSuccess()) {
+            return $this->unpublishedRewrite(
+                $prepared,
+                $please->getErrorMessage() ?? MessageRef::key('push.error_push'),
+                $messages,
+            );
+        }
+
+        return CommandResponse::success(
+            $please->message ?? MessageRef::key('push.success'),
+            [
+                'branch' => $this->gitRepository->getCurrentBranchName(),
+                'commit' => $this->commitPayload($prepared),
+                'published' => true,
+                'rewritten' => true,
+            ],
+            $messages,
+        );
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    private function unpublishedRewrite(CommandResponse $prepared, MessageRef|string $error, array $messages): CommandResponse
+    {
+        return CommandResponse::error($error, $messages, [
+            'commit' => $this->commitPayload($prepared),
+            'rewritten' => true,
+        ]);
+    }
+
+    private function confirmFlattenPublish(bool $quiet, bool $agentMode): bool
+    {
+        if ($quiet || $agentMode) {
+            return true;
+        }
+
+        return $this->prompt->confirm(MessageRef::key('push.confirm_flatten_publish'), false);
+    }
+
+    /**
+     * Keep the flatten flag and notices when a later push or please fallback replaces the payload.
+     */
+    private function retainFlattenContext(CommandResponse $response, CommandResponse $prepared): CommandResponse
+    {
+        $data = $response->data;
+        $data['rewritten'] = $prepared->data['rewritten'] ?? false;
+        if (! array_key_exists('commit', $data)) {
+            $data['commit'] = $this->commitPayload($prepared);
+        }
+        $messages = $this->mergeFlattenMessages($prepared->getMessages(), $response->getMessages());
+        if ($response->isSuccess()) {
+            return CommandResponse::success($response->message, $data, $messages);
+        }
+
+        return CommandResponse::error(
+            $response->getErrorMessage() ?? MessageRef::key('push.error_push'),
+            $messages,
+            $data,
+        );
+    }
+
+    /**
+     * @param list<ResponseMessage> $flattenMessages
+     * @param list<ResponseMessage> $pushMessages
+     * @return list<ResponseMessage>
+     */
+    private function mergeFlattenMessages(array $flattenMessages, array $pushMessages): array
+    {
+        $merged = $flattenMessages;
+        $seen = [];
+        foreach ($flattenMessages as $message) {
+            $seen[$this->messageIdentity($message)] = true;
+        }
+        foreach ($pushMessages as $message) {
+            $identity = $this->messageIdentity($message);
+            if (isset($seen[$identity])) {
+                continue;
+            }
+            $seen[$identity] = true;
+            $merged[] = $message;
+        }
+
+        return $merged;
+    }
+
+    private function messageIdentity(ResponseMessage $message): string
+    {
+        return $message->level->value . '|' . (string) $message->message . '|' . ($message->technicalDetails ?? '');
+    }
+
+    private function markPublished(CommandResponse $response, bool $rewritten): CommandResponse
+    {
+        $data = $response->data;
+        $data['published'] = true;
+        $data['rewritten'] = $rewritten;
+
+        return CommandResponse::success($response->message, $data, $response->getMessages());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function commitPayload(CommandResponse $commit): array
+    {
+        $payload = $commit->payloadData();
+        unset($payload['rewritten'], $payload['published']);
+
+        return $payload;
     }
 
     private function normalizeResponse(CommandResponse|int $response, string $successMessage, string $errorMessage): CommandResponse

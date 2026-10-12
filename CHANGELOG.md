@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-10-12
+
+### Added
+
+- **Optional flatten on delivery commands (SCI-216):** `stud commit`, `stud push`, `stud submit`, and `stud please` accept `--flatten` and agent `"flatten"` (default false). When it is on, fixup commits are squashed only when the working tree is clean and, except for `stud please`, only after that command creates a commit. Rewritten history is published once with the existing safe force-push. Interactive `stud push` asks first. Standalone `stud flatten` reports `rewritten` and still warns that a force-push may be required afterward. A rebase that fails still reports `rewritten: false` and keeps the commit payload. A rejected force-push after flatten returns that error in the command response, with `rewritten` still set, instead of an uncaught git exception. `commit` and `please` agent schemas include `rewritten`. `stud submit --flatten` without a stage-all commit records `rewritten: false` and the skip notice.
+
 ## [4.2.1] - 2026-10-05
 
 ### Changed

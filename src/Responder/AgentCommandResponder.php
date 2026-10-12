@@ -20,11 +20,27 @@ class AgentCommandResponder
     public function respond(CommandResponse $response, bool $compact = false): AgentJsonResponse
     {
         if (! $response->isSuccess()) {
-            return AgentJsonResponse::fromResponse($response, renderer: $this->messageRenderer);
+            $error = AgentJsonResponse::fromResponse($response, renderer: $this->messageRenderer);
+            if ($response->data === []) {
+                return $error;
+            }
+
+            return new AgentJsonResponse(
+                false,
+                data: $response->data,
+                error: $error->error,
+                diagnostics: $response->diagnosticsPayload($this->messageRenderer),
+            );
         }
 
         if ($compact) {
-            return AgentJsonResponse::successWithoutData($response->diagnosticsPayload($this->messageRenderer));
+            $fields = $this->flattenFields($response);
+            $diagnostics = $response->diagnosticsPayload($this->messageRenderer);
+            if ($fields === []) {
+                return AgentJsonResponse::successWithoutData($diagnostics);
+            }
+
+            return new AgentJsonResponse(true, data: $fields, diagnostics: $diagnostics);
         }
 
         return AgentJsonResponse::fromResponse(
@@ -46,5 +62,22 @@ class AgentCommandResponder
     public function respondSuccess(string $message, bool $compact = false): AgentJsonResponse
     {
         return $this->respond(CommandResponse::success($message), $compact);
+    }
+
+    /**
+     * Compact output keeps completion-only successes data-free and surfaces flatten fields when requested.
+     *
+     * @return array<string, mixed>
+     */
+    private function flattenFields(CommandResponse $response): array
+    {
+        $fields = [];
+        foreach (['rewritten', 'published'] as $key) {
+            if (array_key_exists($key, $response->data)) {
+                $fields[$key] = $response->data[$key];
+            }
+        }
+
+        return $fields;
     }
 }

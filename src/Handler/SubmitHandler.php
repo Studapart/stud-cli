@@ -8,9 +8,11 @@ use App\Config\ProjectStudConfigKeys;
 use App\Contract\WorkflowEntryRecorder;
 use App\DTO\MessageRef;
 use App\DTO\PullRequestData;
+use App\DTO\ResponseMessage;
 use App\DTO\SubmitOptions;
 use App\DTO\WorkflowRecorder;
 use App\DTO\WorkItem;
+use App\Enum\ResponseMessageLevel;
 use App\Enum\WorkflowChannel;
 use App\Exception\ApiException;
 use App\Exception\PullRequestAssignmentException;
@@ -35,6 +37,8 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     /** @var array<string> */
     private array $explicitSubmitLabels = [];
 
+    private ?bool $pendingRewritten = null;
+
     public function __construct(
         private readonly GitRepository $gitRepository,
         private readonly IssueTrackerPort $provider,
@@ -54,11 +58,13 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
     public function handle(SubmitOptions $options = new SubmitOptions()): WorkflowResponse
     {
         $this->recorder = new WorkflowRecorder();
+        $this->pendingRewritten = $options->rewritten;
         $this->recorder()->addSection(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.section'));
+        $this->recordPriorMessages($options->priorMessages);
 
-        $preflight = $this->runSubmitPreflight();
+        $preflight = $this->runSubmitPreflight($options->alreadyPublished);
         if ($preflight['exitCode'] !== 0) {
-            return $this->recorder()->toResponse($preflight['exitCode']);
+            return $this->finish($preflight['exitCode']);
         }
         /** @var array{exitCode: 0, branch: string, jiraKey: string, prTitle: string} $preflight */
         $branch = $preflight['branch'];
@@ -74,11 +80,41 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
         $this->explicitSubmitLabels = [];
         $plannedLabels = $this->planSubmitLabels($options);
         if ($plannedLabels === null) {
-            return $this->recorder()->toResponse(1);
+            return $this->finish(1);
         }
         $this->explicitSubmitLabels = $plannedLabels['existing'];
 
-        return $this->recorder()->toResponse($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $plannedLabels['create']));
+        return $this->finish($this->createPullRequest($prTitle, $headBranch, $prBody, $options, $plannedLabels['create']));
+    }
+
+    private function finish(int $exitCode): WorkflowResponse
+    {
+        $response = $this->recorder()->toResponse($exitCode);
+        if ($this->pendingRewritten === null) {
+            return $response;
+        }
+
+        return $response->withRewritten($this->pendingRewritten);
+    }
+
+    /**
+     * @param list<ResponseMessage> $messages
+     */
+    private function recordPriorMessages(array $messages): void
+    {
+        foreach ($messages as $message) {
+            $this->recordPriorMessage($message);
+        }
+    }
+
+    private function recordPriorMessage(ResponseMessage $message): void
+    {
+        match ($message->level) {
+            ResponseMessageLevel::Error => $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+            ResponseMessageLevel::Warning => $this->recorder()->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+            ResponseMessageLevel::Notice => $this->recorder()->addNote(WorkflowEntryRecorder::VERBOSITY_NORMAL, $message->message),
+            ResponseMessageLevel::Info => $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_VERBOSE, $message->message),
+        };
     }
 
     /**
@@ -86,7 +122,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
      *
      * @return array{exitCode: int, branch?: string, jiraKey?: string, prTitle?: string}
      */
-    protected function runSubmitPreflight(): array
+    protected function runSubmitPreflight(bool $alreadyPublished = false): array
     {
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
@@ -101,11 +137,7 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             return ['exitCode' => 1];
         }
 
-        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
-        $pushProcess = $this->gitRepository->pushHeadToOrigin();
-        if (! $pushProcess->isSuccessful()) {
-            $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
-
+        if (! $alreadyPublished && ! $this->pushBranch($branch)) {
             return ['exitCode' => 1];
         }
 
@@ -132,6 +164,18 @@ class SubmitHandler implements GithubAware, GitlabAware, GitRepositoryAware, Pro
             'jiraKey' => $jiraKey,
             'prTitle' => $this->extractPrTitleFromCommitMessage($firstLogicalMessage),
         ];
+    }
+
+    private function pushBranch(string $branch): bool
+    {
+        $this->recorder()->addText(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.pushing', ['branch' => $branch]), WorkflowChannel::Git);
+        $pushProcess = $this->gitRepository->pushHeadToOrigin();
+        if ($pushProcess->isSuccessful()) {
+            return true;
+        }
+        $this->recorder()->addError(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.error_push'));
+
+        return false;
     }
 
     /**

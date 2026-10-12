@@ -6,6 +6,7 @@ namespace App\Handler;
 
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Exception\GitException;
 use App\Guard\Capability\GitRepositoryAware;
 use App\Response\CommandResponse;
 use App\Service\GitRepository;
@@ -32,7 +33,13 @@ class PleaseHandler implements GitRepositoryAware
             return $this->pushAndSetUpstream($quiet);
         }
 
-        $this->gitRepository->forcePushWithLease();
+        try {
+            $this->gitRepository->forcePushWithLease();
+        } catch (GitException $e) {
+            $error = MessageRef::key('push.error_push');
+
+            return CommandResponse::error($error, [ResponseMessage::error($error, $e->getTechnicalDetails())]);
+        }
 
         return CommandResponse::success(
             MessageRef::key('push.success'),

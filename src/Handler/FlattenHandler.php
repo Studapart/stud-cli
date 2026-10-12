@@ -22,41 +22,110 @@ class FlattenHandler implements GitRepositoryAware, ProjectBaseBranchAware
         unset($_translator);
     }
 
-    public function handle(): CommandResponse
+    /**
+     * Squash fixup commits. Standalone flatten keeps the force-push hint.
+     *
+     * Delivery commands pass false and add their own publication warning.
+     */
+    public function handle(bool $includePleaseHint = true): CommandResponse
     {
-        // 1. Check for clean working directory
         $gitStatus = $this->gitRepository->getPorcelainStatus();
         if (! empty($gitStatus)) {
             return CommandResponse::error(MessageRef::key('flatten.error_dirty_working'));
         }
 
-        // 2. Check if there are any fixup commits
         $baseSha = $this->gitRepository->getMergeBase($this->baseBranch, 'HEAD');
-        $hasFixups = $this->gitRepository->hasFixupCommits($baseSha);
-
-        if (! $hasFixups) {
+        if (! $this->gitRepository->hasFixupCommits($baseSha)) {
             return CommandResponse::success(
+                data: ['rewritten' => false],
                 messages: [ResponseMessage::notice(MessageRef::key('flatten.no_fixups'))],
             );
         }
 
-        // 3. Warn about history rewrite
-        $messages = [ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'))];
+        return $this->rebase($baseSha, $includePleaseHint);
+    }
 
-        // 4. Perform the rebase with autosquash
+    /**
+     * Optional delivery path. A dirty tree or a host that did not create a commit skips rebase.
+     */
+    public function applyWhenSafe(CommandResponse $host, bool $requireCreatedCommit): CommandResponse
+    {
+        if (! $host->isSuccess()) {
+            return $host;
+        }
+        if (! $this->canRewrite($host, $requireCreatedCommit)) {
+            return $this->skipped($host);
+        }
+
+        return $this->mergeIntoHost($host, $this->handle(false));
+    }
+
+    private function canRewrite(CommandResponse $host, bool $requireCreatedCommit): bool
+    {
+        if (! empty($this->gitRepository->getPorcelainStatus())) {
+            return false;
+        }
+        if (! $requireCreatedCommit) {
+            return true;
+        }
+
+        return isset($host->data['commitMessage']) || isset($host->data['fixupSha']);
+    }
+
+    private function skipped(CommandResponse $host): CommandResponse
+    {
+        $messages = $host->getMessages();
+        $messages[] = ResponseMessage::notice(MessageRef::key('flatten.notice_skipped'));
+        $data = $host->data;
+        $data['rewritten'] = false;
+
+        return CommandResponse::success($host->message, $data, $messages);
+    }
+
+    private function mergeIntoHost(CommandResponse $host, CommandResponse $flat): CommandResponse
+    {
+        $messages = array_merge($host->getMessages(), $flat->getMessages());
+        if (! $flat->isSuccess()) {
+            $data = $host->payloadData();
+            $data['rewritten'] = false;
+
+            return CommandResponse::error(
+                $flat->getErrorMessage() ?? MessageRef::key('flatten.error_rebase', ['error' => 'flatten failed']),
+                $messages,
+                $data,
+            );
+        }
+        $data = $host->data;
+        $data['rewritten'] = ($flat->data['rewritten'] ?? false) === true;
+
+        return CommandResponse::success($host->message, $data, $messages);
+    }
+
+    private function rebase(string $baseSha, bool $includePleaseHint): CommandResponse
+    {
+        $messages = [];
+        if ($includePleaseHint) {
+            $messages[] = ResponseMessage::warning(MessageRef::key('flatten.warning_rewrite'));
+        }
+
         try {
             $this->gitRepository->rebaseAutosquash($baseSha);
 
-            return CommandResponse::success(MessageRef::key('flatten.success'), messages: $messages);
+            return CommandResponse::success(MessageRef::key('flatten.success'), ['rewritten' => true], $messages);
         } catch (GitException $e) {
             $error = MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]);
 
             return CommandResponse::error(
                 $error,
                 [ResponseMessage::error($error, $e->getTechnicalDetails())],
+                ['rewritten' => false],
             );
         } catch (\Exception $e) {
-            return CommandResponse::error(MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]));
+            return CommandResponse::error(
+                MessageRef::key('flatten.error_rebase', ['error' => $e->getMessage()]),
+                [],
+                ['rewritten' => false],
+            );
         }
     }
 }

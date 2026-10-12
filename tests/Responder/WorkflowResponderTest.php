@@ -82,6 +82,19 @@ final class WorkflowResponderTest extends TestCase
         ], $agentResponse?->toPayload());
     }
 
+    public function testRespondJsonIncludesRewrittenBesidePullNumber(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(0, pullNumber: 42, rewritten: false);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, true);
+
+        self::assertSame([
+            'success' => true,
+            'data' => ['pullNumber' => 42, 'rewritten' => false],
+        ], $agentResponse?->toPayload());
+    }
+
     public function testRespondJsonIncludesPullNumberInFullSuccess(): void
     {
         $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
@@ -136,6 +149,23 @@ final class WorkflowResponderTest extends TestCase
         self::assertSame([
             'success' => true,
             'diagnostics' => ['warnings' => [['message' => 'key']]],
+        ], $agentResponse?->toPayload());
+    }
+
+    public function testRespondJsonFailureKeepsRequestedRewritten(): void
+    {
+        $responder = new WorkflowResponder($this->createMock(Logger::class), $this->messageRenderer());
+        $response = WorkflowResponse::fromExitCode(1, messages: [
+            ResponseMessage::error(MessageRef::key('table.key')),
+        ], rewritten: true);
+
+        $agentResponse = $responder->respond($this->createMock(SymfonyStyle::class), $response, OutputFormat::Json, true);
+
+        self::assertSame([
+            'success' => false,
+            'error' => 'Key',
+            'data' => ['rewritten' => true],
+            'diagnostics' => ['errors' => [['message' => 'Key']]],
         ], $agentResponse?->toPayload());
     }
 
