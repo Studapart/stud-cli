@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Exception\GitException;
 use App\Handler\PleaseHandler;
 use App\Tests\CommandTestCase;
 use App\Tests\TestKernel;
@@ -37,6 +38,20 @@ class PleaseHandlerTest extends CommandTestCase
 
         $this->assertTrue($result->isSuccess());
         $this->assertNotEmpty($result->getMessages());
+    }
+
+    public function testHandleWithUpstreamReturnsErrorWhenForcePushThrows(): void
+    {
+        $this->gitRepository->method('getUpstreamBranch')->willReturn('origin/my-branch');
+        $this->gitRepository->method('forcePushWithLease')->willThrowException(
+            new GitException('Git command failed: git push --force-with-lease', 'stale info'),
+        );
+
+        $result = $this->handler->handle();
+
+        $this->assertFalse($result->isSuccess());
+        $this->assertSame('push.error_push', $result->getErrorMessage()->key);
+        $this->assertSame('stale info', $result->getErrors()[0]->technicalDetails);
     }
 
     public function testHandleWithoutUpstreamSetsUpstreamAndPushes(): void

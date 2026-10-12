@@ -32,14 +32,7 @@ class WorkflowResponder
                 return $this->respondJsonSuccess($response, $compact);
             }
 
-            return AgentJsonResponse::fromResponse(
-                $response,
-                [
-                    'exitCode' => $response->exitCode,
-                ],
-                false,
-                $this->messageRenderer,
-            );
+            return $this->respondJsonFailure($response);
         }
 
         foreach ($response->entries as $entry) {
@@ -55,6 +48,9 @@ class WorkflowResponder
         if ($response->pullNumber !== null) {
             $data['pullNumber'] = $response->pullNumber;
         }
+        if ($response->rewritten !== null) {
+            $data['rewritten'] = $response->rewritten;
+        }
         if (! $compact) {
             $data['exitCode'] = $response->exitCode;
         }
@@ -65,6 +61,21 @@ class WorkflowResponder
         }
 
         return new AgentJsonResponse(true, data: $data, diagnostics: $diagnostics);
+    }
+
+    private function respondJsonFailure(WorkflowResponse $response): AgentJsonResponse
+    {
+        $error = AgentJsonResponse::fromResponse($response, renderer: $this->messageRenderer);
+        if ($response->rewritten === null) {
+            return $error;
+        }
+
+        return new AgentJsonResponse(
+            false,
+            data: ['rewritten' => $response->rewritten],
+            error: $error->error,
+            diagnostics: $error->diagnostics,
+        );
     }
 
     private function renderEntry(WorkflowOutputEntry $entry): void

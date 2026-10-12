@@ -2089,13 +2089,85 @@ function _agent_submit_run_push_phase(array $input): \App\Response\CommandRespon
     $isNew = (bool) ($input['isNew'] ?? false);
     $message = isset($input['message']) && is_string($input['message']) ? $input['message'] : null;
     $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
+    $flatten = (bool) ($input['flatten'] ?? false);
     $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
     $gitRepository = _get_git_repository();
     $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
-    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
+    $pushHandler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt(), _new_flatten_handler());
 
-    return $pushHandler->handle($isNew, $message, true, true, false, true, $pleaseFallback);
+    return $pushHandler->handle($isNew, $message, true, true, false, true, $pleaseFallback, $flatten);
+}
+
+function _new_flatten_handler(): FlattenHandler
+{
+    return new FlattenHandler(_get_git_repository(), _get_base_branch(), _get_translation_service());
+}
+
+function _with_flatten_publish_warning(CommandResponse $response): CommandResponse
+{
+    if (! $response->isSuccess() || ($response->data['rewritten'] ?? false) !== true) {
+        return $response;
+    }
+    $messages = $response->getMessages();
+    $messages[] = \App\DTO\ResponseMessage::warning(\App\DTO\MessageRef::key('flatten.warning_published'));
+
+    return CommandResponse::success($response->message, $response->data, $messages);
+}
+
+function _merge_flatten_outcome(CommandResponse $host, CommandResponse $flatten): CommandResponse
+{
+    $messages = array_merge($flatten->getMessages(), $host->getMessages());
+    $data = $host->data;
+    if (array_key_exists('rewritten', $flatten->data)) {
+        $data['rewritten'] = $flatten->data['rewritten'];
+    }
+    if (! $host->isSuccess()) {
+        return CommandResponse::error($host->getErrorMessage() ?? \App\DTO\MessageRef::key('push.error_push'), $messages, $data);
+    }
+
+    return CommandResponse::success($host->message, $data, $messages);
+}
+
+function _please_response(PleaseHandler $handler, bool $agent, bool $flatten): CommandResponse
+{
+    if (! $flatten) {
+        return _as_command_response($handler->handle($agent));
+    }
+    $prepared = _new_flatten_handler()->applyWhenSafe(CommandResponse::success(), false);
+    if (! $prepared->isSuccess()) {
+        return $prepared;
+    }
+
+    return _merge_flatten_outcome(_as_command_response($handler->handle($agent)), _with_flatten_publish_warning($prepared));
+}
+
+function _as_command_response(CommandResponse|int $response): CommandResponse
+{
+    if ($response instanceof CommandResponse) {
+        return $response;
+    }
+
+    return CommandResponse::fromExitCode($response, 'Force push completed', 'Force push failed');
+}
+
+/**
+ * @param array<string, mixed> $input
+ * @return array{alreadyPublished: bool, rewritten: ?bool, priorMessages: list<\App\DTO\ResponseMessage>}
+ */
+function _submit_publication_state(array $input, CommandResponse $push): array
+{
+    if (($input['flatten'] ?? false) !== true) {
+        return ['alreadyPublished' => false, 'rewritten' => null, 'priorMessages' => []];
+    }
+    $commit = $push->data['commit'] ?? null;
+    $created = is_array($commit) && (isset($commit['commitMessage']) || isset($commit['fixupSha']));
+
+    return [
+        'alreadyPublished' => ($push->data['published'] ?? false) === true && $created,
+        'rewritten' => array_key_exists('rewritten', $push->data) ? (bool) $push->data['rewritten'] : false,
+        'priorMessages' => $push->getMessages(),
+    ];
 }
 
 /**
@@ -3182,7 +3254,7 @@ function branches_clean(
 
 #[AsTask(name: 'commit', aliases: ['co'], description: 'Guides you through making a conventional commit')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Commit result', completionOnly: true)]
+#[AgentOutput(properties: ['message' => 'string', 'rewritten' => 'bool'], description: 'Commit result', completionOnly: true)]
 function commit(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
     bool $isNew = false,
@@ -3190,6 +3262,8 @@ function commit(
     ?string $message = null,
     #[AsOption(name: 'all', shortcut: 'a', description: 'Stage all changes before committing')]
     bool $stageAll = false,
+    #[AsOption(name: 'flatten', description: 'Squash fixup commits when this commit leaves a clean tree')]
+    bool $flatten = false,
     #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
     ?string $provider = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
@@ -3213,6 +3287,7 @@ function commit(
         $isNew = (bool) ($input['isNew'] ?? false);
         $message = $input['message'] ?? null;
         $stageAll = (bool) ($input['stageAll'] ?? false);
+        $flatten = (bool) ($input['flatten'] ?? false);
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
         $quiet = true;
     }
@@ -3227,6 +3302,9 @@ function commit(
     if (is_int($response)) {
         $response = CommandResponse::fromExitCode($response, 'Commit created', 'Commit failed');
     }
+    if ($flatten) {
+        $response = _new_flatten_handler()->applyWhenSafe($response, true);
+    }
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
         _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
@@ -3239,7 +3317,7 @@ function commit(
 
 #[AsTask(name: 'push', aliases: ['ps'], description: 'Commit when needed then push to origin; optional stud please after a failed push')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Push result', completionOnly: true)]
+#[AgentOutput(properties: ['message' => 'string', 'rewritten' => 'bool', 'published' => 'bool'], description: 'Push result', completionOnly: true)]
 function push(
     #[AsOption(name: 'new', description: 'Create a new logical commit instead of a fixup')]
     bool $isNew = false,
@@ -3253,6 +3331,8 @@ function push(
     bool $quiet = false,
     #[AsOption(name: 'no-please', description: 'After a failed normal push, do not run or prompt for stud please')]
     bool $noPlease = false,
+    #[AsOption(name: 'flatten', description: 'Squash fixup commits when this push creates a commit and leaves a clean tree')]
+    bool $flatten = false,
     #[AsOption(name: 'help', shortcut: 'h', description: 'Display help for this command')]
     bool $help = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
@@ -3273,6 +3353,7 @@ function push(
         $isNew = (bool) ($input['isNew'] ?? false);
         $message = $input['message'] ?? null;
         $stageAll = (bool) ($input['stageAll'] ?? false);
+        $flatten = (bool) ($input['flatten'] ?? false);
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
         $quiet = true;
         $pleaseFallback = array_key_exists('pleaseFallback', $input) ? (bool) $input['pleaseFallback'] : true;
@@ -3290,9 +3371,9 @@ function push(
     $gitRepository = _get_git_repository();
     $commitHandler = new CommitHandler($gitRepository, fn (): IssueTrackerPort => _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), _get_base_branch(), _get_translation_service(), _get_prompt());
     $pleaseHandler = new PleaseHandler($gitRepository, _get_translation_service());
-    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt());
+    $handler = new PushHandler($commitHandler, $gitRepository, $pleaseHandler, _get_translation_service(), _get_prompt(), _new_flatten_handler());
     $noPleaseForHandler = $agent ? false : $noPlease;
-    $response = $handler->handle($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback);
+    $response = $handler->handle($isNew, $message, $stageAll, $quiet, $noPleaseForHandler, $agent, $pleaseFallback, $flatten);
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
         _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
@@ -3305,8 +3386,10 @@ function push(
 
 #[AsTask(name: 'please', aliases: ['pl'], description: 'Safe force-push (force-with-lease); sets upstream and pushes when none exists')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Force push result', completionOnly: true)]
+#[AgentOutput(properties: ['message' => 'string', 'rewritten' => 'bool'], description: 'Force push result', completionOnly: true)]
 function please(
+    #[AsOption(name: 'flatten', description: 'Squash fixup commits when the working tree is clean, then force-push')]
+    bool $flatten = false,
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
     #[AsArgument(name: 'inputFile', description: 'Path to JSON input file (--agent mode)')]
@@ -3320,12 +3403,10 @@ function please(
             return;
         }
         $compact = _agent_compact_enabled($input);
+        $flatten = (bool) ($input['flatten'] ?? false);
     }
     $handler = new PleaseHandler(_get_git_repository(), _get_translation_service());
-    $response = $handler->handle($agent);
-    if (is_int($response)) {
-        $response = CommandResponse::fromExitCode($response, 'Force push completed', 'Force push failed');
-    }
+    $response = _please_response($handler, $agent, $flatten);
     $responder = new CommandResponder(_get_logger(), $agent ? _get_agent_message_renderer() : _get_message_renderer());
     if ($agent) {
         _agent_respond($responder->respond($response, OutputFormat::Json, $compact));
@@ -3370,7 +3451,7 @@ function commit_undo(
 
 #[AsTask(name: 'flatten', aliases: ['ft'], description: 'Automatically squash all fixup! commits into their target commits')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['message' => 'string'], description: 'Flatten result', completionOnly: true)]
+#[AgentOutput(properties: ['message' => 'string', 'rewritten' => 'bool'], description: 'Flatten result', completionOnly: true)]
 function flatten(
     #[AsOption(name: 'agent', description: 'JSON input/output mode')]
     bool $agent = false,
@@ -3521,7 +3602,7 @@ function cache_clear(
 
 #[AsTask(name: 'submit', aliases: ['su'], description: 'Pushes the current branch and creates a Pull Request')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(properties: ['pullNumber' => 'int'], description: 'Submit result with PR number when a PR was created or updated')]
+#[AgentOutput(properties: ['pullNumber' => 'int', 'rewritten' => 'bool'], description: 'Submit result with PR number when a PR was created or updated')]
 function submit(
     #[AsOption(name: 'draft', shortcut: 'd', description: 'Create a Draft Pull Request')]
     bool $draft = false,
@@ -3529,6 +3610,8 @@ function submit(
     ?string $labels = null,
     #[AsOption(name: 'assign-to-author', description: 'Assign the created Pull Request to the authenticated provider user')]
     bool $assignToAuthor = false,
+    #[AsOption(name: 'flatten', description: 'Squash fixup commits after the agent stage-all commit when the tree is clean')]
+    bool $flatten = false,
     #[AsOption(name: 'provider', description: 'Work-item provider override (jira or linear)')]
     ?string $provider = null,
     #[AsOption(name: 'quiet', shortcut: 'q', description: 'Non-interactive: use defaults, no prompts')]
@@ -3554,7 +3637,9 @@ function submit(
         $assignToAuthor = (bool) ($input['assignToAuthor'] ?? false);
         $providerOverride = isset($input['provider']) && is_string($input['provider']) ? $input['provider'] : null;
         $quiet = true;
+        $flatten = (bool) ($input['flatten'] ?? false);
         if (($input['stageAll'] ?? false) === true) {
+            $input['flatten'] = $flatten;
             $agentSubmitInput = $input;
         }
     }
@@ -3589,6 +3674,7 @@ function submit(
         exit(1);
     }
 
+    $publication = ['alreadyPublished' => false, 'rewritten' => null, 'priorMessages' => []];
     if ($agent && $agentSubmitInput !== null) {
         $pushResponse = _agent_submit_run_push_phase($agentSubmitInput);
         if (! $pushResponse->isSuccess()) {
@@ -3598,10 +3684,24 @@ function submit(
 
             return;
         }
+        $publication = _submit_publication_state($agentSubmitInput, $pushResponse);
+    } elseif ($flatten) {
+        $publication['rewritten'] = false;
+        $publication['priorMessages'] = [
+            \App\DTO\ResponseMessage::notice(\App\DTO\MessageRef::key('flatten.notice_skipped')),
+        ];
     }
 
     $handler = new SubmitHandler($gitRepository, _require_issue_tracker_for_git_workflow($providerOverride ?? $provider), $gitProvider, new \App\Service\SubmitPrBodyBuilder(_get_jira_config(), _get_html_converter()), _get_base_branch($quiet), _get_translation_service(), _get_prompt());
-    $response = $handler->handle(new SubmitOptions($draft, is_string($labels) ? $labels : null, $quiet, $assignToAuthor));
+    $response = $handler->handle(new SubmitOptions(
+        $draft,
+        is_string($labels) ? $labels : null,
+        $quiet,
+        $assignToAuthor,
+        $publication['alreadyPublished'],
+        $publication['rewritten'],
+        $publication['priorMessages'],
+    ));
     _respond_workflow_response($response, $agent, $compact);
     exit($response->exitCode);
 }

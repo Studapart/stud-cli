@@ -50,6 +50,32 @@ class AgentCommandResponderTest extends TestCase
         $this->assertNull($result->error);
     }
 
+    public function testCompactSuccessIncludesFlattenFieldsOnly(): void
+    {
+        $result = $this->responder->respond(
+            CommandResponse::success('created', ['commitMessage' => 'feat', 'rewritten' => true, 'published' => true]),
+            compact: true,
+        );
+
+        $this->assertSame([
+            'success' => true,
+            'data' => ['rewritten' => true, 'published' => true],
+        ], $result->toPayload());
+    }
+
+    public function testErrorKeepsCommitPayload(): void
+    {
+        $result = $this->responder->respond(
+            CommandResponse::error('flatten failed', data: ['commitMessage' => 'feat']),
+        );
+
+        $this->assertSame([
+            'success' => false,
+            'error' => 'flatten failed',
+            'data' => ['commitMessage' => 'feat'],
+        ], $result->toPayload());
+    }
+
     public function testRespondSuccessReturnsCompactSuccess(): void
     {
         $result = $this->responder->respondSuccess('Operation completed', compact: true);
