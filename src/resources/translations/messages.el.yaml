@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
