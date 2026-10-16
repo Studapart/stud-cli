@@ -2306,23 +2306,27 @@ function config_validate(
         : null;
 
     $handler = new ConfigValidateHandler(
-        $jiraIssueTracker,
-        $linearIssueTracker,
-        $projectGitHosting,
-        $githubSmoke,
-        $gitlabSmoke,
-        $skipJira,
-        $skipGitForHandler,
-        $skipLinear,
-        $validateJira,
-        $validateGit,
-        $validateLinear,
-        $validateGithubGlobally,
-        $validateGitlabGlobally,
-        $providerResolution,
-        $inRepo,
-        $hasProjectConfig,
-        $projectGitProvider,
+        new \App\DTO\ConfigValidatePingPorts(
+            $jiraIssueTracker,
+            $linearIssueTracker,
+            $projectGitHosting,
+            $githubSmoke,
+            $gitlabSmoke,
+        ),
+        new \App\DTO\ConfigValidateExecutionOptions(
+            $skipJira,
+            $skipGitForHandler,
+            $skipLinear,
+            $validateJira,
+            $validateGit,
+            $validateLinear,
+            $validateGithubGlobally,
+            $validateGitlabGlobally,
+            $providerResolution,
+            $inRepo,
+            $hasProjectConfig,
+            $projectGitProvider,
+        ),
     );
     $response = $handler->handle();
     $credentialWarnings = (new \App\Service\ConfigProviderCredentialWarnings())->collect($globalConfig);

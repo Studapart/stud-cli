@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\ConfigValidateExecutionOptions;
 use App\DTO\ConfigValidateIntegrationPing;
-use App\DTO\MessageRef;
+use App\DTO\ConfigValidatePingPorts;
+use App\Enum\GitProvider;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
-use App\Guard\DTO\ProviderResolutionResult;
 use App\Response\ConfigValidateResponse;
 use App\Service\ConfigReadinessEvaluator;
-use App\Service\GitHostingPort;
 use App\Service\IssueTrackerPort;
 
 /**
@@ -22,23 +22,8 @@ class ConfigValidateHandler
     private const MAX_REASON_LENGTH = 120;
 
     public function __construct(
-        private readonly ?IssueTrackerPort $jiraIssueTracker,
-        private readonly ?IssueTrackerPort $linearIssueTracker,
-        private readonly ?GitHostingPort $projectGitHosting,
-        private readonly ?GitHostingPort $githubSmokeHosting,
-        private readonly ?GitHostingPort $gitlabSmokeHosting,
-        private readonly bool $skipJira,
-        private readonly bool $skipGit,
-        private readonly bool $skipLinear,
-        private readonly bool $validateJira,
-        private readonly bool $validateGit,
-        private readonly bool $validateLinear,
-        private readonly bool $validateGithubGlobally,
-        private readonly bool $validateGitlabGlobally,
-        private readonly ProviderResolutionResult $providerResolution,
-        private readonly bool $inRepo,
-        private readonly bool $hasProjectConfig,
-        private readonly ?string $projectGitProvider,
+        private readonly ConfigValidatePingPorts $ports,
+        private readonly ConfigValidateExecutionOptions $options,
         private readonly ConfigReadinessEvaluator $readinessEvaluator = new ConfigReadinessEvaluator(),
     ) {
     }
@@ -52,16 +37,16 @@ class ConfigValidateHandler
 
         $evaluation = $this->readinessEvaluator->evaluate(
             $integrations,
-            $this->providerResolution,
-            $this->inRepo,
-            $this->hasProjectConfig,
-            $this->projectGitProvider,
+            $this->options->providerResolution,
+            $this->options->inRepo,
+            $this->options->hasProjectConfig,
+            $this->options->projectGitProvider,
         );
 
         return ConfigValidateResponse::fromEvaluation(
             $evaluation,
             $integrations,
-            $this->projectGitProvider,
+            $this->options->projectGitProvider,
         );
     }
 
@@ -70,20 +55,17 @@ class ConfigValidateHandler
      */
     private function pingJira(array &$integrations): void
     {
-        if ($this->skipJira || ! $this->validateJira) {
+        if ($this->options->skipJira || ! $this->options->validateJira) {
             return;
         }
 
-        if ($this->jiraIssueTracker === null) {
-            $integrations['jira'] = new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key('config.validate.error_jira_not_configured'),
-            );
+        if ($this->ports->jiraIssueTracker === null) {
+            $integrations['jira'] = ConfigValidateIntegrationPing::failWithKey('config.validate.error_jira_not_configured');
 
             return;
         }
 
-        $integrations['jira'] = $this->pingIssueTracker($this->jiraIssueTracker, 'config.validate.error_jira_ping');
+        $integrations['jira'] = $this->pingIssueTracker($this->ports->jiraIssueTracker, 'config.validate.error_jira_ping');
     }
 
     /**
@@ -91,20 +73,17 @@ class ConfigValidateHandler
      */
     private function pingLinear(array &$integrations): void
     {
-        if ($this->skipLinear || ! $this->validateLinear) {
+        if ($this->options->skipLinear || ! $this->options->validateLinear) {
             return;
         }
 
-        if ($this->linearIssueTracker === null) {
-            $integrations['linear'] = new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key('config.validate.error_linear_not_configured'),
-            );
+        if ($this->ports->linearIssueTracker === null) {
+            $integrations['linear'] = ConfigValidateIntegrationPing::failWithKey('config.validate.error_linear_not_configured');
 
             return;
         }
 
-        $integrations['linear'] = $this->pingIssueTracker($this->linearIssueTracker, 'config.validate.error_linear_ping');
+        $integrations['linear'] = $this->pingIssueTracker($this->ports->linearIssueTracker, 'config.validate.error_linear_ping');
     }
 
     /**
@@ -112,32 +91,32 @@ class ConfigValidateHandler
      */
     private function pingGitHosts(array &$integrations): void
     {
-        if ($this->skipGit || ! $this->validateGit) {
+        if ($this->options->skipGit || ! $this->options->validateGit) {
             return;
         }
 
-        if ($this->validateGithubGlobally) {
-            $integrations['github'] = $this->pingProjectGit('github');
+        if ($this->options->validateGithubGlobally) {
+            $integrations[GitProvider::Github->integrationKey()] = $this->pingProjectGit(GitProvider::Github);
         }
-        if ($this->validateGitlabGlobally) {
-            $integrations['gitlab'] = $this->pingProjectGit('gitlab');
+        if ($this->options->validateGitlabGlobally) {
+            $integrations[GitProvider::Gitlab->integrationKey()] = $this->pingProjectGit(GitProvider::Gitlab);
         }
     }
 
-    private function pingProjectGit(string $host): ConfigValidateIntegrationPing
+    private function pingProjectGit(GitProvider $host): ConfigValidateIntegrationPing
     {
-        $isProjectHost = $this->projectGitProvider === $host;
-        $port = $isProjectHost ? $this->projectGitHosting : ($host === 'github' ? $this->githubSmokeHosting : $this->gitlabSmokeHosting);
+        $hostKey = $host->integrationKey();
+        $isProjectHost = $this->options->projectGitProvider === $hostKey;
+        $port = $isProjectHost
+            ? $this->ports->projectGitHosting
+            : ($host === GitProvider::Github ? $this->ports->githubSmokeHosting : $this->ports->gitlabSmokeHosting);
 
         if ($port === null) {
             if ($isProjectHost) {
-                return new ConfigValidateIntegrationPing(
-                    ConfigValidateResponse::STATUS_FAIL,
-                    MessageRef::key('config.validate.error_git_not_configured'),
-                );
+                return ConfigValidateIntegrationPing::failWithKey('config.validate.error_git_not_configured');
             }
 
-            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_SKIPPED);
+            return ConfigValidateIntegrationPing::skipped();
         }
 
         try {
@@ -147,17 +126,11 @@ class ConfigValidateHandler
                 $port->getAuthenticatedUser();
             }
 
-            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK);
+            return ConfigValidateIntegrationPing::ok();
         } catch (ApiException $e) {
-            return new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
-            );
+            return ConfigValidateIntegrationPing::failWithKey('config.validate.error_git_ping', ['error' => $this->shortReason($e)]);
         } catch (\Throwable $e) {
-            return new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
-            );
+            return ConfigValidateIntegrationPing::failWithKey('config.validate.error_git_ping', ['error' => $this->shortReason($e)]);
         }
     }
 
@@ -166,22 +139,13 @@ class ConfigValidateHandler
         try {
             $tracker->ping();
 
-            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK);
+            return ConfigValidateIntegrationPing::ok();
         } catch (ApiException $e) {
-            return new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key($errorKey, ['error' => $this->shortReason($e)]),
-            );
+            return ConfigValidateIntegrationPing::failWithKey($errorKey, ['error' => $this->shortReason($e)]);
         } catch (IssueTrackerException $e) {
-            return new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                $e->messageRef,
-            );
+            return ConfigValidateIntegrationPing::fail($e->messageRef);
         } catch (\Throwable $e) {
-            return new ConfigValidateIntegrationPing(
-                ConfigValidateResponse::STATUS_FAIL,
-                MessageRef::key($errorKey, ['error' => $this->shortReason($e)]),
-            );
+            return ConfigValidateIntegrationPing::failWithKey($errorKey, ['error' => $this->shortReason($e)]);
         }
     }
 

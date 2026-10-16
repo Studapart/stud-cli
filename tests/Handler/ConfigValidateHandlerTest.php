@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\ConfigValidateExecutionOptions;
+use App\DTO\ConfigValidatePingPorts;
 use App\Exception\ApiException;
 use App\Guard\DTO\ProviderResolutionResult;
 use App\Handler\ConfigValidateHandler;
@@ -37,25 +39,31 @@ class ConfigValidateHandlerTest extends CommandTestCase
         bool $inRepo = true,
         bool $hasProjectConfig = true,
         ?string $projectGitProvider = 'github',
+        GitHostingPort|MockObject|null $githubSmokeHosting = null,
+        GitHostingPort|MockObject|null $gitlabSmokeHosting = null,
     ): ConfigValidateHandler {
         return new ConfigValidateHandler(
-            $jiraIssueTracker === false ? $this->issueTracker : $jiraIssueTracker,
-            $linearIssueTracker === false ? null : $linearIssueTracker,
-            $projectGitHosting === false ? $this->gitProvider : $projectGitHosting,
-            null,
-            null,
-            $skipJira,
-            $skipGit,
-            $skipLinear,
-            $validateJira,
-            $validateGit,
-            $validateLinear,
-            $validateGithubGlobally,
-            $validateGitlabGlobally,
-            $providerResolution ?? ProviderResolutionResult::single(['jira'], 'test'),
-            $inRepo,
-            $hasProjectConfig,
-            $projectGitProvider,
+            new ConfigValidatePingPorts(
+                $jiraIssueTracker === false ? $this->issueTracker : $jiraIssueTracker,
+                $linearIssueTracker === false ? null : $linearIssueTracker,
+                $projectGitHosting === false ? $this->gitProvider : $projectGitHosting,
+                $githubSmokeHosting,
+                $gitlabSmokeHosting,
+            ),
+            new ConfigValidateExecutionOptions(
+                $skipJira,
+                $skipGit,
+                $skipLinear,
+                $validateJira,
+                $validateGit,
+                $validateLinear,
+                $validateGithubGlobally,
+                $validateGitlabGlobally,
+                $providerResolution ?? ProviderResolutionResult::single(['jira'], 'test'),
+                $inRepo,
+                $hasProjectConfig,
+                $projectGitProvider,
+            ),
         );
     }
 
@@ -424,24 +432,16 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
         $this->issueTracker->expects($this->once())->method('ping');
 
-        $handler = new ConfigValidateHandler(
-            $this->issueTracker,
-            null,
-            $gitlabProject,
-            $githubSmoke,
-            null,
-            false,
-            false,
-            false,
-            true,
-            true,
-            true,
-            true,
-            true,
-            ProviderResolutionResult::single(['jira'], 'test'),
-            true,
-            true,
-            'gitlab',
+        $handler = $this->createHandler(
+            projectGitHosting: $gitlabProject,
+            skipJira: false,
+            skipGit: false,
+            skipLinear: false,
+            validateLinear: true,
+            validateGithubGlobally: true,
+            validateGitlabGlobally: true,
+            projectGitProvider: 'gitlab',
+            githubSmokeHosting: $githubSmoke,
         );
 
         $response = $handler->handle();
@@ -460,24 +460,17 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->issueTracker->expects($this->once())->method('ping');
         $this->gitProvider->expects($this->once())->method('getLabels')->willReturn([]);
 
-        $handler = new ConfigValidateHandler(
-            $this->issueTracker,
-            $linearProvider,
-            $this->gitProvider,
-            null,
-            null,
-            false,
-            false,
-            false,
-            true,
-            true,
-            true,
-            true,
-            true,
-            ProviderResolutionResult::single(['jira'], 'test'),
-            true,
-            true,
-            'github',
+        $handler = $this->createHandler(
+            linearIssueTracker: $linearProvider,
+            skipJira: false,
+            skipGit: false,
+            skipLinear: false,
+            validateJira: true,
+            validateGit: true,
+            validateLinear: true,
+            validateGithubGlobally: true,
+            validateGitlabGlobally: true,
+            providerResolution: ProviderResolutionResult::single(['jira'], 'test'),
         );
 
         $response = $handler->handle();

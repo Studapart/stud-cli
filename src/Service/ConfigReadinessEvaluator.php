@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\DTO\ConfigValidateIntegrationPing;
+use App\Enum\GitProvider;
+use App\Enum\IssueTrackerProvider;
 use App\Guard\DTO\ProviderResolutionResult;
 use App\Response\ConfigValidateResponse;
 
@@ -120,13 +122,14 @@ final class ConfigReadinessEvaluator
             }
         }
 
-        foreach (['jira', 'linear'] as $tracker) {
+        foreach (IssueTrackerProvider::vendors() as $provider) {
+            $tracker = $provider->value;
             if ($tracker === $selected) {
                 continue;
             }
             $other = $integrations[$tracker] ?? null;
             if ($other !== null && $other->status === ConfigValidateResponse::STATUS_FAIL) {
-                $notices[] = $this->noticeForTracker($tracker, $other);
+                $notices[] = $this->noticeForTracker($provider, $other);
             }
         }
 
@@ -153,14 +156,7 @@ final class ConfigReadinessEvaluator
 
     private function projectGitIntegrationKey(?string $projectGitProvider): ?string
     {
-        if ($projectGitProvider === 'github') {
-            return 'github';
-        }
-        if ($projectGitProvider === 'gitlab') {
-            return 'gitlab';
-        }
-
-        return null;
+        return GitProvider::tryFromProjectValue($projectGitProvider)?->integrationKey();
     }
 
     private function selectedProjectTracker(ProviderResolutionResult $resolution): ?string
@@ -172,9 +168,9 @@ final class ConfigReadinessEvaluator
         return $resolution->providers[0];
     }
 
-    private function noticeForTracker(string $tracker, ConfigValidateIntegrationPing $ping): string
+    private function noticeForTracker(IssueTrackerProvider $tracker, ConfigValidateIntegrationPing $ping): string
     {
-        $label = $tracker === 'linear' ? 'Linear' : 'Jira';
+        $label = $tracker === IssueTrackerProvider::Linear ? 'Linear' : 'Jira';
 
         return $label . ' connectivity check failed (non-blocking for this project).';
     }

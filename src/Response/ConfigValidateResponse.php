@@ -7,6 +7,7 @@ namespace App\Response;
 use App\DTO\ConfigValidateIntegrationPing;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
+use App\Enum\GitProvider;
 use App\Service\ConfigReadinessEvaluation;
 use App\Service\ConfigReadinessEvaluator;
 
@@ -182,7 +183,7 @@ final class ConfigValidateResponse extends AbstractResponse
     {
         $jira = $integrations['jira'] ?? null;
         $linear = $integrations['linear'] ?? null;
-        $gitKey = $projectGitProvider === 'github' ? 'github' : ($projectGitProvider === 'gitlab' ? 'gitlab' : null);
+        $gitKey = GitProvider::tryFromProjectValue($projectGitProvider)?->integrationKey();
         $git = $gitKey !== null ? ($integrations[$gitKey] ?? null) : null;
 
         return [
