@@ -37,6 +37,8 @@ For completion-only commands, compact output omits `data`:
 {"success":true}
 ```
 
+`config:validate` is completion-only: compact clean success is `{"success":true}`. When global readiness is `partial` but the command still succeeds (typical dual-provider setups where the non-project tracker failed), compact mode may include `diagnostics.notices` and optional `data.rollups`. Failures include rollups and integration ping details in `data`; send `"compact":false` for legacy flat fields (`jiraStatus`, `gitStatus`, …).
+
 Commands that return follow-up values keep the smallest useful `data` value, and
 errors always include an explicit `error` string. Send `{"compact":false}` when
 you need the full success payload. Use `compact` for this mode; `zip` is not

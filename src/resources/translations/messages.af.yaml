@@ -106,6 +106,13 @@ config:
     error_git_ping: "Git provider connection failed: %error%"
     error_linear_not_configured: "Linear is not configured."
     error_linear_ping: "Linear connection failed: %error%"
+    error_readiness_failed: "Configuration validation failed for this repository or environment."
+    label_global_rollup: "Global readiness"
+    label_project_rollup: "Project readiness"
+    rollup_ok: "OK"
+    rollup_partial: "Partial"
+    rollup_fail: "Fail"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Projekkonfigurasie"
     not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."

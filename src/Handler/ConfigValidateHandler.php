@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\DTO\ConfigValidateIntegrationPing;
 use App\DTO\MessageRef;
 use App\Exception\ApiException;
 use App\Exception\IssueTrackerException;
+use App\Guard\DTO\ProviderResolutionResult;
 use App\Response\ConfigValidateResponse;
+use App\Service\ConfigReadinessEvaluator;
 use App\Service\GitHostingPort;
 use App\Service\IssueTrackerPort;
 
 /**
- * Handler for config:validate: validates that config is loadable and that configured
- * Jira, Git, and Linear providers are reachable with the stored credentials.
+ * Handler for config:validate: pings configured integrations and evaluates readiness (SCI-218).
  */
 class ConfigValidateHandler
 {
@@ -21,140 +23,169 @@ class ConfigValidateHandler
 
     public function __construct(
         private readonly ?IssueTrackerPort $jiraIssueTracker,
-        private readonly ?GitHostingPort $gitProvider,
+        private readonly ?IssueTrackerPort $linearIssueTracker,
+        private readonly ?GitHostingPort $projectGitHosting,
+        private readonly ?GitHostingPort $githubSmokeHosting,
+        private readonly ?GitHostingPort $gitlabSmokeHosting,
         private readonly bool $skipJira,
         private readonly bool $skipGit,
         private readonly bool $skipLinear,
         private readonly bool $validateJira,
         private readonly bool $validateGit,
         private readonly bool $validateLinear,
-        private readonly ?IssueTrackerPort $linearIssueTracker = null,
+        private readonly bool $validateGithubGlobally,
+        private readonly bool $validateGitlabGlobally,
+        private readonly ProviderResolutionResult $providerResolution,
+        private readonly bool $inRepo,
+        private readonly bool $hasProjectConfig,
+        private readonly ?string $projectGitProvider,
+        private readonly ConfigReadinessEvaluator $readinessEvaluator = new ConfigReadinessEvaluator(),
     ) {
     }
 
     public function handle(): ConfigValidateResponse
     {
-        $jiraStatus = $this->resolveJiraStatus();
-        $gitStatus = $this->resolveGitStatus();
-        $linearStatus = $this->resolveLinearStatus();
+        $integrations = [];
+        $this->pingJira($integrations);
+        $this->pingLinear($integrations);
+        $this->pingGitHosts($integrations);
 
-        return ConfigValidateResponse::create(
-            $jiraStatus['status'],
-            $jiraStatus['message'],
-            $gitStatus['status'],
-            $gitStatus['message'],
-            $linearStatus['status'],
-            $linearStatus['message'],
+        $evaluation = $this->readinessEvaluator->evaluate(
+            $integrations,
+            $this->providerResolution,
+            $this->inRepo,
+            $this->hasProjectConfig,
+            $this->projectGitProvider,
+        );
+
+        return ConfigValidateResponse::fromEvaluation(
+            $evaluation,
+            $integrations,
+            $this->projectGitProvider,
         );
     }
 
     /**
-     * @return array{status: string, message: MessageRef|string|null}
+     * @param array<string, ConfigValidateIntegrationPing> $integrations
      */
-    protected function resolveJiraStatus(): array
+    private function pingJira(array &$integrations): void
     {
         if ($this->skipJira || ! $this->validateJira) {
-            return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
+            return;
         }
 
         if ($this->jiraIssueTracker === null) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_jira_not_configured'),
-            ];
+            $integrations['jira'] = new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_jira_not_configured'),
+            );
+
+            return;
         }
 
-        try {
-            $this->jiraIssueTracker->ping();
-
-            return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
-        } catch (ApiException $e) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_jira_ping', ['error' => $this->shortReason($e)]),
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_jira_ping', ['error' => $this->shortReason($e)]),
-            ];
-        }
+        $integrations['jira'] = $this->pingIssueTracker($this->jiraIssueTracker, 'config.validate.error_jira_ping');
     }
 
     /**
-     * @return array{status: string, message: MessageRef|string|null}
+     * @param array<string, ConfigValidateIntegrationPing> $integrations
      */
-    protected function resolveGitStatus(): array
-    {
-        if ($this->skipGit || ! $this->validateGit) {
-            return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
-        }
-
-        if ($this->gitProvider === null) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_git_not_configured'),
-            ];
-        }
-
-        try {
-            $this->gitProvider->getLabels();
-
-            return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
-        } catch (ApiException $e) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
-            ];
-        }
-    }
-
-    /**
-     * @return array{status: string, message: MessageRef|string|null}
-     */
-    protected function resolveLinearStatus(): array
+    private function pingLinear(array &$integrations): void
     {
         if ($this->skipLinear || ! $this->validateLinear) {
-            return ['status' => ConfigValidateResponse::STATUS_SKIPPED, 'message' => null];
+            return;
         }
 
         if ($this->linearIssueTracker === null) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_linear_not_configured'),
-            ];
+            $integrations['linear'] = new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_linear_not_configured'),
+            );
+
+            return;
         }
 
-        try {
-            $this->linearIssueTracker->ping();
+        $integrations['linear'] = $this->pingIssueTracker($this->linearIssueTracker, 'config.validate.error_linear_ping');
+    }
 
-            return ['status' => ConfigValidateResponse::STATUS_OK, 'message' => null];
-        } catch (ApiException $e) {
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
-            ];
-        } catch (\Throwable $e) {
-            if ($e instanceof IssueTrackerException) {
-                return [
-                    'status' => ConfigValidateResponse::STATUS_FAIL,
-                    'message' => $e->messageRef,
-                ];
-            }
+    /**
+     * @param array<string, ConfigValidateIntegrationPing> $integrations
+     */
+    private function pingGitHosts(array &$integrations): void
+    {
+        if ($this->skipGit || ! $this->validateGit) {
+            return;
+        }
 
-            return [
-                'status' => ConfigValidateResponse::STATUS_FAIL,
-                'message' => MessageRef::key('config.validate.error_linear_ping', ['error' => $this->shortReason($e)]),
-            ];
+        if ($this->validateGithubGlobally) {
+            $integrations['github'] = $this->pingProjectGit('github');
+        }
+        if ($this->validateGitlabGlobally) {
+            $integrations['gitlab'] = $this->pingProjectGit('gitlab');
         }
     }
 
-    protected function shortReason(\Throwable $e): string
+    private function pingProjectGit(string $host): ConfigValidateIntegrationPing
+    {
+        $isProjectHost = $this->projectGitProvider === $host;
+        $port = $isProjectHost ? $this->projectGitHosting : ($host === 'github' ? $this->githubSmokeHosting : $this->gitlabSmokeHosting);
+
+        if ($port === null) {
+            if ($isProjectHost) {
+                return new ConfigValidateIntegrationPing(
+                    ConfigValidateResponse::STATUS_FAIL,
+                    MessageRef::key('config.validate.error_git_not_configured'),
+                );
+            }
+
+            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_SKIPPED);
+        }
+
+        try {
+            if ($isProjectHost) {
+                $port->getLabels();
+            } else {
+                $port->getAuthenticatedUser();
+            }
+
+            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK);
+        } catch (ApiException $e) {
+            return new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
+            );
+        } catch (\Throwable $e) {
+            return new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_git_ping', ['error' => $this->shortReason($e)]),
+            );
+        }
+    }
+
+    private function pingIssueTracker(IssueTrackerPort $tracker, string $errorKey): ConfigValidateIntegrationPing
+    {
+        try {
+            $tracker->ping();
+
+            return new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK);
+        } catch (ApiException $e) {
+            return new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key($errorKey, ['error' => $this->shortReason($e)]),
+            );
+        } catch (IssueTrackerException $e) {
+            return new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                $e->messageRef,
+            );
+        } catch (\Throwable $e) {
+            return new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key($errorKey, ['error' => $this->shortReason($e)]),
+            );
+        }
+    }
+
+    private function shortReason(\Throwable $e): string
     {
         $message = $e->getMessage();
 

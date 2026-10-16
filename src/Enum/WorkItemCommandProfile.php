@@ -16,4 +16,5 @@ enum WorkItemCommandProfile: string
     case FilterByName = 'filter_by_name';
     case SearchSingle = 'search_single';
     case LinearOnly = 'linear_only';
+    case ValidateReadiness = 'validate_readiness';
 }

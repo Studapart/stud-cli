@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Handler;
 
 use App\Exception\ApiException;
+use App\Guard\DTO\ProviderResolutionResult;
 use App\Handler\ConfigValidateHandler;
 use App\Response\ConfigValidateResponse;
 use App\Service\GitHostingPort;
@@ -18,11 +19,11 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     /**
      * @param IssueTrackerPort|MockObject|null|false $jiraIssueTracker false uses setUp mock; null means not configured
-     * @param GitHostingPort|MockObject|null|false $gitProvider false uses setUp mock; null means not configured
+     * @param GitHostingPort|MockObject|null|false   $projectGitHosting false uses setUp mock; null means not configured
      */
     private function createHandler(
         IssueTrackerPort|MockObject|null|false $jiraIssueTracker = false,
-        GitHostingPort|MockObject|null|false $gitProvider = false,
+        GitHostingPort|MockObject|null|false $projectGitHosting = false,
         bool $skipJira = false,
         bool $skipGit = false,
         bool $skipLinear = false,
@@ -30,17 +31,31 @@ class ConfigValidateHandlerTest extends CommandTestCase
         bool $validateGit = true,
         bool $validateLinear = false,
         IssueTrackerPort|MockObject|null|false $linearIssueTracker = false,
+        bool $validateGithubGlobally = true,
+        bool $validateGitlabGlobally = false,
+        ?ProviderResolutionResult $providerResolution = null,
+        bool $inRepo = true,
+        bool $hasProjectConfig = true,
+        ?string $projectGitProvider = 'github',
     ): ConfigValidateHandler {
         return new ConfigValidateHandler(
             $jiraIssueTracker === false ? $this->issueTracker : $jiraIssueTracker,
-            $gitProvider === false ? $this->gitProvider : $gitProvider,
+            $linearIssueTracker === false ? null : $linearIssueTracker,
+            $projectGitHosting === false ? $this->gitProvider : $projectGitHosting,
+            null,
+            null,
             $skipJira,
             $skipGit,
             $skipLinear,
             $validateJira,
             $validateGit,
             $validateLinear,
-            $linearIssueTracker === false ? null : $linearIssueTracker,
+            $validateGithubGlobally,
+            $validateGitlabGlobally,
+            $providerResolution ?? ProviderResolutionResult::single(['jira'], 'test'),
+            $inRepo,
+            $hasProjectConfig,
+            $projectGitProvider,
         );
     }
 
@@ -159,15 +174,9 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('getLabels')
             ->willReturn([]);
 
-        $handler = new ConfigValidateHandler(
-            $this->issueTracker,
-            $this->gitProvider,
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
+        $handler = $this->createHandler(
+            jiraIssueTracker: $this->issueTracker,
+            validateJira: false,
         );
         $response = $handler->handle();
 
@@ -183,16 +192,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $this->gitProvider->expects($this->never())
             ->method('getLabels');
 
-        $handler = new ConfigValidateHandler(
-            $this->issueTracker,
-            $this->gitProvider,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-        );
+        $handler = $this->createHandler(validateGit: false);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -202,7 +202,17 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleReturnsLinearFailWhenLinearProviderMissing(): void
     {
-        $handler = $this->createHandler(null, null, true, true, false, false, false, true);
+        $handler = $this->createHandler(
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            providerResolution: ProviderResolutionResult::single(['linear'], 'test'),
+        );
         $response = $handler->handle();
 
         $this->assertFalse($response->isSuccess());
@@ -217,7 +227,18 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $linearProvider = $this->createMock(IssueTrackerPort::class);
         $linearProvider->expects($this->once())->method('ping');
 
-        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+        $response = $this->createHandler(
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            $linearProvider,
+            providerResolution: ProviderResolutionResult::single(['linear'], 'test'),
+        )->handle();
 
         $this->assertTrue($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->linearStatus);
@@ -230,7 +251,18 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('ping')
             ->willThrowException(\App\Exception\IssueTrackerException::missingLinearApiKey());
 
-        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+        $response = $this->createHandler(
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            $linearProvider,
+            providerResolution: ProviderResolutionResult::single(['linear'], 'test'),
+        )->handle();
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
@@ -244,7 +276,18 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('ping')
             ->willThrowException(new ApiException('Linear down', 'viewer missing'));
 
-        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+        $response = $this->createHandler(
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            $linearProvider,
+            providerResolution: ProviderResolutionResult::single(['linear'], 'test'),
+        )->handle();
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
@@ -258,7 +301,18 @@ class ConfigValidateHandlerTest extends CommandTestCase
             ->method('ping')
             ->willThrowException(new \RuntimeException('Linear runtime error'));
 
-        $response = $this->createHandler(null, null, true, true, false, false, false, true, $linearProvider)->handle();
+        $response = $this->createHandler(
+            null,
+            null,
+            true,
+            true,
+            false,
+            false,
+            false,
+            true,
+            $linearProvider,
+            providerResolution: ProviderResolutionResult::single(['linear'], 'test'),
+        )->handle();
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame(ConfigValidateResponse::STATUS_FAIL, $response->linearStatus);
@@ -267,7 +321,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsLinearWhenValidateLinearFalse(): void
     {
-        $handler = new ConfigValidateHandler(null, null, true, true, false, false, false, false);
+        $handler = $this->createHandler(null, null, true, true, false, false, false, false);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -276,7 +330,7 @@ class ConfigValidateHandlerTest extends CommandTestCase
 
     public function testHandleSkipsLinearWhenSkipLinearTrue(): void
     {
-        $handler = new ConfigValidateHandler(null, null, true, true, true, false, false, true);
+        $handler = $this->createHandler(null, null, true, true, true, false, false, true);
         $response = $handler->handle();
 
         $this->assertTrue($response->isSuccess());
@@ -358,5 +412,78 @@ class ConfigValidateHandlerTest extends CommandTestCase
         $message = $this->assertMessageRef($response->jiraMessage, 'config.validate.error_jira_ping');
         $this->assertLessThanOrEqual(120, strlen((string) ($message->parameters['error'] ?? '')));
         $this->assertStringEndsWith('...', (string) ($message->parameters['error'] ?? ''));
+    }
+
+    public function testHandleSmokeChecksNonProjectGitHostWithGetAuthenticatedUser(): void
+    {
+        $githubSmoke = $this->createMock(GitHostingPort::class);
+        $githubSmoke->expects($this->once())->method('getAuthenticatedUser');
+
+        $gitlabProject = $this->createMock(GitHostingPort::class);
+        $gitlabProject->expects($this->once())->method('getLabels')->willReturn([]);
+
+        $this->issueTracker->expects($this->once())->method('ping');
+
+        $handler = new ConfigValidateHandler(
+            $this->issueTracker,
+            null,
+            $gitlabProject,
+            $githubSmoke,
+            null,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+            ProviderResolutionResult::single(['jira'], 'test'),
+            true,
+            true,
+            'gitlab',
+        );
+
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->integrations['github']->status);
+        $this->assertSame(ConfigValidateResponse::STATUS_OK, $response->integrations['gitlab']->status);
+    }
+
+    public function testHandleSuccessWhenGlobalPartialButProjectOk(): void
+    {
+        $linearProvider = $this->createMock(IssueTrackerPort::class);
+        $linearProvider->expects($this->once())->method('ping')
+            ->willThrowException(new ApiException('Linear down', 'x'));
+
+        $this->issueTracker->expects($this->once())->method('ping');
+        $this->gitProvider->expects($this->once())->method('getLabels')->willReturn([]);
+
+        $handler = new ConfigValidateHandler(
+            $this->issueTracker,
+            $linearProvider,
+            $this->gitProvider,
+            null,
+            null,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+            ProviderResolutionResult::single(['jira'], 'test'),
+            true,
+            true,
+            'github',
+        );
+
+        $response = $handler->handle();
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('partial', $response->globalRollup);
+        $this->assertSame('ok', $response->projectRollup);
     }
 }

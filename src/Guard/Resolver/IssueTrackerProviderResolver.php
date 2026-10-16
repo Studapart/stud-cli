@@ -204,6 +204,7 @@ final class IssueTrackerProviderResolver
         return in_array($profile, [
             WorkItemCommandProfile::ScopeDiscovery,
             WorkItemCommandProfile::LinearOnly,
+            WorkItemCommandProfile::ValidateReadiness,
         ], true);
     }
 
