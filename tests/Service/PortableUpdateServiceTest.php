@@ -431,6 +431,47 @@ class PortableUpdateServiceTest extends TestCase
         self::assertSame($this->portableRoot . '/linux-amd64/1.0.1/stud', readlink($this->managedSymlink));
     }
 
+    public function testActivationFailsWhenBundleCannotBeMoved(): void
+    {
+        $context = $this->createInstalledPortableContext();
+        $archive = $this->createPortableArchive('1.0.1', true);
+        $checksums = hash_file('sha256', $archive) . "  stud-portable-1.0.1-linux-amd64.tar.gz\n";
+        $this->mockDownloads(file_get_contents($archive) ?: '', $checksums);
+        $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->translator, $this->prompt, $this->httpClient) extends PortableUpdateService {
+            protected function moveDirectory(string $from, string $to): bool
+            {
+                return false;
+            }
+        };
+
+        $result = $service->update($context, $this->releaseData(), true, new WorkflowRecorder());
+
+        self::assertSame(1, $result);
+        self::assertSame($this->portableRoot . '/linux-amd64/1.0.0/stud', readlink($this->managedSymlink));
+    }
+
+    public function testMoveDirectoryCopiesWhenRenameFailsAndRemovesSource(): void
+    {
+        $from = $this->workspace . '/move-from';
+        $to = $this->workspace . '/move-to';
+        mkdir($from);
+        file_put_contents($from . '/payload', 'bundle');
+        mkdir($to);
+        file_put_contents($to . '/existing', 'keep');
+        $service = $this->exposingMoveService();
+
+        self::assertTrue($service->exposeMove($from, $to));
+        self::assertFileDoesNotExist($from);
+        self::assertFileExists($to . '/move-from/payload');
+    }
+
+    public function testMoveDirectoryReturnsFalseWhenCopyFails(): void
+    {
+        $service = $this->exposingMoveService();
+
+        self::assertFalse($service->exposeMove($this->workspace . '/missing-source', $this->workspace . '/missing-dest'));
+    }
+
     public function testCanCreateRealHttpClientWhenNoClientIsInjected(): void
     {
         $service = new class (new UpdateRepositoryContext('studapart', 'stud-cli', 'token'), $this->translator, $this->prompt) extends PortableUpdateService {
@@ -441,6 +482,16 @@ class PortableUpdateServiceTest extends TestCase
         };
 
         self::assertInstanceOf(HttpClientInterface::class, $service->exposedClient());
+    }
+
+    protected function exposingMoveService(): PortableUpdateService
+    {
+        return new class (new UpdateRepositoryContext('studapart', 'stud-cli'), $this->translator, $this->prompt) extends PortableUpdateService {
+            public function exposeMove(string $from, string $to): bool
+            {
+                return $this->moveDirectory($from, $to);
+            }
+        };
     }
 
     protected function createService(?PortableOldVersionCleaner $cleaner = null): PortableUpdateService

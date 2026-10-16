@@ -190,13 +190,16 @@ echo '{"projectKey":"SCI","issueTrackerProvider":"auto","linearTeamKey":"ENG","l
 
 ## Validate setup
 
-`stud config:validate` pings only the providers listed in your global config. Jira-only setups behave as before; Linear-only setups skip Jira; dual-provider configs validate each configured integration.
+`stud config:validate` pings only the providers listed in your global config. Jira-only setups behave as before; Linear-only setups skip Jira; dual-provider configs validate each configured integration. When both GitHub and GitLab appear in `GIT_PROVIDERS`, each host is pinged separately (non-project hosts use a token-only `/user` smoke check).
+
+Inside a git repository with stud project config, the CLI shows **global** and **project** readiness rollups (`ok`, `partial`, `fail`). Process exit follows **project** readiness: a global `partial` result (for example a non-selected issue tracker failed) still exits 0 when project readiness is `ok`. Outside a repo or without project config, exit follows global readiness only.
 
 ```bash
 stud config:validate
 stud config:validate --skip-jira
 stud config:validate --skip-git
 stud config:validate --skip-linear
+echo '{"compact":false}' | stud config:validate --agent
 ```
 
 Linear-only CI often uses `skipJira: true` in agent JSON — see [GitHub Actions](../github-actions.md).
