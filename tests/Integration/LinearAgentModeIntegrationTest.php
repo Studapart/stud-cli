@@ -132,7 +132,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('validate');
         $result = $this->runAgentProcess(
             ['config:validate', '--agent'],
-            ['skipJira' => true, 'skipGit' => true],
+            ['skipJira' => true, 'skipGit' => true, 'compact' => false],
             $repo,
         );
 
@@ -149,7 +149,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('validate-linear-only');
         $result = $this->runAgentProcess(
             ['config:validate', '--agent'],
-            ['skipGit' => true],
+            ['skipGit' => true, 'compact' => false],
             $repo,
         );
 

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -106,6 +107,13 @@ config:
     error_git_ping: "Ошибка подключения к Git-провайдеру: %error%"
     error_linear_not_configured: "Linear не настроен."
     error_linear_ping: "Ошибка подключения к Linear: %error%"
+    error_readiness_failed: "Проверка конфигурации не удалась для этого репозитория или среды."
+    label_global_rollup: "Глобальная готовность"
+    label_project_rollup: "Готовность проекта"
+    rollup_ok: "OK"
+    rollup_partial: "Частично"
+    rollup_fail: "Ошибка"
+    rollup_not_applicable: "Н/П"
   project_init:
     section_title: "Конфигурация проекта"
     not_git_repository: "Вы не в репозитории Git. Запускайте команду из рабочей копии репозитория."

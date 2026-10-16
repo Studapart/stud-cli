@@ -326,24 +326,22 @@ Default compact success shape (`{"compact":true}` or omitted):
 
 ```text
 success: true
-jiraStatus: string
-jiraMessage: mixed
-gitStatus: string
-gitMessage: mixed
-linearStatus: string
-linearMessage: mixed
 ```
 
 Full success shape (`{"compact":false}`):
 
 ```text
 success: true
+globalRollup: string
+projectRollup: string
+integrations: array
 jiraStatus: string
 jiraMessage: mixed
 gitStatus: string
 gitMessage: mixed
 linearStatus: string
 linearMessage: mixed
+gitProvider: string|null
 ```
 
 Error shape: `{"success":false,"error":"string"}`

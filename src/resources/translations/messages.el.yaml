@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -106,6 +107,13 @@ config:
     error_git_ping: "Αποτυχία σύνδεσης παρόχου Git: %error%"
     error_linear_not_configured: "Το Linear δεν έχει ρυθμιστεί."
     error_linear_ping: "Αποτυχία σύνδεσης Linear: %error%"
+    error_readiness_failed: "Η επικύρωση ρυθμίσεων απέτυχε για αυτό το αποθετήριο ή το περιβάλλον."
+    label_global_rollup: "Καθολική ετοιμότητα"
+    label_project_rollup: "Ετοιμότητα έργου"
+    rollup_ok: "OK"
+    rollup_partial: "Μερική"
+    rollup_fail: "Αποτυχία"
+    rollup_not_applicable: "Δ/Υ"
   project_init:
     section_title: "Ρύθμιση έργου"
     not_git_repository: "Δεν βρίσκεστε σε αποθετήριο Git. Εκτελέστε αυτή την εντολή από checkout αποθετηρίου."

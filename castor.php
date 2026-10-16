@@ -2180,7 +2180,7 @@ function _agent_respond(AgentJsonResponse $agentResponse): void
 
 #[AsTask(name: 'config:validate', description: 'Validate configuration and ping configured Jira, Git, and Linear providers')]
 #[AgentCommand(essential: true)]
-#[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira, Git provider, and Linear connectivity status')]
+#[AgentOutput(responseClass: \App\Response\ConfigValidateResponse::class, description: 'Jira, Git provider, and Linear connectivity status', completionOnly: true)]
 function config_validate(
     #[AsOption(name: 'skip-jira', description: 'Skip the Jira connectivity check')]
     bool $skipJira = false,
@@ -2195,6 +2195,7 @@ function config_validate(
 ): void {
     _load_constants();
     $format = $agent ? OutputFormat::Json : OutputFormat::Cli;
+    $compact = true;
     if ($agent) {
         $input = _read_agent_input($inputFile);
         if ($input === null) {
@@ -2203,15 +2204,62 @@ function config_validate(
         $skipJira = (bool) ($input['skipJira'] ?? false);
         $skipGit = (bool) ($input['skipGit'] ?? false);
         $skipLinear = (bool) ($input['skipLinear'] ?? false);
+        $compact = _agent_compact_enabled($input);
     }
     $globalConfig = _get_config();
-    $providerResolver = new \App\Service\GlobalConfigProviderResolver();
-    $issueTrackerProviders = $providerResolver->resolveIssueTrackerProviders($globalConfig);
-    $gitProviders = $providerResolver->resolveGitProviders($globalConfig);
-    $validateJira = $providerResolver->collectsJira($issueTrackerProviders);
-    $validateGit = $providerResolver->collectsGithub($gitProviders)
-        || $providerResolver->collectsGitlab($gitProviders);
-    $validateLinear = $providerResolver->collectsLinear($issueTrackerProviders);
+    $globalProviderResolver = new \App\Service\GlobalConfigProviderResolver();
+    $issueTrackerProviders = $globalProviderResolver->resolveIssueTrackerProviders($globalConfig);
+    $gitProviders = $globalProviderResolver->resolveGitProviders($globalConfig);
+    $validateJira = $globalProviderResolver->collectsJira($issueTrackerProviders);
+    $validateGit = $globalProviderResolver->collectsGithub($gitProviders)
+        || $globalProviderResolver->collectsGitlab($gitProviders);
+    $validateLinear = $globalProviderResolver->collectsLinear($issueTrackerProviders);
+    $validateGithubGlobally = $globalProviderResolver->collectsGithub($gitProviders);
+    $validateGitlabGlobally = $globalProviderResolver->collectsGitlab($gitProviders);
+
+    $inRepo = false;
+    $projectConfig = [];
+    $projectGitProvider = null;
+    $gitRepository = null;
+
+    try {
+        $gitRepository = _get_git_repository();
+        $inRepo = true;
+        $projectConfig = $gitRepository->readProjectConfig();
+        $provider = $projectConfig['gitProvider'] ?? null;
+        $projectGitProvider = is_string($provider) && $provider !== '' ? $provider : null;
+    } catch (\RuntimeException) {
+        $projectConfig = [];
+    }
+
+    $hasProjectConfig = $projectConfig !== [];
+    $scopeKeyResolver = new \App\Service\ProjectScopeKeyResolver();
+    $scopeKey = $scopeKeyResolver->resolveJiraProjectKey($projectConfig)
+        ?? $scopeKeyResolver->resolveLinearTeamKey($projectConfig);
+
+    $trackerResolver = new \App\Guard\Resolver\IssueTrackerProviderResolver();
+    $providerResolution = $trackerResolver->resolve(new \App\Guard\DTO\ProviderResolutionRequest(
+        'config:validate',
+        \App\Enum\WorkItemCommandProfile::ValidateReadiness,
+        $globalConfig,
+        $hasProjectConfig ? $projectConfig : null,
+        scopeKey: $scopeKey,
+    ));
+
+    if ($providerResolution->isBlocked()) {
+        $block = $providerResolution->block;
+        $translator = _get_translation_service();
+        $message = $block !== null
+            ? $translator->transForAgentText($block->key, $block->parameters)
+            : 'Provider resolution failed';
+        if ($format === OutputFormat::Json) {
+            _agent_respond(new \App\Response\AgentJsonResponse(false, error: $message));
+
+            return;
+        }
+        _get_logger()->error(Logger::VERBOSITY_NORMAL, $message);
+        exit(1);
+    }
 
     $jiraIssueTracker = ($skipJira || ! $validateJira) ? null : _get_issue_tracker(true);
 
@@ -2222,12 +2270,6 @@ function config_validate(
             $factory->assertCredentials('linear', $globalConfig);
             $linearApiClient = _get_linear_api_client();
             if ($linearApiClient !== null) {
-                $gitRepository = null;
-
-                try {
-                    $gitRepository = _get_git_repository();
-                } catch (\RuntimeException) {
-                }
                 $linearIssueTracker = $factory->create(
                     'linear',
                     linearApiClient: $linearApiClient,
@@ -2239,36 +2281,52 @@ function config_validate(
         }
     }
 
-    $gitProvider = null;
+    $projectGitHosting = null;
     $skipGitForHandler = $skipGit || ! $validateGit;
 
-    if ($validateGit && ! $skipGit) {
+    if ($validateGit && ! $skipGit && $inRepo) {
         try {
-            $gitRepository = _get_git_repository();
-            $gitRepository->getProjectConfigPath();
-        } catch (\RuntimeException) {
-            $skipGitForHandler = true;
-        }
-        if (! $skipGitForHandler) {
-            $gitProvider = _get_git_hosting();
-            if ($format === OutputFormat::Cli && $gitProvider === null) {
+            $gitRepository?->getProjectConfigPath();
+            $projectGitHosting = _get_git_hosting(true);
+            if ($format === OutputFormat::Cli && $projectGitHosting === null && $projectGitProvider !== null) {
                 $translator = _get_translation_service();
                 _get_logger()->error(Logger::VERBOSITY_NORMAL, $translator->trans('config.git_provider_not_configured'));
                 exit(1);
             }
+        } catch (\RuntimeException) {
+            $skipGitForHandler = true;
         }
     }
 
+    $githubSmoke = $validateGithubGlobally && ! $skipGitForHandler
+        ? _config_validate_git_smoke_hosting('github', $globalConfig)
+        : null;
+    $gitlabSmoke = $validateGitlabGlobally && ! $skipGitForHandler
+        ? _config_validate_git_smoke_hosting('gitlab', $globalConfig)
+        : null;
+
     $handler = new ConfigValidateHandler(
-        $jiraIssueTracker,
-        $gitProvider,
-        $skipJira,
-        $skipGitForHandler,
-        $skipLinear,
-        $validateJira,
-        $validateGit,
-        $validateLinear,
-        $linearIssueTracker,
+        new \App\DTO\ConfigValidatePingPorts(
+            $jiraIssueTracker,
+            $linearIssueTracker,
+            $projectGitHosting,
+            $githubSmoke,
+            $gitlabSmoke,
+        ),
+        new \App\DTO\ConfigValidateExecutionOptions(
+            $skipJira,
+            $skipGitForHandler,
+            $skipLinear,
+            $validateJira,
+            $validateGit,
+            $validateLinear,
+            $validateGithubGlobally,
+            $validateGitlabGlobally,
+            $providerResolution,
+            $inRepo,
+            $hasProjectConfig,
+            $projectGitProvider,
+        ),
     );
     $response = $handler->handle();
     $credentialWarnings = (new \App\Service\ConfigProviderCredentialWarnings())->collect($globalConfig);
@@ -2276,7 +2334,7 @@ function config_validate(
         $response = $response->withAdditionalMessages($credentialWarnings);
     }
     $responder = new ConfigValidateResponder(_get_responder_helper(), _get_logger());
-    $agentResponse = $responder->respond(io(), $response, $format);
+    $agentResponse = $responder->respond(io(), $response, $format, $compact);
     if ($agentResponse !== null) {
         _agent_respond($agentResponse);
 
@@ -2285,6 +2343,40 @@ function config_validate(
     if (! $response->isSuccess()) {
         exit(1);
     }
+}
+
+/**
+ * Token-only git hosting adapter for config:validate smoke checks (SCI-218).
+ *
+ * @param array<string, mixed> $globalConfig
+ */
+function _config_validate_git_smoke_hosting(string $provider, array $globalConfig): ?\App\Service\GitHostingPort
+{
+    if ($provider === 'github') {
+        $token = $globalConfig['GITHUB_TOKEN'] ?? null;
+        if (! is_string($token) || trim($token) === '') {
+            return null;
+        }
+
+        return new \App\Service\GithubGitHostingAdapter(trim($token), '_', '_');
+    }
+
+    if ($provider === 'gitlab') {
+        $token = $globalConfig['GITLAB_TOKEN'] ?? null;
+        if (! is_string($token) || trim($token) === '') {
+            return null;
+        }
+        $instanceUrl = $globalConfig['GITLAB_INSTANCE_URL'] ?? null;
+
+        return new \App\Service\GitLabGitHostingAdapter(
+            trim($token),
+            '_',
+            '_',
+            is_string($instanceUrl) ? $instanceUrl : null,
+        );
+    }
+
+    return null;
 }
 
 #[AsTask(name: 'config:project-init', aliases: ['cpi'], description: 'Create or merge project stud config (.git/stud.config); interactive by default or --agent JSON')]

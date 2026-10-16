@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -106,6 +107,13 @@ config:
     error_git_ping: "Échec de la connexion au fournisseur Git : %error%"
     error_linear_not_configured: "Linear n'est pas configuré."
     error_linear_ping: "Échec de la connexion Linear : %error%"
+    error_readiness_failed: "La validation de la configuration a échoué pour ce dépôt ou cet environnement."
+    label_global_rollup: "État global"
+    label_project_rollup: "État du projet"
+    rollup_ok: "OK"
+    rollup_partial: "Partiel"
+    rollup_fail: "Échec"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Configuration du projet"
     not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."

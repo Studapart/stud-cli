@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -106,6 +107,13 @@ config:
     error_git_ping: "Kết nối nhà cung cấp Git thất bại: %error%"
     error_linear_not_configured: "Linear chưa được cấu hình."
     error_linear_ping: "Kết nối Linear thất bại: %error%"
+    error_readiness_failed: "Xác thực cấu hình thất bại cho kho hoặc môi trường này."
+    label_global_rollup: "Sẵn sàng toàn cục"
+    label_project_rollup: "Sẵn sàng dự án"
+    rollup_ok: "OK"
+    rollup_partial: "Một phần"
+    rollup_fail: "Thất bại"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Cấu hình dự án"
     not_git_repository: "Không nằm trong kho Git. Chạy lệnh này từ bản checkout của kho."
