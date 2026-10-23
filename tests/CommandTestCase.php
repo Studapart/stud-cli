@@ -94,6 +94,29 @@ abstract class CommandTestCase extends TestCase
         return $message;
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     * @param array<string, mixed>|null $expectedDataSubset
+     */
+    protected function assertAgentJsonSuccess(array $payload, ?array $expectedDataSubset = null): void
+    {
+        $this->assertTrue($payload['success']);
+        if ($expectedDataSubset !== null) {
+            foreach ($expectedDataSubset as $key => $expectedValue) {
+                $this->assertSame($expectedValue, $payload['data'][$key]);
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function assertAgentJsonErrorString(array $payload, string $expectedError): void
+    {
+        $this->assertFalse($payload['success']);
+        $this->assertSame($expectedError, $payload['error']);
+    }
+
     protected function messageRefWithKey(string $key): \PHPUnit\Framework\Constraint\Callback
     {
         return $this->callback(fn (mixed $message): bool => $message instanceof MessageRef && $message->key === $key);
