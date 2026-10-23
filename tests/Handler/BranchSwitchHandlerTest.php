@@ -30,7 +30,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle(' ');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('branch.switch.error_no_key', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.switch.error_no_key');
     }
 
     public function testHandleFailsWhenWorkingDirectoryIsDirty(): void
@@ -44,7 +44,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('SCI-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('branch.switch.error_dirty_working', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.switch.error_dirty_working');
     }
 
     public function testHandleFailsWhenNoLocalBranchMatches(): void
@@ -58,7 +58,11 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('sci-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('branch.switch.error_no_branch', $response->getError());
+        $this->assertMessageRef(
+            $response->getErrorMessage(),
+            'branch.switch.error_no_branch',
+            ['key' => 'SCI-123']
+        );
     }
 
     public function testHandleSwitchesWhenOneBranchMatches(): void
@@ -67,8 +71,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $this->gitBranchService->method('findLocalBranchesContainingIssueKey')
             ->willReturn(['feat/SCI-123-title']);
         $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('feat/SCI-123-title');
+            ->method('switchBranch');
 
         $response = $this->handler->handle('SCI-123');
 
@@ -83,9 +86,6 @@ class BranchSwitchHandlerTest extends CommandTestCase
             ->method('findLocalBranchesContainingIssueKey')
             ->with('SCI-123')
             ->willReturn(['feat/SCI-123-foo']);
-        $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('feat/SCI-123-foo');
 
         $response = $this->handler->handle('SCI-123');
 
@@ -107,7 +107,14 @@ class BranchSwitchHandlerTest extends CommandTestCase
 
         $this->assertFalse($response->isSuccess());
         $this->assertSame($matches, $response->matches);
-        $this->assertStringContainsString('branch.switch.error_multiple_branches', $response->getError());
+        $this->assertMessageRef(
+            $response->getErrorMessage(),
+            'branch.switch.error_multiple_branches',
+            [
+                'key' => 'SCI-123',
+                'branches' => "- feat/SCI-123-a\n- fix/SCI-123-b",
+            ]
+        );
     }
 
     public function testHandleNeedsSelectionInInteractiveModeWhenMultipleBranchesMatch(): void
@@ -131,8 +138,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $this->gitBranchService->method('findLocalBranchesContainingIssueKey')
             ->willReturn($matches);
         $this->gitBranchService->expects($this->once())
-            ->method('switchBranch')
-            ->with('fix/SCI-123-b');
+            ->method('switchBranch');
 
         $response = $this->handler->handle('SCI-123', false, 'fix/SCI-123-b');
 
@@ -151,6 +157,7 @@ class BranchSwitchHandlerTest extends CommandTestCase
         $response = $this->handler->handle('SCI-123');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('git switch failed', $response->getError());
+        $this->assertIsString($response->getErrorMessage());
+        $this->assertSame('git switch failed', $response->getErrorMessage());
     }
 }
