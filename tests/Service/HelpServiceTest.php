@@ -35,13 +35,8 @@ class HelpServiceTest extends TestCase
         $flysystem = new FlysystemFilesystem($adapter);
         $this->fileSystem = new FileSystem($flysystem);
 
-        // Create README.md in in-memory filesystem for tests that need it
-        // Use relative path from project root
-        $readmePath = 'README.md';
-        if (file_exists(__DIR__ . '/../../README.md')) {
-            $readmeContent = file_get_contents(__DIR__ . '/../../README.md');
-            $flysystem->write($readmePath, $readmeContent);
-        }
+        $readmeContent = file_get_contents(__DIR__ . '/../Fixtures/readme/minimal-commands.md');
+        $flysystem->write('README.md', $readmeContent);
 
         $this->helpService = new HelpService($this->translationService, $this->fileSystem);
     }

@@ -516,6 +516,14 @@ $this->assertStringContainsString('Update complete! You are now on v1.0.1', $out
 - Tests remain readable and maintainable
 - Tests verify that the code does the right thing, not just that it outputs specific text
 
+### Assertion quality (golden rule)
+
+- **Golden rule of assertions** ([Epic Web](https://www.epicweb.dev)): a test should fail only when the behavior under test regresses—not when unrelated implementation details change.
+- Prefer **`assertMessageRef()`** (from `CommandTestCase`) over `getError()` or substring checks on rendered error keys for handler `MessageRef` errors.
+- Prefer **stubs plus outcome asserts** (response fields, return values) over long mock `expects()->with()` chains unless you are guarding a forbidden call (`never()`).
+- Use **`assertAgentJsonSuccess()`** / **`assertAgentJsonErrorString()`** on agent JSON payloads from `AgentJsonResponse::toPayload()` instead of duplicating success/error field checks.
+- Broader test-quality refactors are tracked under work item **SCI-220** (Jira attachment: test-quality improvement plan).
+
 ## Command Output Conventions
 
 All meaningful command output must be represented in a **Response DTO** or `WorkflowOutput` recorder first. Responders then translate message references and render that response through **Logger** for CLI output or serialize it for agent JSON; see [ADR-005 §7.6 Output and Logger](documentation/adr-005-responder-pattern-architecture.md#76-output-and-logger), [ADR-017](documentation/adr-017-response-owned-output-and-diagnostics.md), and [ADR-018](documentation/adr-018-presentation-owned-translation.md).
