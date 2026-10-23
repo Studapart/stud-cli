@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "sh .cursor/hooks/delivery-policy.sh",
+        "failClosed": true
+      }
+    ]
+  }
+}

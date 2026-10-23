@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Project-aware config validate (SCI-218):** `stud config:validate` reports global and project readiness rollups and pings GitHub and GitLab separately when both are listed globally. It always probes configured integrations before scoring readiness, so a setup or project-selection failure is reported in the result instead of aborting the command. In a repository with stud project config, exit code follows **project** readiness (global `partial` with project `ok` exits 0). When only one issue tracker is configured globally, an unpinned project uses that tracker, including a Linear-only setup whose project file has `projectKey` and no `linearTeamKey`. A project file that exists but cannot be parsed fails project readiness instead of being treated as absent. Non-blocking tracker notices use translation keys. Agent mode defaults to compact success (`{"success":true}`); use `"compact":false` for full `data` including legacy flat status fields. `config:validate` is completion-only in the agent schema.
+
 ## [4.3.0] - 2026-10-12
 
 ### Added

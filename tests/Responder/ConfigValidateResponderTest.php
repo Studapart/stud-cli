@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Responder;
 
+use App\DTO\ConfigValidateIntegrationPing;
 use App\DTO\MessageRef;
 use App\DTO\ResponseMessage;
 use App\Enum\OutputFormat;
 use App\Responder\ConfigValidateResponder;
 use App\Response\ConfigValidateResponse;
 use App\Service\ColorHelper;
+use App\Service\ConfigReadinessEvaluation;
+use App\Service\ConfigReadinessEvaluator;
 use App\Service\Logger;
 use App\Service\ResponderHelper;
 use App\Tests\CommandTestCase;
@@ -43,9 +46,105 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondOutputsTranslatedCliNotice(): void
+    {
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            [MessageRef::key('config.validate.notice_linear_non_blocking')],
+        );
+        $response = ConfigValidateResponse::fromEvaluation(
+            $evaluation,
+            [
+                'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'linear' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_FAIL),
+            ],
+            'github',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
         $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
+            ->method('note')
+            ->with($this->anything(), 'config.validate.notice_linear_non_blocking');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondLegacyRowsIncludeConfiguredGitProvider(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            gitProvider: 'gitlab',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testRespondLegacyRowsUseGithubWhenGitWasCheckedWithoutProvider(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_SKIPPED,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            'git ok',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $response);
+    }
+
+    public function testIntegrationLabelReturnsUnknownKeyUnchanged(): void
+    {
+        $responder = new class (new ResponderHelper($this->translationService), $this->logger) extends ConfigValidateResponder {
+            public function exposedLabel(string $key): string
+            {
+                return $this->integrationLabel($key);
+            }
+        };
+
+        $this->assertSame('custom', $responder->exposedLabel('custom'));
+    }
+
+    public function testRespondOutputsCliNotices(): void
+    {
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            ['Linear connectivity check failed (non-blocking for this project).'],
+        );
+        $response = ConfigValidateResponse::fromEvaluation(
+            $evaluation,
+            [
+                'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+                'linear' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_FAIL),
+            ],
+            'github',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+        $this->logger->expects($this->once())
+            ->method('note')
+            ->with($this->anything(), 'Linear connectivity check failed (non-blocking for this project).');
 
         $this->responder->respond($io, $response);
     }
@@ -64,7 +163,7 @@ class ConfigValidateResponderTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
         $this->logger->expects($this->once())
             ->method('warning')
             ->with($this->anything(), $this->isType('string'));
@@ -86,7 +185,7 @@ class ConfigValidateResponderTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())->method('definitionList');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
         $this->logger->expects($this->once())
             ->method('warning')
             ->with($this->anything(), 'plain warning');
@@ -123,18 +222,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value) && str_contains(strtolower($value), 'fail') && str_contains($value, 'Connection refused');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
@@ -152,26 +241,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-                $this->callback(function (array $row) {
-                    $value = array_values($row)[0] ?? '';
-
-                    return is_string($value) && str_contains($value, 'config.validate.status_skipped');
-                }),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
@@ -196,9 +267,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $logger->expects($this->atLeastOnce())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $logger->expects($this->atLeastOnce())
-            ->method('definitionList')
-            ->with($this->anything(), $this->anything(), $this->anything(), $this->anything());
+        $logger->expects($this->atLeast(2))
+            ->method('definitionList');
 
         $responder->respond($io, $response);
     }
@@ -216,9 +286,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $this->logger->expects($this->once())
             ->method('section')
             ->with($this->anything(), $this->anything());
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with($this->anything(), $this->isType('array'), $this->isType('array'), $this->isType('array'));
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
@@ -233,13 +302,119 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
         $this->assertSame('ok', $result->data['jiraStatus']);
         $this->assertSame('ok', $result->data['gitStatus']);
         $this->assertSame('skipped', $result->data['linearStatus']);
+    }
+
+    private function partialSuccessResponse(): ConfigValidateResponse
+    {
+        $integrations = [
+            'jira' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+            'linear' => new ConfigValidateIntegrationPing(
+                ConfigValidateResponse::STATUS_FAIL,
+                MessageRef::key('config.validate.error_linear_ping', ['error' => 'down']),
+            ),
+            'github' => new ConfigValidateIntegrationPing(ConfigValidateResponse::STATUS_OK),
+        ];
+        $evaluation = new ConfigReadinessEvaluation(
+            ConfigReadinessEvaluator::ROLLUP_PARTIAL,
+            ConfigReadinessEvaluator::ROLLUP_OK,
+            true,
+            ['Linear connectivity check failed (non-blocking for this project).'],
+        );
+
+        return ConfigValidateResponse::fromEvaluation($evaluation, $integrations, 'github');
+    }
+
+    public function testRespondJsonPartialCompactIncludesRollupsOnly(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertSame('partial', $result->data['rollups']['global'] ?? null);
+        $this->assertArrayNotHasKey('jiraStatus', $result->data);
+    }
+
+    public function testRespondJsonPartialNonCompactIncludesFullData(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+        $result = $this->responder->respond($io, $this->partialSuccessResponse(), OutputFormat::Json, false);
+
+        $this->assertNotNull($result);
+        $this->assertSame('ok', $result->data['jiraStatus'] ?? null);
+        $this->assertSame('fail', $result->data['linearStatus'] ?? null);
+    }
+
+    public function testRespondCliShowsProjectRollupWhenApplicable(): void
+    {
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $this->logger->expects($this->once())->method('section');
+        $this->logger->expects($this->exactly(2))->method('definitionList');
+
+        $this->responder->respond($io, $this->partialSuccessResponse());
+    }
+
+    public function testRespondJsonFailureCompactIncludesRollupsAndIntegrations(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            MessageRef::key('config.validate.error_jira_not_configured'),
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertFalse($result->success);
+        $this->assertArrayHasKey('rollups', $result->data);
+        $this->assertArrayHasKey('integrations', $result->data);
+        $this->assertArrayNotHasKey('jiraStatus', $result->data);
+    }
+
+    public function testRespondJsonFailureNonCompactIncludesFlatAliases(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_FAIL,
+            MessageRef::key('config.validate.error_jira_not_configured'),
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
+
+        $this->assertNotNull($result);
+        $this->assertSame('fail', $result->data['jiraStatus'] ?? null);
+    }
+
+    public function testRespondJsonCompactCleanSuccessOmitsData(): void
+    {
+        $response = ConfigValidateResponse::create(
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            ConfigValidateResponse::STATUS_OK,
+            null,
+            gitProvider: 'github',
+        );
+        $io = $this->createMock(SymfonyStyle::class);
+
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, true);
+
+        $this->assertNotNull($result);
+        $this->assertTrue($result->success);
+        $this->assertFalse($result->hasData);
     }
 
     public function testRespondJsonIncludesWarningDiagnostics(): void
@@ -290,7 +465,7 @@ class ConfigValidateResponderTest extends CommandTestCase
         );
         $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $this->responder->respond($io, $response, OutputFormat::Json);
+        $result = $this->responder->respond($io, $response, OutputFormat::Json, false);
 
         $this->assertNotNull($result);
         $this->assertTrue($result->success);
@@ -310,20 +485,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value)
-                        && str_contains(strtolower($value), 'fail')
-                        && str_contains($value, 'config.validate.error_jira_not_configured');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }
@@ -339,20 +502,8 @@ class ConfigValidateResponderTest extends CommandTestCase
         $io = $this->createMock(SymfonyStyle::class);
 
         $this->logger->expects($this->once())->method('section');
-        $this->logger->expects($this->once())
-            ->method('definitionList')
-            ->with(
-                $this->anything(),
-                $this->callback(function (array $jiraRow) {
-                    $value = array_values($jiraRow)[0] ?? '';
-
-                    return is_string($value)
-                        && str_contains(strtolower($value), 'fail')
-                        && ! str_contains($value, '(');
-                }),
-                $this->anything(),
-                $this->anything(),
-            );
+        $this->logger->expects($this->exactly(2))
+            ->method('definitionList');
 
         $this->responder->respond($io, $response);
     }

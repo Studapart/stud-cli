@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Konfigurasie-validering"
     label_jira: "Jira"
     label_git_provider: "Git-verskaffer"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Misluk"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Git provider connection failed: %error%"
     error_linear_not_configured: "Linear is not configured."
     error_linear_ping: "Linear connection failed: %error%"
+    notice_jira_non_blocking: "Jira connectivity check failed (non-blocking for this project)."
+    notice_linear_non_blocking: "Linear connectivity check failed (non-blocking for this project)."
+    error_readiness_failed: "Configuration validation failed for this repository or environment."
+    label_global_rollup: "Global readiness"
+    label_project_rollup: "Project readiness"
+    rollup_ok: "OK"
+    rollup_partial: "Partial"
+    rollup_fail: "Fail"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Projekkonfigurasie"
     not_git_repository: "Nie binne 'n Git-repository nie. Voer hierdie opdrag uit vanuit 'n repository-checkout."

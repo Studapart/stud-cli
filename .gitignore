@@ -66,6 +66,11 @@ tmp/stud-*
 
 # Cursor local scratch (tmp, reports, specs, copied workflow dumps)
 .cursor/*
+!.cursor/PROJECT_CONTEXT.md
+!.cursor/VERIFICATION.md
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
 
 #IntelliJ config files
 .idea

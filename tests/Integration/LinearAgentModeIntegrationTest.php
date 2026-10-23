@@ -132,7 +132,7 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $repo = $this->createRepository('validate');
         $result = $this->runAgentProcess(
             ['config:validate', '--agent'],
-            ['skipJira' => true, 'skipGit' => true],
+            ['skipJira' => true, 'skipGit' => true, 'compact' => false],
             $repo,
         );
 
@@ -144,12 +144,129 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
     }
 
+    public function testConfigValidateSelectsLinearWhenProjectKeyOnly(): void
+    {
+        $repo = $this->createRepositoryWithoutStudConfig('validate-linear-project-key');
+        file_put_contents(
+            $repo . '/.git/stud.config',
+            "projectKey: SCI\nmigration_version: '999999999999999'\n",
+        );
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipGit' => true, 'compact' => false],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], $result['stdout'] . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('ok', $decoded['data']['projectRollup'] ?? null);
+        self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
+    }
+
+    public function testConfigValidateFailsWhenProjectConfigIsUnreadable(): void
+    {
+        $repo = $this->createRepositoryWithoutStudConfig('validate-unreadable-project');
+        file_put_contents($repo . '/.git/stud.config', "projectKey: [\n");
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipGit' => true, 'compact' => false],
+            $repo,
+        );
+
+        self::assertSame(1, $result['exitCode'], $result['stdout'] . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertFalse($decoded['success'] ?? true);
+        self::assertSame('fail', $decoded['data']['projectRollup'] ?? null);
+        $noticeText = json_encode($decoded['diagnostics']['notices'] ?? []);
+        self::assertIsString($noticeText);
+        self::assertStringContainsString('could not be parsed', $noticeText);
+    }
+
+    public function testConfigValidateGlobalOnlyWhenNoProjectConfig(): void
+    {
+        $configDir = $this->tempDir . '/home/.config/stud';
+        mkdir($configDir, 0700, true);
+        file_put_contents(
+            $configDir . '/config.yml',
+            <<<'YAML'
+LANGUAGE: en
+ISSUE_TRACKER_PROVIDERS:
+  - jira
+  - linear
+JIRA_URL: https://example.atlassian.net
+JIRA_EMAIL: user@example.com
+JIRA_API_TOKEN: token
+LINEAR_API_KEY: test-linear-key
+migration_version: '999999999999999'
+YAML,
+        );
+
+        $repo = $this->createRepositoryWithoutStudConfig('validate-no-project');
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipJira' => true, 'skipGit' => true, 'compact' => false],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], 'stderr: ' . $result['stderr'] . ' stdout: ' . $result['stdout']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('not_applicable', $decoded['data']['projectRollup'] ?? null);
+        self::assertSame('ok', $decoded['data']['linearStatus'] ?? null);
+    }
+
+    public function testConfigValidateContinuesWhenJiraSetupFails(): void
+    {
+        $this->writeDualTrackerConfig(false);
+        $repo = $this->createRepository('validate-jira-setup-fails');
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipGit' => true, 'compact' => false],
+            $repo,
+        );
+
+        self::assertSame(0, $result['exitCode'], $result['stdout'] . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertTrue($decoded['success'] ?? false);
+        self::assertSame('partial', $decoded['data']['globalRollup'] ?? null);
+        self::assertSame('ok', $decoded['data']['projectRollup'] ?? null);
+        self::assertSame('fail', $decoded['data']['integrations']['jira']['status'] ?? null);
+        self::assertNotSame(
+            'Jira is not configured.',
+            $decoded['data']['integrations']['jira']['message'] ?? null,
+        );
+        self::assertSame('ok', $decoded['data']['integrations']['linear']['status'] ?? null);
+    }
+
+    public function testConfigValidateReportsBlockedSelectionAfterPings(): void
+    {
+        $this->writeDualTrackerConfig(false);
+        $repo = $this->createRepository('validate-blocked-selection');
+        file_put_contents(
+            $repo . '/.git/stud.config',
+            "issueTrackerProvider: auto\nprojectKey: SCI\nlinearTeamKey: SCI\nmigration_version: '999999999999999'\n",
+        );
+        $result = $this->runAgentProcess(
+            ['config:validate', '--agent'],
+            ['skipJira' => true, 'skipGit' => true, 'compact' => false],
+            $repo,
+        );
+
+        self::assertSame(1, $result['exitCode'], $result['stdout'] . $result['stderr']);
+        $decoded = $this->assertSingleJsonObject($result['stdout']);
+        self::assertFalse($decoded['success'] ?? true);
+        self::assertSame('fail', $decoded['data']['projectRollup'] ?? null);
+        self::assertArrayHasKey('integrations', $decoded['data']);
+        self::assertSame('ok', $decoded['data']['integrations']['linear']['status'] ?? null);
+    }
+
     public function testConfigValidateAgentModeSkipsJiraWhenOnlyLinearConfigured(): void
     {
         $repo = $this->createRepository('validate-linear-only');
         $result = $this->runAgentProcess(
             ['config:validate', '--agent'],
-            ['skipGit' => true],
+            ['skipGit' => true, 'compact' => false],
             $repo,
         );
 
@@ -256,6 +373,19 @@ final class LinearAgentModeIntegrationTest extends TestCase
         return $repo;
     }
 
+    protected function createRepositoryWithoutStudConfig(string $name): string
+    {
+        $repo = $this->tempDir . '/' . $name;
+        $this->runProcess(['git', 'init', '-b', 'main', $repo], $this->tempDir);
+        $this->runProcess(['git', 'config', 'user.email', 'test@example.com'], $repo);
+        $this->runProcess(['git', 'config', 'user.name', 'Stud CLI Test'], $repo);
+        file_put_contents($repo . '/README.md', 'initial');
+        $this->runProcess(['git', 'add', 'README.md'], $repo);
+        $this->runProcess(['git', 'commit', '-m', 'initial'], $repo);
+
+        return $repo;
+    }
+
     protected function writeGlobalConfig(): void
     {
         $configDir = $this->tempDir . '/home/.config/stud';
@@ -263,6 +393,17 @@ final class LinearAgentModeIntegrationTest extends TestCase
         file_put_contents(
             $configDir . '/config.yml',
             "LANGUAGE: en\nISSUE_TRACKER_PROVIDERS:\n  - linear\nLINEAR_API_KEY: test-linear-key\nmigration_version: '999999999999999'\n",
+        );
+    }
+
+    protected function writeDualTrackerConfig(bool $withJiraCredentials): void
+    {
+        $jira = $withJiraCredentials
+            ? "JIRA_URL: https://example.atlassian.net\nJIRA_EMAIL: user@example.com\nJIRA_API_TOKEN: token\n"
+            : "JIRA_URL: https://example.atlassian.net\n";
+        file_put_contents(
+            $this->tempDir . '/home/.config/stud/config.yml',
+            "LANGUAGE: en\nISSUE_TRACKER_PROVIDERS:\n  - jira\n  - linear\n{$jira}LINEAR_API_KEY: test-linear-key\nmigration_version: '999999999999999'\n",
         );
     }
 

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=none
 confluence:
   push:
     success_created: "Page '%title%' published: %url%"
@@ -92,6 +93,8 @@ config:
     section_title: "Validation de la configuration"
     label_jira: "Jira"
     label_git_provider: "Fournisseur Git"
+    label_github: "GitHub"
+    label_gitlab: "GitLab"
     label_linear: "Linear"
     status_ok: "OK"
     status_fail: "Échec"
@@ -106,6 +109,15 @@ config:
     error_git_ping: "Échec de la connexion au fournisseur Git : %error%"
     error_linear_not_configured: "Linear n'est pas configuré."
     error_linear_ping: "Échec de la connexion Linear : %error%"
+    notice_jira_non_blocking: "La vérification de connectivité Jira a échoué (sans bloquer ce projet)."
+    notice_linear_non_blocking: "La vérification de connectivité Linear a échoué (sans bloquer ce projet)."
+    error_readiness_failed: "La validation de la configuration a échoué pour ce dépôt ou cet environnement."
+    label_global_rollup: "État global"
+    label_project_rollup: "État du projet"
+    rollup_ok: "OK"
+    rollup_partial: "Partiel"
+    rollup_fail: "Échec"
+    rollup_not_applicable: "N/A"
   project_init:
     section_title: "Configuration du projet"
     not_git_repository: "Vous n'êtes pas dans un dépôt Git. Exécutez cette commande depuis un clone du dépôt."
