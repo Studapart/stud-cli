@@ -386,6 +386,7 @@ item:
     section: Получение задач Jira
     error_fetch: 'Ошибка при получении задач: %error%'
     no_items: Не найдено задач, соответствующих вашим критериям.
+    jql_query: "JQL Запрос: %jql%"
     error_invalid_sort: 'Неверное значение сортировки ''%value%''. Допустимые значения: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Выбран Linear, но LINEAR_API_KEY не настроен. Запустите "stud config:init" или задайте LINEAR_API_KEY в ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Обычный push не удался. Выполнить сейчас «stud please» (force-with-lease)?"
   confirm_flatten_publish: "История переписана. Опубликовать её безопасным force-push?"
   note_uncommitted_left: "У вас есть незакоммиченные изменения. Push использовал коммиты, уже находящиеся на этой ветке; незакоммиченные файлы не включены."
+  commit_created: "Коммит создан"
+  commit_failed: "Не удалось создать коммит"
+  please_completed: "Force push выполнен"
+  please_failed: "Force push не удался"
 commit_undo:
   error_not_repo: Не в git-репозитории.
   error_no_commit: Нет коммита для отмены.
@@ -518,6 +523,9 @@ submit:
 
     Возврат к простой ссылке.'
   warning_issue_fetch: "Не удалось получить детали work item для тела PR: %error%\nИспользуется простая ссылка."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Создание Pull Request...
   success_created: '✅ Pull Request создан: %url%'
   warning_no_provider: Провайдер Git не настроен для этого проекта.

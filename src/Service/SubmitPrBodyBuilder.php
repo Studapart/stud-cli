@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Contract\WorkflowEntryRecorder;
+use App\DTO\MessageRef;
 use App\DTO\WorkItem;
 use App\Enum\WorkflowChannel;
 
@@ -105,7 +106,7 @@ class SubmitPrBodyBuilder
         try {
             $markdown = $this->htmlConverter->toMarkdown($html);
             $markdown = MarkdownHelper::unescapeCheckboxMarkdown($markdown);
-            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, '  Converted HTML to Markdown for PR description', WorkflowChannel::Jira);
+            $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, MessageRef::key('submit.note_html_converted'), WorkflowChannel::Jira);
 
             return $markdown;
         } catch (\Exception $e) {
@@ -119,20 +120,17 @@ class SubmitPrBodyBuilder
     {
         $errorMessage = $e->getMessage();
         if (str_contains($errorMessage, 'DOMDocument') || str_contains($errorMessage, "Class 'DOMDocument' not found")) {
-            $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, [
-                'HTML to Markdown conversion failed: PHP XML extension is missing.',
-                'Install it using:',
-                '  Ubuntu/Debian: sudo apt-get install php-xml',
-                '  Fedora/RHEL: sudo dnf install php-xml',
-                '  macOS (Homebrew): brew install php-xml',
-                'Using raw HTML for PR description.',
-            ]);
+            $recorder->addWarning(WorkflowEntryRecorder::VERBOSITY_NORMAL, MessageRef::key('submit.warning_html_xml_missing'));
 
             return;
         }
 
         // @codeCoverageIgnoreStart
-        $recorder->addLine(WorkflowEntryRecorder::VERBOSITY_VERBOSE, "  HTML to Markdown conversion failed, using raw HTML: {$errorMessage}", WorkflowChannel::Jira);
+        $recorder->addLine(
+            WorkflowEntryRecorder::VERBOSITY_VERBOSE,
+            MessageRef::key('submit.warning_html_conversion_failed', ['%error%' => $errorMessage]),
+            WorkflowChannel::Jira,
+        );
         // @codeCoverageIgnoreEnd
     }
 

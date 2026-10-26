@@ -71,7 +71,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('item.list.section', $output);
-        $this->assertStringContainsString('JQL Query', $output);
+        $this->assertStringContainsString('item.list.jql_query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
@@ -84,7 +84,7 @@ class ItemListResponderTest extends CommandTestCase
         $responder->respond($io, $response);
 
         $output = $this->getOutput($io);
-        $this->assertStringContainsString('JQL Query', $output);
+        $this->assertStringContainsString('item.list.jql_query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
@@ -110,7 +110,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('item.list.section', $output);
-        $this->assertStringContainsString('JQL Query', $output);
+        $this->assertStringContainsString('item.list.jql_query', $output);
     }
 
     public function testRespondShowsVerboseOutputWithProject(): void
@@ -217,7 +217,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $responder->respond($io, $response);
 
-        $this->assertStringNotContainsString('JQL Query', $this->getOutput($io));
+        $this->assertStringNotContainsString('item.list.jql_query', $this->getOutput($io));
     }
 
     public function testRespondSuppressesJqlCommentForLinearOnly(): void
@@ -229,7 +229,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $responder->respond($io, $response);
 
-        $this->assertStringNotContainsString('JQL Query', $this->getOutput($io));
+        $this->assertStringNotContainsString('item.list.jql_query', $this->getOutput($io));
     }
 
     public function testRespondJsonIncludesProviderWhenMultiProvider(): void

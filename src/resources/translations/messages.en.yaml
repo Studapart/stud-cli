@@ -388,6 +388,7 @@ item:
     section: "Fetching Jira Items"
     error_fetch: "Failed to fetch items: %error%"
     no_items: "No items found matching your criteria."
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: "Invalid sort value '%value%'. Accepted values: Key, Status"
 
 issue_tracker_provider:
@@ -483,6 +484,10 @@ push:
   confirm_please: "Normal push failed. Run 'stud please' (force-with-lease) now?"
   confirm_flatten_publish: "History was rewritten. Publish it with a safe force-push?"
   note_uncommitted_left: "You have uncommitted changes. Push used commits already on this branch; uncommitted files were not included."
+  commit_created: "Commit created"
+  commit_failed: "Commit failed"
+  please_completed: "Force push completed"
+  please_failed: "Force push failed"
 
 # Commit Undo Handler
 commit_undo:
@@ -537,6 +542,9 @@ submit:
   error_no_jira_key: "Could not parse Jira key from commit message. Cannot create PR."
   warning_jira_fetch: "Could not fetch Jira issue details for PR body: %error%\nFalling back to a simple link."
   warning_issue_fetch: "Could not fetch work item details for PR body: %error%\nFalling back to a simple link."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: "Creating Pull Request..."
   success_created: "✅ Pull Request created: %url%"
   warning_no_provider: "No Git provider configured for this project."
