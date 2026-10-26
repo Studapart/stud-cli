@@ -148,7 +148,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71'));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.update.error_no_fields', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_no_fields');
     }
 
     public function testErrorEmptySummary(): void
@@ -157,6 +157,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: '  '));
 
         $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_no_fields');
     }
 
     public function testErrorEditmetaFetchFailure(): void
@@ -169,7 +170,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title'));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.update.error_editmeta', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_editmeta', ['error' => 'Not found HTTP 404']);
     }
 
     public function testErrorEditmetaThrowableFailure(): void
@@ -182,7 +183,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title'));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.update.error_editmeta', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_editmeta', ['error' => 'Network error']);
     }
 
     public function testErrorUpdateApiFailure(): void
@@ -198,7 +199,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title'));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.update.error_update', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_update', ['error' => 'Forbidden HTTP 403']);
     }
 
     public function testErrorUpdateThrowableFailure(): void
@@ -214,7 +215,7 @@ class ItemUpdateHandlerTest extends CommandTestCase
         $response = $handler->handle(new ItemUpdateInput('SCI-71', summary: 'Title'));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.update.error_update', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.update.error_update', ['error' => 'Timeout']);
     }
 
     public function testEmptyDescriptionIsIgnored(): void

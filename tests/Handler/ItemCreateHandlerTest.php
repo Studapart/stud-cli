@@ -139,7 +139,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput(null, null, 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_no_project', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_no_project');
     }
 
     public function testHandleReturnsErrorWhenNoSummaryAndNonInteractive(): void
@@ -158,7 +158,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput(null, null, null, null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_no_summary', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_no_summary');
     }
 
     public function testHandleReturnsErrorWhenExtraRequiredFields(): void
@@ -192,8 +192,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $message = $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required');
-        $this->assertStringContainsString('Custom (customfield_10001)', (string) $message->parameters['fields']);
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required', ['fields' => 'Custom (customfield_10001)']);
     }
 
     public function testHandleReturnsErrorWhenIssueTypeNotFound(): void
@@ -214,7 +213,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_createmeta', ['error' => 'Issue type "Story" not found for project "PROJ"']);
     }
 
     public function testHandleReturnsErrorWhenGetCreateMetaIssueTypesThrows(): void
@@ -235,7 +234,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_createmeta', ['error' => 'Issue type "Story" not found for project "PROJ"']);
     }
 
     public function testHandleReturnsErrorWhenGetCreateMetaFieldsThrows(): void
@@ -259,7 +258,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_createmeta', ['error' => 'Could not fetch field metadata']);
     }
 
     public function testHandleReturnsErrorWhenCreateIssueThrowsNonApiException(): void
@@ -289,7 +288,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_create', ['error' => 'Network error']);
     }
 
     public function testHandleReturnsErrorWhenCreateIssueThrows(): void
@@ -319,7 +318,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_create', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_create', ['error' => 'API error details']);
     }
 
     public function testHandleReturnsLinearTypeLabelErrorWhenCreateThrowsLinearTypeLabelException(): void
@@ -349,7 +348,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.linear_type_label_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.linear_type_label_not_found', ['type' => 'Bug']);
     }
 
     public function testHandleReturnsStudConfigErrorWhenLinearTeamKeyMissing(): void
@@ -379,7 +378,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_no_linear_team', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_no_linear_team');
     }
 
     public function testHandleReturnsIssueTrackerErrorWhenCreateThrowsIssueTrackerException(): void
@@ -409,7 +408,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('issue_tracker_provider.missing_linear_api_key', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'issue_tracker_provider.missing_linear_api_key');
     }
 
     public function testHandleIncludesDescriptionWhenProvided(): void
@@ -607,7 +606,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(true, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required', ['fields' => 'Team (customfield_10001)']);
     }
 
     public function testHandleInteractiveNumericCustomFieldIdSentAsCustomfieldPrefix(): void
@@ -1033,7 +1032,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('INVALID', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_project_not_found', ['key' => 'INVALID']);
     }
 
     public function testHandleInteractiveProjectNotFoundPromptsForKeyThenSucceeds(): void
@@ -1095,7 +1094,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_project_not_found', ['key' => 'BAD']);
     }
 
     public function testHandleInteractiveProjectNotFoundAndRetryKeyAlsoNotFoundReturnsError(): void
@@ -1122,7 +1121,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(true, new ItemCreateInput('BAD', 'Story', 'My summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_project_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_project_not_found', ['key' => 'BAD']);
     }
 
     public function testHandleReturnsErrorWhenExtraRequiredAndGetMetaThrowsWhenBuildingFieldList(): void
@@ -1163,7 +1162,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_extra_required', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_extra_required', ['fields' => 'Custom (customfield_10001)']);
     }
 
     public function testHandleInteractiveExtraRequiredDescriptionPromptsAndFills(): void
@@ -1648,7 +1647,7 @@ class ItemCreateHandlerTest extends CommandTestCase
         $response = $handler->handle(false, new ItemCreateInput('SCI', 'Story', 'Summary', null));
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.create.error_createmeta', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'item.create.error_createmeta', ['error' => 'Could not fetch field metadata']);
     }
 
     public function testHandleLinearCapableIncludesDescriptionParentAndMarkdownFormat(): void
