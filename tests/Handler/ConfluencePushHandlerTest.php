@@ -8,25 +8,21 @@ use App\DTO\ConfluencePushInput;
 use App\Exception\ApiException;
 use App\Handler\ConfluencePushHandler;
 use App\Service\MarkdownToAdfConverter;
-use App\Service\TranslationService;
 use App\Service\WikiPort;
+use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
 
-class ConfluencePushHandlerTest extends TestCase
+class ConfluencePushHandlerTest extends CommandTestCase
 {
     private WikiPort&MockObject $wiki;
     private MarkdownToAdfConverter&MockObject $converter;
-    private TranslationService&MockObject $translator;
 
     protected function setUp(): void
     {
+        parent::setUp();
+
         $this->wiki = $this->createMock(WikiPort::class);
         $this->converter = $this->createMock(MarkdownToAdfConverter::class);
-        $this->translator = $this->createMock(TranslationService::class);
-        $this->translator->method('trans')->willReturnCallback(
-            static fn (string $id, array $params = []): string => $id . ':' . json_encode($params)
-        );
     }
 
     private function createHandler(): ConfluencePushHandler
@@ -34,7 +30,7 @@ class ConfluencePushHandlerTest extends TestCase
         return new ConfluencePushHandler(
             $this->wiki,
             $this->converter,
-            $this->translator
+            $this->translationService
         );
     }
 
@@ -152,7 +148,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_no_content', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_no_content');
     }
 
     public function testHandleCreateReturnsErrorWhenSpaceMissing(): void
@@ -162,7 +158,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_space_required', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_space_required');
     }
 
     public function testHandleCreateReturnsErrorWhenTitleMissing(): void
@@ -172,7 +168,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_no_title', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_no_title');
     }
 
     public function testHandleCreateReturnsErrorWhenSpaceNotFound(): void
@@ -188,7 +184,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_space_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_space_not_found', ['key' => 'MISSING']);
     }
 
     public function testHandleUpdateReturnsErrorWhenPageNotFound(): void
@@ -203,7 +199,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_page_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_page_not_found', ['id' => '99999']);
     }
 
     public function testHandleCreateReturnsErrorOnApiException(): void
@@ -219,7 +215,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_api', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Server error detail']);
     }
 
     public function testHandleUpdateReturnsErrorWhenUpdatePageThrows(): void
@@ -243,7 +239,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_api', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Conflict detail']);
     }
 
     public function testBuildPageUrlWithEmptyWebuiReturnsBaseUrl(): void
@@ -335,7 +331,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_parent_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_parent_not_found', ['id' => '99999']);
     }
 
     public function testCreateWithContactAppendsMentionToAdf(): void
@@ -488,7 +484,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertStringContainsString('confluence.push.error_page_not_found', $response->getError() ?? '');
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_page_not_found', ['id' => '99999']);
     }
 
     public function testCreateDuplicateTitleUnderParentUsesFolderChildrenWhenPageChildrenThrow(): void
@@ -559,7 +555,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenNoMatchingChild(): void
@@ -581,7 +577,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenGetPageOfChildThrows(): void
@@ -611,7 +607,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateDuplicateTitleUnderParentReturnsErrorWhenUpdatePageThrows(): void
@@ -648,7 +644,7 @@ class ConfluencePushHandlerTest extends TestCase
         $response = $handler->handle($input, 'https://example.atlassian.net/wiki');
 
         self::assertFalse($response->isSuccess());
-        self::assertNotEmpty($response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'confluence.push.error_api', ['message' => 'Bad request title already exists']);
     }
 
     public function testCreateWithContactAppendsMentionWhenAdfHasNoContentKey(): void

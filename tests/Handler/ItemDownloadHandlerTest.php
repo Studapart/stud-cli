@@ -49,7 +49,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $response = $this->handler->handle(null, null, null);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('item.download.error_key_or_url', $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.download.error_key_or_url');
     }
 
     public function testHandleRejectsPathTraversal(): void
@@ -57,7 +57,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
         $response = $this->handler->handle('KEY-1', null, '../evil');
 
         $this->assertFalse($response->isSuccess());
-        $this->assertStringContainsString('item.download.error_path_traversal', (string) $response->getError());
+        $this->assertMessageRef($response->getErrorMessage(), 'item.download.error_path_traversal');
     }
 
     public function testHandleReturnsFatalWhenTargetDirectoryCannotBeCreated(): void
@@ -200,10 +200,7 @@ class ItemDownloadHandlerTest extends CommandTestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertCount(1, $response->errors);
-        $message = $response->errors[0]['message'];
-        $this->assertInstanceOf(\App\DTO\MessageRef::class, $message);
-        $this->assertSame('item.download.error_file', $message->key);
-        $this->assertStringContainsString('boom', (string) $message->parameters['error']);
+        $this->assertMessageRef($response->errors[0]['message'], 'item.download.error_file', ['error' => 'boom']);
     }
 
     public function testHandleRecordsErrorWhenWriteFails(): void

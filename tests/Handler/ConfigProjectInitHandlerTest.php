@@ -56,7 +56,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['migration_version' => '9'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertErrorRef($response, 'config.project_init.reserved_keys');
+        $this->assertErrorRef($response, 'config.project_init.reserved_keys', ['%keys%' => 'migration_version']);
     }
 
     public function testAgentInvalidTransitionIdReturnsError(): void
@@ -363,7 +363,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['notAProjectInitField' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertErrorRef($response, 'config.project_init.unknown_keys');
+        $this->assertErrorRef($response, 'config.project_init.unknown_keys', ['%keys%' => 'notAProjectInitField']);
     }
 
     public function testAgentCoerceLeavesNonStringValuesUnchanged(): void
