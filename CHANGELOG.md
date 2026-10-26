@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Git repository test split (SCI-225):** `GitRepositoryTest` asserts process output and exceptions. Argv and `mustRun`/`run` mode live in `GitRepositoryWireContractTest`, one case per git invocation. Internal/dev-facing only.
+
 - **Handler error assertions (SCI-223):** ItemCreate, ConfluencePush, ItemDownload, ItemUpdate, and ConfigProjectInit handler tests assert message-ref keys and parameters instead of error-string substrings. ConfigProjectInit already stores a message ref (SCI-222), so those tests keep `assertErrorRef` and now include the two parameter checks that were missing. Internal/dev-facing only.
 
 - **Message refs for leftover English strings (SCI-222):** `config:project-init` errors are message refs with parameters. `stud push` reports commit and force-push outcomes through translation keys when a delegate returns an exit code. PR body building warns with a translation key when HTML conversion needs the PHP XML extension. `stud items:list` verbose output uses the `item.list.jql_query` translation for the JQL line.
