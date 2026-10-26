@@ -478,11 +478,8 @@ class GitRepositoryTest extends CommandTestCase
 
         $this->gitRepository->rebaseAutosquash('abc123');
 
-        // Verify backup file was cleaned up (line 155)
-        if ($scriptPath !== null) {
-            $backupPath = $scriptPath . '.bak';
-            $this->assertFalse($this->fileSystem->fileExists($backupPath));
-        }
+        $this->assertNotNull($scriptPath);
+        $this->assertFalse($this->fileSystem->fileExists($scriptPath . '.bak'));
     }
 
     public function testGetRepositoryOwnerWithSshUrl(): void
