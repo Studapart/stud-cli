@@ -386,6 +386,7 @@ item:
     section: Jira Tickets ophalen
     error_fetch: 'Fout bij ophalen van tickets: %error%'
     no_items: Geen tickets gevonden die overeenkomen met uw criteria.
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waarden: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear is geselecteerd maar LINEAR_API_KEY is niet geconfigureerd. Voer "stud config:init" uit of stel LINEAR_API_KEY in in ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Normale push mislukt. Nu 'stud please' (force-with-lease) uitvoeren?"
   confirm_flatten_publish: "De geschiedenis is herschreven. Publiceren met een veilige force-push?"
   note_uncommitted_left: "U heeft niet-gecommitte wijzigingen. De push gebruikte commits die al op deze branch staan; niet-gecommitte bestanden zijn niet meegenomen."
+  commit_created: "Commit gemaakt"
+  commit_failed: "Commit mislukt"
+  please_completed: "Force push voltooid"
+  please_failed: "Force push mislukt"
 commit_undo:
   error_not_repo: Niet in een git repository.
   error_no_commit: Er is geen commit om ongedaan te maken.
@@ -518,6 +523,9 @@ submit:
 
     Terugvallen op een eenvoudige link.'
   warning_issue_fetch: "Kon work item details niet ophalen voor PR-body: %error%\nVal terug op een eenvoudige link."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Pull Request aanmaken...
   success_created: '✅ Pull Request aangemaakt: %url%'
   warning_no_provider: Geen Git provider geconfigureerd voor dit project.

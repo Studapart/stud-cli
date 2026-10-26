@@ -386,6 +386,7 @@ item:
     section: Kry Jira Items
     error_fetch: 'Kon nie items kry nie: %error%'
     no_items: Geen items gevind wat by jou kriteria pas nie.
+    jql_query: "JQL Navraag: %jql%"
     error_invalid_sort: 'Ongeldige sorteerwaarde ''%value%''. Toegestane waardes: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear is gekies maar LINEAR_API_KEY is nie gekonfigureer nie. Voer "stud config:init" uit of stel LINEAR_API_KEY in ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Normale stoot het misluk. Voer nou 'stud please' (force-with-lease) uit?"
   confirm_flatten_publish: "Geskiedenis is herskryf. Publiseer dit met 'n veilige force-push?"
   note_uncommitted_left: "Jy het ongecommitte veranderinge. Die push het commits gebruik wat reeds op hierdie tak is; ongecommitte lêers is nie ingesluit nie."
+  commit_created: "Commit geskep"
+  commit_failed: "Commit het misluk"
+  please_completed: "Force push voltooi"
+  please_failed: "Force push het misluk"
 commit_undo:
   error_not_repo: Nie in 'n git repository nie.
   error_no_commit: Daar is geen commit om ongedaan te maak nie.
@@ -518,6 +523,9 @@ submit:
 
     Terugval na ''n eenvoudige skakel.'
   warning_issue_fetch: "Kon nie work item besonderhede kry vir PR liggaam nie: %error%\nVal terug op 'n eenvoudige skakel."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Skep Pull Request...
   success_created: '✅ Pull Request geskep: %url%'
   warning_no_provider: Geen Git verskaffer gekonfigureer vir hierdie projek nie.

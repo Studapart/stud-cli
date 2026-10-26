@@ -386,6 +386,7 @@ item:
     section: Λήψη Θεμάτων Jira
     error_fetch: 'Αποτυχία λήψης θεμάτων: %error%'
     no_items: Δεν βρέθηκαν θέματα που να ταιριάζουν με τα κριτήριά σας.
+    jql_query: "JQL Query: %jql%"
     error_invalid_sort: 'Μη έγκυρη τιμή ταξινόμησης ''%value%''. Επιτρεπόμενες τιμές: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Επιλέχθηκε Linear αλλά το LINEAR_API_KEY δεν έχει ρυθμιστεί. Εκτελέστε "stud config:init" ή ορίστε LINEAR_API_KEY στο ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Το κανονικό push απέτυχε. Εκτέλεση 'stud please' (force-with-lease) τώρα;"
   confirm_flatten_publish: "Το ιστορικό ξαναγράφτηκε. Να δημοσιευτεί με ασφαλές force-push;"
   note_uncommitted_left: "Έχετε μη committed αλλαγές. Το push χρησιμοποίησε commits που βρίσκονται ήδη σε αυτόν τον κλάδο· τα μη committed αρχεία δεν συμπεριλήφθηκαν."
+  commit_created: "Το commit δημιουργήθηκε"
+  commit_failed: "Το commit απέτυχε"
+  please_completed: "Το force push ολοκληρώθηκε"
+  please_failed: "Το force push απέτυχε"
 commit_undo:
   error_not_repo: Δεν βρίσκεστε σε git repository.
   error_no_commit: Δεν υπάρχει commit προς ακύρωση.
@@ -518,6 +523,9 @@ submit:
 
     Επιστροφή σε απλό σύνδεσμο.'
   warning_issue_fetch: "Δεν ήταν δυνατή η λήψη λεπτομερειών work item για το σώμα PR: %error%\nΕπιστροφή σε απλό σύνδεσμο."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Δημιουργία Pull Request...
   success_created: '✅ Pull Request δημιουργήθηκε: %url%'
   warning_no_provider: Δεν έχει ρυθμιστεί παροχέας Git για αυτό το έργο.

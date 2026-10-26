@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitHandler;
 use App\Handler\ConfigProjectInitPromptCollector;
+use App\Response\ConfigProjectInitResponse;
 use App\Service\GitRepository;
 use App\Service\GitSetupService;
 use PHPUnit\Framework\TestCase;
@@ -24,7 +26,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.not_git_repository', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.not_git_repository');
     }
 
     public function testAgentUnknownKeysReturnsError(): void
@@ -39,8 +41,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['badKey' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.unknown_keys', $response->getError());
-        $this->assertSame(['%keys%' => 'badKey'], $response->getErrorParameters());
+        $this->assertErrorRef($response, 'config.project_init.unknown_keys', ['%keys%' => 'badKey']);
     }
 
     public function testAgentReservedMigrationVersionReturnsError(): void
@@ -55,7 +56,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['migration_version' => '9'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.reserved_keys', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.reserved_keys');
     }
 
     public function testAgentInvalidTransitionIdReturnsError(): void
@@ -70,7 +71,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['transitionId' => 1.5], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testNoPatchesReturnsSuccessUnchanged(): void
@@ -151,7 +152,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['transitionId' => -1], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testInvalidGitProviderReturnsError(): void
@@ -166,7 +167,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['gitProvider' => 'bitbucket'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_git_provider', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_git_provider');
     }
 
     public function testCliPatchesMergeJiraDefaultProject(): void
@@ -230,8 +231,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['baseBranch' => 'gone'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.base_branch_error', $response->getError());
-        $this->assertSame(['%message%' => 'no such ref'], $response->getErrorParameters());
+        $this->assertErrorRef($response, 'config.project_init.base_branch_error', ['%message%' => 'no such ref']);
     }
 
     public function testAgentCoercesGitProviderString(): void
@@ -363,7 +363,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['notAProjectInitField' => 'x'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.unknown_keys', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.unknown_keys');
     }
 
     public function testAgentCoerceLeavesNonStringValuesUnchanged(): void
@@ -495,7 +495,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['issueTrackerProvider' => 'asana'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_issue_tracker_provider', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_issue_tracker_provider');
     }
 
     public function testAgentInvalidLinearTypeBranchPrefixesReturnsError(): void
@@ -510,7 +510,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['linearTypeBranchPrefixes' => 'not-a-map'], false, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testAgentSkipsLinearTypeBranchPrefixesWithEmptyTypeLabel(): void
@@ -580,7 +580,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testInteractiveInvalidLinearTypeBranchPrefixesEmptyValueReturnsError(): void
@@ -596,7 +596,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle([], true, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_linear_type_branch_prefixes', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_linear_type_branch_prefixes');
     }
 
     public function testInteractiveIgnoresUnknownPatchKeysFromCollector(): void
@@ -653,7 +653,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle([], false, false);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_transition_id', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_transition_id');
     }
 
     public function testAgentNeverInvokesPromptCollector(): void
@@ -807,7 +807,7 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['workItemLabels' => ['AI-Generated', 1]], true, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_label_list');
     }
 
     public function testAgentRejectsStringLabelList(): void
@@ -825,6 +825,19 @@ class ConfigProjectInitHandlerTest extends TestCase
         $response = $handler->handle(['pullRequestLabels' => 'AI-Generated'], true, true);
 
         $this->assertFalse($response->isSuccess());
-        $this->assertSame('config.project_init.invalid_label_list', $response->getError());
+        $this->assertErrorRef($response, 'config.project_init.invalid_label_list');
+    }
+
+    /**
+     * @param array<string, mixed>|null $parameters
+     */
+    private function assertErrorRef(ConfigProjectInitResponse $response, string $key, ?array $parameters = null): void
+    {
+        $message = $response->getErrorMessage();
+        $this->assertInstanceOf(MessageRef::class, $message);
+        $this->assertSame($key, $message->key);
+        if ($parameters !== null) {
+            $this->assertSame($parameters, $message->parameters);
+        }
     }
 }

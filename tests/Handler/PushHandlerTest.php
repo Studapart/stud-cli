@@ -62,7 +62,10 @@ class PushHandlerTest extends CommandTestCase
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertFalse($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'push.commit_failed');
     }
 
     public function testPushSuccess(): void
@@ -83,7 +86,10 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('push.commit_created', $response->data['commit']['message']);
     }
 
     public function testPushSkipsCommitWhenNothingStagedAndDirty(): void
@@ -302,7 +308,10 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $this->assertTrue($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertMessageRef($response->message, 'push.please_completed');
     }
 
     public function testPleaseFailureExitCodePropagates(): void
@@ -323,7 +332,10 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertFalse($handler->handle($this->io(), false, null, false, true, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, true, false, false, true);
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertMessageRef($response->getErrorMessage(), 'push.please_failed');
     }
 
     public function testNewSignatureUsesCommandResponses(): void

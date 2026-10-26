@@ -386,6 +386,7 @@ item:
     section: Récupération des tickets Jira
     error_fetch: 'Échec de la récupération des tickets : %error%'
     no_items: Aucun ticket trouvé correspondant à vos critères.
+    jql_query: "Requête JQL : %jql%"
     error_invalid_sort: 'Valeur de tri invalide ''%value%''. Valeurs acceptées : Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear est sélectionné mais LINEAR_API_KEY n''est pas configuré. Exécutez "stud config:init" ou définissez LINEAR_API_KEY dans ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Push normal échoué. Exécuter « stud please » (force-with-lease) maintenant ?"
   confirm_flatten_publish: "La fusion des commits fixup a réécrit l'historique. Le publier avec un force-push sûr ?"
   note_uncommitted_left: "Vous avez des modifications non commitées. Le push a utilisé les commits déjà sur cette branche ; les fichiers non commités n'ont pas été inclus."
+  commit_created: "Commit créé"
+  commit_failed: "Échec du commit"
+  please_completed: "Force push terminé"
+  please_failed: "Échec du force push"
 commit_undo:
   error_not_repo: Pas dans un dépôt git.
   error_no_commit: Il n'y a pas de commit à annuler.
@@ -518,6 +523,9 @@ submit:
 
     Retour à un simple lien.'
   warning_issue_fetch: "Impossible de récupérer les détails du work item pour le corps de la PR : %error%\nRetour à un simple lien."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Création de la Pull Request...
   success_created: '✅ Pull Request créée : %url%'
   warning_no_provider: Aucun fournisseur Git configuré pour ce projet.

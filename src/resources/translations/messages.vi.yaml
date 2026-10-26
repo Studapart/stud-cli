@@ -386,6 +386,7 @@ item:
     section: Đang lấy các mục Jira
     error_fetch: 'Không thể lấy các mục: %error%'
     no_items: Không tìm thấy mục nào phù hợp với tiêu chí của bạn.
+    jql_query: "Truy vấn JQL: %jql%"
     error_invalid_sort: 'Giá trị sắp xếp không hợp lệ ''%value%''. Giá trị được chấp nhận: Key, Status'
 issue_tracker_provider:
   missing_linear_api_key: 'Linear được chọn nhưng LINEAR_API_KEY chưa được cấu hình. Chạy "stud config:init" hoặc đặt LINEAR_API_KEY trong ~/.config/stud/config.yml.'
@@ -468,6 +469,10 @@ push:
   confirm_please: "Push thường thất bại. Chạy 'stud please' (force-with-lease) ngay?"
   confirm_flatten_publish: "Lịch sử đã được viết lại. Xuất bản bằng force-push an toàn?"
   note_uncommitted_left: "Bạn có thay đổi chưa commit. Push dùng các commit đã có trên nhánh; tệp chưa commit không được đưa vào."
+  commit_created: "Đã tạo commit"
+  commit_failed: "Tạo commit thất bại"
+  please_completed: "Force push hoàn tất"
+  please_failed: "Force push thất bại"
 commit_undo:
   error_not_repo: Không ở trong kho lưu trữ git.
   error_no_commit: Không có commit nào để hoàn tác.
@@ -518,6 +523,9 @@ submit:
 
     Quay lại liên kết đơn giản.'
   warning_issue_fetch: "Không thể lấy chi tiết work item cho nội dung PR: %error%\nQuay lại liên kết đơn giản."
+  warning_html_xml_missing: "HTML to Markdown conversion failed: PHP XML extension is missing.\nInstall it using:\n  Ubuntu/Debian: sudo apt-get install php-xml\n  Fedora/RHEL: sudo dnf install php-xml\n  macOS (Homebrew): brew install php-xml\nUsing raw HTML for PR description."
+  warning_html_conversion_failed: "HTML to Markdown conversion failed, using raw HTML: %error%"
+  note_html_converted: "Converted HTML to Markdown for PR description"
   creating: Đang tạo Pull Request...
   success_created: '✅ Pull Request đã được tạo: %url%'
   warning_no_provider: Chưa cấu hình nhà cung cấp Git cho dự án này.
