@@ -3,6 +3,7 @@
 namespace App\Tests;
 
 use App\DTO\MessageRef;
+use App\Response\WorkflowResponse;
 use App\Service\GitBranchService;
 use App\Service\GitRepository;
 use App\Service\IssueTrackerPort;
@@ -92,6 +93,27 @@ abstract class CommandTestCase extends TestCase
         }
 
         return $message;
+    }
+
+    /**
+     * @param array<string, mixed>|null $parameters
+     */
+    protected function assertWorkflowEntry(WorkflowResponse $response, string $key, ?array $parameters = null): MessageRef
+    {
+        foreach ($response->entries as $entry) {
+            if ($entry->message instanceof MessageRef && $entry->message->key === $key) {
+                return $this->assertMessageRef($entry->message, $key, $parameters);
+            }
+        }
+
+        $present = [];
+        foreach ($response->entries as $entry) {
+            if ($entry->message instanceof MessageRef) {
+                $present[] = $entry->message->key;
+            }
+        }
+
+        $this->fail(sprintf('No workflow entry "%s". Present: %s', $key, implode(', ', $present)));
     }
 
     /**

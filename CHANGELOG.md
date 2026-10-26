@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Workflow handler test outcomes (SCI-224):** `ItemStartHandlerTest` asserts message refs, response fields, and exit codes instead of mock call order. `CommandTestCase::assertWorkflowEntry()` checks a normal-verbosity workflow entry. Internal/dev-facing only.
+
 - **Git repository test split (SCI-225):** `GitRepositoryTest` asserts process output and exceptions. Argv and `mustRun`/`run` mode live in `GitRepositoryWireContractTest`, one case per git invocation. Internal/dev-facing only.
 
 - **Handler error assertions (SCI-223):** ItemCreate, ConfluencePush, ItemDownload, ItemUpdate, and ConfigProjectInit handler tests assert message-ref keys and parameters instead of error-string substrings. ConfigProjectInit already stores a message ref (SCI-222), so those tests keep `assertErrorRef` and now include the two parameter checks that were missing. Internal/dev-facing only.
