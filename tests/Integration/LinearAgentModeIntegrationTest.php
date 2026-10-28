@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
+use App\Service\TranslationService;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
@@ -84,9 +86,10 @@ final class LinearAgentModeIntegrationTest extends TestCase
         self::assertSame('', $result['stderr'], 'agent mode must not log resolution errors to stderr');
         $decoded = $this->assertSingleJsonObject($result['stdout']);
         self::assertFalse($decoded['success'] ?? true);
-        self::assertStringContainsString('Allowed values', (string) ($decoded['error'] ?? ''));
-        self::assertStringContainsString('jira', (string) ($decoded['error'] ?? ''));
-        self::assertStringContainsString('linear', (string) ($decoded['error'] ?? ''));
+        self::assertSame(
+            $this->agentText('issue_tracker_provider.invalid_override', ['%value%' => IssueTrackerProvider::Auto->value]),
+            $decoded['error'],
+        );
     }
 
     public function testItemsListAgentModeReturnsSlimIssues(): void
@@ -178,9 +181,10 @@ final class LinearAgentModeIntegrationTest extends TestCase
         $decoded = $this->assertSingleJsonObject($result['stdout']);
         self::assertFalse($decoded['success'] ?? true);
         self::assertSame('fail', $decoded['data']['projectRollup'] ?? null);
-        $noticeText = json_encode($decoded['diagnostics']['notices'] ?? []);
-        self::assertIsString($noticeText);
-        self::assertStringContainsString('could not be parsed', $noticeText);
+        self::assertContains(
+            $this->agentText('config.show.project_config_unreadable'),
+            array_column($decoded['diagnostics']['notices'] ?? [], 'message'),
+        );
     }
 
     public function testConfigValidateGlobalOnlyWhenNoProjectConfig(): void
@@ -496,6 +500,16 @@ YAML,
         );
 
         return $decoded;
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    private function agentText(string $key, array $parameters = []): string
+    {
+        $translator = new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations');
+
+        return $translator->renderForAgentText(MessageRef::key($key, $parameters));
     }
 
     protected function removeDirectory(string $directory): void

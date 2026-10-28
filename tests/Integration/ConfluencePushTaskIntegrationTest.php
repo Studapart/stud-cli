@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\DTO\MessageRef;
+use App\Service\TranslationService;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
@@ -19,8 +21,9 @@ class ConfluencePushTaskIntegrationTest extends TestCase
 {
     public function testAgentModeWithFileNotReadableOutputsErrorAndExits(): void
     {
+        $path = '/nonexistent/' . bin2hex(random_bytes(8)) . '.md';
         $input = (string) json_encode([
-            'file' => '/nonexistent/' . bin2hex(random_bytes(8)) . '.md',
+            'file' => $path,
             'page' => '123',
             'url' => 'https://example.com',
         ]);
@@ -55,6 +58,8 @@ class ConfluencePushTaskIntegrationTest extends TestCase
         self::assertIsArray($decoded, 'Expected JSON line in output. Output: ' . $fullOutput);
         self::assertFalse($decoded['success'] ?? true);
         self::assertArrayHasKey('error', $decoded);
-        self::assertStringContainsString('Cannot read file', $decoded['error'] ?? '');
+        $translator = new TranslationService('en', dirname(__DIR__, 2) . '/src/resources/translations');
+        $expected = $translator->renderForAgentText(MessageRef::key('confluence.push.error_file_not_readable', ['%path%' => $path]));
+        self::assertSame($expected, $decoded['error']);
     }
 }

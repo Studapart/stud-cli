@@ -93,7 +93,7 @@ vendor/bin/phpunit
 ## Pull Request Process
 
 1. Create a branch from `develop` (e.g. `feat/PROJ-123-add-thing` if you use Jira, or `feat/add-thing`).
-2. Implement your change and add/update tests. Update README and/or CONVENTIONS if behavior or conventions change.
+2. Implement your change and add/update tests. Update README and/or CONVENTIONS if behavior or conventions change. For new or changed tests, state when the test fails; it should fail only when the behavior under test regresses (see CONVENTIONS.md § Assertion quality).
 3. Add a new entry under `## [Unreleased]` in **CHANGELOG.md** only; do **not** add a new version header (releases are cut separately).
 4. Ensure CI passes (PHP-CS-Fixer, PHPStan, PHPUnit).
 5. Open a PR against `develop` with a clear title and description; link any related issue.
