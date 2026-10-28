@@ -66,7 +66,7 @@ class GitWorkflowCliParityIntegrationTest extends TestCase
 
         self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
         self::assertSame('', $this->runProcess(['git', 'status', '--short'], $repo)->getOutput());
-        self::assertStringContainsString('test commit', $this->runProcess(['git', 'log', '-1', '--pretty=%B'], $repo)->getOutput());
+        self::assertSame('test commit', trim($this->runProcess(['git', 'log', '-1', '--pretty=%B'], $repo)->getOutput()));
     }
 
     public function testPushShortFlagsStageCommitAndPush(): void
@@ -78,7 +78,7 @@ class GitWorkflowCliParityIntegrationTest extends TestCase
 
         self::assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
         self::assertSame('', $this->runProcess(['git', 'status', '--short'], $repo)->getOutput());
-        self::assertStringContainsString('push commit', $this->runProcess(['git', 'log', '-1', '--pretty=%B'], $repo)->getOutput());
+        self::assertSame('push commit', trim($this->runProcess(['git', 'log', '-1', '--pretty=%B'], $repo)->getOutput()));
         self::assertSame(0, $this->runProcess(['git', 'rev-parse', '--verify', 'feature/push-short'], $this->tempDir . '/remote.git')->getExitCode());
     }
 

@@ -64,7 +64,7 @@ class AgentModeParityIntegrationTest extends TestCase
         self::assertSame(1, $result['exitCode'], 'stderr: ' . $result['stderr']);
         $decoded = $this->assertSingleJsonObject($result['stdout']);
         self::assertFalse($decoded['success'] ?? true);
-        self::assertStringContainsString('Invalid JSON', (string) ($decoded['error'] ?? ''));
+        self::assertStringStartsWith('Invalid JSON', $decoded['error']);
     }
 
     public function testConfigShowAcceptsQuietInAgentMode(): void
@@ -122,12 +122,13 @@ class AgentModeParityIntegrationTest extends TestCase
         $stdout = $proc->getOutput();
         $stderr = $proc->getErrorOutput();
         $fullOutput = $stdout . $stderr;
+        $decoded = json_decode($stdout, true);
+        self::assertIsArray($decoded, 'Output must be valid JSON');
+        self::assertArrayHasKey('success', $decoded);
 
         // Parity: "fields" as string must be read and passed to handler (no file read error, no undefined key).
         self::assertStringNotContainsString('Cannot read input file', $fullOutput);
         self::assertStringNotContainsString('Undefined array key "fields"', $fullOutput);
-        $decoded = json_decode($stdout, true);
-        self::assertIsArray($decoded, 'Output must be valid JSON');
     }
 
     public function testHelpAcceptsCommandNameInAgentMode(): void

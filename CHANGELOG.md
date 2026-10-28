@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Test outcome asserts (SCI-227):** Update-handler tests assert message refs, recorded workflow entries, and the binary on disk. Integration tests assert catalog-rendered agent text, JSON fields, and exact commit subjects. Handler and responder tests keep a prose-assert allowlist. Internal/dev-facing only.
+
 - **Responder and help test outcomes (SCI-226):** Search, item list, item show, and PR comment responder tests, plus help and command-reference tests, assert translation keys and agent JSON fields instead of English prose. Item list verbose output already uses `item.list.jql_query`, so those tests keep that key and also require `currentUser()`. Internal/dev-facing only.
 
 - **Workflow handler test outcomes (SCI-224):** `ItemStartHandlerTest` asserts message refs, response fields, and exit codes instead of mock call order. `CommandTestCase::assertWorkflowEntry()` checks a normal-verbosity workflow entry. Internal/dev-facing only.
