@@ -65,7 +65,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
     public function testHandleWithDirtyWorkingDirectory(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn(" M file.php\n");
 
@@ -82,18 +82,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertMessageRef($response->getErrorMessage(), 'item.takeover.error_dirty_working');
         $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFound(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Issue not found', 'HTTP 404', 404));
 
         $output = new BufferedOutput();
@@ -109,18 +109,18 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertMessageRef($response->getErrorMessage(), 'item.takeover.error_not_found', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 1);
     }
 
     public function testHandleWithIssueNotFoundApiException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "PROJ-123".', 'HTTP 404: Not Found', 404));
 
         $handler = new ItemTakeoverHandler(
@@ -136,8 +136,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $response = $handler->handle('PROJ-123');
 
+        $this->assertMessageRef($response->getErrorMessage(), 'item.takeover.error_not_found', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 1);
-        $this->assertNotEmpty($response->getErrors());
     }
 
     public function testHandleWithAssignmentFailure(): void
@@ -153,29 +153,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
-            ->with('PROJ-123')
             ->willThrowException(new \RuntimeException('Assignment failed'));
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
 
-        $this->itemStartHandler->expects($this->once())
+        $this->itemStartHandler
             ->method('handle')
             ->willReturn(WorkflowResponse::fromExitCode(0));
 
@@ -192,6 +188,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.assign_warning');
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -208,30 +205,30 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
 
+        $delegatedRecorder = new \App\DTO\WorkflowRecorder();
+        $delegatedRecorder->addSuccess(\App\Contract\WorkflowEntryRecorder::VERBOSITY_NORMAL, \App\DTO\MessageRef::key('item.start.success', ['branch' => 'feat/PROJ-123-title', 'base' => 'origin/develop']));
+        $delegated = $delegatedRecorder->toResponse(0);
         $this->itemStartHandler->expects($this->once())
             ->method('handle')
-            ->willReturn(WorkflowResponse::fromExitCode(0));
+            ->willReturn($delegated);
 
         $output = new BufferedOutput();
         $input = new ArrayInput([]);
@@ -246,6 +243,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.start.success', ['branch' => 'feat/PROJ-123-title', 'base' => 'origin/develop']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -262,18 +260,16 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
-            ->with('PROJ-123')
             ->willThrowException(new \App\Exception\ApiException('Failed to assign issue.', 'HTTP 403: Forbidden', 403));
 
         $this->prompt->method('confirm')
@@ -290,15 +286,13 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             $this->prompt
         );
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
 
-        $this->itemStartHandler->expects($this->once())
+        $this->itemStartHandler
             ->method('handle')
             ->willReturn(WorkflowResponse::fromExitCode(0));
 
@@ -315,6 +309,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
 
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.assign_warning');
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -331,7 +326,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
@@ -340,19 +335,17 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -360,9 +353,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -370,9 +362,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $output = new BufferedOutput();
@@ -388,6 +379,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -404,28 +396,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -433,9 +422,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -443,9 +431,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $output = new BufferedOutput();
@@ -461,6 +448,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -477,37 +465,33 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('feat/PROJ-123-title');
 
         $this->gitBranchService->expects($this->never())
             ->method('switchBranch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -515,9 +499,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $output = new BufferedOutput();
@@ -533,6 +516,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.already_on_branch', ['branch' => 'feat/PROJ-123-title']);
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -549,28 +534,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => ['feat/PROJ-123-title'], 'remote' => []]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -578,9 +560,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', null)
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -588,9 +569,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(false);
 
         // Create a mock IO that will return true for confirm() and handle other methods
@@ -607,6 +587,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.warning_wrong_base', ['base' => 'origin/develop']);
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -623,28 +605,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -652,9 +631,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 2,
                 'ahead_remote' => 0,
@@ -662,9 +640,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $this->gitRepository->expects($this->once())
@@ -684,6 +661,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -700,28 +678,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -729,9 +704,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 2,
                 'ahead_remote' => 1,
@@ -739,9 +713,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
@@ -761,6 +734,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.warning_diverged');
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -777,25 +752,22 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => []]);
 
         $this->itemStartHandler->expects($this->never())
@@ -814,6 +786,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.no_branches', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -830,31 +803,28 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn([
                 'local' => ['feat/PROJ-123-branch1'],
                 'remote' => ['feat/PROJ-123-branch2', 'fix/PROJ-123-branch3'],
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -862,9 +832,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-branch2');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-branch2', 'origin/develop', 'origin/feat/PROJ-123-branch2')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -872,9 +841,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-branch2', 'origin/develop')
             ->willReturn(true);
 
         // Create a mock IO that will return a choice selection
@@ -902,6 +870,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -918,31 +887,28 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn([
                 'local' => ['feat/PROJ-123-branch1'],
                 'remote' => ['feat/PROJ-123-branch2', 'fix/PROJ-123-branch3'],
             ]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -950,9 +916,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-branch2');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-branch2', 'origin/develop', 'origin/feat/PROJ-123-branch2')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -960,19 +925,17 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-branch2', 'origin/develop')
             ->willReturn(true);
 
         $this->prompt->expects($this->never())
             ->method('choice');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $response = $this->handler->handle('PROJ-123', true);
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -989,25 +952,22 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn([
                 'local' => ['feat/PROJ-123-branch1'],
                 'remote' => ['feat/PROJ-123-branch2'],
@@ -1023,8 +983,6 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('getCurrentBranchName');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
         $response = $this->handler->handle('PROJ-123');
 
         $this->assertWorkflowExitCode($response, 0);
@@ -1043,25 +1001,22 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
         $output = new BufferedOutput();
@@ -1075,6 +1030,9 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $io = new SymfonyStyle($input, $output);
 
         $handler = $this->createHandlerWithRealPrompt($io);
+        $this->gitBranchService->expects($this->never())
+            ->method('switchToRemoteBranch');
+
         $response = $handler->handle('PROJ-123');
 
         $this->assertWorkflowExitCode($response, 0);
@@ -1093,28 +1051,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -1122,9 +1077,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 3, // Branch is ahead of remote
@@ -1132,9 +1086,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 5,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
@@ -1153,6 +1106,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -1169,28 +1123,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -1198,9 +1149,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -1208,9 +1158,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 0,
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $output = new BufferedOutput();
@@ -1226,6 +1175,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 
@@ -1242,28 +1192,25 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             issueType: 'story'
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('PROJ-123')
             ->willReturn($workItem);
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('assign')
             ->with('PROJ-123');
 
-        $this->gitRepository->expects($this->once())
-            ->method('fetch');
+        $this->gitRepository->method('fetch');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('findBranchesByIssueKey')
-            ->with('PROJ-123')
             ->willReturn(['local' => [], 'remote' => ['feat/PROJ-123-title']]);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('develop');
 
@@ -1271,9 +1218,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
             ->method('switchToRemoteBranch')
             ->with('feat/PROJ-123-title');
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchStatus')
-            ->with('feat/PROJ-123-title', 'origin/develop', 'origin/feat/PROJ-123-title')
             ->willReturn([
                 'behind_remote' => 0,
                 'ahead_remote' => 0,
@@ -1281,9 +1227,8 @@ class ItemTakeoverHandlerTest extends CommandTestCase
                 'ahead_base' => 0, // Branch is in sync with base
             ]);
 
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('isBranchBasedOn')
-            ->with('feat/PROJ-123-title', 'origin/develop')
             ->willReturn(true);
 
         $output = new BufferedOutput();
@@ -1299,6 +1244,7 @@ class ItemTakeoverHandlerTest extends CommandTestCase
         $handler = $this->createHandlerWithRealPrompt($io);
         $response = $handler->handle('PROJ-123');
 
+        $this->assertWorkflowEntry($response, 'item.takeover.success_took_over', ['key' => 'PROJ-123']);
         $this->assertWorkflowExitCode($response, 0);
     }
 }

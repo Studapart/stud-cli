@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Responder and help test outcomes (SCI-226):** Search, item list, item show, and PR comment responder tests, plus help and command-reference tests, assert translation keys and agent JSON fields instead of English prose. Item list verbose output already uses `item.list.jql_query`, so those tests keep that key and also require `currentUser()`. Internal/dev-facing only.
 
-- **Workflow handler test outcomes (SCI-224):** `ItemStartHandlerTest` asserts message refs, response fields, and exit codes instead of mock call order. `CommandTestCase::assertWorkflowEntry()` checks a normal-verbosity workflow entry. Internal/dev-facing only.
+- **Workflow handler test outcomes (SCI-224):** `ItemStartHandlerTest`, `ItemTakeoverHandlerTest`, `BranchRenameHandlerTest`, `CommitHandlerTest`, `PushHandlerTest`, and `SubmitHandlerTest` assert message refs, response fields, and exit codes instead of mock call order. `CommandTestCase::assertWorkflowEntry()` checks a normal-verbosity workflow entry. Internal/dev-facing only.
 
 - **Git repository test split (SCI-225):** `GitRepositoryTest` asserts process output and exceptions. Argv and `mustRun`/`run` mode live in `GitRepositoryWireContractTest`, one case per git invocation. Internal/dev-facing only.
 

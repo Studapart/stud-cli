@@ -12,9 +12,6 @@ use App\Service\GithubGitHostingAdapter;
 use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 class BranchRenameHandlerTest extends CommandTestCase
 {
@@ -37,7 +34,7 @@ class BranchRenameHandlerTest extends CommandTestCase
     ): BranchRenameHandler {
         $prompt ??= $this->prompt;
         $githubProvider = $withGithubGitHostingAdapter ? $this->githubProvider : null;
-        $htmlConverter = $this->createMock(CanConvertToMarkdownInterface::class);
+        $htmlConverter = $this->createStub(CanConvertToMarkdownInterface::class);
 
         return new BranchRenameHandler(
             $this->gitRepository,
@@ -60,32 +57,30 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithDirtyWorkingDirectory(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, null)->exitCode;
+        $response = $this->handler->handle(null, null, null);
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_dirty_working');
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithBranchNotFound(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn(new WorkItem(
                 id: '10001',
                 key: 'TPW-35',
@@ -97,60 +92,51 @@ class BranchRenameHandlerTest extends CommandTestCase
                 issueType: 'story',
                 components: ['api'],
             ));
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'feat/TPW-35-test' ? false : false; // Both return false
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, null)->exitCode;
+        $response = $this->handler->handle(null, null, null);
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_branch_not_found', ['branch' => 'current-branch']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithExplicitName(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
-                // First call: check if new branch exists (should be false)
-                // Second call: check if old branch exists (should be true)
-                static $callCount = 0;
-                $callCount++;
-                if ($callCount === 1) {
-                    return $branch === 'new-branch' ? false : true;
-                }
-
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithKeyParameter(): void
@@ -167,37 +153,37 @@ class BranchRenameHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('TPW-35')
             ->willReturn($workItem);
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('old-branch', 'feat/TPW-35-my-awesome-feature');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, 'TPW-35', null)->exitCode;
+        $response = $this->handler->handle(null, 'TPW-35', null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'feat/TPW-35-my-awesome-feature']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithJiraKeyAsFirstArgument(): void
@@ -215,39 +201,39 @@ class BranchRenameHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('current-branch');
         $this->issueTracker->expects($this->once())
             ->method('getIssue')
             ->with('SCI-34')
             ->willReturn($workItem);
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'current-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('current-branch', 'feat/SCI-34-test-feature');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
         // Pass SCI-34 as branchName (first arg), null as key (second arg)
         // Handler should detect it's a Jira key and treat it as key instead
-        $result = $this->handler->handle('SCI-34', null, null)->exitCode;
+        $response = $this->handler->handle('SCI-34', null, null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'current-branch', 'newName' => 'feat/SCI-34-test-feature']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithKeyExtractedFromBranch(): void
@@ -264,132 +250,126 @@ class BranchRenameHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'feat/TPW-35-old-name';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
         $this->gitBranchService->expects($this->once())
             ->method('renameLocalBranch')
             ->with('feat/TPW-35-old-name', 'feat/TPW-35-my-awesome-feature');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, null)->exitCode;
+        $response = $this->handler->handle(null, null, null);
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'feat/TPW-35-old-name', 'newName' => 'feat/TPW-35-my-awesome-feature']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithNewNameAlreadyExists(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('localBranchExists')
-            ->with('new-branch')
             ->willReturn(true);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_new_name_exists', ['name' => 'new-branch']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithInvalidBranchName(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, 'invalid..branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'invalid..branch');
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_invalid_name', ['name' => 'invalid..branch']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithInvalidBranchNameAtSymbol(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         // This will fail the regex first, but test the flow
-        $result = $this->handler->handle(null, null, 'branch@{ref}')->exitCode;
+        $response = $this->handler->handle(null, null, 'branch@{ref}');
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_invalid_name', ['name' => 'branch@{ref}']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithInvalidBranchNameBackslash(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         // This will fail the regex first, but test the flow
-        $result = $this->handler->handle(null, null, 'branch\\name')->exitCode;
+        $response = $this->handler->handle(null, null, 'branch\\name');
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_invalid_name', ['name' => 'branch\\name']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithRemoteOnlyBranch(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 // First call: check if new branch exists (should be false)
                 // Second call: check if old branch exists locally (should be false)
                 return false;
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 // First call: check if new branch exists remotely (should be false)
@@ -399,68 +379,67 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithBothLocalAndRemote(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsBehind')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $this->gitBranchService->expects($this->once())
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPullRequestUpdate(): void
     {
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn(''); // Once for BranchRenameHandler, once for SubmitHandler
         // getCurrentBranchName is called multiple times:
@@ -474,35 +453,34 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->atLeast(2))
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler calls
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getMergeBase')
             ->willReturn('abc123');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findFirstLogicalSha')
             ->willReturn('def456');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
                 id: '10001',
                 key: 'SCI-34',
@@ -515,290 +493,290 @@ class BranchRenameHandlerTest extends CommandTestCase
                 components: ['api'],
                 renderedDescription: 'Test description',
             ));
-        $this->githubProvider->expects($this->exactly(2))
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturnOnConsecutiveCalls($pr, ['number' => 456]); // First call finds old PR, second finds new PR
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('createPullRequest')
-            ->with($this->isInstanceOf(\App\DTO\PullRequestData::class))
             ->willReturn(['number' => 456, 'html_url' => 'https://github.com/test/pr/456']);
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('createComment')
             ->with(456, 'Branch renamed from `old-branch` to `new-branch`');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithKeyNotFound(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, 'TPW-35', null)->exitCode;
+        $response = $this->handler->handle(null, 'TPW-35', null);
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_key_not_found', ['key' => 'TPW-35']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoKeyInBranch(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, null)->exitCode;
+        $response = $this->handler->handle(null, null, null);
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.error_no_key_in_branch', ['branch' => 'old-branch']);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithRemoteOnlyBranchUserDeclines(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturn(false);
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(false);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $this->gitBranchService->expects($this->never())
+            ->method('renameLocalBranch');
 
-        $this->assertSame(0, $result);
+        $response = $this->handler->handle(null, null, 'new-branch');
+
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithBranchSyncAndRebase(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsBehind')
             ->willReturn(2);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('rebase')
             ->with('origin/old-branch');
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameRemoteBranch')
             ->with('old-branch', 'new-branch', 'origin');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithBranchSyncRebaseFails(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsBehind')
             ->willReturn(2);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('rebase')
             ->willThrowException(new \RuntimeException('Rebase failed'));
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(1, $result);
+        $this->assertMessageRef($response->getErrorMessage(), 'branch.rename.rebase_failed');
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithUserDeclinesConfirmation(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(false);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $this->gitBranchService->expects($this->never())
+            ->method('renameLocalBranch');
 
-        $this->assertSame(0, $result);
+        $response = $this->handler->handle(null, null, 'new-branch');
+
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithRemoteBranchRenameException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturnCallback(function ($remote, $branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsBehind')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('getBranchCommitsAhead')
             ->willReturn(0);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('canRebaseBranch')
             ->willReturn(true);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameRemoteBranch')
             ->willThrowException(new \RuntimeException('Remote rename failed'));
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn(null);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrFindException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willThrowException(new \RuntimeException('PR not found'));
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrUpdateSuccess(): void
     {
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
         $this->gitRepository->expects($this->atLeast(4))
@@ -807,34 +785,33 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->atLeast(2))
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getMergeBase')
             ->willReturn('abc123');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findFirstLogicalSha')
             ->willReturn('def456');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
                 id: '10001',
                 key: 'SCI-34',
@@ -847,7 +824,7 @@ class BranchRenameHandlerTest extends CommandTestCase
                 components: ['api'],
                 renderedDescription: 'Test description',
             ));
-        $this->githubProvider->expects($this->exactly(2))
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturnOnConsecutiveCalls($pr, ['number' => 456]);
         $this->githubProvider->expects($this->once())
@@ -858,55 +835,55 @@ class BranchRenameHandlerTest extends CommandTestCase
             ->method('createComment')
             ->with(456, 'Branch renamed from `old-branch` to `new-branch`');
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrUpdateNoNumber(): void
     {
         $pr = ['head' => ['ref' => 'old-branch']]; // Missing 'number' key
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn($pr);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrCommentException(): void
     {
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
         $this->gitRepository->expects($this->atLeast(4))
@@ -915,34 +892,33 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->atLeast(2))
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getMergeBase')
             ->willReturn('abc123');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findFirstLogicalSha')
             ->willReturn('def456');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCommitMessage')
             ->willReturn('[SCI-34] Test commit');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('SCI-34', true)
             ->willReturn(new \App\DTO\WorkItem(
                 id: '10001',
                 key: 'SCI-34',
@@ -955,31 +931,29 @@ class BranchRenameHandlerTest extends CommandTestCase
                 components: ['api'],
                 renderedDescription: 'Test description',
             ));
-        $this->githubProvider->expects($this->exactly(2))
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturnOnConsecutiveCalls($pr, ['number' => 456]);
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('createPullRequest')
-            ->with($this->isInstanceOf(\App\DTO\PullRequestData::class))
             ->willReturn(['number' => 456, 'html_url' => 'https://github.com/test/pr/456']);
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('createComment')
-            ->with(456, 'Branch renamed from `old-branch` to `new-branch`')
             ->willThrowException(new \RuntimeException('Comment failed'));
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrCreationFailed(): void
     {
         $pr = ['number' => 123, 'head' => ['ref' => 'old-branch']];
 
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
         $this->gitRepository->expects($this->atLeast(3))
@@ -988,39 +962,39 @@ class BranchRenameHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->atLeast(1))
             ->method('getRepositoryOwner')
             ->willReturn('owner');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
         // SubmitHandler will fail because findFirstLogicalSha returns null
         $pushProcess = $this->createMock(\Symfony\Component\Process\Process::class);
         $pushProcess->method('isSuccessful')->willReturn(true);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('pushHeadToOrigin')
             ->willReturn($pushProcess);
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getMergeBase')
             ->willReturn('abc123');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findFirstLogicalSha')
             ->willReturn(null); // This will cause SubmitHandler to return 1
-        $this->githubProvider->expects($this->once())
+        $this->githubProvider
             ->method('findPullRequestByBranch')
             ->willReturn($pr);
 
-        $io = $this->createMock(SymfonyStyle::class);
         $this->prompt->method('confirm')->willReturn(true);
 
-        $result = $this->handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $this->handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testValidateBranchNameWithVariousInvalidNames(): void
@@ -1067,26 +1041,23 @@ class BranchRenameHandlerTest extends CommandTestCase
 
     public function testHandleWithKeyExtractedFromBranchException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('feat/TPW-35-old-name');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willThrowException(new \Exception('Issue not found'));
 
-        $output = new BufferedOutput();
-        $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $result = $this->handler->handle(null, null, null)->exitCode;
+        $response = $this->handler->handle(null, null, null);
 
-        $this->assertSame(1, $result);
+        $this->assertSame(1, $response->exitCode);
     }
 
     public function testHandleWithNoGithubGitHostingAdapter(): void
@@ -1095,29 +1066,29 @@ class BranchRenameHandlerTest extends CommandTestCase
         $prompt->method('confirm')->willReturn(true);
         $handler = $this->createBranchRenameHandler($prompt, false);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getCurrentBranchName')
             ->willReturn('old-branch');
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('localBranchExists')
             ->willReturnCallback(function ($branch) {
                 return $branch === 'old-branch';
             });
-        $this->gitRepository->expects($this->exactly(2))
+        $this->gitRepository
             ->method('remoteBranchExists')
             ->willReturn(false);
-        $this->gitBranchService->expects($this->once())
+        $this->gitBranchService
             ->method('renameLocalBranch')
             ->with('old-branch', 'new-branch');
 
-        $io = $this->createMock(SymfonyStyle::class);
 
-        $result = $handler->handle(null, null, 'new-branch')->exitCode;
+        $response = $handler->handle(null, null, 'new-branch');
 
-        $this->assertSame(0, $result);
+        $this->assertWorkflowEntry($response, 'branch.rename.success', ['oldName' => 'old-branch', 'newName' => 'new-branch']);
+        $this->assertSame(0, $response->exitCode);
     }
 
     public function testHandleWithPrUpdateNoGithubGitHostingAdapter(): void
