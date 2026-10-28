@@ -39,14 +39,10 @@ class ItemShowResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
+            ->with('item.show.section {"key":"TPW-35"}');
         $this->io->expects($this->once())
             ->method('error')
-            ->with($this->callback(function ($message) {
-                return is_string($message) && ! empty($message);
-            }));
+            ->with('item.show.error_not_found {"key":"TPW-35"}');
         $this->io->expects($this->never())
             ->method('definitionList');
 
@@ -69,43 +65,30 @@ class ItemShowResponderTest extends CommandTestCase
         );
         $response = ItemShowResponse::success($issue);
 
+        $sections = [];
         $this->io->expects($this->atLeastOnce())
             ->method('section')
-            ->with($this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
+            ->willReturnCallback(function (string $title) use (&$sections): void {
+                $sections[] = $title;
+            });
         $this->io->expects($this->once())
             ->method('definitionList')
             ->with(
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('TPW-35', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('Test Title', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('In Progress', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('John Doe', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('Task', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && ! empty($arg);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('https://your-company.atlassian.net/browse/TPW-35', $arg, true);
-                }),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('item.show.label_none', $arg, true);
-                })
+                ['item.show.label_key' => 'TPW-35'],
+                ['item.show.label_title' => 'Test Title'],
+                ['item.show.label_status' => 'In Progress'],
+                ['item.show.label_assignee' => 'John Doe'],
+                ['item.show.label_type' => 'Task'],
+                ['item.show.label_labels' => 'label1, label2'],
+                ['item.show.label_link' => 'https://your-company.atlassian.net/browse/TPW-35'],
+                ['item.show.label_attachments' => 'item.show.label_none'],
             );
         $this->io->expects($this->never())
             ->method('error');
 
         $this->responder->respond($this->io, $response, 'TPW-35');
+
+        $this->assertContains('item.show.section {"key":"TPW-35"}', $sections);
     }
 
     public function testRespondDisplaysVerboseOutputWhenVerbose(): void
@@ -134,7 +117,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder->respond($io, $response, 'TPW-35');
 
         $output = $this->getOutput($io);
-        $this->assertStringContainsString('TPW-35', $output);
+        $this->assertStringContainsString('item.show.fetching {"key":"TPW-35"}', $output);
     }
 
     public function testRespondDisplaysDescriptionSections(): void
@@ -154,11 +137,12 @@ class ItemShowResponderTest extends CommandTestCase
         );
         $response = ItemShowResponse::success($issue);
 
+        $sections = [];
         $this->io->expects($this->atLeastOnce())
             ->method('section')
-            ->with($this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
+            ->willReturnCallback(function (string $title) use (&$sections): void {
+                $sections[] = $title;
+            });
         $this->io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($content) {
@@ -166,6 +150,10 @@ class ItemShowResponderTest extends CommandTestCase
             }));
 
         $this->responder->respond($this->io, $response, 'TPW-35');
+
+        $this->assertContains('item.show.section {"key":"TPW-35"}', $sections);
+        $this->assertContains('Title: Test Feature', $sections);
+        $this->assertContains('User Story', $sections);
     }
 
     public function testRespondHandlesDescriptionSectionWithEmptyContent(): void
@@ -198,13 +186,18 @@ class ItemShowResponderTest extends CommandTestCase
         );
         $response = ItemShowResponse::success($issue);
 
+        $sections = [];
         $io->expects($this->atLeastOnce())
             ->method('section')
-            ->with($this->callback(fn ($t) => is_string($t) && $t !== ''));
+            ->willReturnCallback(function (string $title) use (&$sections): void {
+                $sections[] = $title;
+            });
         $io->expects($this->once())
             ->method('definitionList');
 
         $responder->respond($io, $response, 'TPW-35');
+
+        $this->assertContains('SectionWithNoContent', $sections);
     }
 
     public function testRespondHandlesEmptyDescription(): void
@@ -225,9 +218,7 @@ class ItemShowResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
+            ->with('item.show.section {"key":"TPW-35"}');
         $this->io->expects($this->once())
             ->method('definitionList');
         $this->io->expects($this->never())
@@ -260,14 +251,9 @@ class ItemShowResponderTest extends CommandTestCase
                 $this->anything(),
                 $this->anything(),
                 $this->anything(),
-                $this->callback(function ($arg) {
-                    // Should contain translated "none" label
-                    return is_array($arg) && ! empty($arg);
-                }),
+                ['item.show.label_labels' => 'item.show.label_none'],
                 $this->anything(),
-                $this->callback(function ($arg) {
-                    return is_array($arg) && in_array('item.show.label_none', $arg, true);
-                })
+                ['item.show.label_attachments' => 'item.show.label_none'],
             );
 
         $this->responder->respond($this->io, $response, 'TPW-35');
@@ -298,7 +284,6 @@ class ItemShowResponderTest extends CommandTestCase
             null
         );
         $response = ItemShowResponse::success($issue);
-        $io = $this->createMock(SymfonyStyle::class);
 
         $descriptionFormatter->expects($this->once())
             ->method('parseSections')
@@ -331,9 +316,7 @@ class ItemShowResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->callback(function ($title) {
-                return is_string($title) && ! empty($title);
-            }));
+            ->with('item.show.section {"key":"TPW-35"}');
         $this->io->expects($this->never())
             ->method('definitionList');
         $this->io->expects($this->never())
@@ -344,7 +327,7 @@ class ItemShowResponderTest extends CommandTestCase
 
     public function testRespondDisplaysContentWithListsAndText(): void
     {
-        $description = "Regular text before\n[ ] Checkbox item\nRegular text after";
+        $description = "Section\nRegular text before\n[ ] Checkbox item";
         $issue = new WorkItem(
             '1000',
             'TPW-35',
@@ -363,12 +346,12 @@ class ItemShowResponderTest extends CommandTestCase
             ->method('section');
         $this->io->expects($this->once())
             ->method('definitionList');
-        $this->io->expects($this->any())
+        $this->io->expects($this->atLeastOnce())
             ->method('listing')
             ->with($this->callback(function ($list) {
                 return is_array($list);
             }));
-        $this->io->expects($this->any())
+        $this->io->expects($this->atLeastOnce())
             ->method('text')
             ->with($this->callback(function ($text) {
                 return is_array($text);
@@ -454,7 +437,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder->respond($io, $response, 'TPW-35');
 
         $output = $this->getOutput($io);
-        $this->assertStringContainsString('TPW-35', $output);
+        $this->assertStringContainsString('item.show.fetching {"key":"TPW-35"}', $output);
     }
 
     public function testRespondWithColorHelperAndVerboseWithoutColorHelperUsesFallback(): void
@@ -485,7 +468,7 @@ class ItemShowResponderTest extends CommandTestCase
         $responder->respond($io, $response, 'TPW-35');
 
         $output = $this->getOutput($io);
-        $this->assertStringContainsString('TPW-35', $output);
+        $this->assertStringContainsString('item.show.fetching {"key":"TPW-35"}', $output);
     }
 
     public function testDisplayDescriptionWithColorHelperAppliesColors(): void
@@ -660,14 +643,15 @@ class ItemShowResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertTrue($result->success);
-        $this->assertSame('PROJ-1', $result->data['issue']['key']);
-        $this->assertCount(1, $result->data['issue']['attachments']);
-        $this->assertSame('doc.pdf', $result->data['issue']['attachments'][0]['filename']);
-        $this->assertSame(99, $result->data['issue']['attachments'][0]['size']);
-        $this->assertSame('https://jira/rest/attachment/content/100', $result->data['issue']['attachments'][0]['contentUrl']);
-        $this->assertSame('application/pdf', $result->data['issue']['attachments'][0]['mimeType']);
-        $this->assertArrayNotHasKey('renderedDescription', $result->data['issue']);
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload);
+        $this->assertSame('PROJ-1', $payload['data']['issue']['key']);
+        $this->assertCount(1, $payload['data']['issue']['attachments']);
+        $this->assertSame('doc.pdf', $payload['data']['issue']['attachments'][0]['filename']);
+        $this->assertSame(99, $payload['data']['issue']['attachments'][0]['size']);
+        $this->assertSame('https://jira/rest/attachment/content/100', $payload['data']['issue']['attachments'][0]['contentUrl']);
+        $this->assertSame('application/pdf', $payload['data']['issue']['attachments'][0]['mimeType']);
+        $this->assertArrayNotHasKey('renderedDescription', $payload['data']['issue']);
     }
 
     public function testRespondJsonOmitsRenderedDescriptionWhenPresent(): void
@@ -690,18 +674,19 @@ class ItemShowResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertSame('Plain description', $result->data['issue']['description']);
-        $this->assertArrayNotHasKey('renderedDescription', $result->data['issue']);
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload);
+        $this->assertSame('Plain description', $payload['data']['issue']['description']);
+        $this->assertArrayNotHasKey('renderedDescription', $payload['data']['issue']);
     }
 
     public function testRespondJsonReturnsErrorWhenNotSuccess(): void
     {
         $response = ItemShowResponse::error('Not found');
-        $io = $this->createMock(SymfonyStyle::class);
 
         $result = $this->responder->respond($this->io, $response, 'PROJ-1', OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertFalse($result->success);
+        $this->assertAgentJsonErrorString($result->toPayload(), 'Not found');
     }
 }

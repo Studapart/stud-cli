@@ -37,10 +37,10 @@ class ItemListResponderTest extends CommandTestCase
 
         $io->expects($this->once())
             ->method('section')
-            ->with($this->anything());
+            ->with('item.list.section');
         $io->expects($this->once())
             ->method('note')
-            ->with($this->anything());
+            ->with('item.list.no_items');
 
         $responder->respond($io, $response);
     }
@@ -52,10 +52,17 @@ class ItemListResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->anything());
+            ->with('item.list.section');
         $this->io->expects($this->once())
             ->method('table')
-            ->with($this->anything(), $this->anything());
+            ->with(
+                $this->callback(static function (array $headers): bool {
+                    return in_array('table.key', $headers, true)
+                        && in_array('table.status', $headers, true)
+                        && in_array('table.summary', $headers, true);
+                }),
+                $this->callback(static fn (array $rows): bool => ($rows[0][0] ?? null) === 'TPW-35'),
+            );
 
         $this->responder->respond($this->io, $response);
     }
@@ -72,6 +79,7 @@ class ItemListResponderTest extends CommandTestCase
         $output = $this->getOutput($io);
         $this->assertStringContainsString('item.list.section', $output);
         $this->assertStringContainsString('item.list.jql_query', $output);
+        $this->assertStringContainsString('currentUser()', $output);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
@@ -85,6 +93,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $output = $this->getOutput($io);
         $this->assertStringContainsString('item.list.jql_query', $output);
+        $this->assertStringContainsString('currentUser()', $output);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
@@ -111,6 +120,7 @@ class ItemListResponderTest extends CommandTestCase
         $output = $this->getOutput($io);
         $this->assertStringContainsString('item.list.section', $output);
         $this->assertStringContainsString('item.list.jql_query', $output);
+        $this->assertStringContainsString('currentUser()', $output);
     }
 
     public function testRespondShowsVerboseOutputWithProject(): void
@@ -140,7 +150,8 @@ class ItemListResponderTest extends CommandTestCase
         $io->expects($this->once())
             ->method('section');
         $io->expects($this->once())
-            ->method('note');
+            ->method('note')
+            ->with('item.list.no_items');
 
         $responder->respond($io, $response);
     }
@@ -153,10 +164,10 @@ class ItemListResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertTrue($result->success);
-        $this->assertCount(1, $result->data['issues']);
-        $this->assertFalse($result->data['all']);
-        $this->assertSlimIssueSummary($result->data['issues'][0], includePriority: false);
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload, ['all' => false, 'project' => null]);
+        $this->assertCount(1, $payload['data']['issues']);
+        $this->assertSlimIssueSummary($payload['data']['issues'][0], includePriority: false);
     }
 
     /**
@@ -185,8 +196,7 @@ class ItemListResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertFalse($result->success);
-        $this->assertSame('API error', $result->error);
+        $this->assertAgentJsonErrorString($result->toPayload(), 'API error');
     }
 
     public function testRespondMultiProviderRendersProviderColumn(): void
@@ -217,7 +227,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $responder->respond($io, $response);
 
-        $this->assertStringNotContainsString('item.list.jql_query', $this->getOutput($io));
+        $this->assertStringNotContainsString('currentUser()', $this->getOutput($io));
     }
 
     public function testRespondSuppressesJqlCommentForLinearOnly(): void
@@ -229,7 +239,7 @@ class ItemListResponderTest extends CommandTestCase
 
         $responder->respond($io, $response);
 
-        $this->assertStringNotContainsString('item.list.jql_query', $this->getOutput($io));
+        $this->assertStringNotContainsString('currentUser()', $this->getOutput($io));
     }
 
     public function testRespondJsonIncludesProviderWhenMultiProvider(): void
