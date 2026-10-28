@@ -38,10 +38,10 @@ class SearchResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->anything());
+            ->with('search.section');
         $this->io->expects($this->once())
             ->method('note')
-            ->with($this->anything());
+            ->with('search.no_results');
 
         $this->responder->respond($this->io, $response);
     }
@@ -53,10 +53,18 @@ class SearchResponderTest extends CommandTestCase
 
         $this->io->expects($this->once())
             ->method('section')
-            ->with($this->anything());
+            ->with('search.section');
         $this->io->expects($this->once())
             ->method('table')
-            ->with($this->anything(), $this->anything());
+            ->with(
+                $this->callback(static function (array $headers): bool {
+                    return in_array('table.key', $headers, true)
+                        && in_array('table.status', $headers, true)
+                        && in_array('table.description', $headers, true)
+                        && in_array('table.jira_url', $headers, true);
+                }),
+                $this->callback(static fn (array $rows): bool => ($rows[0][0] ?? null) === 'TPW-35'),
+            );
 
         $this->responder->respond($this->io, $response);
     }
@@ -78,7 +86,7 @@ class SearchResponderTest extends CommandTestCase
 
         $out = $output->fetch();
         $this->assertStringContainsString('search.section', $out);
-        $this->assertStringContainsString('project = TPW', $out);
+        $this->assertStringContainsString('search.jql_query {"jql":"project = TPW"}', $out);
     }
 
     public function testRespondShowsVerboseOutputWithoutColorHelperUsesFallback(): void
@@ -97,7 +105,7 @@ class SearchResponderTest extends CommandTestCase
         $responder->respond($io, $response);
 
         $out = $output->fetch();
-        $this->assertStringContainsString('project = TPW', $out);
+        $this->assertStringContainsString('search.jql_query {"jql":"project = TPW"}', $out);
     }
 
     public function testRespondShowsVerboseOutputWithColorHelper(): void
@@ -122,7 +130,7 @@ class SearchResponderTest extends CommandTestCase
 
         $out = $output->fetch();
         $this->assertStringContainsString('search.section', $out);
-        $this->assertStringContainsString('project = TPW', $out);
+        $this->assertStringContainsString('search.jql_query {"jql":"project = TPW"}', $out);
     }
 
     public function testRespondWithColorHelperRegistersStyles(): void
@@ -141,7 +149,8 @@ class SearchResponderTest extends CommandTestCase
         $io->expects($this->once())
             ->method('section');
         $io->expects($this->once())
-            ->method('note');
+            ->method('note')
+            ->with('search.no_results');
 
         $responder->respond($io, $response);
     }
@@ -154,10 +163,10 @@ class SearchResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertTrue($result->success);
-        $this->assertSame('project = PROJ', $result->data['jql']);
-        $this->assertCount(1, $result->data['issues']);
-        $issueSummary = $result->data['issues'][0];
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload, ['jql' => 'project = PROJ']);
+        $this->assertCount(1, $payload['data']['issues']);
+        $issueSummary = $payload['data']['issues'][0];
         $this->assertSame('PROJ-1', $issueSummary['key']);
         $this->assertSame('High', $issueSummary['priority']);
         $this->assertSame('https://your-company.atlassian.net/browse/PROJ-1', $issueSummary['url']);
@@ -172,7 +181,6 @@ class SearchResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertFalse($result->success);
-        $this->assertSame('API error', $result->error);
+        $this->assertAgentJsonErrorString($result->toPayload(), 'API error');
     }
 }

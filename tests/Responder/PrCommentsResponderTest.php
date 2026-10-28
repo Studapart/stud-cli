@@ -37,14 +37,44 @@ class PrCommentsResponderTest extends CommandTestCase
         $this->responder = new PrCommentsResponder($helper, new CommentBodyParser(), $this->createLogger($this->io));
     }
 
+    /**
+     * @param list<string> $calls
+     */
+    private function record(SymfonyStyle $io, string $method, array &$calls): void
+    {
+        $io->method($method)->willReturnCallback(function (string $text) use (&$calls): void {
+            $calls[] = $text;
+        });
+    }
+
+    /**
+     * @param list<string> $calls
+     */
+    private function assertRecordedStartsWith(array $calls, string $prefix): void
+    {
+        $this->assertTrue(
+            array_any($calls, static fn (string $call): bool => str_starts_with($call, $prefix)),
+            $prefix,
+        );
+    }
+
     public function testRespondShowsNoteWhenNoIssueCommentsAndNoReviewComments(): void
     {
         $response = PrCommentsResponse::success([], [], [], 42);
-
-        $this->io->expects($this->exactly(4))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(3))->method('note')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertSame([
+            'pr.comments.section {"number":42}',
+            'pr.comments.issue_comments',
+            'pr.comments.reviews',
+            'pr.comments.review_comments',
+        ], $sections);
+        $this->assertSame(array_fill(0, 3, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersSectionAndTextForIssueComments(): void
@@ -52,11 +82,20 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), 'Body text', null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
-        $this->io->expects($this->once())->method('text')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
+        $this->io->expects($this->once())->method('text')->with('Body text');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertContains('pr.comments.section {"number":42}', $sections);
+        $this->assertContains('pr.comments.issue_comments', $sections);
+        $this->assertContains('pr.comments.reviews', $sections);
+        $this->assertContains('pr.comments.review_comments', $sections);
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: alice');
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersSectionAndTextForReviewComments(): void
@@ -64,11 +103,17 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review body', 'src/File.php', 10);
         $response = PrCommentsResponse::success([], [$comment], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
-        $this->io->expects($this->once())->method('text')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
+        $this->io->expects($this->once())->method('text')->with('Review body');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: bob');
+        $this->assertTrue(array_any($sections, static fn (string $call): bool => str_contains($call, 'src/File.php:10')));
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersSectionsAndTextWhenBothCommentTypesPresent(): void
@@ -77,11 +122,17 @@ class PrCommentsResponderTest extends CommandTestCase
         $reviewComment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Review', 'file.php', 5);
         $response = PrCommentsResponse::success([$issueComment], [$reviewComment], [], 42);
 
-        $this->io->expects($this->exactly(6))->method('section')->with($this->anything());
-        $this->io->expects($this->once())->method('note')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('text')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
+        $this->io->expects($this->exactly(2))->method('text');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: alice');
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: bob');
+        $this->assertSame(['pr.comments.no_comments'], $notes);
     }
 
     public function testRespondWithColorHelperFormatsSectionTitles(): void
@@ -100,11 +151,17 @@ class PrCommentsResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything())
             ->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
 
-        $io->expects($this->exactly(6))->method('section')->with($this->anything());
-        $io->expects($this->once())->method('note')->with($this->anything());
-        $io->expects($this->exactly(2))->method('text')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($io, 'section', $sections);
+        $this->record($io, 'note', $notes);
+        $io->expects($this->exactly(2))->method('text');
 
         $responder->respond($io, $response);
+
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: alice');
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: bob');
+        $this->assertSame(['pr.comments.no_comments'], $notes);
     }
 
     public function testRespondWithColorHelperFormatsListingItems(): void
@@ -123,11 +180,17 @@ class PrCommentsResponderTest extends CommandTestCase
             ->with($this->anything(), $this->anything())
             ->willReturnCallback(fn ($_, $text) => is_string($text) ? $text : '');
 
-        $io->expects($this->atLeastOnce())->method('section')->with($this->anything());
-        $io->expects($this->once())->method('text')->with($this->anything());
-        $io->expects($this->once())->method('listing')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($io, 'section', $sections);
+        $this->record($io, 'note', $notes);
+        $io->expects($this->once())->method('text');
+        $io->expects($this->once())->method('listing');
 
         $responder->respond($io, $response);
+
+        $this->assertContains('pr.comments.issue_comments', $sections);
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersTableBlockWhenCommentBodyContainsMarkdownTable(): void
@@ -136,12 +199,16 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('text')->with($this->anything());
-        $this->io->expects($this->once())->method('table')->with($this->anything(), $this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
+        $this->io->expects($this->once())->method('table');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertContains('pr.comments.issue_comments', $sections);
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersListingWhenCommentBodyContainsMarkdownList(): void
@@ -150,12 +217,16 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('bob', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->once())->method('text')->with($this->anything());
-        $this->io->expects($this->once())->method('listing')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
+        $this->io->expects($this->once())->method('listing');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertContains('pr.comments.issue_comments', $sections);
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondStripsBackticksFromCommentBodyForTerminalSafety(): void
@@ -164,13 +235,18 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('alice', new \DateTimeImmutable(), $body, null, null);
         $response = PrCommentsResponse::success([$comment], [], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
+        $sections = [];
+        $notes = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'note', $notes);
         $this->io->expects($this->once())->method('text')->with($this->callback(function (string $text): bool {
             return ! str_contains($text, '`');
         }));
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertContains('pr.comments.issue_comments', $sections);
+        $this->assertSame(array_fill(0, 2, 'pr.comments.no_comments'), $notes);
     }
 
     public function testRespondRendersReviewCommentWithPathButNullLine(): void
@@ -178,11 +254,17 @@ class PrCommentsResponderTest extends CommandTestCase
         $comment = new PullRequestComment('bob', new \DateTimeImmutable(), 'Comment', 'src/File.php', null);
         $response = PrCommentsResponse::success([], [$comment], [], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
-        $this->io->expects($this->once())->method('text')->with($this->anything());
+        $sections = [];
+        $this->record($this->io, 'section', $sections);
 
         $this->responder->respond($this->io, $response);
+
+        $matched = array_values(array_filter(
+            $sections,
+            static fn (string $call): bool => str_contains($call, 'src/File.php'),
+        ));
+        $this->assertNotEmpty($matched);
+        $this->assertStringNotContainsString('src/File.php:', $matched[0]);
     }
 
     public function testRespondRendersReviewsSectionWithReviewBodies(): void
@@ -190,11 +272,13 @@ class PrCommentsResponderTest extends CommandTestCase
         $reviewComment = new PullRequestComment('reviewer', new \DateTimeImmutable(), 'Please fix the nits.', null, null);
         $response = PrCommentsResponse::success([], [], [$reviewComment], 42);
 
-        $this->io->expects($this->exactly(5))->method('section')->with($this->anything());
-        $this->io->expects($this->exactly(2))->method('note')->with($this->anything());
-        $this->io->expects($this->once())->method('text')->with($this->anything());
+        $sections = [];
+        $this->record($this->io, 'section', $sections);
+        $this->io->expects($this->once())->method('text')->with('Please fix the nits.');
 
         $this->responder->respond($this->io, $response);
+
+        $this->assertRecordedStartsWith($sections, 'pr.comments.table.author: reviewer');
     }
 
     public function testRenderTextSegmentWithEmptyContentDoesNotCallText(): void
@@ -223,10 +307,10 @@ class PrCommentsResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertTrue($result->success);
-        $this->assertSame(42, $result->data['pullNumber']);
-        $this->assertCount(1, $result->data['issueComments']);
-        $this->assertArrayNotHasKey('conversations', $result->data);
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload, ['pullNumber' => 42]);
+        $this->assertCount(1, $payload['data']['issueComments']);
+        $this->assertArrayNotHasKey('conversations', $payload['data']);
     }
 
     public function testRespondJsonReturnsThreadedConversationsWhenRequested(): void
@@ -237,11 +321,10 @@ class PrCommentsResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json, true);
 
         $this->assertNotNull($result);
-        $this->assertTrue($result->success);
-        $this->assertSame('threaded', $result->data['mode']);
-        $this->assertSame(42, $result->data['pullNumber']);
-        $this->assertSame('thread-1', $result->data['conversations'][0]['ids']['threadId']);
-        $this->assertSame('alice', $result->data['conversations'][0]['comments'][0]['author']);
+        $payload = $result->toPayload();
+        $this->assertAgentJsonSuccess($payload, ['mode' => 'threaded', 'pullNumber' => 42]);
+        $this->assertSame('thread-1', $payload['data']['conversations'][0]['ids']['threadId']);
+        $this->assertSame('alice', $payload['data']['conversations'][0]['comments'][0]['author']);
     }
 
     public function testRespondRendersThreadedConversationSections(): void
@@ -257,21 +340,43 @@ class PrCommentsResponderTest extends CommandTestCase
         );
         $response = PrCommentsResponse::success([], [], [], 42, [$conversation, $truncated], true);
 
-        $this->io->expects($this->atLeast(2))->method('section')->with($this->anything());
-        $this->io->expects($this->atLeastOnce())->method('listing')->with($this->anything());
-        $this->io->expects($this->atLeastOnce())->method('text')->with($this->anything());
+        $sections = [];
+        $texts = [];
+        $this->record($this->io, 'section', $sections);
+        $this->record($this->io, 'text', $texts);
+        $this->io->expects($this->atLeastOnce())->method('listing');
 
         $this->responder->respond($this->io, $response, OutputFormat::Cli, true);
+
+        $this->assertContains('pr.comments.section {"number":42}', $sections);
+        $this->assertContains('pr.comments.threaded_conversations', $sections);
+        $this->assertRecordedStartsWith($sections, 'pr.comments.threaded_type_review_thread');
+        $this->assertTrue(array_any($sections, static fn (string $call): bool => str_contains($call, 'pr.comments.threaded_state_unresolved')));
+        $truncatedHeader = array_values(array_filter(
+            $sections,
+            static fn (string $call): bool => str_starts_with($call, 'pr.comments.threaded_type_pr_comment'),
+        ));
+        $this->assertNotEmpty($truncatedHeader);
+        $this->assertStringContainsString('pr.comments.threaded_state_resolved', $truncatedHeader[0]);
+        $this->assertStringContainsString('pr.comments.threaded_state_outdated', $truncatedHeader[0]);
+        $this->assertStringContainsString('pr.comments.threaded_state_truncated', $truncatedHeader[0]);
+        $this->assertRecordedStartsWith($texts, 'pr.comments.threaded_comment_meta');
     }
 
     public function testRespondRendersNoteForEmptyThreadedConversations(): void
     {
         $response = PrCommentsResponse::success([], [], [], 42, [], true);
 
-        $this->io->expects($this->exactly(2))->method('section')->with($this->anything());
-        $this->io->expects($this->once())->method('note')->with($this->anything());
+        $sections = [];
+        $this->record($this->io, 'section', $sections);
+        $this->io->expects($this->once())->method('note')->with('pr.comments.no_comments');
 
         $this->responder->respond($this->io, $response, OutputFormat::Cli, true);
+
+        $this->assertSame([
+            'pr.comments.section {"number":42}',
+            'pr.comments.threaded_conversations',
+        ], $sections);
     }
 
     public function testRespondJsonReturnsErrorOnFailure(): void
@@ -281,8 +386,7 @@ class PrCommentsResponderTest extends CommandTestCase
         $result = $this->responder->respond($this->io, $response, OutputFormat::Json);
 
         $this->assertNotNull($result);
-        $this->assertFalse($result->success);
-        $this->assertSame('API error', $result->error);
+        $this->assertAgentJsonErrorString($result->toPayload(), 'API error');
     }
 
     public function testRespondCliRendersErrorMessageRef(): void
@@ -290,17 +394,16 @@ class PrCommentsResponderTest extends CommandTestCase
         $logger = $this->createMock(\App\Service\Logger::class);
         $logger->expects($this->once())
             ->method('error')
-            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'Key');
-        $translator = new \App\Service\TranslationService('en', __DIR__ . '/../../src/resources/translations');
+            ->with(\App\Service\Logger::VERBOSITY_NORMAL, 'pr.comments.error_fetch {"error":"boom"}');
         $responder = new PrCommentsResponder(
-            new ResponderHelper($translator),
+            new ResponderHelper($this->translationService),
             new CommentBodyParser(),
             $logger
         );
 
         $result = $responder->respond(
             $this->io,
-            PrCommentsResponse::error(MessageRef::key('table.key'))
+            PrCommentsResponse::error(MessageRef::key('pr.comments.error_fetch', ['error' => 'boom']))
         );
 
         $this->assertNull($result);
