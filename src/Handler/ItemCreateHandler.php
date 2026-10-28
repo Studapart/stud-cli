@@ -20,6 +20,10 @@ use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
+use App\Service\Jira\JiraCreateDeferErrorParser;
+use App\Service\Jira\JiraCreateDeferralCoordinator;
+use App\Service\Jira\JiraIssueFieldWriter;
+use App\Service\Jira\JiraIssueTrackerResolver;
 use App\Service\Prompt\PromptInterface;
 use App\Service\StudIssueKeys;
 
@@ -34,8 +38,16 @@ class ItemCreateHandler implements JiraAware
         private readonly PromptInterface $prompt,
         /** @var list<string> */
         private readonly array $defaultWorkItemLabels = [],
+        private readonly JiraIssueTrackerResolver $jiraResolver = new JiraIssueTrackerResolver(),
+        ?JiraCreateDeferralCoordinator $deferralCoordinator = null,
     ) {
+        $this->deferralCoordinator = $deferralCoordinator ?? new JiraCreateDeferralCoordinator(
+            new JiraCreateDeferErrorParser(),
+            new JiraIssueFieldWriter($fieldsParser),
+        );
     }
+
+    private readonly JiraCreateDeferralCoordinator $deferralCoordinator;
 
     public function handle(bool $interactive, ItemCreateInput $input): ItemCreateResponse
     {
@@ -63,7 +75,7 @@ class ItemCreateHandler implements JiraAware
 
         $skippedOptionalFields = $this->applyFieldsOption($stateOrError, $input);
 
-        return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields);
+        return $this->createIssueAndReturnResponse($stateOrError->fields, $skippedOptionalFields, $stateOrError);
     }
 
     /**
@@ -76,9 +88,13 @@ class ItemCreateHandler implements JiraAware
         if ($parsedFields === []) {
             return [];
         }
+        $state->fieldInputsForUpdate = $parsedFields;
         $result = $this->fieldsParser->matchAndTransform($parsedFields, $state->allFieldsMeta);
         foreach ($result['matched'] as $key => $value) {
             $state->fields[$key] = $value;
+        }
+        foreach ($result['inputByPayload'] as $payloadKey => $inputKey) {
+            $state->payloadKeyToInputKey[$payloadKey] = $inputKey;
         }
 
         return $result['unmatched'];
@@ -272,7 +288,31 @@ class ItemCreateHandler implements JiraAware
      * @param array<string, mixed> $fields
      * @param list<string> $skippedOptionalFields
      */
-    protected function createIssueAndReturnResponse(array $fields, array $skippedOptionalFields): ItemCreateResponse
+    protected function createIssueAndReturnResponse(
+        array $fields,
+        array $skippedOptionalFields,
+        IssueCreationState $state,
+    ): ItemCreateResponse {
+        if (! $this->provider instanceof IssueTrackerLabelGroupsCapable
+            && $this->jiraResolver->isJiraBacked($this->provider)) {
+            return $this->deferralCoordinator->create(
+                $this->provider,
+                $fields,
+                $state->fieldInputsForUpdate,
+                $state->payloadKeyToInputKey,
+                $state->allFieldsMeta,
+                $skippedOptionalFields,
+            );
+        }
+
+        return $this->createDirectly($fields, $skippedOptionalFields);
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @param list<string> $skippedOptionalFields
+     */
+    protected function createDirectly(array $fields, array $skippedOptionalFields): ItemCreateResponse
     {
         try {
             $result = $this->provider->create($fields);

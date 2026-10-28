@@ -545,6 +545,8 @@ success: true
 key: string|null
 self: string|null
 skippedOptionalFields: array|null
+deferredFields: array|null
+updateWarnings: array|null
 ```
 
 Full success shape (`{"compact":false}`):
@@ -554,6 +556,8 @@ success: true
 key: string|null
 self: string|null
 skippedOptionalFields: array|null
+deferredFields: array|null
+updateWarnings: array|null
 ```
 
 Error shape: `{"success":false,"error":"string"}`
