@@ -32,7 +32,7 @@ class PushHandlerTest extends CommandTestCase
             $gitRepository,
             $pleaseHandler,
             $this->translationService,
-            $prompt ?? $this->createMock(PromptInterface::class),
+            $prompt ?? $this->createStub(PromptInterface::class),
             $flattenHandler ?? new FlattenHandler($gitRepository, 'origin/develop', $this->translationService),
         );
     }
@@ -73,7 +73,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -88,6 +88,7 @@ class PushHandlerTest extends CommandTestCase
 
         $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
 
+        $this->assertMessageRef($response->message, 'push.success');
         $this->assertTrue($response->isSuccess());
         $this->assertSame('push.commit_created', $response->data['commit']['message']);
     }
@@ -97,19 +98,21 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->expects($this->never())->method('handle');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
 
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('hasStagedChanges')->willReturn(false);
         $gitRepository->method('getPorcelainStatus')->willReturn(' M a.txt');
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $response = $handler->handle(false, null, false, true, false, true, true);
+        $this->assertMessageRef($response->message, 'push.success');
+        $this->assertMessageRef($response->getNotices()[0]->message, 'push.note_uncommitted_left');
         $this->assertTrue($response->isSuccess());
         $this->assertNotEmpty($response->getMessages());
     }
@@ -119,19 +122,20 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->expects($this->never())->method('handle');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
 
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('hasStagedChanges')->willReturn(false);
         $gitRepository->method('getPorcelainStatus')->willReturn('');
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $response = $handler->handle(false, null, false, true, false, true, true);
+        $this->assertMessageRef($response->message, 'push.success');
         $this->assertTrue($response->isSuccess());
         $this->assertSame([], $response->getMessages());
     }
@@ -141,18 +145,20 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->expects($this->once())->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
 
         $gitRepository = $this->createMock(GitRepository::class);
         $gitRepository->method('hasStagedChanges')->willReturn(false);
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle(false, null, true, true, false, true, true)->isSuccess());
+        $response = $handler->handle(false, null, true, true, false, true, true);
+        $this->assertMessageRef($response->message, 'push.success');
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testPushFailsWithNoPleaseReturnsOne(): void
@@ -160,7 +166,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -173,7 +179,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertFalse($handler->handle($this->io(), false, null, false, false, true, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, false, true, false, true);
+        $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
+        $this->assertFalse($response->isSuccess());
     }
 
     public function testPushFailsQuietRunsPlease(): void
@@ -181,7 +189,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -194,7 +202,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle($this->io(), false, null, false, true, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, true, false, false, true);
+        $this->assertMessageRef($response->message, 'push.please_completed');
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testPushFailsAgentWithPleaseFallbackFalse(): void
@@ -202,7 +212,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -215,7 +225,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertFalse($handler->handle($this->io(), false, null, false, true, false, true, false)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, true, false, true, false);
+        $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
+        $this->assertFalse($response->isSuccess());
     }
 
     public function testPushFailsAgentWithPleaseFallbackTrueRunsPlease(): void
@@ -223,7 +235,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -236,7 +248,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle($this->io(), false, null, false, true, false, true, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, true, false, true, true);
+        $this->assertMessageRef($response->message, 'push.please_completed');
+        $this->assertTrue($response->isSuccess());
     }
 
     /**
@@ -247,7 +261,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -260,7 +274,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle($this->io(), false, null, false, true, true, true, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, true, true, true, true);
+        $this->assertMessageRef($response->message, 'push.please_completed');
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testPushFailsInteractiveUserDeclinesPlease(): void
@@ -268,7 +284,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -284,7 +300,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler, $prompt);
 
-        $this->assertFalse($handler->handle($this->io(), false, null, false, false, false, false, true)->isSuccess());
+        $response = $handler->handle($this->io(), false, null, false, false, false, false, true);
+        $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
+        $this->assertFalse($response->isSuccess());
     }
 
     public function testPushFailsInteractiveUserAcceptsPlease(): void
@@ -292,7 +310,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -319,7 +337,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(0);
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -343,19 +361,21 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('Commit created'));
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
 
         $gitRepository = $this->createMock(GitRepository::class);
         $this->expectCommitPath($gitRepository);
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
 
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
         $response = $handler->handle(false, null, false, true, false, false, true);
 
+        $this->assertMessageRef($response->message, 'push.success');
+        $this->assertSame('Commit created', $response->data['commit']['message']);
         $this->assertTrue($response->isSuccess());
         $this->assertSame('feat/foo', $response->data['branch'] ?? null);
     }
@@ -365,7 +385,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('Commit created'));
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -378,7 +398,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle(false, null, false, true, false, true, true)->isSuccess());
+        $response = $handler->handle(false, null, false, true, false, true, true);
+        $this->assertSame('Force push completed', (string) $response->message);
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testDirtyTreeSoftSkipStillRunsPleaseFallback(): void
@@ -386,7 +408,7 @@ class PushHandlerTest extends CommandTestCase
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->expects($this->never())->method('handle');
 
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
 
         $gitRepository = $this->createMock(GitRepository::class);
@@ -400,7 +422,9 @@ class PushHandlerTest extends CommandTestCase
 
         $handler = $this->createHandler($commitHandler, $gitRepository, $pleaseHandler);
 
-        $this->assertTrue($handler->handle(false, null, false, true, false, true, true)->isSuccess());
+        $response = $handler->handle(false, null, false, true, false, true, true);
+        $this->assertMessageRef($response->message, 'push.please_completed');
+        $this->assertTrue($response->isSuccess());
     }
 
     public function testFlattenAfterCreatedCommitForcePushesWithoutPromptInAgentMode(): void
@@ -411,7 +435,7 @@ class PushHandlerTest extends CommandTestCase
         $this->expectCommitPath($gitRepository);
         $gitRepository->method('getPorcelainStatus')->willReturn('');
         $gitRepository->method('getMergeBase')->willReturn('base');
-        $gitRepository->method('hasFixupCommits')->with('base')->willReturn(true);
+        $gitRepository->method('hasFixupCommits')->willReturn(true);
         $gitRepository->expects($this->once())->method('rebaseAutosquash')->with('base');
         $gitRepository->expects($this->never())->method('pushHeadToOrigin');
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
@@ -423,6 +447,7 @@ class PushHandlerTest extends CommandTestCase
 
         $response = $handler->handle(false, null, true, true, false, true, true, true);
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'flatten.warning_published');
         $this->assertTrue($response->isSuccess());
         $this->assertTrue($response->data['published']);
         $this->assertTrue($response->data['rewritten']);
@@ -448,6 +473,7 @@ class PushHandlerTest extends CommandTestCase
 
         $response = $handler->handle($this->io(), false, null, true, false, false, false, true, true);
 
+        $this->assertMessageRef($response->getErrorMessage(), 'push.error_push');
         $this->assertFalse($response->isSuccess());
         $this->assertTrue($response->data['rewritten']);
         $this->assertArrayNotHasKey('published', $response->data);
@@ -458,7 +484,7 @@ class PushHandlerTest extends CommandTestCase
     {
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['fixupSha' => 'abc']));
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $gitRepository = $this->createMock(GitRepository::class);
         $this->expectCommitPath($gitRepository);
@@ -466,7 +492,7 @@ class PushHandlerTest extends CommandTestCase
         $gitRepository->method('getMergeBase')->willReturn('base');
         $gitRepository->method('hasFixupCommits')->willReturn(false);
         $gitRepository->expects($this->never())->method('rebaseAutosquash');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
         $pleaseHandler = $this->createMock(PleaseHandler::class);
         $pleaseHandler->expects($this->never())->method('handle');
@@ -484,18 +510,19 @@ class PushHandlerTest extends CommandTestCase
     {
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(true);
         $gitRepository = $this->createMock(GitRepository::class);
         $this->expectCommitPath($gitRepository);
         $gitRepository->method('getPorcelainStatus')->willReturn(' M left.txt');
         $gitRepository->expects($this->never())->method('rebaseAutosquash');
-        $gitRepository->expects($this->once())->method('pushHeadToOrigin')->willReturn($process);
+        $gitRepository->method('pushHeadToOrigin')->willReturn($process);
         $gitRepository->method('getCurrentBranchName')->willReturn('feat/foo');
         $handler = $this->createHandler($commitHandler, $gitRepository, $this->createMock(PleaseHandler::class));
 
         $response = $handler->handle(false, null, true, true, false, true, true, true);
 
+        $this->assertMessageRef($response->getNotices()[0]->message, 'flatten.notice_skipped');
         $this->assertTrue($response->isSuccess());
         $this->assertFalse($response->data['rewritten']);
         $this->assertTrue($response->data['published']);
@@ -544,6 +571,7 @@ class PushHandlerTest extends CommandTestCase
 
         $response = $handler->handle(false, null, true, false, false, false, true, true);
 
+        $this->assertMessageRef($response->getWarnings()[0]->message, 'flatten.warning_published');
         $this->assertTrue($response->isSuccess());
         $this->assertTrue($response->data['published']);
         $this->assertTrue($response->data['rewritten']);
@@ -576,7 +604,7 @@ class PushHandlerTest extends CommandTestCase
     {
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
         $gitRepository = $this->createMock(GitRepository::class);
         $this->expectCommitPath($gitRepository);
@@ -599,7 +627,7 @@ class PushHandlerTest extends CommandTestCase
     {
         $commitHandler = $this->createMock(CommitHandler::class);
         $commitHandler->method('handle')->willReturn(CommandResponse::success('created', ['commitMessage' => 'feat: add [SCI-216]']));
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
         $process->method('isSuccessful')->willReturn(false);
         $gitRepository = $this->createMock(GitRepository::class);
         $this->expectCommitPath($gitRepository);

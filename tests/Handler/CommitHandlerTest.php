@@ -3,10 +3,10 @@
 namespace App\Tests\Handler;
 
 use App\DTO\WorkItem;
-use App\Enum\WorkflowChannel;
 use App\Handler\CommitHandler;
-use App\Service\Logger;
+use App\Service\Prompt\PromptInterface;
 use App\Tests\CommandTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -14,57 +14,55 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class CommitHandlerTest extends CommandTestCase
 {
     private CommitHandler $handler;
-    private Logger $logger;
+    private PromptInterface&MockObject $prompt;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->logger = $this->createMock(Logger::class);
-        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $this->logger);
+        $this->prompt = $this->createMock(PromptInterface::class);
+        $this->handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $this->prompt);
     }
 
     public function testHandleWithCleanWorkingTree(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('');
 
-        $this->logger->method('addNote');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getMessages()[0]->message, 'commit.note_clean_working_tree');
         $this->assertTrue($result->isSuccess());
-        // Test intent: note() was called for clean working tree, verified by return value
     }
 
     public function testHandleWithCleanWorkingTreeAndWhitespace(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('   ');
 
-        $this->logger->method('addNote');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getMessages()[0]->message, 'commit.note_clean_working_tree');
         $this->assertTrue($result->isSuccess());
-        // Test intent: note() was called for clean working tree (with whitespace), verified by return value
     }
 
     public function testHandleWithMessage(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
@@ -75,28 +73,28 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('my message');
 
-        $this->logger->method('addSuccess');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('my message', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
-        // Test intent: success() was called, verified by return value
     }
 
     public function testHandleWithMessageReturnsErrorOnGitTimeoutDuringCommit(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('my message')
             ->willThrowException(new \App\Exception\GitTimeoutException(
@@ -107,6 +105,7 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle(false, 'my message', false, true);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'git.error.timeout');
         $this->assertFalse($result->isSuccess());
         $this->assertCount(1, $result->getMessages());
         $this->assertSame('timed out', $result->getMessages()[0]->technicalDetails);
@@ -114,21 +113,22 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageReturnsErrorOnGitExceptionDuringCommit(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('my message')
             ->willThrowException(new \App\Exception\GitException('timeout message', 'technical details'));
 
         $result = $this->handler->handle(false, 'my message', false, true);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.error_git');
         $this->assertFalse($result->isSuccess());
         $this->assertCount(1, $result->getMessages());
         $this->assertSame('technical details', $result->getMessages()[0]->technicalDetails);
@@ -136,58 +136,59 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithMessageUsingNewSignature(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('my message');
 
         $result = $this->handler->handle(false, 'my message', false, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('my message', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithMessageAndAllFlag(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->once())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('my message');
 
-        $this->logger->method('addSuccess');
-        $this->logger->method('addText');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('my message', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
-        // Test intent: success() was called, verified by return value
     }
 
     public function testHandleWithMessageNoStagedChanges(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(false); // No staged changes
 
@@ -197,29 +198,27 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commit');
 
-        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, 'my message', false);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
     }
 
     public function testHandleWithAutoFixup(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
-            ->with('origin/develop')
             ->willReturn('abcdef');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
@@ -233,95 +232,81 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $loggerCalls = [];
-        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
-            $loggerCalls[] = $message;
-        });
 
-        $this->logger->method('addSection');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
         $this->assertTrue($result->isSuccess());
         $this->assertSame('abcdef', $result->data['fixupSha'] ?? null);
     }
 
     public function testHandleWithAutoFixupAndAllFlag(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
-            ->with('origin/develop')
             ->willReturn('abcdef');
 
         $this->gitRepository->expects($this->once())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commitFixup')
             ->with('abcdef');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $loggerCalls = [];
-        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use (&$loggerCalls) {
-            $loggerCalls[] = $message;
-        });
 
-        $this->logger->method('addSection');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
 
         $result = $this->handler->handle($io, false, null, true);
 
+        $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
         $this->assertTrue($result->isSuccess());
         $this->assertSame('abcdef', $result->data['fixupSha'] ?? null);
     }
 
     public function testHandleWithAutoFixupReturnsErrorOnGitExceptionDuringCommitFixup(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
-            ->with('origin/develop')
             ->willReturn('abcdef');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commitFixup')
             ->with('abcdef')
             ->willThrowException(new \App\Exception\GitTimeoutException('git commit --fixup abcdef', 600.0, 'timed out'));
 
         $result = $this->handler->handle(false, null, false, true);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'git.error.timeout');
         $this->assertFalse($result->isSuccess());
         $this->assertGreaterThanOrEqual(1, count($result->getMessages()));
     }
 
     public function testHandleWithAutoFixupNoStagedChanges(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
-            ->with('origin/develop')
             ->willReturn('abcdef');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(false); // No staged changes
 
@@ -331,30 +316,27 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commitFixup');
 
-        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->method('addSection');
-        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
     }
 
     public function testHandleWithNewBranchSkipsLogicalShaLookup(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
         $this->gitRepository->expects($this->never())
             ->method('findLatestLogicalSha');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -370,44 +352,40 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat(api): New feature [TPW-35]');
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, true, null, false, true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): New feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithInteractivePrompter(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -428,7 +406,7 @@ class CommitHandlerTest extends CommandTestCase
             ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
@@ -442,39 +420,36 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_auto' => 'api',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithQuietUsesDetectedTypeScopeSummaryWithoutPrompting(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -490,12 +465,11 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
@@ -506,35 +480,31 @@ class CommitHandlerTest extends CommandTestCase
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
-        $this->logger->expects($this->never())
+        $this->prompt->expects($this->never())
             ->method('ask');
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
-        $this->logger->method('addLine');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false, true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithQuietJiraPromptReturnsErrorOnGitTimeoutDuringCommit(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -550,16 +520,15 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]')
             ->willThrowException(new \App\Exception\GitTimeoutException(
@@ -570,21 +539,22 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $this->handler->handle(false, null, false, true);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'git.error.timeout');
         $this->assertFalse($result->isSuccess());
         $this->assertGreaterThanOrEqual(2, count($result->getMessages()));
     }
 
     public function testHandleWithInteractivePrompterAndAllFlag(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -600,54 +570,50 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
         $this->gitRepository->expects($this->once())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_auto' => 'api',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithInteractivePrompterNoStagedChanges(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -663,12 +629,11 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(false); // No staged changes
 
@@ -678,73 +643,67 @@ class CommitHandlerTest extends CommandTestCase
         $this->gitRepository->expects($this->never())
             ->method('commit');
 
-        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addLine');
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_auto' => 'api',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.no_staged_changes');
         $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
     }
 
     public function testHandleWithNoJiraKeyInBranchName(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn(null);
 
-        $this->logger->method('addError');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.error_no_key');
         $this->assertFalse($result->isSuccess());
-        // Test intent: error() was called, verified by return value
     }
 
     public function testHandleWithIssueTrackerException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willThrowException(new \Exception('Jira service error'));
 
         $this->expectException(\Exception::class);
@@ -758,49 +717,43 @@ class CommitHandlerTest extends CommandTestCase
 
     public function testHandleWithJiraApiClientApiException(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willThrowException(new \App\Exception\ApiException('Could not find Jira issue with key "TPW-35".', 'HTTP 404: Not Found', 404));
 
-        $this->logger->method('addErrorWithDetails')
-            ->with(
-                \App\Service\Logger::VERBOSITY_NORMAL,
-                $this->messageRefWithKey('commit.error_not_found'),
-                'HTTP 404: Not Found'
-            );
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->getErrorMessage(), 'commit.error_not_found', ['key' => 'TPW-35']);
         $this->assertFalse($result->isSuccess());
     }
 
     public function testHandleWithVeryVerboseOutput(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -816,63 +769,54 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_auto' => 'api',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
-            if ($verbosity <= Logger::VERBOSITY_VERY_VERBOSE) {
-                $output->writeln($message);
-            }
-        });
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
-        // Test intent: verbose output was shown, verified by return value
     }
 
     public function testHandleWithEmptyComponents(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -888,58 +832,54 @@ class CommitHandlerTest extends CommandTestCase
             components: [],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_prompt') || str_contains((string) $question, 'Scope') => '',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_prompt' => '',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat: My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testHandleWithVerboseOutputForCommitMessage(): void
     {
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -955,50 +895,41 @@ class CommitHandlerTest extends CommandTestCase
             components: ['api'],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat(api): My awesome feature [TPW-35]');
 
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_auto') || str_contains((string) $question, 'api') => 'api',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_auto' => 'api',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine')->willReturnCallback(function (WorkflowChannel $channel, int $verbosity, string $message) use ($output) {
-            if ($verbosity <= Logger::VERBOSITY_VERBOSE) {
-                $output->writeln($message);
-            }
-        });
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
-        // Test intent: verbose output was shown, verified by return value
     }
 
     public function testgetCommitTypeFromIssueTypeWithUnknownType(): void
@@ -1006,15 +937,15 @@ class CommitHandlerTest extends CommandTestCase
         $output = new BufferedOutput();
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getPorcelainStatus')
             ->willReturn('M  file.txt');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('findLatestLogicalSha')
             ->willReturn(null);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('getIssueKeyFromBranchName')
             ->willReturn('TPW-35');
 
@@ -1030,48 +961,44 @@ class CommitHandlerTest extends CommandTestCase
             components: [],
         );
 
-        $this->issueTracker->expects($this->once())
+        $this->issueTracker
             ->method('getIssue')
-            ->with('TPW-35')
             ->willReturn($workItem);
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('hasStagedChanges')
             ->willReturn(true); // Has staged changes
 
         $this->gitRepository->expects($this->never())
             ->method('stageAllChanges');
 
-        $this->gitRepository->expects($this->once())
+        $this->gitRepository
             ->method('commit')
             ->with('feat: My awesome feature [TPW-35]');
 
-        $this->logger->expects($this->exactly(3))
+        $this->prompt->expects($this->exactly(3))
             ->method('ask')
             ->willReturnCallback(
                 fn ($question, ?string $default) => match (true) {
-                    str_contains((string) $question, 'commit.type_prompt') || str_contains((string) $question, 'feat') => 'feat',
-                    str_contains((string) $question, 'commit.scope_prompt') || str_contains((string) $question, 'Scope') => '',
-                    str_contains((string) $question, 'commit.summary_prompt') || str_contains((string) $question, 'Short Message') => 'My awesome feature',
+                    $question->key === 'commit.type_prompt' => 'feat',
+                    $question->key === 'commit.scope_prompt' => '',
+                    $question->key === 'commit.summary_prompt' => 'My awesome feature',
                     default => throw new \RuntimeException('Unexpected question: ' . $question),
                 }
             );
 
-        $this->logger->method('addSection');
-        $this->logger->method('addNote');
-        $this->logger->method('addText');
-        $this->logger->method('addSuccess');
-        $this->logger->method('addLine');
 
         $result = $this->handler->handle($io, false, null, false);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat: My awesome feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
     }
 
     public function testgetCommitTypeFromIssueType(): void
     {
-        $logger = $this->createMock(Logger::class);
-        $handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $logger);
+        $prompt = $this->createStub(PromptInterface::class);
+        $handler = new CommitHandler($this->gitRepository, $this->issueTracker, 'origin/develop', $this->translationService, $prompt);
 
         $this->assertSame('fix', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['bug']));
         $this->assertSame('feat', $this->callPrivateMethod($handler, 'getCommitTypeFromIssueType', ['story']));
@@ -1089,7 +1016,7 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
         $this->gitRepository->method('hasStagedChanges')->willReturn(true);
@@ -1097,6 +1024,8 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $handler->handle(false, 'my message', false, true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('my message', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
         $this->assertFalse($invoked);
     }
@@ -1109,15 +1038,16 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
-        $this->gitRepository->method('findLatestLogicalSha')->with('origin/develop')->willReturn('abcdef');
+        $this->gitRepository->method('findLatestLogicalSha')->willReturn('abcdef');
         $this->gitRepository->method('hasStagedChanges')->willReturn(true);
         $this->gitRepository->expects($this->once())->method('commitFixup')->with('abcdef');
 
         $result = $handler->handle(false, null, false, true);
 
+        $this->assertMessageRef($result->message, 'commit.fixup_success', ['sha' => 'abcdef']);
         $this->assertTrue($result->isSuccess());
         $this->assertFalse($invoked);
     }
@@ -1130,7 +1060,7 @@ class CommitHandlerTest extends CommandTestCase
 
             return $this->issueTracker;
         };
-        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->logger);
+        $handler = new CommitHandler($this->gitRepository, $factory, 'origin/develop', $this->translationService, $this->prompt);
 
         $this->gitRepository->method('getPorcelainStatus')->willReturn('M  file.txt');
         $this->gitRepository->method('findLatestLogicalSha')->willReturn(null);
@@ -1153,6 +1083,8 @@ class CommitHandlerTest extends CommandTestCase
 
         $result = $handler->handle(false, null, false, true);
 
+        $this->assertMessageRef($result->message, 'commit.success');
+        $this->assertSame('feat(api): New feature [TPW-35]', $result->data['commitMessage']);
         $this->assertTrue($result->isSuccess());
         $this->assertSame(1, $invoked);
     }
