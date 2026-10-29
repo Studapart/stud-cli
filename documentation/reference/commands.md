@@ -155,7 +155,7 @@ None.
 ```bash
 stud config:project-init
 stud cpi
-echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","workItemLabels":["example"],"pullRequestLabels":["example"],"skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
+echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":"example","githubToken":"example","gitlabToken":"example","gitlabInstanceUrl":"example","jiraDefaultProject":"example","confluenceDefaultSpace":"example","issueTrackerProvider":"example","linearTeamKey":"example","linearStartStateId":"example","linearTypeLabelGroupId":"example","linearTypeBranchPrefixes":"example","workItemLabels":["example"],"pullRequestLabels":["example"],"jiraUrl":"example","jiraEmail":"example","jiraApiToken":"example","linearApiKey":"example","skipBaseBranchRemoteCheck":true}' | stud config:project-init --agent
 ```
 
 #### Agent JSON Input
@@ -179,6 +179,10 @@ echo '{"projectKey":"SCI","transitionId":1,"baseBranch":"develop","gitProvider":
 | `linearTypeBranchPrefixes` | `object` | yes | `NULL` |
 | `workItemLabels` | `array` | yes | `NULL` |
 | `pullRequestLabels` | `array` | yes | `NULL` |
+| `jiraUrl` | `string\|null` | yes | `NULL` |
+| `jiraEmail` | `string\|null` | yes | `NULL` |
+| `jiraApiToken` | `string\|null` | yes | `NULL` |
+| `linearApiKey` | `string\|null` | yes | `NULL` |
 | `skipBaseBranchRemoteCheck` | `bool` | yes | `false` |
 
 #### Agent JSON Output

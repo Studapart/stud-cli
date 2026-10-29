@@ -44,7 +44,7 @@ class FilterListHandler implements JiraAware, LinearAware
         $warnings = [];
 
         foreach ($providers as $providerSlug) {
-            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig);
+            $resolution = $this->portSupplier->resolveForProvider($providerSlug, $this->globalConfig, $this->projectConfig);
             if (! $resolution['ok']) {
                 if (count($providers) === 1) {
                     return FilterListResponse::error($resolution['error']);

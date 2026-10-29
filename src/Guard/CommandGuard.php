@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Guard;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
@@ -56,18 +57,19 @@ class CommandGuard
 
         $requiresJiraCreds = $this->resolvedProvidersInclude($context, IssueTrackerProvider::Jira->value);
         $requiresLinearCreds = $this->resolvedProvidersInclude($context, IssueTrackerProvider::Linear->value);
+        $trackerConfig = (new EffectiveIssueTrackerCredentials())->overlay($context->globalConfig, $context->projectConfig);
 
         if ($requiresJiraCreds) {
             $missingGlobal = array_merge(
                 $missingGlobal,
-                $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig),
+                $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $trackerConfig),
             );
         }
 
         if ($requiresLinearCreds) {
             $missingGlobal = array_merge(
                 $missingGlobal,
-                $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $context->globalConfig),
+                $this->findMissingKeys([GlobalStudConfigKeys::LINEAR_API_KEY], $trackerConfig),
             );
         }
 
@@ -78,7 +80,7 @@ class CommandGuard
         }
 
         if ($capabilities->has(ConfluenceAware::class)) {
-            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $context->globalConfig));
+            $missingGlobal = array_merge($missingGlobal, $this->findMissingKeys(GlobalStudConfigKeys::requiredJiraCredentialKeys(), $trackerConfig));
         }
 
         if ($capabilities->has(GithubAware::class)

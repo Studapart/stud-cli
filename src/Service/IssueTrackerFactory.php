@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\Config\ProjectStudConfigKeys;
 use App\Enum\IssueTrackerProvider;
@@ -27,6 +28,7 @@ class IssueTrackerFactory
         array $projectConfig,
         ?string $issueKey = null,
     ): string {
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
         $normalizedOverride = $this->normalizeOverride($cliOverride);
         if ($normalizedOverride !== null) {
             $this->assertCredentials($normalizedOverride->value, $globalConfig);

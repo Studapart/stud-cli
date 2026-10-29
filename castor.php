@@ -286,13 +286,31 @@ function _get_config(): array
 }
 
 /**
+ * Global configuration with project issue-tracker credentials applied.
+ *
+ * @return array<string, mixed>
+ */
+function _effective_issue_tracker_config(): array
+{
+    $project = null;
+
+    try {
+        $project = _get_git_repository()->readProjectConfig();
+    } catch (\RuntimeException) {
+        $project = null;
+    }
+
+    return (new \App\Config\EffectiveIssueTrackerCredentials())->overlay(_get_config(), $project);
+}
+
+/**
  * Gets and validates the Jira configuration.
  *
  * @return array<string, mixed>
  */
 function _get_jira_config(): array
 {
-    $config = _get_config();
+    $config = _effective_issue_tracker_config();
     $missingKeys = array_diff(GlobalStudConfigKeys::requiredJiraCredentialKeys(), array_keys($config));
 
     if (! empty($missingKeys)) {
@@ -309,7 +327,7 @@ function _get_jira_config(): array
  */
 function _get_jira_config_if_configured(): ?array
 {
-    $config = _get_config();
+    $config = _effective_issue_tracker_config();
     foreach (GlobalStudConfigKeys::requiredJiraCredentialKeys() as $key) {
         if (! isset($config[$key]) || ! is_string($config[$key]) || trim($config[$key]) === '') {
             return null;
@@ -388,7 +406,7 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
         return \App\Tests\TestKernel::$jiraApiClient;
     }
 
-    $config = _get_config();
+    $config = _effective_issue_tracker_config();
     foreach (GlobalStudConfigKeys::requiredJiraCredentialKeys() as $key) {
         if (! isset($config[$key]) || ! is_string($config[$key]) || trim($config[$key]) === '') {
             return null;
@@ -400,7 +418,7 @@ function _get_jira_api_client_if_configured(): ?JiraApiClient
 
 function _get_linear_http_client(): ?\Symfony\Contracts\HttpClient\HttpClientInterface
 {
-    $config = _get_config();
+    $config = _effective_issue_tracker_config();
     $apiKey = $config[GlobalStudConfigKeys::LINEAR_API_KEY] ?? null;
     if (! is_string($apiKey) || trim($apiKey) === '') {
         return null;
@@ -462,7 +480,7 @@ function _get_jira_attachment_service_if_configured(): ?JiraAttachmentService
 
 function _get_linear_asset_http_client(): \Symfony\Contracts\HttpClient\HttpClientInterface
 {
-    $config = _get_config();
+    $config = _effective_issue_tracker_config();
     $apiKey = $config[GlobalStudConfigKeys::LINEAR_API_KEY] ?? '';
 
     return HttpClient::create(HttpClientDefaults::withTransferLimits([
@@ -904,7 +922,7 @@ function _get_issue_tracker(bool $quiet = false, ?string $override = null, ?stri
 
         $factory = _get_issue_tracker_factory();
         $type = $factory->resolveType($override, $globalConfig, $projectConfig, $issueKey);
-        $factory->assertCredentials($type, $globalConfig);
+        $factory->assertCredentials($type, _effective_issue_tracker_config());
 
         if ($type === 'linear') {
             $linearApiClient = _get_linear_api_client();
@@ -2242,11 +2260,12 @@ function config_validate(
         $detectedGitHost,
         $projectConfigReadError,
     );
+    $trackerConfig = (new \App\Config\EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
     $jiraResolution = $plan->probeJira
-        ? _config_validate_tracker_resolution(\App\Enum\IssueTrackerProvider::Jira->value, $globalConfig)
+        ? _config_validate_tracker_resolution(\App\Enum\IssueTrackerProvider::Jira->value, $trackerConfig)
         : null;
     $linearResolution = $plan->probeLinear
-        ? _config_validate_tracker_resolution(\App\Enum\IssueTrackerProvider::Linear->value, $globalConfig)
+        ? _config_validate_tracker_resolution(\App\Enum\IssueTrackerProvider::Linear->value, $trackerConfig)
         : null;
     $jiraIssueTracker = $jiraResolution !== null && $jiraResolution['ok'] ? $jiraResolution['port'] : null;
     $linearIssueTracker = $linearResolution !== null && $linearResolution['ok'] ? $linearResolution['port'] : null;

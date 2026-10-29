@@ -422,4 +422,28 @@ class IssueTrackerPortSupplierTest extends TestCase
         $this->assertTrue($result['ok']);
         $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
     }
+
+    public function testResolveForProviderUsesProjectCredentials(): void
+    {
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $this->createMock(JiraApiClient::class),
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $result = $supplier->resolveForProvider(
+            IssueTrackerProvider::Jira->value,
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            [
+                'JIRA_URL' => 'https://proj.example',
+                'JIRA_EMAIL' => 'a@b.c',
+                'JIRA_API_TOKEN' => 'tok',
+            ],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
+    }
 }

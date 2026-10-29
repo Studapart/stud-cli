@@ -360,6 +360,54 @@ class CommandGuardTest extends TestCase
         $this->assertNotNull($result->providerOverrideError);
     }
 
+    public function testProjectJiraCredentialsSatisfyGuard(): void
+    {
+        $capabilities = CapabilitySet::fromList([JiraAware::class]);
+        $context = $this->context(
+            [],
+            [
+                'JIRA_URL' => 'https://proj.example/',
+                'JIRA_EMAIL' => 'a@b.c',
+                'JIRA_API_TOKEN' => 'tok',
+            ],
+            issueTrackerProviders: [IssueTrackerProvider::Jira->value],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+        $this->assertSame([], $result->missingGlobalKeys);
+    }
+
+    public function testProjectLinearApiKeySatisfiesGuard(): void
+    {
+        $capabilities = CapabilitySet::fromList([LinearAware::class]);
+        $context = $this->context(
+            [],
+            ['LINEAR_API_KEY' => 'lin'],
+            issueTrackerProviders: [IssueTrackerProvider::Linear->value],
+        );
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+        $this->assertSame([], $result->missingGlobalKeys);
+    }
+
+    public function testConfluenceUsesProjectJiraCredentials(): void
+    {
+        $capabilities = CapabilitySet::fromList([ConfluenceAware::class]);
+        $context = $this->context([], [
+            'JIRA_URL' => 'https://proj.example',
+            'JIRA_EMAIL' => 'a@b.c',
+            'JIRA_API_TOKEN' => 'tok',
+        ]);
+
+        $result = $this->guard->check($capabilities, $context);
+
+        $this->assertTrue($result->canProceed);
+    }
+
     public function testConfluenceRequiresJiraCredentials(): void
     {
         $capabilities = CapabilitySet::fromList([ConfluenceAware::class]);

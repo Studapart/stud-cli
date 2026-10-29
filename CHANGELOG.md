@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Project issue-tracker credentials (SCI-228):** `.git/stud.config` may set `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `LINEAR_API_KEY`. A non-empty value replaces that one global field for clients, readiness checks, and `config:validate` pings. A blank value does not clear the global field. `config:show -k JIRA_URL` shows the URL in effect. Warnings about credentials missing from the global file still describe that file.
+
 ### Fixed
 
 - **Jira create field ids and create-screen fallback (SCI-221):** `items:create` reads Jira createmeta `fieldId` values, so labels stay `labels` instead of `customfield_<index>`. When Jira rejects optional fields on the create screen, stud retries create once without those fields and applies them with `items:update`. The create error keeps the full Jira body so a long field-error list still parses, while the failure text stays within the 500-character technical-detail cap. Auto-filled values that were not user inputs, such as the current-user assignee, are restored on that update or named in `updateWarnings` when the edit screen rejects them. If that retry also fails, the error names the deferred fields. Agent success JSON can include `deferredFields` and `updateWarnings`. Linear create is unchanged.

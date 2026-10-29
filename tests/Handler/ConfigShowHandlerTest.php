@@ -312,4 +312,66 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertSame('config.show.key_not_found', $response->getError());
         $this->assertSame(['%key%' => 'JIRA_DEFAULT_PROJECT'], $response->getErrorParameters());
     }
+
+    public function testJiraUrlUsesQualifiedProjectValue(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['JIRA_URL' => 'https://global.example']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['JIRA_URL' => ' https://proj.example/ ']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('https://proj.example', $response->singleKeyValue);
+        $this->assertSame('project', $response->singleKeySection);
+    }
+
+    public function testWhitespaceProjectJiraUrlDoesNotOverrideGlobal(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['JIRA_URL' => 'https://global.example']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['JIRA_URL' => '   ']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('https://global.example', $response->singleKeyValue);
+        $this->assertSame('global', $response->singleKeySection);
+    }
+
+    public function testMissingJiraUrlReturnsNotFound(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable([]));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.key_not_found', $response->getError());
+    }
 }

@@ -828,6 +828,63 @@ class ConfigProjectInitHandlerTest extends TestCase
         $this->assertErrorRef($response, 'config.project_init.invalid_label_list');
     }
 
+    public function testAgentWritesTrimmedIssueTrackerCredentials(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturnOnConsecutiveCalls([], [
+            'JIRA_URL' => 'https://proj.example',
+            'JIRA_EMAIL' => 'person@example.com',
+            'JIRA_API_TOKEN' => 'tok',
+            'LINEAR_API_KEY' => 'lin',
+        ]);
+        $gitRepository->expects($this->once())
+            ->method('writeProjectConfig')
+            ->with([
+                'JIRA_URL' => 'https://proj.example',
+                'JIRA_EMAIL' => 'person@example.com',
+                'JIRA_API_TOKEN' => 'tok',
+                'LINEAR_API_KEY' => 'lin',
+            ]);
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle([
+            'jiraUrl' => ' https://proj.example/ ',
+            'jiraEmail' => ' person@example.com ',
+            'jiraApiToken' => ' tok ',
+            'linearApiKey' => ' lin ',
+        ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertTrue($response->updated);
+    }
+
+    public function testAgentOmitsBlankIssueTrackerCredentials(): void
+    {
+        $gitRepository = $this->createMock(GitRepository::class);
+        $gitRepository->method('getProjectConfigPath')->willReturn('/tmp/.git/stud.config');
+        $gitRepository->method('readProjectConfig')->willReturn(['JIRA_URL' => 'https://keep.example']);
+        $gitRepository->expects($this->never())->method('writeProjectConfig');
+
+        $handler = new ConfigProjectInitHandler(
+            $gitRepository,
+            $this->createMock(GitSetupService::class),
+            $this->createMock(ConfigProjectInitPromptCollector::class),
+        );
+        $response = $handler->handle([
+            'jiraUrl' => '///',
+            'jiraEmail' => '   ',
+            'linearApiKey' => '',
+        ], false, true);
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertFalse($response->updated);
+    }
+
     /**
      * @param array<string, mixed>|null $parameters
      */

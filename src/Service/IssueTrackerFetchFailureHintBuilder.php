@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\GlobalStudConfigKeys;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
@@ -30,6 +31,7 @@ class IssueTrackerFetchFailureHintBuilder
         array $globalConfig,
         array $projectConfig,
     ): ?MessageRef {
+        $globalConfig = (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
         if ($cliOverride !== null && trim($cliOverride) !== '') {
             return null;
         }
