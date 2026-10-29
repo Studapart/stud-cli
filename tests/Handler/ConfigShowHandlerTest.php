@@ -77,7 +77,12 @@ class ConfigShowHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfigResult')
-            ->willReturn(ConfigFileReadResult::readable(['projectKey' => 'PROJ', 'githubToken' => 'gh-secret']));
+            ->willReturn(ConfigFileReadResult::readable([
+                'projectKey' => 'PROJ',
+                'githubToken' => 'gh-secret',
+                'JIRA_API_TOKEN' => 'jira-secret',
+                'LINEAR_API_KEY' => 'linear-secret',
+            ]));
 
         $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
         $response = $handler->handle();
@@ -87,6 +92,8 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertNotNull($response->projectConfig);
         $this->assertSame('PROJ', $response->projectConfig['projectKey']);
         $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['githubToken']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['JIRA_API_TOKEN']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['LINEAR_API_KEY']);
     }
 
     public function testHandleReturnsNullProjectConfigWhenRepoThrows(): void

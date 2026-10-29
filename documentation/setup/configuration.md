@@ -99,15 +99,15 @@ Project config (`.git/stud.config`):
 | `projectKey` | Jira project key (issue prefix, default scope) |
 | `transitionId` | Workflow transition applied by `stud items:start` / `items:transition` |
 | `JIRA_DEFAULT_PROJECT` | Default project for create when not passed on CLI |
-| `JIRA_URL` | Jira site for this repository. Overrides the global URL when set |
-| `JIRA_EMAIL` | Jira account email for this repository. Overrides the global email when set |
-| `JIRA_API_TOKEN` | Jira API token for this repository. Overrides the global token when set |
+| `JIRA_URL` | Jira site for this repository. Overrides the global URL when the value is a non-empty string |
+| `JIRA_EMAIL` | Jira account email for this repository. Overrides the global email when the value is a non-empty string |
+| `JIRA_API_TOKEN` | Jira API token for this repository. Overrides the global token when the value is a non-empty string |
 
 Discover workflow transitions interactively during `stud config:project-init`, or list them with `stud projects:workflow`.
 
 ## Linear setup
 
-When `ISSUE_TRACKER_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init` (global). A `LINEAR_API_KEY` in `.git/stud.config` overrides that global key for this repository. Other repository-specific Linear fields live in the same file.
+When `ISSUE_TRACKER_PROVIDERS` includes `linear`, configure `LINEAR_API_KEY` during `stud init` (global). A non-empty `LINEAR_API_KEY` in `.git/stud.config` overrides that global key for this repository. Other repository-specific Linear fields live in the same file.
 
 ### API key
 

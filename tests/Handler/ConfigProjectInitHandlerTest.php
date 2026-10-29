@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Handler;
 
+use App\Config\SecretKeyPolicy;
 use App\DTO\MessageRef;
 use App\Enum\IssueTrackerProvider;
 use App\Handler\ConfigProjectInitHandler;
@@ -861,6 +862,10 @@ class ConfigProjectInitHandlerTest extends TestCase
 
         $this->assertTrue($response->isSuccess());
         $this->assertTrue($response->updated);
+        $this->assertSame('https://proj.example', $response->redactedProjectConfig['JIRA_URL']);
+        $this->assertSame('person@example.com', $response->redactedProjectConfig['JIRA_EMAIL']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->redactedProjectConfig['JIRA_API_TOKEN']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->redactedProjectConfig['LINEAR_API_KEY']);
     }
 
     public function testAgentOmitsBlankIssueTrackerCredentials(): void
