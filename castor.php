@@ -2310,13 +2310,15 @@ function config_validate(
 /**
  * Resolves one issue-tracker port for config:validate without aborting the command.
  *
- * @param array<string, mixed> $globalConfig
+ * The config argument is already the effective snapshot, so no further project keys are applied.
+ *
+ * @param array<string, mixed> $effectiveConfig
  *
  * @return array{ok: true, provider: 'jira'|'linear', port: \App\Service\IssueTrackerPort}|array{ok: false, error: \App\DTO\MessageRef}
  */
-function _config_validate_tracker_resolution(string $provider, array $globalConfig): array
+function _config_validate_tracker_resolution(string $provider, array $effectiveConfig): array
 {
-    return _get_issue_tracker_port_supplier()->resolveForProvider($provider, $globalConfig);
+    return _get_issue_tracker_port_supplier()->resolveForProvider($provider, $effectiveConfig, []);
 }
 
 /**

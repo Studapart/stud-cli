@@ -135,6 +135,7 @@ class IssueTrackerPortSupplierTest extends TestCase
                 'JIRA_EMAIL' => 'user@example.com',
                 'JIRA_API_TOKEN' => 'token',
             ],
+            [],
         );
 
         $this->assertTrue($result['ok']);
@@ -213,7 +214,7 @@ class IssueTrackerPortSupplierTest extends TestCase
             null,
         );
 
-        $result = $supplier->resolveForProvider('invalid', []);
+        $result = $supplier->resolveForProvider('invalid', [], []);
 
         $this->assertFalse($result['ok']);
         $this->assertSame('issue_tracker_provider.invalid_override', $result['error']->key);
@@ -286,7 +287,7 @@ class IssueTrackerPortSupplierTest extends TestCase
             null,
         );
 
-        $result = $supplier->resolveForProvider('auto', []);
+        $result = $supplier->resolveForProvider('auto', [], []);
 
         $this->assertFalse($result['ok']);
         $this->assertSame('issue_tracker_provider.invalid_override', $result['error']->key);
@@ -386,6 +387,7 @@ class IssueTrackerPortSupplierTest extends TestCase
         $result = $supplier->resolveForProvider(
             IssueTrackerProvider::Jira->value,
             ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            [],
         );
 
         $this->assertFalse($result['ok']);
@@ -445,5 +447,66 @@ class IssueTrackerPortSupplierTest extends TestCase
 
         $this->assertTrue($result['ok']);
         $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
+    }
+
+    public function testResolveForDiscoveryUsesProjectJiraCredentials(): void
+    {
+        $jira = $this->createMock(JiraApiClient::class);
+        $jira->method('getProjectTransitions')->willReturn([]);
+
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $jira,
+            $this->createMock(JiraAttachmentService::class),
+            null,
+        );
+
+        $result = $supplier->resolveForDiscovery(
+            'SCI',
+            ['ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value]],
+            [
+                'issueTrackerProvider' => IssueTrackerProvider::Jira->value,
+                'JIRA_URL' => 'https://proj.example',
+                'JIRA_EMAIL' => 'a@b.c',
+                'JIRA_API_TOKEN' => 'tok',
+            ],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(IssueTrackerProvider::Jira->value, $result['provider']);
+    }
+
+    public function testResolveForDiscoveryInfersLinearFromProjectCredentials(): void
+    {
+        $linear = $this->createMock(LinearApiClient::class);
+        $linear->method('getTeamWorkflowStates')->willReturn([]);
+
+        $supplier = new IssueTrackerPortSupplier(
+            new IssueTrackerFactory(),
+            new IssueTrackerResolver(),
+            $this->createMock(JiraApiClient::class),
+            $this->createMock(JiraAttachmentService::class),
+            $linear,
+        );
+
+        $result = $supplier->resolveForDiscovery(
+            'ENG',
+            [
+                'ISSUE_TRACKER_PROVIDERS' => [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+                'JIRA_URL' => 'https://jira.example.com',
+                'JIRA_EMAIL' => 'user@example.com',
+                'JIRA_API_TOKEN' => 'token',
+            ],
+            [
+                'issueTrackerProvider' => IssueTrackerProvider::Auto->value,
+                'projectKey' => 'SCI',
+                'linearTeamKey' => 'ENG',
+                'LINEAR_API_KEY' => 'lin',
+            ],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(IssueTrackerProvider::Linear->value, $result['provider']);
     }
 }

@@ -49,16 +49,14 @@ class IssueTrackerPortSupplier
     }
 
     /**
-     * @param array<string, mixed>      $globalConfig
-     * @param array<string, mixed>|null $projectConfig
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
      *
      * @return array{ok: true, provider: 'jira'|'linear', port: IssueTrackerPort}|array{ok: false, error: MessageRef}
      */
-    public function resolveForProvider(string $provider, array $globalConfig, ?array $projectConfig = null): array
+    public function resolveForProvider(string $provider, array $globalConfig, array $projectConfig): array
     {
-        if ($projectConfig !== null) {
-            $globalConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
-        }
+        $globalConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
 
         $normalized = IssueTrackerProvider::tryFromNormalized($provider);
         if ($normalized === null || $normalized->isAuto()) {
@@ -79,19 +77,19 @@ class IssueTrackerPortSupplier
      */
     public function resolveForDiscovery(string $scopeKey, array $globalConfig, array $projectConfig): array
     {
-        $globalConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
         $explicitProvider = $this->readExplicitProjectProvider($projectConfig);
         if ($explicitProvider !== null) {
-            return $this->resolveForProvider($explicitProvider, $globalConfig);
+            return $this->resolveForProvider($explicitProvider, $globalConfig, $projectConfig);
         }
 
-        if ($this->shouldInferProviderFromScope($globalConfig, $projectConfig)) {
+        $effectiveConfig = $this->withProjectCredentials($globalConfig, $projectConfig);
+        if ($this->shouldInferProviderFromScope($effectiveConfig, $projectConfig)) {
             $inferred = $this->scopeKeyResolver->resolveProviderForDiscoveryScope($scopeKey, $projectConfig);
             if (! $inferred['ok']) {
                 return $inferred;
             }
 
-            return $this->resolveForProvider($inferred['provider'], $globalConfig);
+            return $this->resolveForProvider($inferred['provider'], $globalConfig, $projectConfig);
         }
 
         return $this->resolve($globalConfig, $projectConfig);
@@ -183,12 +181,12 @@ class IssueTrackerPortSupplier
     }
 
     /**
-     * @param array<string, mixed>      $globalConfig
-     * @param array<string, mixed>|null $projectConfig
+     * @param array<string, mixed> $globalConfig
+     * @param array<string, mixed> $projectConfig
      *
      * @return array<string, mixed>
      */
-    private function withProjectCredentials(array $globalConfig, ?array $projectConfig): array
+    private function withProjectCredentials(array $globalConfig, array $projectConfig): array
     {
         return (new EffectiveIssueTrackerCredentials())->overlay($globalConfig, $projectConfig);
     }

@@ -176,7 +176,7 @@ class ProjectsWorkflowHandlerTest extends CommandTestCase
         $supplier->expects($this->never())->method('resolveForDiscovery');
         $supplier->expects($this->once())
             ->method('resolveForProvider')
-            ->with(IssueTrackerProvider::Linear->value, $this->anything())
+            ->with(IssueTrackerProvider::Linear->value, $this->anything(), $this->anything())
             ->willReturn(['ok' => true, 'provider' => IssueTrackerProvider::Linear->value, 'port' => $port]);
 
         $handler = new ProjectsWorkflowHandler(
