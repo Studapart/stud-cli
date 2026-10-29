@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler;
 
 use App\Config\AgentInputAliases;
+use App\Config\EffectiveIssueTrackerCredentials;
 use App\Config\ProjectStudConfigFieldMap;
 use App\Config\ProjectStudConfigKeys;
 use App\Config\SecretKeyPolicy;
@@ -177,6 +178,7 @@ class ConfigProjectInitHandler
      */
     protected function normalizeInputKeyPatches(array &$patches): void
     {
+        $patches = (new EffectiveIssueTrackerCredentials())->normalizeInputPatches($patches);
         if (isset($patches['projectKey']) && is_string($patches['projectKey'])) {
             $patches['projectKey'] = strtoupper(trim($patches['projectKey']));
         }

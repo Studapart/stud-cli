@@ -80,6 +80,13 @@ class ConfigProjectInitPromptCollector
         $patches = array_merge($patches, $this->promptGitlabInstanceUrl($existing));
         $patches = array_merge($patches, $this->promptGithubToken($existing, $recorder));
         $patches = array_merge($patches, $this->promptGitlabToken($existing, $recorder));
+        $credentialPrompts = new ProjectIssueTrackerCredentialPrompts($this->prompt);
+        if ($this->shouldRunJiraPrompts($effectiveProvider)) {
+            $patches = array_merge($patches, $credentialPrompts->jiraPatches($existing));
+        }
+        if ($this->shouldRunLinearPrompts($effectiveProvider, $globalIssueTrackerProviders)) {
+            $patches = array_merge($patches, $credentialPrompts->linearPatches());
+        }
 
         return $patches;
     }

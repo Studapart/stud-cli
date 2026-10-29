@@ -50,6 +50,21 @@ final class IssueTrackerProvidersQueryResolverTest extends TestCase
         $this->assertSame([IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value], $providers);
     }
 
+    public function testDualAutoAggregateUsesProjectLinearKey(): void
+    {
+        $global = $this->dualGlobal;
+        unset($global['LINEAR_API_KEY']);
+        $project = $this->dualProject;
+        $project['LINEAR_API_KEY'] = 'project-lin';
+
+        $providers = $this->resolver->resolve($global, $project, null);
+
+        $this->assertSame(
+            [IssueTrackerProvider::Jira->value, IssueTrackerProvider::Linear->value],
+            $providers,
+        );
+    }
+
     public function testExplicitProjectProviderUsed(): void
     {
         $project = ['issueTrackerProvider' => IssueTrackerProvider::Jira->value, 'projectKey' => 'SCI'];

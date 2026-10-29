@@ -116,6 +116,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             '',
             '',
+            '',
+            '',
             ''
         );
         $prompt->method('choice')->willReturn('github');
@@ -169,6 +171,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             'develop',
             '',
             '',
+            '',
+            '',
             ''
         );
         $prompt->method('choice')->willReturn('github');
@@ -205,6 +209,8 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturnOnConsecutiveCalls(
+            '',
+            '',
             '',
             '',
             '',
@@ -250,7 +256,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('.', '');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('.', '', '');
 
         $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
 
@@ -276,7 +282,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
 
         $prompt = $this->createMock(PromptInterface::class);
         $prompt->method('ask')->willReturn('');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('', '.');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('', '.', '');
 
         $collector = $this->createCollector($gitRepository, $prompt, $gitSetup);
 
@@ -303,10 +309,12 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
             '',
             '',
             '',
-            'https://gitlab.example/'
+            'https://gitlab.example/',
+            '',
+            ''
         );
         $prompt->method('choice')->willReturn('gitlab');
-        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret');
+        $prompt->method('askHidden')->willReturnOnConsecutiveCalls('gh-secret', 'gl-secret', '');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
         $metadataPrompts->expects($this->once())
@@ -598,7 +606,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'ENG', '', '', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createMock(ProjectMetadataPromptService::class);
@@ -664,7 +672,7 @@ class ConfigProjectInitPromptCollectorTest extends TestCase
         $prompt->expects($this->exactly(2))
             ->method('choice')
             ->willReturnOnConsecutiveCalls('auto', 'github');
-        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '', '', '');
+        $prompt->method('ask')->willReturnOnConsecutiveCalls('SCI', 'SCI', '', '', '', '', '', '', '', '', '');
         $prompt->method('askHidden')->willReturn('');
 
         $metadataPrompts = $this->createDefaultMetadataPromptsMock();
