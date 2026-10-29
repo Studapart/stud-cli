@@ -18,6 +18,7 @@ use App\Service\IssueTrackerLabelGroupsCapable;
 use App\Service\IssueTrackerPort;
 use App\Service\ItemCreateProjectResolver;
 use App\Service\ItemCreatePromptService;
+use App\Service\Jira\JiraIssueTrackerCapable;
 use App\Service\LinearApiClient;
 use App\Service\LinearIssueTrackerAdapter;
 use App\Service\Prompt\PromptInterface;
@@ -1845,6 +1846,56 @@ class ItemCreateHandlerTest extends CommandTestCase
         $this->assertTrue($response->isSuccess());
     }
 
+    public function testHandleUsesDeferralCoordinatorWhenPortIsJiraBacked(): void
+    {
+        $port = new JiraCapableIssueTrackerStub();
+        $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $port,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('SCI-9', $response->key);
+        $this->assertSame([
+            'project' => ['key' => 'PROJ'],
+            'issueType' => ['id' => '10001'],
+            'title' => 'My summary',
+        ], $port->created[0]);
+    }
+
+    public function testHandleRetriesJiraCreateThenUpdatesDeferredLabels(): void
+    {
+        $port = new DeferringJiraIssueTrackerStub();
+        $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
+        $this->jiraApiClient->method('getCreateMetaIssueTypes')->willReturn([['id' => '10001', 'name' => 'Story']]);
+        $handler = new ItemCreateHandler(
+            new ItemCreateProjectResolver($this->gitRepository, $this->jiraApiClient, $this->prompt),
+            new ItemCreatePromptService($this->jiraApiClient, $this->fieldResolver, $this->prompt),
+            $port,
+            $this->fieldResolver,
+            $this->fieldsParser,
+            $this->prompt,
+            ['AI-Generated'],
+        );
+
+        $response = $handler->handle(false, new ItemCreateInput('PROJ', 'Story', 'My summary', null));
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame(['labels'], $response->deferredFields);
+        $this->assertArrayHasKey('labels', $port->created[0]);
+        $this->assertArrayNotHasKey('labels', $port->created[1]);
+        $this->assertSame('My summary', $port->created[1]['title']);
+        $this->assertSame(['SCI-9' => ['labels' => ['AI-Generated']]], $port->updated);
+    }
+
     private function stubProjectCreateMetaWithLabels(): void
     {
         $this->jiraApiClient->method('getProject')->willReturn(new Project('PROJ', 'Project'));
@@ -1855,5 +1906,154 @@ class ItemCreateHandlerTest extends CommandTestCase
             'summary' => ['required' => true, 'name' => 'Summary'],
             'labels' => ['required' => false, 'name' => 'Labels'],
         ]);
+    }
+}
+
+class JiraCapableIssueTrackerStub implements IssueTrackerPort, JiraIssueTrackerCapable
+{
+    /** @var list<array<string, mixed>> */
+    public array $created = [];
+
+    public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
+    {
+        return [
+            'project' => ['required' => true, 'name' => 'Project'],
+            'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+            'summary' => ['required' => true, 'name' => 'Summary'],
+        ];
+    }
+
+    public function create(array $input): array
+    {
+        $this->created[] = $input;
+
+        return ['key' => 'SCI-9', 'self' => 'https://example.test/SCI-9'];
+    }
+
+    public function getIssue(string $key, bool $renderFields = false): \App\DTO\WorkItem
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function search(string $query): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listAssignedActive(?string $projectKey = null, bool $onlyMine = true): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function update(string $key, array $input): void
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function getEditMetaFields(string $key): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function formatDescription(string $text, string $format = 'plain'): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listProjectStateChanges(string $projectKey): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listItemStateChanges(string $itemKey): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function applyStateChange(string $itemKey, string $changeId): void
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function assign(string $key, ?string $user = null): void
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listTeams(): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listFiltersOrViews(): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function runFilterOrView(string $name): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function ping(): void
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function listAttachments(string $key): array
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function uploadAttachment(string $key, string $localPath): void
+    {
+        throw new \BadMethodCallException();
+    }
+
+    public function downloadAttachment(string $url, string $destPath): void
+    {
+        throw new \BadMethodCallException();
+    }
+}
+
+final class DeferringJiraIssueTrackerStub extends JiraCapableIssueTrackerStub
+{
+    /** @var array<string, array<string, mixed>> */
+    public array $updated = [];
+
+    public function getCreateMetaFields(string $projectKey, string $issueTypeId): array
+    {
+        return [
+            'project' => ['required' => true, 'name' => 'Project'],
+            'issuetype' => ['required' => true, 'name' => 'Issue Type'],
+            'summary' => ['required' => true, 'name' => 'Summary'],
+            'labels' => ['required' => false, 'name' => 'Labels'],
+        ];
+    }
+
+    public function create(array $input): array
+    {
+        $this->created[] = $input;
+        if (count($this->created) === 1) {
+            throw new ApiException(
+                'Could not create issue.',
+                'HTTP 400: {"errors":{"labels":"Field \'labels\' cannot be set. It is not on the appropriate screen."}}',
+                400,
+            );
+        }
+
+        return ['key' => 'SCI-9', 'self' => 'https://example.test/SCI-9'];
+    }
+
+    public function update(string $key, array $input): void
+    {
+        $this->updated[$key] = $input;
+    }
+
+    public function getEditMetaFields(string $key): array
+    {
+        return [
+            'labels' => ['required' => false, 'name' => 'Labels'],
+        ];
     }
 }

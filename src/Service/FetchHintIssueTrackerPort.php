@@ -26,6 +26,11 @@ class FetchHintIssueTrackerPort implements IssueTrackerPort
     ) {
     }
 
+    public function getInner(): IssueTrackerPort
+    {
+        return $this->inner;
+    }
+
     public function getIssue(string $key, bool $renderFields = false): WorkItem
     {
         try {

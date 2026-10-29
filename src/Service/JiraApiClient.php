@@ -265,7 +265,7 @@ class JiraApiClient
         return $this->userSearchService->collectUserCandidatesWithAt($users);
     }
 
-    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response): string
+    protected function extractTechnicalDetails(\Symfony\Contracts\HttpClient\ResponseInterface $response, bool $truncateBody = true): string
     {
         $statusCode = $response->getStatusCode();
         $responseBody = 'No response body';
@@ -273,7 +273,7 @@ class JiraApiClient
         try {
             $content = $response->getContent(false);
             if (! empty($content)) {
-                $responseBody = mb_strlen($content) > 500
+                $responseBody = $truncateBody && mb_strlen($content) > 500
                     ? mb_substr($content, 0, 500) . '... (truncated)'
                     : $content;
             }
@@ -332,7 +332,7 @@ class JiraApiClient
         if ($response->getStatusCode() !== 201) {
             throw new ApiException(
                 'Could not create issue.',
-                $this->extractTechnicalDetails($response),
+                $this->extractTechnicalDetails($response, false),
                 $response->getStatusCode()
             );
         }

@@ -5,7 +5,9 @@ namespace App\Tests\Service;
 use App\DTO\Filter;
 use App\DTO\Project;
 use App\DTO\WorkItem;
+use App\Exception\ApiException;
 use App\Service\CanConvertToPlainTextInterface;
+use App\Service\Jira\JiraCreateDeferErrorParser;
 use App\Service\JiraApiClient;
 use App\Tests\Support\JiraApiClientTestKit;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -1157,6 +1159,37 @@ echo 'hello';
         $this->expectExceptionMessage('Could not create issue');
 
         $this->jiraService->createIssue($fields);
+    }
+
+    public function testCreateIssueKeepsEveryFieldErrorForDeferral(): void
+    {
+        $errors = [];
+        for ($i = 1; $i <= 8; ++$i) {
+            $errors['customfield_' . $i] = "Field 'customfield_{$i}' cannot be set. It is not on the appropriate screen, or unknown.";
+        }
+        $body = json_encode(['errorMessages' => [], 'errors' => $errors], JSON_THROW_ON_ERROR);
+        $this->assertGreaterThan(500, strlen($body));
+
+        $fields = [
+            'project' => ['key' => 'PROJ'],
+            'issuetype' => ['id' => '10001'],
+            'summary' => 'Test',
+        ];
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $responseMock->method('getStatusCode')->willReturn(400);
+        $responseMock->method('getContent')->with(false)->willReturn($body);
+        $this->httpClientMock->expects($this->once())
+            ->method('request')
+            ->with('POST', '/rest/api/3/issue', $this->anything())
+            ->willReturn($responseMock);
+
+        try {
+            $this->jiraService->createIssue($fields);
+            $this->fail('createIssue should throw');
+        } catch (ApiException $exception) {
+            $parsed = (new JiraCreateDeferErrorParser())->parseDeferrableFieldErrors($exception);
+            $this->assertSame(array_keys($errors), array_keys($parsed ?? []));
+        }
     }
 
     public function testPlainTextToDescriptionAdf(): void
