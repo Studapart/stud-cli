@@ -31,7 +31,7 @@ class ProjectsWorkflowHandler implements JiraAware, LinearAware
     public function handle(string $projectKey, ?string $providerOverride = null): ProjectsWorkflowResponse
     {
         $resolution = $providerOverride !== null
-            ? $this->portSupplier->resolveForProvider($providerOverride, $this->globalConfig)
+            ? $this->portSupplier->resolveForProvider($providerOverride, $this->globalConfig, $this->projectConfig)
             : $this->portSupplier->resolveForDiscovery($projectKey, $this->globalConfig, $this->projectConfig);
         if (! $resolution['ok']) {
             return ProjectsWorkflowResponse::error($resolution['error']);

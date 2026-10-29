@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use App\Config\EffectiveIssueTrackerCredentials;
+use App\Config\GlobalStudConfigKeys;
 use App\Config\SecretKeyPolicy;
 use App\DTO\ConfigFileReadResult;
 use App\DTO\MessageRef;
@@ -57,6 +59,10 @@ class ConfigShowHandler
         }
 
         $projectConfig = $projectRead !== null ? $projectRead->config : [];
+        if ($key === GlobalStudConfigKeys::JIRA_URL) {
+            return $this->handleJiraUrlKey($globalConfig, $projectConfig, $diagnostics);
+        }
+
         $effective = $projectConfig !== [] ? array_merge($globalConfig, $projectConfig) : $globalConfig;
         if (! array_key_exists($key, $effective)) {
             return ConfigShowResponse::error('config.show.key_not_found', ['%key%' => $key]);
@@ -66,6 +72,29 @@ class ConfigShowHandler
         $section = ($projectConfig !== [] && array_key_exists($key, $projectConfig)) ? 'project' : 'global';
 
         return ConfigShowResponse::successSingleKey($key, $value, $section, $diagnostics);
+    }
+
+    /**
+     * @param array<string, mixed>  $globalConfig
+     * @param array<string, mixed>  $projectConfig
+     * @param list<ResponseMessage> $diagnostics
+     */
+    private function handleJiraUrlKey(array $globalConfig, array $projectConfig, array $diagnostics): ConfigShowResponse
+    {
+        $credentials = new EffectiveIssueTrackerCredentials();
+        $overlay = $credentials->overlay($globalConfig, $projectConfig);
+        if (! array_key_exists(GlobalStudConfigKeys::JIRA_URL, $overlay)) {
+            return ConfigShowResponse::error('config.show.key_not_found', ['%key%' => GlobalStudConfigKeys::JIRA_URL]);
+        }
+
+        $section = $credentials->projectSupplies($projectConfig, GlobalStudConfigKeys::JIRA_URL) ? 'project' : 'global';
+
+        return ConfigShowResponse::successSingleKey(
+            GlobalStudConfigKeys::JIRA_URL,
+            $overlay[GlobalStudConfigKeys::JIRA_URL],
+            $section,
+            $diagnostics,
+        );
     }
 
     protected function loadGlobalConfig(): ConfigFileReadResult

@@ -77,7 +77,12 @@ class ConfigShowHandlerTest extends CommandTestCase
 
         $this->gitRepository->expects($this->once())
             ->method('readProjectConfigResult')
-            ->willReturn(ConfigFileReadResult::readable(['projectKey' => 'PROJ', 'githubToken' => 'gh-secret']));
+            ->willReturn(ConfigFileReadResult::readable([
+                'projectKey' => 'PROJ',
+                'githubToken' => 'gh-secret',
+                'JIRA_API_TOKEN' => 'jira-secret',
+                'LINEAR_API_KEY' => 'linear-secret',
+            ]));
 
         $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
         $response = $handler->handle();
@@ -87,6 +92,8 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertNotNull($response->projectConfig);
         $this->assertSame('PROJ', $response->projectConfig['projectKey']);
         $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['githubToken']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['JIRA_API_TOKEN']);
+        $this->assertSame(SecretKeyPolicy::REDACTED_PLACEHOLDER, $response->projectConfig['LINEAR_API_KEY']);
     }
 
     public function testHandleReturnsNullProjectConfigWhenRepoThrows(): void
@@ -311,5 +318,67 @@ class ConfigShowHandlerTest extends CommandTestCase
         $this->assertFalse($response->isSuccess());
         $this->assertSame('config.show.key_not_found', $response->getError());
         $this->assertSame(['%key%' => 'JIRA_DEFAULT_PROJECT'], $response->getErrorParameters());
+    }
+
+    public function testJiraUrlUsesQualifiedProjectValue(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['JIRA_URL' => 'https://global.example']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['JIRA_URL' => ' https://proj.example/ ']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('https://proj.example', $response->singleKeyValue);
+        $this->assertSame('project', $response->singleKeySection);
+    }
+
+    public function testWhitespaceProjectJiraUrlDoesNotOverrideGlobal(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['JIRA_URL' => 'https://global.example']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable(['JIRA_URL' => '   ']));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertTrue($response->isSuccess());
+        $this->assertSame('https://global.example', $response->singleKeyValue);
+        $this->assertSame('global', $response->singleKeySection);
+    }
+
+    public function testMissingJiraUrlReturnsNotFound(): void
+    {
+        $this->fileSystem->expects($this->once())
+            ->method('fileExists')
+            ->willReturn(true);
+        $this->fileSystem->expects($this->once())
+            ->method('parseFile')
+            ->willReturn(['LANGUAGE' => 'en']);
+
+        $this->gitRepository->expects($this->once())
+            ->method('readProjectConfigResult')
+            ->willReturn(ConfigFileReadResult::readable([]));
+
+        $handler = new ConfigShowHandler($this->fileSystem, '/path/to/config.yml', $this->gitRepository);
+        $response = $handler->handle('JIRA_URL');
+
+        $this->assertFalse($response->isSuccess());
+        $this->assertSame('config.show.key_not_found', $response->getError());
     }
 }

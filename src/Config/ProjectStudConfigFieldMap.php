@@ -31,6 +31,10 @@ final class ProjectStudConfigFieldMap
         'linearTypeBranchPrefixes' => ProjectStudConfigKeys::LINEAR_TYPE_BRANCH_PREFIXES,
         'workItemLabels' => ProjectStudConfigKeys::WORK_ITEM_LABELS,
         'pullRequestLabels' => ProjectStudConfigKeys::PULL_REQUEST_LABELS,
+        'jiraUrl' => GlobalStudConfigKeys::JIRA_URL,
+        'jiraEmail' => GlobalStudConfigKeys::JIRA_EMAIL,
+        'jiraApiToken' => GlobalStudConfigKeys::JIRA_API_TOKEN,
+        'linearApiKey' => GlobalStudConfigKeys::LINEAR_API_KEY,
     ];
 
     /**
